@@ -7,44 +7,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Car, Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Auth = () => {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // TODO: Implement Firebase authentication
-    setTimeout(() => {
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      toast.error(error.message || "Failed to sign in");
+    } else {
       toast.success("Signed in successfully!");
-      navigate("/dashboard");
-      setIsLoading(false);
-    }, 1000);
+    }
+
+    setIsLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // TODO: Implement Firebase authentication
-    setTimeout(() => {
-      toast.success("Account created! Please verify your email.");
-      navigate("/onboarding");
-      setIsLoading(false);
-    }, 1000);
+
+    const formData = new FormData(e.currentTarget);
+    const displayName = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    const { error } = await signUp(email, password, displayName);
+
+    if (error) {
+      toast.error(error.message || "Failed to create account");
+    } else {
+      toast.success("Account created!");
+    }
+
+    setIsLoading(false);
   };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    
-    // TODO: Implement Google sign-in
-    setTimeout(() => {
-      toast.success("Signed in with Google!");
-      navigate("/dashboard");
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+
+    if (error) {
+      toast.error(error.message || "Failed to sign in with Google");
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
