@@ -195,6 +195,13 @@ const Profile = () => {
         <Card className="p-6">
           <h1 className="text-2xl font-bold mb-6">Profile</h1>
 
+          {/* Privacy Notice */}
+          <div className="mb-6 p-4 bg-muted/50 rounded-lg border border-border">
+            <p className="text-sm text-muted-foreground">
+              <strong>Privacy Note:</strong> Only your name, bio, and profile picture are visible to other users. Your contact information and email remain private.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Photo Upload */}
             <div className="flex flex-col items-center gap-4">
