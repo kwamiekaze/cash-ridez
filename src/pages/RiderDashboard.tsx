@@ -12,6 +12,8 @@ const RiderDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("open");
+  const [requests, setRequests] = useState<any[]>([]);
 
   useState(() => {
     const fetchProfile = async () => {
