@@ -99,9 +99,14 @@ const DriverDashboard = () => {
               {profile && (
                 <div className="flex items-center gap-2">
                   <StatusBadge status={profile.verification_status} />
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => window.location.href = '/profile'}
+                    className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center p-0"
+                  >
                     <User className="w-4 h-4" />
-                  </div>
+                  </Button>
                 </div>
               )}
               <Button variant="outline" size="sm" onClick={() => signOut()}>

@@ -40,9 +40,14 @@ const RiderDashboard = () => {
               {profile && (
                 <div className="flex items-center gap-2">
                   <StatusBadge status={profile.verification_status} />
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate('/profile')}
+                    className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center p-0"
+                  >
                     <User className="w-4 h-4" />
-                  </div>
+                  </Button>
                 </div>
               )}
               <Button variant="outline" size="sm" onClick={() => signOut()}>
@@ -85,7 +90,12 @@ const RiderDashboard = () => {
             <Plus className="w-6 h-6 mr-2" />
             New Ride Request
           </Button>
-          <Button size="lg" variant="outline" className="h-24 text-lg">
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="h-24 text-lg"
+            onClick={() => navigate("/profile")}
+          >
             <User className="w-6 h-6 mr-2" />
             View Profile
           </Button>

@@ -85,17 +85,20 @@ export type Database = {
       profiles: {
         Row: {
           active_assigned_ride_id: string | null
+          bio: string | null
           blocked: boolean | null
           created_at: string | null
           display_name: string | null
           driver_rating_avg: number | null
           driver_rating_count: number | null
           email: string
+          full_name: string | null
           id: string
           id_image_url: string | null
           is_driver: boolean | null
           is_rider: boolean | null
           is_verified: boolean | null
+          phone_number: string | null
           photo_url: string | null
           rider_rating_avg: number | null
           rider_rating_count: number | null
@@ -110,17 +113,20 @@ export type Database = {
         }
         Insert: {
           active_assigned_ride_id?: string | null
+          bio?: string | null
           blocked?: boolean | null
           created_at?: string | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
           email: string
+          full_name?: string | null
           id: string
           id_image_url?: string | null
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
+          phone_number?: string | null
           photo_url?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
@@ -135,17 +141,20 @@ export type Database = {
         }
         Update: {
           active_assigned_ride_id?: string | null
+          bio?: string | null
           blocked?: boolean | null
           created_at?: string | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
           email?: string
+          full_name?: string | null
           id?: string
           id_image_url?: string | null
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
+          phone_number?: string | null
           photo_url?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
