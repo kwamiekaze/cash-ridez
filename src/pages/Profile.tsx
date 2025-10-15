@@ -37,9 +37,10 @@ const Profile = () => {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
+        console.error("Profile fetch error:", error);
         toast({
           title: "Error",
           description: "Failed to load profile",
@@ -70,19 +71,41 @@ const Profile = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Validate file
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast({
+        title: "Error",
+        description: "Only JPG, PNG, and WebP images are allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(true);
     try {
       const fileExt = file.name.split(".").pop();
       const filePath = `${user.id}/profile.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("id-verifications")
+        .from("profile-pictures")
         .upload(filePath, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
-        .from("id-verifications")
+        .from("profile-pictures")
         .getPublicUrl(filePath);
 
       setProfile({ ...profile, photo_url: publicUrl });
@@ -92,16 +115,20 @@ const Profile = () => {
         .update({ photo_url: publicUrl })
         .eq("id", user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Update error:", updateError);
+        throw updateError;
+      }
 
       toast({
         title: "Success",
         description: "Photo uploaded successfully",
       });
     } catch (error: any) {
+      console.error("Photo upload error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to upload photo",
         variant: "destructive",
       });
     } finally {

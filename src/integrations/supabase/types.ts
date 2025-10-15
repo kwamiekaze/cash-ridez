@@ -404,6 +404,18 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_ride_participant: {
+        Args: { _profile_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_verified_rider: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_verified_user: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "driver" | "rider"
