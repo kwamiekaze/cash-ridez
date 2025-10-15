@@ -87,6 +87,7 @@ export type Database = {
           active_assigned_ride_id: string | null
           bio: string | null
           blocked: boolean | null
+          blocked_until: string | null
           created_at: string | null
           display_name: string | null
           driver_rating_avg: number | null
@@ -110,11 +111,13 @@ export type Database = {
             | Database["public"]["Enums"]["verification_status"]
             | null
           verification_submitted_at: string | null
+          warning_count: number | null
         }
         Insert: {
           active_assigned_ride_id?: string | null
           bio?: string | null
           blocked?: boolean | null
+          blocked_until?: string | null
           created_at?: string | null
           display_name?: string | null
           driver_rating_avg?: number | null
@@ -138,11 +141,13 @@ export type Database = {
             | Database["public"]["Enums"]["verification_status"]
             | null
           verification_submitted_at?: string | null
+          warning_count?: number | null
         }
         Update: {
           active_assigned_ride_id?: string | null
           bio?: string | null
           blocked?: boolean | null
+          blocked_until?: string | null
           created_at?: string | null
           display_name?: string | null
           driver_rating_avg?: number | null
@@ -166,6 +171,7 @@ export type Database = {
             | Database["public"]["Enums"]["verification_status"]
             | null
           verification_submitted_at?: string | null
+          warning_count?: number | null
         }
         Relationships: []
       }
@@ -326,6 +332,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_message_flags: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string | null
+          flag_reason: string
+          flagged_content: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string | null
+          flag_reason: string
+          flagged_content: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string | null
+          flag_reason?: string
+          flagged_content?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_message_flags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
