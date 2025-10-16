@@ -100,7 +100,7 @@ const Index = () => {
             
             <p className="text-lg text-foreground/60 mb-12 max-w-2xl mx-auto">
               A people-powered platform where verified community members share travel plans, 
-              coordinate trips, and build trusted connections — safely and independently.
+              coordinate trips, and build trusted connections, safely and independently.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
@@ -226,7 +226,7 @@ const Index = () => {
             </div>
           </div>
           <p className="text-center text-foreground/60 mt-12 max-w-2xl mx-auto text-lg font-medium">
-            CashRidez never books or manages trips — we simply help people connect and communicate.
+            CashRidez never books or manages trips, we simply help people connect and communicate.
           </p>
         </div>
       </section>
