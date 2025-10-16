@@ -9,10 +9,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-gradient-button text-white hover:shadow-glow transition-all",
+        default: "bg-gradient-button text-black hover:shadow-glow transition-all font-semibold",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-white transition-all",
-        secondary: "bg-white text-primary border-2 border-primary hover:bg-primary hover:text-white transition-all",
+        outline: "border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-black transition-all font-semibold",
+        secondary: "bg-white text-primary border-2 border-primary hover:bg-primary hover:text-black transition-all font-semibold",
         ghost: "hover:bg-accent/10 hover:text-accent transition-all",
         link: "text-primary underline-offset-4 hover:underline",
       },
