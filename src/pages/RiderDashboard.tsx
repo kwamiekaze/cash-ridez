@@ -35,7 +35,7 @@ const RiderDashboard = () => {
               </div>
               <div>
                 <span className="text-xl font-bold">Cash Ridez</span>
-                <p className="text-xs text-muted-foreground">Rider</p>
+                <p className="text-xs text-muted-foreground">Member</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -73,8 +73,8 @@ const RiderDashboard = () => {
                 <h3 className="font-semibold mb-1">Verification {profile.verification_status}</h3>
                 <p className="text-sm text-muted-foreground">
                   {profile.verification_status === "pending"
-                    ? "Your ID is being reviewed. You'll be able to request rides once verified."
-                    : "Please upload your ID to get verified and start requesting rides."}
+                    ? "Your ID is being reviewed. You'll be able to post trips once verified."
+                    : "Please upload your ID to get verified and start posting trips."}
                 </p>
               </div>
             </div>
@@ -90,7 +90,7 @@ const RiderDashboard = () => {
             disabled={!profile?.is_verified}
           >
             <Plus className="w-6 h-6 mr-2" />
-            New Ride Request
+            New Trip Request
           </Button>
           <Button 
             size="lg" 
@@ -103,39 +103,39 @@ const RiderDashboard = () => {
           </Button>
         </div>
 
-        {/* Rides Tabs */}
+        {/* Trips Tabs */}
         <Tabs defaultValue="open" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="assigned">Assigned</TabsTrigger>
+            <TabsTrigger value="assigned">Connected</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
             <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6">
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No open ride requests</p>
+              <p className="text-muted-foreground">No open trip requests</p>
               <Button className="mt-4" onClick={() => navigate("/rider/create-request")}>
-                Create Your First Request
+                Create Your First Trip Request
               </Button>
             </Card>
           </TabsContent>
 
           <TabsContent value="assigned">
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No assigned rides</p>
+              <p className="text-muted-foreground">No connected trips</p>
             </Card>
           </TabsContent>
 
           <TabsContent value="completed">
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No completed rides yet</p>
+              <p className="text-muted-foreground">No completed trips yet</p>
             </Card>
           </TabsContent>
 
           <TabsContent value="cancelled">
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No cancelled rides</p>
+              <p className="text-muted-foreground">No cancelled trips</p>
             </Card>
           </TabsContent>
         </Tabs>

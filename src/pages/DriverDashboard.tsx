@@ -92,7 +92,7 @@ const DriverDashboard = () => {
               </div>
               <div>
                 <span className="text-xl font-bold">Cash Ridez</span>
-                <p className="text-xs text-muted-foreground">Driver</p>
+                <p className="text-xs text-muted-foreground">Member</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -130,8 +130,8 @@ const DriverDashboard = () => {
                 <h3 className="font-semibold mb-1">Verification {profile.verification_status}</h3>
                 <p className="text-sm text-muted-foreground">
                   {profile.verification_status === "pending"
-                    ? "Your ID is being reviewed. You'll be able to accept rides once verified."
-                    : "Please upload your ID to get verified and start accepting rides."}
+                    ? "Your ID is being reviewed. You'll be able to connect with trip requests once verified."
+                    : "Please upload your ID to get verified and start connecting with members."}
                 </p>
               </div>
             </div>
@@ -140,7 +140,7 @@ const DriverDashboard = () => {
 
         {/* Filters */}
         <Card className="p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Find Rides</h2>
+          <h2 className="text-xl font-semibold mb-4">Find Trip Requests</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -163,12 +163,12 @@ const DriverDashboard = () => {
           </div>
         </Card>
 
-        {/* Available Rides */}
+        {/* Available Trip Requests */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Available Rides ({filteredRequests.length})</h2>
+          <h2 className="text-2xl font-bold">Available Trip Requests ({filteredRequests.length})</h2>
           {filteredRequests.length === 0 ? (
             <Card className="p-8 text-center">
-              <p className="text-muted-foreground">No rides available matching your filters</p>
+              <p className="text-muted-foreground">No trip requests available matching your filters</p>
             </Card>
           ) : (
             filteredRequests.map((request) => (
@@ -211,7 +211,7 @@ const DriverDashboard = () => {
                     )}
                   </div>
                   <Button className="bg-gradient-primary" disabled={!profile?.is_verified} onClick={() => handleAcceptClick(request)}>
-                    Accept Ride
+                    Connect
                   </Button>
                 </div>
               </Card>

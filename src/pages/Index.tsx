@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Car, Shield, Clock, DollarSign, Users, Star } from "lucide-react";
+import { Car, Shield, MessageSquare, Users, Star, ThumbsUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -9,31 +9,31 @@ const Index = () => {
   const features = [
     {
       icon: Shield,
-      title: "Verified & Safe",
-      description: "All users are ID-verified for your peace of mind"
+      title: "Verified Members",
+      description: "Each user verifies their ID to keep our community trustworthy"
     },
     {
-      icon: DollarSign,
-      title: "Fair Pricing",
-      description: "Negotiate directly with drivers for the best rates"
+      icon: MessageSquare,
+      title: "Flexible Arrangements",
+      description: "Discuss travel plans and compensation directly with others"
     },
     {
-      icon: Clock,
-      title: "Real-Time Updates",
-      description: "Track your ride status and chat with your driver"
+      icon: Users,
+      title: "Private Messaging",
+      description: "Coordinate and stay updated through secure in-app chat"
     },
     {
       icon: Star,
-      title: "Rated Community",
-      description: "Build trust through our two-way rating system"
+      title: "Reputation System",
+      description: "Build trust through community feedback"
     }
   ];
 
   const stats = [
-    { label: "Active Users", value: "10K+" },
-    { label: "Rides Completed", value: "50K+" },
-    { label: "Average Rating", value: "4.8" },
-    { label: "Cities", value: "25+" }
+    { label: "Verified Members", value: "10K+" },
+    { label: "Connections Made", value: "50K+" },
+    { label: "Community Rating", value: "4.8" },
+    { label: "Active Cities", value: "25+" }
   ];
 
   return (
@@ -74,11 +74,11 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-              Rideshare That
-              <span className="bg-gradient-primary bg-clip-text text-transparent"> Works For You</span>
+              Local Travel Connections —
+              <span className="bg-gradient-primary bg-clip-text text-transparent"> Simplified</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto">
-              Connect directly with verified drivers. Negotiate fair prices. Travel safely with our community-first platform.
+              Connect with verified community members who share similar routes or travel plans. Post your trip, chat, and coordinate privately and safely through our communication-first platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -86,8 +86,8 @@ const Index = () => {
                 className="bg-gradient-primary hover:shadow-glow transition-all text-lg px-8 py-6"
                 onClick={() => navigate("/auth")}
               >
-                <Users className="w-5 h-5 mr-2" />
-                Request a Ride
+                <ThumbsUp className="w-5 h-5 mr-2" />
+                Post a Trip
               </Button>
               <Button 
                 size="lg" 
@@ -96,9 +96,12 @@ const Index = () => {
                 onClick={() => navigate("/auth")}
               >
                 <Car className="w-5 h-5 mr-2" />
-                Become a Driver
+                Explore Trip Requests
               </Button>
             </div>
+            <p className="text-sm text-muted-foreground mt-6 max-w-xl mx-auto">
+              CashRidez is a communication tool that helps people network for travel coordination. Users handle their own arrangements and payments directly.
+            </p>
           </div>
         </div>
       </section>
@@ -123,9 +126,9 @@ const Index = () => {
       <section id="features" className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Why Choose Cash Ridez?</h2>
+            <h2 className="text-4xl font-bold mb-4">Why Join the CashRidez Community?</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              We've built a platform that puts safety, fairness, and community first
+              A communication platform that puts safety, trust, and community first
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -146,7 +149,7 @@ const Index = () => {
       <section id="how-it-works" className="py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">How It Works</h2>
+            <h2 className="text-4xl font-bold mb-4">How It Works — Simple, Safe, and Social</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Getting started is simple and takes just a few minutes
             </p>
@@ -156,30 +159,33 @@ const Index = () => {
               <div className="w-16 h-16 rounded-full bg-gradient-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4">
                 1
               </div>
-              <h3 className="text-xl font-semibold mb-2">Sign Up & Verify</h3>
+              <h3 className="text-xl font-semibold mb-2">Join & Verify</h3>
               <p className="text-muted-foreground">
-                Create your account and upload your ID for quick verification
+                Create your profile and verify your ID to join the network
               </p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4">
                 2
               </div>
-              <h3 className="text-xl font-semibold mb-2">Request or Drive</h3>
+              <h3 className="text-xl font-semibold mb-2">Post or Explore Trips</h3>
               <p className="text-muted-foreground">
-                Post a ride request or browse available rides in your area
+                Share your travel plans or browse requests in your area
               </p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 rounded-full bg-gradient-primary text-white text-2xl font-bold flex items-center justify-center mx-auto mb-4">
                 3
               </div>
-              <h3 className="text-xl font-semibold mb-2">Connect & Go</h3>
+              <h3 className="text-xl font-semibold mb-2">Chat & Coordinate</h3>
               <p className="text-muted-foreground">
-                Chat, negotiate, and complete your ride safely
+                Message others, plan details, and manage your arrangements privately
               </p>
             </div>
           </div>
+          <p className="text-center text-sm text-muted-foreground mt-8 max-w-2xl mx-auto">
+            CashRidez never books or manages trips — we simply help people connect and communicate.
+          </p>
         </div>
       </section>
 
@@ -187,9 +193,9 @@ const Index = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <Card className="p-12 bg-gradient-primary text-white text-center">
-            <h2 className="text-4xl font-bold mb-4">Ready to Get Started?</h2>
+            <h2 className="text-4xl font-bold mb-4">Ready to Connect? 👋</h2>
             <p className="text-xl mb-8 opacity-90">
-              Join thousands of riders and drivers in our community
+              Join thousands of travelers coordinating trips across Georgia and beyond
             </p>
             <Button 
               size="lg" 
@@ -197,7 +203,7 @@ const Index = () => {
               className="text-lg px-8 py-6"
               onClick={() => navigate("/auth")}
             >
-              Sign Up Now - It's Free
+              Sign Up Free
             </Button>
           </Card>
         </div>
@@ -215,14 +221,14 @@ const Index = () => {
                 <span className="text-xl font-bold">Cash Ridez</span>
               </div>
               <p className="text-muted-foreground text-sm">
-                Community-first ridesharing platform
+                Community-first travel coordination platform
               </p>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Platform</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Request Ride</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Become Driver</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Post Trip</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Join Network</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Safety</a></li>
               </ul>
             </div>
@@ -243,8 +249,13 @@ const Index = () => {
               </ul>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            © 2025 Cash Ridez. All rights reserved.
+          <div className="mt-12 pt-8 border-t border-border">
+            <p className="text-xs text-muted-foreground text-center max-w-4xl mx-auto mb-4">
+              CashRidez is a communication and networking platform designed to connect individuals for travel coordination. CashRidez does not arrange, control, or provide transportation services and is not responsible for user transactions or travel outcomes.
+            </p>
+            <p className="text-center text-sm text-muted-foreground">
+              © 2025 Cash Ridez. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>

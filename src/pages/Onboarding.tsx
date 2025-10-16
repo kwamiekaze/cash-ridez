@@ -107,10 +107,10 @@ const Onboarding = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Users className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">I'm a Rider</h3>
+                      <h3 className="font-semibold">Post Trip Requests</h3>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Request rides and connect with drivers
+                      Share your travel plans and connect with the community
                     </p>
                   </div>
                 </div>
@@ -127,10 +127,10 @@ const Onboarding = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Car className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">I'm a Driver</h3>
+                      <h3 className="font-semibold">Respond to Requests</h3>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Accept ride requests and earn money
+                      Help others with their travel coordination
                     </p>
                   </div>
                 </div>
@@ -169,7 +169,7 @@ const Onboarding = () => {
               </Label>
             </Card>
             <p className="text-xs text-muted-foreground mt-2">
-              Your ID will be reviewed by our team. Only verified users can create or accept rides.
+              Your ID will be reviewed by our team. Only verified users can post or connect with trip requests.
             </p>
           </div>
 

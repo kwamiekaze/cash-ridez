@@ -100,11 +100,11 @@ const CreateRideRequest = () => {
 
       if (error) throw error;
 
-      toast.success("Ride request created!");
+      toast.success("Trip request created!");
       navigate("/rider");
     } catch (error: any) {
       console.error("Error:", error);
-      toast.error(error.message || "Failed to create request");
+      toast.error(error.message || "Failed to create trip request");
     } finally {
       setIsSubmitting(false);
     }
@@ -123,7 +123,10 @@ const CreateRideRequest = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto p-8">
-          <h1 className="text-3xl font-bold mb-6">Create Ride Request</h1>
+          <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Post your travel plans to connect with others in the community who can help coordinate your trip.
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -220,8 +223,12 @@ const CreateRideRequest = () => {
             </div>
 
             <Button type="submit" className="w-full bg-gradient-primary" size="lg" disabled={isSubmitting}>
-              {isSubmitting ? "Creating Request..." : "Create Ride Request"}
+              {isSubmitting ? "Creating Request..." : "Create Trip Request"}
             </Button>
+            
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              By posting, you acknowledge that CashRidez is a communication platform and all travel arrangements are made independently between users.
+            </p>
           </form>
         </Card>
       </div>
