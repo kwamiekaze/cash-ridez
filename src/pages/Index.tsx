@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Shield, MessageSquare, Users, Handshake, MapPin, Star, CheckCircle2 } from "lucide-react";
+import { Car, Shield, MessageSquare, Users, Handshake, MapPin, Star, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { BrandCar } from "@/components/icons/BrandCar";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -51,7 +50,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant">
-                <BrandCar className="w-6 h-6 text-white" />
+                <Car className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 CashRidez
@@ -119,7 +118,7 @@ const Index = () => {
                 className="text-lg px-10 py-7 rounded-full"
                 onClick={() => navigate("/auth")}
               >
-                <BrandCar className="w-5 h-5 mr-2" />
+                <Car className="w-5 h-5 mr-2" />
                 Offer a Lift
               </Button>
             </div>
@@ -266,7 +265,7 @@ const Index = () => {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant">
-                  <BrandCar className="w-5 h-5 text-white" />
+                  <Car className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold">CashRidez</span>
               </div>
