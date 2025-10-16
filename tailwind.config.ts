@@ -65,10 +65,14 @@ export default {
           foreground: "hsl(var(--verified-foreground))",
         },
       },
+      fontFamily: {
+        sans: ["Poppins", "Inter", "sans-serif"],
+      },
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',
-        'gradient-accent': 'var(--gradient-accent)',
+        'gradient-button': 'var(--gradient-button)',
         'gradient-hero': 'var(--gradient-hero)',
+        'gradient-gold': 'var(--gradient-gold)',
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',
@@ -76,6 +80,8 @@ export default {
         'lg': 'var(--shadow-lg)',
         'xl': 'var(--shadow-xl)',
         'glow': 'var(--shadow-glow)',
+        'elegant': 'var(--shadow-elegant)',
+        'card': 'var(--shadow-card)',
       },
       borderRadius: {
         lg: "var(--radius)",
