@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, MessageSquare } from "lucide-react";
+import { ArrowLeft, MapPin, MessageSquare, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { RatingDisplay } from "@/components/RatingDisplay";
+import { RatingDialog } from "@/components/RatingDialog";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +24,9 @@ export default function TripDetails() {
   const [counterAmount, setCounterAmount] = useState("");
   const [counterMessage, setCounterMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [riderProfile, setRiderProfile] = useState<any>(null);
+  const [driverProfile, setDriverProfile] = useState<any>(null);
 
   useEffect(() => {
     fetchTripData();
@@ -67,6 +72,24 @@ export default function TripDetails() {
 
       const { data: { user } } = await supabase.auth.getUser();
       setIsRider(tripData.rider_id === user?.id);
+
+      // Fetch rider profile
+      const { data: riderData } = await supabase
+        .from('profiles')
+        .select('display_name, email, rider_rating_avg, rider_rating_count')
+        .eq('id', tripData.rider_id)
+        .single();
+      setRiderProfile(riderData);
+
+      // Fetch driver profile if assigned
+      if (tripData.assigned_driver_id) {
+        const { data: driverData } = await supabase
+          .from('profiles')
+          .select('display_name, email, driver_rating_avg, driver_rating_count')
+          .eq('id', tripData.assigned_driver_id)
+          .single();
+        setDriverProfile(driverData);
+      }
 
       await fetchOffers();
     } catch (error: any) {
@@ -222,6 +245,64 @@ export default function TripDetails() {
     }
   };
 
+  const handleRatingSubmit = async (rating: number, comment?: string) => {
+    try {
+      // Determine if current user is rating as rider or driver
+      const updateField = isRider ? 'rider_rating' : 'driver_rating';
+      const otherUserId = isRider ? request.assigned_driver_id : request.rider_id;
+      const profileField = isRider ? 'driver_rating_avg' : 'rider_rating_avg';
+      const countField = isRider ? 'driver_rating_count' : 'rider_rating_count';
+
+      // Update the ride request with the rating
+      const { error: rideError } = await supabase
+        .from('ride_requests')
+        .update({ [updateField]: rating })
+        .eq('id', id);
+
+      if (rideError) throw rideError;
+
+      // Fetch current profile stats
+      const { data: profileData, error: fetchError } = await supabase
+        .from('profiles')
+        .select(profileField + ', ' + countField)
+        .eq('id', otherUserId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Calculate new average
+      const currentAvg = profileData?.[profileField] || 0;
+      const currentCount = profileData?.[countField] || 0;
+      const newCount = currentCount + 1;
+      const newAvg = ((currentAvg * currentCount) + rating) / newCount;
+
+      // Update profile with new rating
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          [profileField]: newAvg,
+          [countField]: newCount
+        })
+        .eq('id', otherUserId);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "Rating Submitted",
+        description: "Thank you for your feedback!",
+      });
+
+      fetchTripData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
   }
@@ -242,7 +323,7 @@ export default function TripDetails() {
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span>Trip Information</span>
               <Badge variant={request.status === 'open' ? 'default' : 'secondary'}>
                 {request.status}
@@ -253,18 +334,53 @@ export default function TripDetails() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Rider Info */}
+            {riderProfile && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-1">Rider: {riderProfile.display_name || riderProfile.email}</p>
+                {riderProfile.rider_rating_count > 0 && (
+                  <RatingDisplay 
+                    rating={riderProfile.rider_rating_avg} 
+                    count={riderProfile.rider_rating_count}
+                    size="sm"
+                  />
+                )}
+              </div>
+            )}
+            
+            {/* Driver Info */}
+            {driverProfile && request.status === 'assigned' && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-1">Driver: {driverProfile.display_name || driverProfile.email}</p>
+                {driverProfile.driver_rating_count > 0 && (
+                  <RatingDisplay 
+                    rating={driverProfile.driver_rating_avg} 
+                    count={driverProfile.driver_rating_count}
+                    size="sm"
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="flex items-start gap-2">
+              <Clock className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium">Pickup Time</p>
+                <p className="text-sm text-muted-foreground">{new Date(request.pickup_time).toLocaleString()}</p>
+              </div>
+            </div>
             <div className="flex items-start gap-2">
               <MapPin className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-medium">Pickup Location</p>
-                <p className="text-sm text-muted-foreground">{request.pickup_address}</p>
+                <p className="text-sm text-muted-foreground break-words">{request.pickup_address}</p>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-medium">Dropoff Location</p>
-                <p className="text-sm text-muted-foreground">{request.dropoff_address}</p>
+                <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
               </div>
             </div>
             <div className="pt-2 border-t">
@@ -273,21 +389,42 @@ export default function TripDetails() {
             </div>
             {request.rider_note && (
               <div className="pt-2 border-t">
-                <p className="font-medium">Additional Notes</p>
-                <p className="text-sm text-muted-foreground">{request.rider_note}</p>
+                <p className="font-medium">Contact & Emergency Info</p>
+                <p className="text-sm text-muted-foreground break-words whitespace-pre-wrap">{request.rider_note}</p>
               </div>
             )}
+            
+            {/* Rating Button for completed trips */}
             {request.status === 'assigned' && (
-              <Button 
-                onClick={() => navigate(`/chat/${id}`)}
-                className="w-full"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Open Chat
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button 
+                  onClick={() => navigate(`/chat/${id}`)}
+                  className="flex-1"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Open Chat
+                </Button>
+                {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && (
+                  <Button 
+                    onClick={() => setShowRatingDialog(true)}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    Rate {isRider ? 'Driver' : 'Rider'}
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>
+
+        <RatingDialog
+          open={showRatingDialog}
+          onOpenChange={setShowRatingDialog}
+          onSubmit={handleRatingSubmit}
+          title={`Rate ${isRider ? 'Driver' : 'Rider'}`}
+          description="Please rate your experience with this trip"
+        />
 
         {/* Offers Section */}
         <Card className="mb-6">

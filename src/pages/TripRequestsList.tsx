@@ -3,14 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, MapPin } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, MapPin, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TripRequestsList() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "closest">("newest");
 
   useEffect(() => {
     fetchTripRequests();
@@ -46,6 +51,7 @@ export default function TripRequestsList() {
 
       if (error) throw error;
       setRequests(data || []);
+      setFilteredRequests(data || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -57,6 +63,31 @@ export default function TripRequestsList() {
     }
   };
 
+  // Filter and sort requests
+  useEffect(() => {
+    let filtered = [...requests];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((req) => {
+        const searchText = `${req.pickup_address} ${req.dropoff_address} ${req.pickup_zip} ${req.dropoff_zip}`.toLowerCase();
+        return searchText.includes(query) || (req.search_keywords && req.search_keywords.some((kw: string) => kw.includes(query)));
+      });
+    }
+
+    // Apply sorting
+    if (sortBy === "newest") {
+      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else if (sortBy === "oldest") {
+      filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    } else if (sortBy === "closest") {
+      filtered.sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime());
+    }
+
+    setFilteredRequests(filtered);
+  }, [requests, searchQuery, sortBy]);
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
@@ -67,45 +98,82 @@ export default function TripRequestsList() {
           <h1 className="text-2xl font-bold">Available Trip Requests</h1>
         </div>
 
+        {/* Search and Filter Section */}
+        <Card className="mb-6">
+          <CardContent className="pt-6 space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by city, zip code, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="closest">Closest Pickup Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" onClick={() => { setSearchQuery(""); setSortBy("newest"); }}>
+                Clear Filters
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredRequests.length} of {requests.length} trip requests
+            </div>
+          </CardContent>
+        </Card>
+
         {loading ? (
           <div className="text-center py-8">Loading...</div>
-        ) : requests.length === 0 ? (
+        ) : filteredRequests.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">No trip requests available at the moment.</p>
+              <p className="text-center text-muted-foreground">
+                {searchQuery ? "No trip requests match your search." : "No trip requests available at the moment."}
+              </p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
-            {requests.map((request) => (
+            {filteredRequests.map((request) => (
               <Card key={request.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => navigate(`/trip/${request.id}`)}>
                 <CardHeader>
-                  <CardTitle className="flex items-start justify-between">
+                  <CardTitle className="flex items-start justify-between flex-wrap gap-2">
                     <span>Trip Request</span>
                     <span className="text-lg font-bold text-primary">${request.price_offer}</span>
                   </CardTitle>
                   <CardDescription>
-                    Posted {new Date(request.created_at).toLocaleDateString()}
+                    Posted {new Date(request.created_at).toLocaleDateString()} | Pickup: {new Date(request.pickup_time).toLocaleString()}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex items-start gap-2">
                     <MapPin className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium">Pickup</p>
-                      <p className="text-sm text-muted-foreground">{request.pickup_address}</p>
+                      <p className="text-sm text-muted-foreground break-words">{request.pickup_address}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <MapPin className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium">Dropoff</p>
-                      <p className="text-sm text-muted-foreground">{request.dropoff_address}</p>
+                      <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
                     </div>
                   </div>
                   {request.rider_note && (
                     <div className="pt-2 border-t">
-                      <p className="text-sm"><span className="font-medium">Note:</span> {request.rider_note}</p>
+                      <p className="text-sm break-words"><span className="font-medium">Note:</span> {request.rider_note}</p>
                     </div>
                   )}
                 </CardContent>

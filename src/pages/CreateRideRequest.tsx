@@ -15,7 +15,9 @@ const rideRequestSchema = z.object({
   pickupAddress: z.string().trim().min(1, "Pickup address is required").max(500, "Pickup address must be less than 500 characters"),
   dropoffAddress: z.string().trim().min(1, "Dropoff address is required").max(500, "Dropoff address must be less than 500 characters"),
   pickupTime: z.string().min(1, "Pickup time is required"),
-  riderNote: z.string().max(2000, "Note must be less than 2000 characters").optional(),
+  contactInfo: z.string().trim().min(1, "Contact info is required").max(200, "Contact info must be less than 200 characters"),
+  emergencyName: z.string().max(100, "Name must be less than 100 characters").optional(),
+  emergencyPhone: z.string().max(20, "Phone must be less than 20 characters").optional(),
   priceOffer: z.string().optional().refine((val) => {
     if (!val || val === "") return true;
     const num = parseFloat(val);
@@ -31,7 +33,9 @@ const CreateRideRequest = () => {
     pickupAddress: "",
     dropoffAddress: "",
     pickupTime: "",
-    riderNote: "",
+    contactInfo: "",
+    emergencyName: "",
+    emergencyPhone: "",
     priceOffer: "",
   });
   const [noteImage, setNoteImage] = useState<File | null>(null);
@@ -74,10 +78,13 @@ const CreateRideRequest = () => {
         return;
       }
 
-      // Validate pickup time is in the future
+      // Validate pickup time is in the future (add 5 minute buffer)
       const pickupDate = new Date(formData.pickupTime);
-      if (pickupDate <= new Date()) {
-        toast.error("Pickup time must be in the future");
+      const now = new Date();
+      const minTime = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
+      
+      if (pickupDate < minTime) {
+        toast.error("Pickup time must be at least 5 minutes from now");
         setIsSubmitting(false);
         return;
       }
@@ -110,7 +117,7 @@ const CreateRideRequest = () => {
       const keywords = [
         ...sanitizeForKeywords(formData.pickupAddress),
         ...sanitizeForKeywords(formData.dropoffAddress),
-        ...(formData.riderNote ? sanitizeForKeywords(formData.riderNote) : []),
+        ...(formData.contactInfo ? sanitizeForKeywords(formData.contactInfo) : []),
       ];
 
       const { error } = await supabase.from("ride_requests").insert({
@@ -124,7 +131,7 @@ const CreateRideRequest = () => {
         dropoff_lng: dropoffGeo.lng,
         dropoff_zip: dropoffGeo.zip,
         pickup_time: new Date(formData.pickupTime).toISOString(),
-        rider_note: formData.riderNote ? formData.riderNote.trim() : null,
+        rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
         rider_note_image_url: noteImageUrl,
         price_offer: formData.priceOffer ? parseFloat(formData.priceOffer) : null,
         search_keywords: keywords,
@@ -225,14 +232,36 @@ const CreateRideRequest = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="note">Additional Notes (Optional)</Label>
-              <Textarea
-                id="note"
-                placeholder="Any special instructions or details..."
-                rows={4}
-                value={formData.riderNote}
-                onChange={(e) => setFormData({ ...formData, riderNote: e.target.value })}
+              <Label htmlFor="contact">Contact Info *</Label>
+              <Input
+                id="contact"
+                placeholder="Phone number or preferred contact method"
+                required
+                value={formData.contactInfo}
+                onChange={(e) => setFormData({ ...formData, contactInfo: e.target.value })}
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="emergency-name">Emergency Contact Name (Optional)</Label>
+                <Input
+                  id="emergency-name"
+                  placeholder="Emergency contact name"
+                  value={formData.emergencyName}
+                  onChange={(e) => setFormData({ ...formData, emergencyName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="emergency-phone">Emergency Contact Number (Optional)</Label>
+                <Input
+                  id="emergency-phone"
+                  type="tel"
+                  placeholder="Emergency contact number"
+                  value={formData.emergencyPhone}
+                  onChange={(e) => setFormData({ ...formData, emergencyPhone: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
