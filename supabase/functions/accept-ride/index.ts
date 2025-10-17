@@ -68,11 +68,12 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in accept-ride function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred';
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An error occurred',
+        error: errorMessage,
         success: false 
       }),
       { 

@@ -369,13 +369,6 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "user_message_flags_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "ride_participant_profiles"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_roles: {
@@ -401,39 +394,7 @@ export type Database = {
       }
     }
     Views: {
-      ride_participant_profiles: {
-        Row: {
-          display_name: string | null
-          driver_rating_avg: number | null
-          driver_rating_count: number | null
-          id: string | null
-          is_verified: boolean | null
-          photo_url: string | null
-          rider_rating_avg: number | null
-          rider_rating_count: number | null
-        }
-        Insert: {
-          display_name?: string | null
-          driver_rating_avg?: number | null
-          driver_rating_count?: number | null
-          id?: string | null
-          is_verified?: boolean | null
-          photo_url?: string | null
-          rider_rating_avg?: number | null
-          rider_rating_count?: number | null
-        }
-        Update: {
-          display_name?: string | null
-          driver_rating_avg?: number | null
-          driver_rating_count?: number | null
-          id?: string | null
-          is_verified?: boolean | null
-          photo_url?: string | null
-          rider_rating_avg?: number | null
-          rider_rating_count?: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       accept_ride_atomic: {
