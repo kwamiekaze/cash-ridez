@@ -7,14 +7,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Clock, DollarSign, Upload } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const rideRequestSchema = z.object({
   pickupAddress: z.string().trim().min(1, "Pickup address is required").max(500, "Pickup address must be less than 500 characters"),
   dropoffAddress: z.string().trim().min(1, "Dropoff address is required").max(500, "Dropoff address must be less than 500 characters"),
-  pickupTime: z.string().min(1, "Pickup time is required"),
+  pickupTime: z.string().optional(),
   contactInfo: z.string().trim().min(1, "Contact info is required").max(200, "Contact info must be less than 200 characters"),
   emergencyName: z.string().max(100, "Name must be less than 100 characters").optional(),
   emergencyPhone: z.string().max(20, "Phone must be less than 20 characters").optional(),
@@ -38,22 +38,6 @@ const CreateRideRequest = () => {
     emergencyPhone: "",
     priceOffer: "",
   });
-  const [noteImage, setNoteImage] = useState<File | null>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File must be less than 5MB");
-        return;
-      }
-      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-        toast.error("Only JPG, PNG, and WebP allowed");
-        return;
-      }
-      setNoteImage(file);
-    }
-  };
 
   const geocodeAddress = async (address: string) => {
     // Mock geocoding - in production, use Google Maps or Mapbox API
@@ -78,37 +62,22 @@ const CreateRideRequest = () => {
         return;
       }
 
-      // Validate pickup time is in the future (add 5 minute buffer)
-      const pickupDate = new Date(formData.pickupTime);
-      const now = new Date();
-      const minTime = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
-      
-      if (pickupDate < minTime) {
-        toast.error("Pickup time must be at least 5 minutes from now");
-        setIsSubmitting(false);
-        return;
+      // Validate pickup time if provided
+      if (formData.pickupTime) {
+        const pickupDate = new Date(formData.pickupTime);
+        const now = new Date();
+        const minTime = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
+        
+        if (pickupDate < minTime) {
+          toast.error("Pickup time must be at least 5 minutes from now");
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       // Geocode addresses
       const pickupGeo = await geocodeAddress(formData.pickupAddress.trim());
       const dropoffGeo = await geocodeAddress(formData.dropoffAddress.trim());
-
-      let noteImageUrl = null;
-      if (noteImage) {
-        const fileExt = noteImage.name.split(".").pop();
-        const filePath = `${user?.id}/${Date.now()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("ride-notes")
-          .upload(filePath, noteImage);
-
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("ride-notes").getPublicUrl(filePath);
-        noteImageUrl = publicUrl;
-      }
 
       // Create search keywords - sanitize and filter
       const sanitizeForKeywords = (text: string) => 
@@ -130,9 +99,9 @@ const CreateRideRequest = () => {
         dropoff_lat: dropoffGeo.lat,
         dropoff_lng: dropoffGeo.lng,
         dropoff_zip: dropoffGeo.zip,
-        pickup_time: new Date(formData.pickupTime).toISOString(),
+        pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
         rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
-        rider_note_image_url: noteImageUrl,
+        rider_note_image_url: null,
         price_offer: formData.priceOffer ? parseFloat(formData.priceOffer) : null,
         search_keywords: keywords,
         status: "open",
@@ -199,14 +168,13 @@ const CreateRideRequest = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="time">Pickup Time *</Label>
+              <Label htmlFor="time">Pickup Time (Optional)</Label>
               <div className="relative">
                 <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="time"
                   type="datetime-local"
                   className="pl-10"
-                  required
                   value={formData.pickupTime}
                   onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
                   min={new Date().toISOString().slice(0, 16)}
@@ -261,25 +229,6 @@ const CreateRideRequest = () => {
                   value={formData.emergencyPhone}
                   onChange={(e) => setFormData({ ...formData, emergencyPhone: e.target.value })}
                 />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="image">Attach Image (Optional)</Label>
-              <div className="border-2 border-dashed border-border rounded-lg p-4">
-                <Label htmlFor="image" className="cursor-pointer block text-center">
-                  <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    {noteImage ? noteImage.name : "Click to upload (JPG, PNG, WebP, Max 5MB)"}
-                  </p>
-                  <Input
-                    id="image"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
-                </Label>
               </div>
             </div>
 

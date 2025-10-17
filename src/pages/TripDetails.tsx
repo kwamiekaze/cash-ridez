@@ -27,6 +27,8 @@ export default function TripDetails() {
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [riderProfile, setRiderProfile] = useState<any>(null);
   const [driverProfile, setDriverProfile] = useState<any>(null);
+  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+  const [priceAgreed, setPriceAgreed] = useState(false);
 
   useEffect(() => {
     fetchTripData();
@@ -59,6 +61,29 @@ export default function TripDetails() {
     setCurrentUserId(user?.id || null);
   };
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 3959; // Earth radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  const calculatePrice = (tripData: any) => {
+    const distance = calculateDistance(
+      tripData.pickup_lat,
+      tripData.pickup_lng,
+      tripData.dropoff_lat,
+      tripData.dropoff_lng
+    );
+    const baseFare = 5;
+    const ratePerMile = 2;
+    return Math.round((baseFare + (distance * ratePerMile)) * 100) / 100;
+  };
+
   const fetchTripData = async () => {
     try {
       const { data: tripData, error: tripError } = await supabase
@@ -70,22 +95,37 @@ export default function TripDetails() {
       if (tripError) throw tripError;
       setRequest(tripData);
 
+      // Calculate estimated price
+      const estimated = calculatePrice(tripData);
+      setCalculatedPrice(estimated);
+
+      // Check if price is agreed (status is assigned means offer was accepted)
+      setPriceAgreed(tripData.status === 'assigned');
+
       const { data: { user } } = await supabase.auth.getUser();
       setIsRider(tripData.rider_id === user?.id);
 
-      // Fetch rider profile
+      // Fetch rider profile - limited info if not assigned
+      const riderFields = tripData.status === 'assigned' && tripData.assigned_driver_id === user?.id
+        ? 'display_name, email, rider_rating_avg, rider_rating_count, phone_number'
+        : 'display_name, rider_rating_avg, rider_rating_count';
+      
       const { data: riderData } = await supabase
         .from('profiles')
-        .select('display_name, email, rider_rating_avg, rider_rating_count')
+        .select(riderFields)
         .eq('id', tripData.rider_id)
         .single();
       setRiderProfile(riderData);
 
       // Fetch driver profile if assigned
       if (tripData.assigned_driver_id) {
+        const driverFields = tripData.status === 'assigned' && tripData.rider_id === user?.id
+          ? 'display_name, email, driver_rating_avg, driver_rating_count, phone_number'
+          : 'display_name, driver_rating_avg, driver_rating_count';
+        
         const { data: driverData } = await supabase
           .from('profiles')
-          .select('display_name, email, driver_rating_avg, driver_rating_count')
+          .select(driverFields)
           .eq('id', tripData.assigned_driver_id)
           .single();
         setDriverProfile(driverData);
@@ -178,13 +218,12 @@ export default function TripDetails() {
 
         if (rideError) throw rideError;
 
+        setPriceAgreed(true);
+
         toast({
           title: "Offer Accepted",
-          description: "Opening chat...",
+          description: "Price agreed! Contact information is now visible.",
         });
-        
-        // Navigate to chat
-        navigate(`/chat/${id}`);
       } else {
         toast({
           title: "Offer Rejected",
@@ -334,10 +373,24 @@ export default function TripDetails() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Calculated Price Banner */}
+            <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Calculated Trip Price</p>
+                  <p className="text-3xl font-bold text-primary">${calculatedPrice.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Based on distance and base fare</p>
+                </div>
+                {priceAgreed && (
+                  <Badge variant="default" className="bg-green-500">Price Agreed ✓</Badge>
+                )}
+              </div>
+            </div>
+
             {/* Rider Info */}
             {riderProfile && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium mb-1">Rider: {riderProfile.display_name || riderProfile.email}</p>
+                <p className="text-sm font-medium mb-1">Rider: {riderProfile.display_name || 'Anonymous'}</p>
                 {riderProfile.rider_rating_count > 0 && (
                   <RatingDisplay 
                     rating={riderProfile.rider_rating_avg} 
@@ -345,13 +398,16 @@ export default function TripDetails() {
                     size="sm"
                   />
                 )}
+                {priceAgreed && request.assigned_driver_id === currentUserId && riderProfile.email && (
+                  <p className="text-xs text-muted-foreground mt-2">Contact: {riderProfile.email}</p>
+                )}
               </div>
             )}
             
             {/* Driver Info */}
             {driverProfile && request.status === 'assigned' && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium mb-1">Driver: {driverProfile.display_name || driverProfile.email}</p>
+                <p className="text-sm font-medium mb-1">Driver: {driverProfile.display_name || 'Anonymous'}</p>
                 {driverProfile.driver_rating_count > 0 && (
                   <RatingDisplay 
                     rating={driverProfile.driver_rating_avg} 
@@ -359,16 +415,21 @@ export default function TripDetails() {
                     size="sm"
                   />
                 )}
+                {priceAgreed && request.rider_id === currentUserId && driverProfile.email && (
+                  <p className="text-xs text-muted-foreground mt-2">Contact: {driverProfile.email}</p>
+                )}
               </div>
             )}
 
-            <div className="flex items-start gap-2">
-              <Clock className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium">Pickup Time</p>
-                <p className="text-sm text-muted-foreground">{new Date(request.pickup_time).toLocaleString()}</p>
+            {request.pickup_time && (
+              <div className="flex items-start gap-2">
+                <Clock className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">Pickup Time</p>
+                  <p className="text-sm text-muted-foreground">{new Date(request.pickup_time).toLocaleString()}</p>
+                </div>
               </div>
-            </div>
+            )}
             <div className="flex items-start gap-2">
               <MapPin className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -383,19 +444,26 @@ export default function TripDetails() {
                 <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
               </div>
             </div>
-            <div className="pt-2 border-t">
-              <p className="font-medium">Offered Price</p>
-              <p className="text-2xl font-bold text-primary">${request.price_offer}</p>
-            </div>
-            {request.rider_note && (
+            {request.price_offer && (
+              <div className="pt-2 border-t">
+                <p className="font-medium">Rider's Initial Offer</p>
+                <p className="text-2xl font-bold text-primary">${request.price_offer}</p>
+              </div>
+            )}
+            {request.rider_note && priceAgreed && (
               <div className="pt-2 border-t">
                 <p className="font-medium">Contact & Emergency Info</p>
                 <p className="text-sm text-muted-foreground break-words whitespace-pre-wrap">{request.rider_note}</p>
               </div>
             )}
+            {request.rider_note && !priceAgreed && (
+              <div className="pt-2 border-t">
+                <p className="text-sm text-muted-foreground italic">Contact information will be visible after price agreement</p>
+              </div>
+            )}
             
-            {/* Rating Button for completed trips */}
-            {request.status === 'assigned' && (
+            {/* Actions for assigned trips */}
+            {request.status === 'assigned' && priceAgreed && (
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button 
                   onClick={() => navigate(`/chat/${id}`)}
@@ -441,9 +509,12 @@ export default function TripDetails() {
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <p className="font-medium">{offer.profiles?.display_name || offer.profiles?.email}</p>
+                          <p className="font-medium">{offer.profiles?.display_name || 'User'}</p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(offer.created_at).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Role: {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter'}
                           </p>
                         </div>
                         <div className="text-right">
@@ -455,6 +526,11 @@ export default function TripDetails() {
                           }>
                             {offer.status}
                           </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {offer.amount > calculatedPrice ? `+$${(offer.amount - calculatedPrice).toFixed(2)}` : 
+                             offer.amount < calculatedPrice ? `-$${(calculatedPrice - offer.amount).toFixed(2)}` : 
+                             'Matches calculated'}
+                          </p>
                         </div>
                       </div>
                       {offer.message && (
@@ -495,23 +571,36 @@ export default function TripDetails() {
           </CardContent>
         </Card>
 
-        {/* Make Offer Form (for drivers) or Counter Offer (for riders) */}
+        {/* Make Offer Form (for drivers) */}
         {!isRider && request.status === 'open' && (
           <Card id="counter-form">
             <CardHeader>
               <CardTitle>Make an Offer</CardTitle>
-              <CardDescription>Submit your price to complete this trip</CardDescription>
+              <CardDescription>
+                Calculated price: ${calculatedPrice.toFixed(2)} - You can accept this or make a different offer
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitOffer} className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCounterAmount(calculatedPrice.toString());
+                      setCounterMessage("Accepting the calculated price");
+                    }}
+                  >
+                    Accept ${calculatedPrice.toFixed(2)}
+                  </Button>
+                </div>
                 <div>
                   <Label htmlFor="amount">Your Offer Amount ($)</Label>
                   <Input
                     id="amount"
                     type="number"
                     step="0.01"
-                    min="0"
-                    placeholder="Enter your offer"
+                    placeholder={calculatedPrice.toFixed(2)}
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(e.target.value)}
                     required
@@ -521,10 +610,9 @@ export default function TripDetails() {
                   <Label htmlFor="message">Message (Optional)</Label>
                   <Textarea
                     id="message"
-                    placeholder="Add a message to your offer"
+                    placeholder="Add a message to your offer..."
                     value={counterMessage}
                     onChange={(e) => setCounterMessage(e.target.value)}
-                    rows={3}
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
@@ -535,14 +623,29 @@ export default function TripDetails() {
           </Card>
         )}
 
+        {/* Counter Offer Form (for riders) */}
         {isRider && offers.some(o => o.status === 'pending') && (
           <Card id="counter-form">
             <CardHeader>
               <CardTitle>Make a Counter Offer</CardTitle>
-              <CardDescription>Propose a different price</CardDescription>
+              <CardDescription>
+                Calculated price: ${calculatedPrice.toFixed(2)} - Propose a different price or accept a driver's offer above
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCounterAmount(calculatedPrice.toString());
+                      setCounterMessage("Accepting the calculated price");
+                    }}
+                  >
+                    Use Calculated ${calculatedPrice.toFixed(2)}
+                  </Button>
+                </div>
                 <div>
                   <Label htmlFor="counter-amount">Counter Offer Amount ($)</Label>
                   <Input
@@ -550,7 +653,7 @@ export default function TripDetails() {
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="Enter counter offer"
+                    placeholder={calculatedPrice.toFixed(2)}
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(e.target.value)}
                   />
