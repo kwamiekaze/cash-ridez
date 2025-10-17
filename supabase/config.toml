@@ -1,1 +1,4 @@
 project_id = "wnajjqsqmrpwyffbpgsj"
+
+[functions.accept-ride]
+verify_jwt = true
