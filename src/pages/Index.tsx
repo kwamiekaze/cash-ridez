@@ -107,7 +107,7 @@ const Index = () => {
               <Button 
                 size="lg" 
                 className="text-lg px-10 py-7 rounded-full shadow-glow"
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/rider/create-request")}
               >
                 <MapPin className="w-5 h-5 mr-2" />
                 Post a Trip
@@ -116,7 +116,7 @@ const Index = () => {
                 size="lg" 
                 variant="secondary"
                 className="text-lg px-10 py-7 rounded-full"
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/trips")}
               >
                 <Car className="w-5 h-5 mr-2" />
                 Respond to Trips

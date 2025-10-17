@@ -53,6 +53,7 @@ export type Database = {
           message: string | null
           ride_request_id: string
           role: string
+          status: string
         }
         Insert: {
           amount: number
@@ -62,6 +63,7 @@ export type Database = {
           message?: string | null
           ride_request_id: string
           role: string
+          status?: string
         }
         Update: {
           amount?: number
@@ -71,6 +73,7 @@ export type Database = {
           message?: string | null
           ride_request_id?: string
           role?: string
+          status?: string
         }
         Relationships: [
           {

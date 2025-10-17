@@ -15,6 +15,9 @@ import AdminDashboard from "./pages/AdminDashboard";
 import CreateRideRequest from "./pages/CreateRideRequest";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import TripRequestsList from "./pages/TripRequestsList";
+import TripDetails from "./pages/TripDetails";
+import ChatPage from "./pages/ChatPage";
 
 const queryClient = new QueryClient();
 
@@ -81,6 +84,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trips"
+              element={
+                <ProtectedRoute>
+                  <TripRequestsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/trip/:id"
+              element={
+                <ProtectedRoute>
+                  <TripDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat/:id"
+              element={
+                <ProtectedRoute>
+                  <ChatPage />
                 </ProtectedRoute>
               }
             />
