@@ -9,6 +9,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, MapPin, Clock, DollarSign, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const rideRequestSchema = z.object({
+  pickupAddress: z.string().trim().min(1, "Pickup address is required").max(500, "Pickup address must be less than 500 characters"),
+  dropoffAddress: z.string().trim().min(1, "Dropoff address is required").max(500, "Dropoff address must be less than 500 characters"),
+  pickupTime: z.string().min(1, "Pickup time is required"),
+  riderNote: z.string().max(2000, "Note must be less than 2000 characters").optional(),
+  priceOffer: z.string().optional().refine((val) => {
+    if (!val || val === "") return true;
+    const num = parseFloat(val);
+    return !isNaN(num) && num >= 0 && num <= 9999;
+  }, "Price must be between $0 and $9999"),
+});
 
 const CreateRideRequest = () => {
   const { user } = useAuth();
@@ -52,9 +65,26 @@ const CreateRideRequest = () => {
     setIsSubmitting(true);
 
     try {
+      // Validate form data
+      const validationResult = rideRequestSchema.safeParse(formData);
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate pickup time is in the future
+      const pickupDate = new Date(formData.pickupTime);
+      if (pickupDate <= new Date()) {
+        toast.error("Pickup time must be in the future");
+        setIsSubmitting(false);
+        return;
+      }
+
       // Geocode addresses
-      const pickupGeo = await geocodeAddress(formData.pickupAddress);
-      const dropoffGeo = await geocodeAddress(formData.dropoffAddress);
+      const pickupGeo = await geocodeAddress(formData.pickupAddress.trim());
+      const dropoffGeo = await geocodeAddress(formData.dropoffAddress.trim());
 
       let noteImageUrl = null;
       if (noteImage) {
@@ -73,25 +103,28 @@ const CreateRideRequest = () => {
         noteImageUrl = publicUrl;
       }
 
-      // Create search keywords
+      // Create search keywords - sanitize and filter
+      const sanitizeForKeywords = (text: string) => 
+        text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((k) => k.length > 2);
+      
       const keywords = [
-        ...formData.pickupAddress.toLowerCase().split(" "),
-        ...formData.dropoffAddress.toLowerCase().split(" "),
-        ...(formData.riderNote?.toLowerCase().split(" ") || []),
-      ].filter((k) => k.length > 2);
+        ...sanitizeForKeywords(formData.pickupAddress),
+        ...sanitizeForKeywords(formData.dropoffAddress),
+        ...(formData.riderNote ? sanitizeForKeywords(formData.riderNote) : []),
+      ];
 
       const { error } = await supabase.from("ride_requests").insert({
         rider_id: user?.id,
-        pickup_address: formData.pickupAddress,
+        pickup_address: formData.pickupAddress.trim(),
         pickup_lat: pickupGeo.lat,
         pickup_lng: pickupGeo.lng,
         pickup_zip: pickupGeo.zip,
-        dropoff_address: formData.dropoffAddress,
+        dropoff_address: formData.dropoffAddress.trim(),
         dropoff_lat: dropoffGeo.lat,
         dropoff_lng: dropoffGeo.lng,
         dropoff_zip: dropoffGeo.zip,
         pickup_time: new Date(formData.pickupTime).toISOString(),
-        rider_note: formData.riderNote || null,
+        rider_note: formData.riderNote ? formData.riderNote.trim() : null,
         rider_note_image_url: noteImageUrl,
         price_offer: formData.priceOffer ? parseFloat(formData.priceOffer) : null,
         search_keywords: keywords,
@@ -103,7 +136,6 @@ const CreateRideRequest = () => {
       toast.success("Trip request created!");
       navigate("/rider");
     } catch (error: any) {
-      console.error("Error:", error);
       toast.error(error.message || "Failed to create trip request");
     } finally {
       setIsSubmitting(false);

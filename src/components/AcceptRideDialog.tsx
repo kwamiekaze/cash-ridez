@@ -33,47 +33,24 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
     setAccepting(true);
 
     try {
-      // Check if driver has an active ride
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("active_assigned_ride_id")
-        .eq("id", driverId)
-        .single();
+      // Call the atomic edge function to handle race conditions
+      const { data, error } = await supabase.functions.invoke('accept-ride', {
+        body: {
+          rideId: request.id,
+          etaMinutes: parseInt(eta),
+        },
+      });
 
-      if (profile?.active_assigned_ride_id) {
-        toast.error("You already have an active ride. Complete it first.");
-        setAccepting(false);
-        return;
+      if (error) throw error;
+
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to accept ride');
       }
-
-      // Update ride request
-      const { error: rideError } = await supabase
-        .from("ride_requests")
-        .update({
-          status: "assigned",
-          assigned_driver_id: driverId,
-          eta_minutes: parseInt(eta),
-        })
-        .eq("id", request.id)
-        .eq("status", "open");
-
-      if (rideError) throw rideError;
-
-      // Update driver profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          active_assigned_ride_id: request.id,
-        })
-        .eq("id", driverId);
-
-      if (profileError) throw profileError;
 
       toast.success("Ride accepted! Rider has been notified.");
       onOpenChange(false);
       window.location.reload();
     } catch (error: any) {
-      console.error("Error:", error);
       toast.error(error.message || "Failed to accept ride");
     } finally {
       setAccepting(false);
