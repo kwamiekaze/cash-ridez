@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -15,13 +15,14 @@ const RiderDashboard = () => {
   const [activeTab, setActiveTab] = useState("open");
   const [requests, setRequests] = useState<any[]>([]);
 
-  useState(() => {
+  useEffect(() => {
     const fetchProfile = async () => {
+      if (!user) return;
       const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
       setProfile(data);
     };
     fetchProfile();
-  });
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,20 +83,29 @@ const RiderDashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Button
             size="lg"
-            className="h-24 text-lg bg-gradient-primary"
+            className="h-20 text-lg bg-gradient-primary"
             onClick={() => navigate("/rider/create-request")}
             disabled={!profile?.is_verified}
           >
             <Plus className="w-6 h-6 mr-2" />
-            New Trip Request
+            Post Trip Request
+          </Button>
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            className="h-20 text-lg"
+            onClick={() => navigate("/trips")}
+          >
+            <Car className="w-6 h-6 mr-2" />
+            Respond to Requests
           </Button>
           <Button 
             size="lg" 
             variant="outline" 
-            className="h-24 text-lg"
+            className="h-20 text-lg"
             onClick={() => navigate("/profile")}
           >
             <User className="w-6 h-6 mr-2" />

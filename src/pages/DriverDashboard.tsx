@@ -4,13 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Car, LogOut, MapPin, Search, User } from "lucide-react";
+import { Car, LogOut, MapPin, Search, User, Plus } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import AcceptRideDialog from "@/components/AcceptRideDialog";
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -102,7 +104,7 @@ const DriverDashboard = () => {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => window.location.href = '/profile'}
+                    onClick={() => navigate('/profile')}
                     className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center p-0"
                   >
                     <User className="w-4 h-4" />
@@ -137,6 +139,37 @@ const DriverDashboard = () => {
             </div>
           </Card>
         )}
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Button
+            size="lg"
+            className="h-20 text-lg bg-gradient-primary"
+            onClick={() => navigate("/rider/create-request")}
+            disabled={!profile?.is_verified}
+          >
+            <Plus className="w-6 h-6 mr-2" />
+            Post Trip Request
+          </Button>
+          <Button 
+            size="lg" 
+            variant="secondary" 
+            className="h-20 text-lg"
+            onClick={() => navigate("/trips")}
+          >
+            <Car className="w-6 h-6 mr-2" />
+            Respond to Requests
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="h-20 text-lg"
+            onClick={() => navigate("/profile")}
+          >
+            <User className="w-6 h-6 mr-2" />
+            View Profile
+          </Button>
+        </div>
 
         {/* Filters */}
         <Card className="p-6 mb-6">
