@@ -66,10 +66,15 @@ const CreateRideRequest = () => {
       if (formData.pickupTime) {
         const pickupDate = new Date(formData.pickupTime);
         const now = new Date();
-        const minTime = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
         
-        if (pickupDate < minTime) {
-          toast.error("Pickup time must be at least 5 minutes from now");
+        if (isNaN(pickupDate.getTime())) {
+          toast.error("Invalid pickup time format");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (pickupDate < now) {
+          toast.error("Pickup time cannot be in the past");
           setIsSubmitting(false);
           return;
         }
@@ -177,9 +182,11 @@ const CreateRideRequest = () => {
                   className="pl-10"
                   value={formData.pickupTime}
                   onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
-                  min={new Date().toISOString().slice(0, 16)}
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                Leave empty for immediate pickup request
+              </p>
             </div>
 
             <div className="space-y-2">
