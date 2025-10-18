@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Camera, Star } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Camera, Star, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -27,6 +29,11 @@ const Profile = () => {
     rider_rating_count: 0,
     driver_rating_avg: 0,
     driver_rating_count: 0,
+    is_rider: false,
+    is_driver: false,
+    is_verified: false,
+    verification_status: "pending",
+    created_at: "",
   });
 
   useEffect(() => {
@@ -60,6 +67,11 @@ const Profile = () => {
           rider_rating_count: data.rider_rating_count || 0,
           driver_rating_avg: data.driver_rating_avg || 0,
           driver_rating_count: data.driver_rating_count || 0,
+          is_rider: data.is_rider || false,
+          is_driver: data.is_driver || false,
+          is_verified: data.is_verified || false,
+          verification_status: data.verification_status || "pending",
+          created_at: data.created_at || "",
         });
       }
     };
@@ -200,6 +212,54 @@ const Profile = () => {
             <p className="text-sm text-muted-foreground">
               <strong>Privacy Note:</strong> Only your name, bio, and profile picture are visible to other users. Your contact information and email remain private.
             </p>
+          </div>
+
+          {/* Account Information */}
+          <div className="mb-6 space-y-4">
+            <h2 className="text-lg font-semibold">Account Information</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">Account Status</p>
+                <div className="flex items-center gap-2">
+                  {profile.is_verified ? (
+                    <>
+                      <CheckCircle className="w-5 h-5 text-success" />
+                      <span className="font-medium text-success">Verified</span>
+                    </>
+                  ) : profile.verification_status === "pending" ? (
+                    <>
+                      <Clock className="w-5 h-5 text-warning" />
+                      <span className="font-medium text-warning">Pending Verification</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-5 h-5 text-destructive" />
+                      <span className="font-medium text-destructive">Not Verified</span>
+                    </>
+                  )}
+                </div>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">Account Roles</p>
+                <div className="flex gap-2">
+                  {profile.is_rider && (
+                    <Badge variant="secondary">Post Trip Requests</Badge>
+                  )}
+                  {profile.is_driver && (
+                    <Badge variant="secondary">Respond to Requests</Badge>
+                  )}
+                  {!profile.is_rider && !profile.is_driver && (
+                    <span className="text-sm text-muted-foreground">No roles selected</span>
+                  )}
+                </div>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">Member Since</p>
+                <span className="font-medium">
+                  {profile.created_at ? format(new Date(profile.created_at), "MMMM d, yyyy") : "N/A"}
+                </span>
+              </Card>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">

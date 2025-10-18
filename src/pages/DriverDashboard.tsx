@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Car, LogOut, MapPin, Search, User, Plus } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Car, LogOut, MapPin, Search, User, Plus, History } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import AcceptRideDialog from "@/components/AcceptRideDialog";
 import { format } from "date-fns";
@@ -98,23 +99,32 @@ const DriverDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {profile && (
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={profile.verification_status} />
+              {profile && <StatusBadge status={profile.verification_status} />}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => navigate('/profile')}
                     className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center p-0"
                   >
                     <User className="w-4 h-4" />
                   </Button>
-                </div>
-              )}
-              <Button variant="outline" size="sm" onClick={() => signOut()}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-card border-border z-50">
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
+                    <User className="w-4 h-4 mr-2" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/rider')} className="cursor-pointer">
+                    <History className="w-4 h-4 mr-2" />
+                    My Requests & History
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

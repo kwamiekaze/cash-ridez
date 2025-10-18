@@ -184,7 +184,28 @@ const Onboarding = () => {
                   <Button
                     className="w-full bg-gradient-primary mt-4"
                     size="lg"
-                    onClick={() => navigate("/dashboard")}
+                    onClick={async () => {
+                      if (!isRider && !isDriver) {
+                        toast.error("Please select at least one role");
+                        return;
+                      }
+                      
+                      // Update roles before navigating
+                      const { error } = await supabase
+                        .from("profiles")
+                        .update({
+                          is_rider: isRider,
+                          is_driver: isDriver,
+                        })
+                        .eq("id", user?.id);
+                      
+                      if (error) {
+                        toast.error("Failed to update roles");
+                        return;
+                      }
+                      
+                      navigate("/dashboard");
+                    }}
                   >
                     Go to Dashboard
                   </Button>
