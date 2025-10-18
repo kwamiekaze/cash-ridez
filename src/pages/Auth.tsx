@@ -101,6 +101,7 @@ const Auth = () => {
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signin-email"
+                      name="email"
                       type="email"
                       placeholder="you@example.com"
                       className="pl-10"
@@ -114,6 +115,7 @@ const Auth = () => {
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signin-password"
+                      name="password"
                       type="password"
                       placeholder="••••••••"
                       className="pl-10"
@@ -137,6 +139,7 @@ const Auth = () => {
                   <Label htmlFor="signup-name">Full Name</Label>
                   <Input
                     id="signup-name"
+                    name="name"
                     type="text"
                     placeholder="John Doe"
                     required
@@ -148,6 +151,7 @@ const Auth = () => {
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-email"
+                      name="email"
                       type="email"
                       placeholder="you@example.com"
                       className="pl-10"
@@ -161,6 +165,7 @@ const Auth = () => {
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="signup-password"
+                      name="password"
                       type="password"
                       placeholder="••••••••"
                       className="pl-10"
