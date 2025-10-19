@@ -128,14 +128,14 @@ export function AdminRidesManagement() {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: any; label: string }> = {
-      open: { variant: "default", label: "Open" },
-      assigned: { variant: "secondary", label: "Assigned" },
-      completed: { variant: "default", label: "Completed" },
-      cancelled: { variant: "destructive", label: "Cancelled" },
+    const statusConfig = {
+      open: { variant: "default" as const, label: "Open" },
+      assigned: { variant: "secondary" as const, label: "Assigned" },
+      completed: { variant: "default" as const, label: "Completed" },
+      cancelled: { variant: "destructive" as const, label: "Cancelled" },
     };
 
-    const config = variants[status] || { variant: "default", label: status };
+    const config = statusConfig[status as keyof typeof statusConfig] || { variant: "default" as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
