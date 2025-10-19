@@ -219,6 +219,12 @@ const Profile = () => {
             <h2 className="text-lg font-semibold">Account Information</h2>
             <div className="grid md:grid-cols-2 gap-4">
               <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">User ID</p>
+                <div className="font-mono text-xs break-all bg-muted px-2 py-1 rounded">
+                  {user?.id}
+                </div>
+              </Card>
+              <Card className="p-4">
                 <p className="text-sm text-muted-foreground mb-1">Account Status</p>
                 <div className="flex items-center gap-2">
                   {profile.is_verified ? (
@@ -241,7 +247,7 @@ const Profile = () => {
               </Card>
               <Card className="p-4">
                 <p className="text-sm text-muted-foreground mb-1">Account Roles</p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {profile.is_rider && (
                     <Badge variant="secondary">Post Trip Requests</Badge>
                   )}

@@ -207,15 +207,34 @@ const Onboarding = () => {
         <div className="space-y-6">
           <div>
             <h2 className="text-xl font-semibold mb-4">Choose Your Role(s)</h2>
+            {profile?.verification_status && profile.verification_status !== 'none' ? (
+              <div className="mb-4 p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Your role selection is locked after verification submission. Contact support to change your roles.
+                </p>
+              </div>
+            ) : null}
             <div className="grid md:grid-cols-2 gap-4">
               <Card
-                className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
+                className={`p-6 transition-all ${
                   isRider ? "border-primary bg-primary/5" : ""
-                }`}
-                onClick={() => setIsRider(!isRider)}
+                } ${profile?.verification_status && profile.verification_status !== 'none' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg'}`}
+                onClick={() => {
+                  if (!profile?.verification_status || profile.verification_status === 'none') {
+                    setIsRider(!isRider);
+                  }
+                }}
               >
                 <div className="flex items-start gap-4">
-                  <Checkbox checked={isRider} onCheckedChange={(checked) => setIsRider(checked as boolean)} />
+                  <Checkbox 
+                    checked={isRider} 
+                    onCheckedChange={(checked) => {
+                      if (!profile?.verification_status || profile.verification_status === 'none') {
+                        setIsRider(checked as boolean);
+                      }
+                    }}
+                    disabled={profile?.verification_status && profile.verification_status !== 'none'}
+                  />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Users className="w-5 h-5 text-primary" />
@@ -229,13 +248,25 @@ const Onboarding = () => {
               </Card>
 
               <Card
-                className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
+                className={`p-6 transition-all ${
                   isDriver ? "border-primary bg-primary/5" : ""
-                }`}
-                onClick={() => setIsDriver(!isDriver)}
+                } ${profile?.verification_status && profile.verification_status !== 'none' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg'}`}
+                onClick={() => {
+                  if (!profile?.verification_status || profile.verification_status === 'none') {
+                    setIsDriver(!isDriver);
+                  }
+                }}
               >
                 <div className="flex items-start gap-4">
-                  <Checkbox checked={isDriver} onCheckedChange={(checked) => setIsDriver(checked as boolean)} />
+                  <Checkbox 
+                    checked={isDriver} 
+                    onCheckedChange={(checked) => {
+                      if (!profile?.verification_status || profile.verification_status === 'none') {
+                        setIsDriver(checked as boolean);
+                      }
+                    }}
+                    disabled={profile?.verification_status && profile.verification_status !== 'none'}
+                  />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Car className="w-5 h-5 text-primary" />
@@ -267,28 +298,7 @@ const Onboarding = () => {
                   <Button
                     className="w-full bg-gradient-primary mt-4"
                     size="lg"
-                    onClick={async () => {
-                      if (!isRider && !isDriver) {
-                        toast.error("Please select at least one role");
-                        return;
-                      }
-                      
-                      // Update roles before navigating
-                      const { error } = await supabase
-                        .from("profiles")
-                        .update({
-                          is_rider: isRider,
-                          is_driver: isDriver,
-                        })
-                        .eq("id", user?.id);
-                      
-                      if (error) {
-                        toast.error("Failed to update roles");
-                        return;
-                      }
-                      
-                      navigate("/dashboard");
-                    }}
+                    onClick={() => navigate("/dashboard")}
                   >
                     Go to Dashboard
                   </Button>
