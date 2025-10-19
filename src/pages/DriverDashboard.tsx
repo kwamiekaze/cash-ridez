@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import AppHeader from "@/components/AppHeader";
 import { Car, LogOut, MapPin, Search, User, Plus, History } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import AcceptRideDialog from "@/components/AcceptRideDialog";
@@ -25,6 +25,11 @@ const DriverDashboard = () => {
     const fetchProfile = async () => {
       const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
       setProfile(data);
+      
+      // Redirect if not verified
+      if (data && !data.is_verified) {
+        navigate("/dashboard");
+      }
     };
 
     const fetchRequests = async () => {
@@ -85,50 +90,7 @@ const DriverDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-                <Car className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <span className="text-xl font-bold">Cash Ridez</span>
-                <p className="text-xs text-muted-foreground">Member</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              {profile && <StatusBadge status={profile.verification_status} />}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center p-0"
-                  >
-                    <User className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-card border-border z-50">
-                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
-                    <User className="w-4 h-4 mr-2" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/rider')} className="cursor-pointer">
-                    <History className="w-4 h-4 mr-2" />
-                    My Requests & History
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-destructive">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       <div className="container mx-auto px-4 py-8">
         {/* Verification Notice */}

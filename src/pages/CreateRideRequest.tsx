@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,32 @@ const CreateRideRequest = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      if (!user) return;
+      
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+      
+      setProfile(profileData);
+      
+      if (!profileData?.is_verified) {
+        toast.error("You must be verified to post trip requests");
+        navigate("/dashboard");
+        return;
+      }
+      
+      setLoading(false);
+    };
+    
+    checkVerification();
+  }, [user, navigate]);
   const [formData, setFormData] = useState({
     pickupAddress: "",
     dropoffAddress: "",
@@ -122,6 +148,14 @@ const CreateRideRequest = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

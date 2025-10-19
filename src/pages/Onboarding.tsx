@@ -213,7 +213,7 @@ const Onboarding = () => {
                 onClick={() => setIsRider(!isRider)}
               >
                 <div className="flex items-start gap-4">
-                  <Checkbox checked={isRider} onChange={() => setIsRider(!isRider)} />
+                  <Checkbox checked={isRider} onCheckedChange={(checked) => setIsRider(checked as boolean)} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Users className="w-5 h-5 text-primary" />
@@ -233,7 +233,7 @@ const Onboarding = () => {
                 onClick={() => setIsDriver(!isDriver)}
               >
                 <div className="flex items-start gap-4">
-                  <Checkbox checked={isDriver} onChange={() => setIsDriver(!isDriver)} />
+                  <Checkbox checked={isDriver} onCheckedChange={(checked) => setIsDriver(checked as boolean)} />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <Car className="w-5 h-5 text-primary" />
