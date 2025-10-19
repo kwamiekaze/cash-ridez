@@ -7,10 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Car, Users, Upload, CheckCircle, Loader2 } from "lucide-react";
+import { Car, Users, Upload, CheckCircle, Loader2, User, LogOut } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Onboarding = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [isRider, setIsRider] = useState(false);
   const [isDriver, setIsDriver] = useState(false);
@@ -18,19 +27,23 @@ const Onboarding = () => {
   const [uploading, setUploading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     const checkVerification = async () => {
       if (!user) return;
       
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
-        .select("is_verified, verification_status")
+        .select("*")
         .eq("id", user.id)
         .single();
       
-      if (profile?.is_verified || profile?.verification_status === "approved") {
-        setIsVerified(true);
+      if (profileData) {
+        setProfile(profileData);
+        if (profileData.is_verified || profileData.verification_status === "approved") {
+          setIsVerified(true);
+        }
       }
       setLoading(false);
     };
@@ -95,6 +108,28 @@ const Onboarding = () => {
 
       if (updateError) throw updateError;
 
+      // Send notification emails
+      try {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user?.id)
+          .single();
+
+        await supabase.functions.invoke("send-verification-notification", {
+          body: {
+            userId: user?.id,
+            userEmail: user?.email,
+            displayName: profileData?.display_name || user?.email,
+            isRider,
+            isDriver,
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending notification:", emailError);
+        // Don't fail the whole process if email fails
+      }
+
       toast.success("Profile submitted for verification!");
       navigate("/dashboard");
     } catch (error: any) {
@@ -114,12 +149,58 @@ const Onboarding = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome to Cash Ridez!</h1>
-          <p className="text-muted-foreground">Let's set up your account</p>
+    <div className="min-h-screen bg-background">
+      {/* Header with user dropdown */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Car className="w-6 h-6 text-primary" />
+            <span className="text-xl font-bold">Cash Ridez</span>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar>
+                  <AvatarImage src={profile?.photo_url} alt={profile?.display_name || user?.email} />
+                  <AvatarFallback>
+                    {profile?.display_name?.[0] || user?.email?.[0] || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">
+                    {profile?.display_name || "User"}
+                  </p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate("/profile")}>
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </header>
+
+      <div className="flex items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
+        <Card className="max-w-2xl w-full p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">Welcome to Cash Ridez!</h1>
+            <p className="text-muted-foreground">Let's set up your account</p>
+          </div>
 
         <div className="space-y-6">
           <div>
@@ -260,7 +341,8 @@ const Onboarding = () => {
             </Button>
           )}
         </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };
