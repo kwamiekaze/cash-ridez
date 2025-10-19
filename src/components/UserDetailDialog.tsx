@@ -145,7 +145,29 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(user.id_image_url, "_blank")}
+                onClick={async () => {
+                  try {
+                    // Extract the file path from the full URL
+                    const urlParts = user.id_image_url.split('/object/public/id-verifications/');
+                    const filePath = urlParts[1] || user.id_image_url.split('/id-verifications/')[1];
+                    
+                    if (filePath) {
+                      const { data, error } = await supabase.storage
+                        .from('id-verifications')
+                        .createSignedUrl(filePath, 60); // 60 seconds expiry
+                      
+                      if (error) throw error;
+                      if (data?.signedUrl) {
+                        window.open(data.signedUrl, '_blank');
+                      }
+                    } else {
+                      window.open(user.id_image_url, '_blank');
+                    }
+                  } catch (error) {
+                    console.error('Error opening ID image:', error);
+                    toast.error('Failed to open ID image');
+                  }
+                }}
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
                 View ID Image

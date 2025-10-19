@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Camera, Star, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -242,20 +241,6 @@ const Profile = () => {
                       <XCircle className="w-5 h-5 text-destructive" />
                       <span className="font-medium text-destructive">Not Verified</span>
                     </>
-                  )}
-                </div>
-              </Card>
-              <Card className="p-4">
-                <p className="text-sm text-muted-foreground mb-1">Account Roles</p>
-                <div className="flex gap-2 flex-wrap">
-                  {profile.is_rider && (
-                    <Badge variant="secondary">Post Trip Requests</Badge>
-                  )}
-                  {profile.is_driver && (
-                    <Badge variant="secondary">Respond to Requests</Badge>
-                  )}
-                  {!profile.is_rider && !profile.is_driver && (
-                    <span className="text-sm text-muted-foreground">No roles selected</span>
                   )}
                 </div>
               </Card>

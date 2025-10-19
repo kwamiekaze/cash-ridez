@@ -222,14 +222,35 @@ const AdminDashboard = () => {
                           {user.is_driver && <StatusBadge status="assigned" className="text-xs" />}
                         </div>
                         {user.id_image_url && (
-                          <a
-                            href={user.id_image_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-primary hover:underline"
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                // Extract the file path from the full URL
+                                const urlParts = user.id_image_url.split('/object/public/id-verifications/');
+                                const filePath = urlParts[1] || user.id_image_url.split('/id-verifications/')[1];
+                                
+                                if (filePath) {
+                                  const { data, error } = await supabase.storage
+                                    .from('id-verifications')
+                                    .createSignedUrl(filePath, 60); // 60 seconds expiry
+                                  
+                                  if (error) throw error;
+                                  if (data?.signedUrl) {
+                                    window.open(data.signedUrl, '_blank');
+                                  }
+                                } else {
+                                  window.open(user.id_image_url, '_blank');
+                                }
+                              } catch (error) {
+                                console.error('Error opening ID image:', error);
+                                toast.error('Failed to open ID image');
+                              }
+                            }}
                           >
                             View ID Image
-                          </a>
+                          </Button>
                         )}
                       </div>
                       <div className="flex gap-2">
