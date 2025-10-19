@@ -48,6 +48,9 @@ const AdminDashboard = () => {
   }, []);
 
   const handleVerification = async (userId: string, approved: boolean) => {
+    const user = pendingUsers.find((u) => u.id === userId);
+    if (!user) return;
+
     const { error } = await supabase
       .from("profiles")
       .update({
@@ -60,6 +63,20 @@ const AdminDashboard = () => {
     if (error) {
       toast.error("Failed to update verification");
       return;
+    }
+
+    // Send email notification
+    try {
+      await supabase.functions.invoke("send-status-notification", {
+        body: {
+          userEmail: user.email,
+          displayName: user.display_name || user.email,
+          status: approved ? "approved" : "rejected",
+        },
+      });
+    } catch (emailError) {
+      console.error("Error sending notification email:", emailError);
+      // Don't fail the whole process if email fails
     }
 
     toast.success(`User ${approved ? "approved" : "rejected"}`);

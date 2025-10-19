@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Car, Users, Upload, CheckCircle, Loader2, User, LogOut } from "lucide-react";
+import { Car, Users, Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,8 @@ const Onboarding = () => {
       
       if (profileData) {
         setProfile(profileData);
+        setIsRider(profileData.is_rider || false);
+        setIsDriver(profileData.is_driver || false);
         if (profileData.is_verified || profileData.verification_status === "approved") {
           setIsVerified(true);
         }
@@ -293,6 +295,113 @@ const Onboarding = () => {
                 </div>
               </Card>
             </div>
+          ) : profile?.verification_status === "pending" ? (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Verification Status</h2>
+              <Card className="p-6 border-warning bg-warning/5">
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="w-16 h-16 rounded-full bg-warning flex items-center justify-center">
+                    <Upload className="w-10 h-10 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-warning mb-2">Verification Pending</h3>
+                    <p className="text-foreground/70 mb-4">
+                      Your ID is currently being reviewed. You'll receive an email once the review is complete.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Need to update your submission? You can resubmit below.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-4">Resubmit ID</h2>
+                <Card className="p-6">
+                  <Label htmlFor="id-upload" className="cursor-pointer">
+                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
+                      {idFile ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <CheckCircle className="w-12 h-12 text-success" />
+                          <p className="font-medium">{idFile.name}</p>
+                          <p className="text-sm text-muted-foreground">Click to change</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className="w-12 h-12 text-muted-foreground" />
+                          <p className="font-medium">Upload New Government-Issued ID</p>
+                          <p className="text-sm text-muted-foreground">
+                            JPG, PNG, or WebP (Max 5MB)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="id-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </Label>
+                </Card>
+              </div>
+            </div>
+          ) : profile?.verification_status === "rejected" ? (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Verification Status</h2>
+              <Card className="p-6 border-destructive bg-destructive/5">
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="w-16 h-16 rounded-full bg-destructive flex items-center justify-center">
+                    <XCircle className="w-10 h-10 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-destructive mb-2">Verification Not Approved</h3>
+                    <p className="text-foreground/70 mb-4">
+                      Your previous ID submission could not be verified. This may be due to image quality or document type.
+                    </p>
+                    <p className="text-sm font-medium">
+                      Please submit a clear photo of your government-issued ID below.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-4">Resubmit ID for Verification</h2>
+                <Card className="p-6">
+                  <Label htmlFor="id-upload" className="cursor-pointer">
+                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
+                      {idFile ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <CheckCircle className="w-12 h-12 text-success" />
+                          <p className="font-medium">{idFile.name}</p>
+                          <p className="text-sm text-muted-foreground">Click to change</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <Upload className="w-12 h-12 text-muted-foreground" />
+                          <p className="font-medium">Upload Government-Issued ID</p>
+                          <p className="text-sm text-muted-foreground">
+                            JPG, PNG, or WebP (Max 5MB)
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      id="id-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                  </Label>
+                </Card>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Ensure your ID is clearly visible, well-lit, and all information is readable.
+                </p>
+              </div>
+            </div>
           ) : (
             <div>
               <h2 className="text-xl font-semibold mb-4">Upload ID for Verification</h2>
@@ -337,7 +446,7 @@ const Onboarding = () => {
               onClick={handleSubmit}
               disabled={uploading || !idFile || (!isRider && !isDriver)}
             >
-              {uploading ? "Submitting..." : "Submit for Verification"}
+              {uploading ? "Submitting..." : profile?.verification_status === "pending" || profile?.verification_status === "rejected" ? "Resubmit for Verification" : "Submit for Verification"}
             </Button>
           )}
         </div>
