@@ -444,7 +444,7 @@ const Onboarding = () => {
               className="w-full bg-gradient-primary"
               size="lg"
               onClick={handleSubmit}
-              disabled={uploading || !idFile || (!isRider && !isDriver)}
+              disabled={uploading || !idFile}
             >
               {uploading ? "Submitting..." : profile?.verification_status === "pending" || profile?.verification_status === "rejected" ? "Resubmit for Verification" : "Submit for Verification"}
             </Button>
