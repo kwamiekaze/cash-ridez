@@ -31,7 +31,7 @@ const Dashboard = () => {
       }
 
       // Check if user is verified - if not, redirect to onboarding to see status
-      if (!profile.is_verified) {
+      if (!profile.is_verified && profile.verification_status !== 'approved') {
         navigate("/onboarding");
         return;
       }
