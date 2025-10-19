@@ -7,6 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Car, LogOut, Users, CheckCircle, XCircle, Shield } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { toast } from "sonner";
+import { UserManagementTable } from "@/components/UserManagementTable";
+import { UserDetailDialog } from "@/components/UserDetailDialog";
+import { AdminRidesManagement } from "@/components/AdminRidesManagement";
 
 const AdminDashboard = () => {
   const { signOut } = useAuth();
@@ -17,6 +20,9 @@ const AdminDashboard = () => {
     openRequests: 0,
   });
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -43,9 +49,37 @@ const AdminDashboard = () => {
       setPendingUsers(data || []);
     };
 
+    const fetchAllUsers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      setAllUsers(data || []);
+    };
+
     fetchStats();
     fetchPendingUsers();
+    fetchAllUsers();
   }, []);
+
+  const handleViewUser = (userId: string) => {
+    setSelectedUserId(userId);
+    setUserDialogOpen(true);
+  };
+
+  const handleUserUpdate = () => {
+    // Refresh all user data
+    const fetchAllUsers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      setAllUsers(data || []);
+    };
+    fetchAllUsers();
+  };
 
   const handleVerification = async (userId: string, approved: boolean) => {
     const user = pendingUsers.find((u) => u.id === userId);
@@ -223,19 +257,32 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="users">
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground">User management coming soon</p>
-            </Card>
+          <TabsContent value="users" className="mt-6">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold">All Users</h2>
+              <UserManagementTable 
+                users={allUsers} 
+                onUpdate={handleUserUpdate}
+                onViewUser={handleViewUser}
+              />
+            </div>
           </TabsContent>
 
-          <TabsContent value="rides">
-            <Card className="p-8 text-center">
-              <p className="text-muted-foreground">Ride management coming soon</p>
-            </Card>
+          <TabsContent value="rides" className="mt-6">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold">All Rides</h2>
+              <AdminRidesManagement />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      <UserDetailDialog
+        userId={selectedUserId}
+        open={userDialogOpen}
+        onOpenChange={setUserDialogOpen}
+        onUpdate={handleUserUpdate}
+      />
     </div>
   );
 };

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, MessageSquare } from "lucide-react";
+import { Check, X, Eye, ExternalLink } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface User {
   id: string;
@@ -16,14 +17,17 @@ interface User {
   verification_status: string;
   rider_rating_avg: number;
   driver_rating_avg: number;
+  photo_url: string;
+  id_image_url: string;
 }
 
 interface UserManagementTableProps {
   users: User[];
   onUpdate: () => void;
+  onViewUser: (userId: string) => void;
 }
 
-export function UserManagementTable({ users, onUpdate }: UserManagementTableProps) {
+export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagementTableProps) {
   const [loading, setLoading] = useState<string | null>(null);
 
   const handleVerificationToggle = async (userId: string, currentStatus: boolean) => {
@@ -49,9 +53,8 @@ export function UserManagementTable({ users, onUpdate }: UserManagementTableProp
     }
   };
 
-  const handleViewMessages = async (userId: string) => {
-    // This will open a dialog to view messages
-    toast.info("Message viewing feature coming soon");
+  const handleViewIdImage = (idImageUrl: string) => {
+    window.open(idImageUrl, "_blank");
   };
 
   return (
@@ -59,8 +62,8 @@ export function UserManagementTable({ users, onUpdate }: UserManagementTableProp
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>User</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Name</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Rider Rating</TableHead>
@@ -70,9 +73,17 @@ export function UserManagementTable({ users, onUpdate }: UserManagementTableProp
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id}>
+            <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewUser(user.id)}>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.photo_url} />
+                    <AvatarFallback>{(user.display_name || user.email || "U")[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span>{user.display_name}</span>
+                </div>
+              </TableCell>
               <TableCell className="font-medium">{user.email}</TableCell>
-              <TableCell>{user.display_name}</TableCell>
               <TableCell>
                 <div className="flex gap-1">
                   {user.is_rider && <Badge variant="secondary">Rider</Badge>}
@@ -93,7 +104,7 @@ export function UserManagementTable({ users, onUpdate }: UserManagementTableProp
                 {user.is_driver ? `${user.driver_rating_avg?.toFixed(1) || "N/A"}` : "-"}
               </TableCell>
               <TableCell>
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                   <Button
                     size="sm"
                     variant={user.is_verified ? "destructive" : "default"}
@@ -102,12 +113,21 @@ export function UserManagementTable({ users, onUpdate }: UserManagementTableProp
                   >
                     {user.is_verified ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
                   </Button>
+                  {user.id_image_url && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewIdImage(user.id_image_url)}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleViewMessages(user.id)}
+                    onClick={() => onViewUser(user.id)}
                   >
-                    <MessageSquare className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </Button>
                 </div>
               </TableCell>

@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { RatingDialog } from "@/components/RatingDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -107,8 +108,8 @@ export default function TripDetails() {
 
       // Fetch rider profile - limited info if not assigned
       const riderFields = tripData.status === 'assigned' && tripData.assigned_driver_id === user?.id
-        ? 'display_name, email, rider_rating_avg, rider_rating_count, phone_number'
-        : 'display_name, rider_rating_avg, rider_rating_count';
+        ? 'display_name, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url'
+        : 'display_name, full_name, rider_rating_avg, rider_rating_count, photo_url';
       
       const { data: riderData } = await supabase
         .from('profiles')
@@ -120,8 +121,8 @@ export default function TripDetails() {
       // Fetch driver profile if assigned
       if (tripData.assigned_driver_id) {
         const driverFields = tripData.status === 'assigned' && tripData.rider_id === user?.id
-          ? 'display_name, email, driver_rating_avg, driver_rating_count, phone_number'
-          : 'display_name, driver_rating_avg, driver_rating_count';
+          ? 'display_name, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url'
+          : 'display_name, full_name, driver_rating_avg, driver_rating_count, photo_url';
         
         const { data: driverData } = await supabase
           .from('profiles')
@@ -390,16 +391,28 @@ export default function TripDetails() {
             {/* Rider Info */}
             {riderProfile && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium mb-1">Rider: {riderProfile.display_name || 'Anonymous'}</p>
-                {riderProfile.rider_rating_count > 0 && (
-                  <RatingDisplay 
-                    rating={riderProfile.rider_rating_avg} 
-                    count={riderProfile.rider_rating_count}
-                    size="sm"
-                  />
-                )}
+                <div className="flex items-center gap-3 mb-2">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={riderProfile.photo_url} />
+                    <AvatarFallback>
+                      {(riderProfile.full_name || riderProfile.display_name || 'R')[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">
+                      Rider: {riderProfile.full_name || riderProfile.display_name || 'Anonymous'}
+                    </p>
+                    {riderProfile.rider_rating_count > 0 && (
+                      <RatingDisplay 
+                        rating={riderProfile.rider_rating_avg} 
+                        count={riderProfile.rider_rating_count}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                </div>
                 {priceAgreed && request.assigned_driver_id === currentUserId && riderProfile.email && (
-                  <p className="text-xs text-muted-foreground mt-2">Contact: {riderProfile.email}</p>
+                  <p className="text-xs text-muted-foreground">Contact: {riderProfile.email}</p>
                 )}
               </div>
             )}
@@ -407,16 +420,28 @@ export default function TripDetails() {
             {/* Driver Info */}
             {driverProfile && request.status === 'assigned' && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-sm font-medium mb-1">Driver: {driverProfile.display_name || 'Anonymous'}</p>
-                {driverProfile.driver_rating_count > 0 && (
-                  <RatingDisplay 
-                    rating={driverProfile.driver_rating_avg} 
-                    count={driverProfile.driver_rating_count}
-                    size="sm"
-                  />
-                )}
+                <div className="flex items-center gap-3 mb-2">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={driverProfile.photo_url} />
+                    <AvatarFallback>
+                      {(driverProfile.full_name || driverProfile.display_name || 'D')[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">
+                      Driver: {driverProfile.full_name || driverProfile.display_name || 'Anonymous'}
+                    </p>
+                    {driverProfile.driver_rating_count > 0 && (
+                      <RatingDisplay 
+                        rating={driverProfile.driver_rating_avg} 
+                        count={driverProfile.driver_rating_count}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                </div>
                 {priceAgreed && request.rider_id === currentUserId && driverProfile.email && (
-                  <p className="text-xs text-muted-foreground mt-2">Contact: {driverProfile.email}</p>
+                  <p className="text-xs text-muted-foreground">Contact: {driverProfile.email}</p>
                 )}
               </div>
             )}
