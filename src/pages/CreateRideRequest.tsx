@@ -44,7 +44,7 @@ const CreateRideRequest = () => {
       
       setProfile(profileData);
       
-      if (!profileData?.is_verified) {
+      if (!profileData?.is_verified && profileData?.verification_status !== 'approved') {
         toast.error("You must be verified to post trip requests");
         navigate("/dashboard");
         return;

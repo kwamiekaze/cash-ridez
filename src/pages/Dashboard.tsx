@@ -24,11 +24,7 @@ const Dashboard = () => {
         return;
       }
 
-      // Check if user has completed onboarding (selected role)
-      if (!profile.is_rider && !profile.is_driver) {
-        navigate("/onboarding");
-        return;
-      }
+      // Allow access without forcing role selection
 
       // Check if user is verified - if not, redirect to onboarding to see status
       if (!profile.is_verified && profile.verification_status !== 'approved') {
@@ -46,8 +42,10 @@ const Dashboard = () => {
 
       if (isAdmin) {
         navigate("/admin");
-      } else if (profile.is_driver) {
-        navigate("/driver");
+      } else if (profile.is_driver && !profile.is_rider) {
+        navigate("/trips");
+      } else if (profile.is_rider && !profile.is_driver) {
+        navigate("/rider");
       } else {
         navigate("/rider");
       }

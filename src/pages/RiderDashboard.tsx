@@ -65,7 +65,7 @@ const RiderDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Verification Notice */}
-        {profile && !profile.is_verified && (
+        {profile && !(profile.is_verified || profile.verification_status === "approved") && (
           <Card className="p-6 mb-6 bg-warning/10 border-warning">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
@@ -89,7 +89,7 @@ const RiderDashboard = () => {
             size="lg"
             className="h-20 text-lg bg-gradient-primary"
             onClick={() => navigate("/rider/create-request")}
-            disabled={!profile?.is_verified}
+            disabled={!(profile?.is_verified || profile?.verification_status === "approved")}
           >
             <Plus className="w-6 h-6 mr-2" />
             Post Trip Request
