@@ -173,23 +173,21 @@ export default function TripRequestsList() {
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-3 flex-1">
-                      {request.rider?.photo_url && (
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={request.rider.photo_url} alt={request.rider.full_name || request.rider.display_name || "Rider"} />
-                          <AvatarFallback>{(request.rider.full_name || request.rider.display_name || "R")[0]}</AvatarFallback>
-                        </Avatar>
-                      )}
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={request.rider?.photo_url || ""} alt={request.rider?.full_name || request.rider?.display_name || "Rider"} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                          {(request.rider?.full_name || request.rider?.display_name || "U")[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
-                        <span className="block font-semibold">
-                          {request.rider?.full_name || request.rider?.display_name || "Anonymous"}
+                        <span className="block font-semibold text-base">
+                          {request.rider?.full_name || request.rider?.display_name || "User"}
                         </span>
-                        {request.rider?.rider_rating_count > 0 && (
-                          <RatingDisplay 
-                            rating={request.rider.rider_rating_avg || 0} 
-                            count={request.rider.rider_rating_count || 0}
-                            size="sm"
-                          />
-                        )}
+                        <RatingDisplay 
+                          rating={request.rider?.rider_rating_avg || 0} 
+                          count={request.rider?.rider_rating_count || 0}
+                          size="sm"
+                        />
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

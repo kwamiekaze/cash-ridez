@@ -22,13 +22,21 @@ export function RatingDisplay({ rating, count = 0, size = "md", showCount = true
     lg: "text-base",
   };
 
+  if (count === 0) {
+    return (
+      <span className={cn("text-muted-foreground", textSizeClasses[size], className)}>
+        New user
+      </span>
+    );
+  }
+
   return (
     <div className={cn("flex items-center gap-1", className)}>
       <Star className={cn(sizeClasses[size], "fill-yellow-400 text-yellow-400")} />
       <span className={cn("font-medium", textSizeClasses[size])}>
         {rating.toFixed(1)}
       </span>
-      {showCount && count > 0 && (
+      {showCount && (
         <span className={cn("text-muted-foreground", textSizeClasses[size])}>
           ({count})
         </span>
