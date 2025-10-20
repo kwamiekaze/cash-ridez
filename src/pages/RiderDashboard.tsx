@@ -35,14 +35,45 @@ const RiderDashboard = () => {
     const fetchRequests = async () => {
       if (!user) return;
       // Rider dashboard should ONLY show trips where user is the rider
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ride_requests")
-        .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
+        .select("*")
         .eq("rider_id", user.id)
         .order("created_at", { ascending: false });
       
-      // Show all trips including completed ones
-      setRequests(data || []);
+      if (error) {
+        console.error("Error fetching requests:", error);
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      // Fetch driver profiles for requests that have assigned drivers
+      if (data && data.length > 0) {
+        const driverIds = data
+          .map(r => r.assigned_driver_id)
+          .filter((id): id is string => id !== null);
+
+        if (driverIds.length > 0) {
+          const { data: driverProfiles } = await supabase
+            .from("profiles")
+            .select("id, display_name, driver_rating_avg, driver_rating_count, photo_url")
+            .in("id", driverIds);
+
+          // Merge driver data into requests
+          const enrichedData = data.map(request => ({
+            ...request,
+            assigned_driver: request.assigned_driver_id 
+              ? driverProfiles?.find(p => p.id === request.assigned_driver_id) 
+              : null
+          }));
+
+          setRequests(enrichedData);
+        } else {
+          setRequests(data);
+        }
+      } else {
+        setRequests([]);
+      }
     };
 
     fetchProfile();
@@ -88,13 +119,45 @@ const RiderDashboard = () => {
     if (!user) return;
     
     // Refresh the requests list
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("ride_requests")
-      .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
+      .select("*")
       .eq("rider_id", user.id)
       .order("created_at", { ascending: false });
     
-    setRequests(data || []);
+    if (error) {
+      console.error("Error fetching requests:", error);
+      return;
+    }
+
+    // Fetch driver profiles for requests that have assigned drivers
+    if (data && data.length > 0) {
+      const driverIds = data
+        .map(r => r.assigned_driver_id)
+        .filter((id): id is string => id !== null);
+
+      if (driverIds.length > 0) {
+        const { data: driverProfiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, driver_rating_avg, driver_rating_count, photo_url")
+          .in("id", driverIds);
+
+        // Merge driver data into requests
+        const enrichedData = data.map(request => ({
+          ...request,
+          assigned_driver: request.assigned_driver_id 
+            ? driverProfiles?.find(p => p.id === request.assigned_driver_id) 
+            : null
+        }));
+
+        setRequests(enrichedData);
+      } else {
+        setRequests(data);
+      }
+    } else {
+      setRequests([]);
+    }
+    
     setSelectedTrip(null);
   };
 
@@ -106,17 +169,43 @@ const RiderDashboard = () => {
         // Rider dashboard should ONLY show trips where user is the rider
         const { data, error } = await supabase
           .from("ride_requests")
-          .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
+          .select("*")
           .eq("rider_id", user.id)
           .order("created_at", { ascending: false });
         
         if (error) {
           console.error("Error fetching requests:", error);
+          return;
+        }
+
+        console.log("Fetched requests:", data);
+
+        // Fetch driver profiles for requests that have assigned drivers
+        if (data && data.length > 0) {
+          const driverIds = data
+            .map(r => r.assigned_driver_id)
+            .filter((id): id is string => id !== null);
+
+          if (driverIds.length > 0) {
+            const { data: driverProfiles } = await supabase
+              .from("profiles")
+              .select("id, display_name, driver_rating_avg, driver_rating_count, photo_url")
+              .in("id", driverIds);
+
+            // Merge driver data into requests
+            const enrichedData = data.map(request => ({
+              ...request,
+              assigned_driver: request.assigned_driver_id 
+                ? driverProfiles?.find(p => p.id === request.assigned_driver_id) 
+                : null
+            }));
+
+            setRequests(enrichedData);
+          } else {
+            setRequests(data);
+          }
         } else {
-          console.log("Fetched requests:", data);
-          
-          // Show all trips including completed ones
-          setRequests(data || []);
+          setRequests([]);
         }
       };
       fetchRequests();
