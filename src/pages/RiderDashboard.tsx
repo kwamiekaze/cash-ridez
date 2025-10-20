@@ -6,13 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppHeader from "@/components/AppHeader";
 import { Car, LogOut, Plus, User, History, MapPin, Clock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("open");
   const [requests, setRequests] = useState<any[]>([]);
@@ -58,6 +59,23 @@ const RiderDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  // Refresh requests when navigating back from creating a new one
+  useEffect(() => {
+    if (location.state?.refreshRequests && user) {
+      const fetchRequests = async () => {
+        const { data } = await supabase
+          .from("ride_requests")
+          .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
+          .eq("rider_id", user.id)
+          .order("created_at", { ascending: false });
+        setRequests(data || []);
+      };
+      fetchRequests();
+      // Clear the state to prevent repeated fetches
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, user]);
 
   return (
     <div className="min-h-screen bg-background">
