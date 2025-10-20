@@ -11,13 +11,28 @@ import { ArrowLeft, MapPin, Clock, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
+// Sanitize HTML and dangerous characters to prevent XSS
+const sanitizeHtml = (str: string) => 
+  str.replace(/<[^>]*>/g, '').replace(/[<>"']/g, (char) => {
+    const entities: Record<string, string> = { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return entities[char] || char;
+  });
+
 const rideRequestSchema = z.object({
-  pickupAddress: z.string().trim().min(1, "Pickup address is required").max(500, "Pickup address must be less than 500 characters"),
-  dropoffAddress: z.string().trim().min(1, "Dropoff address is required").max(500, "Dropoff address must be less than 500 characters"),
+  pickupAddress: z.string().trim().transform(sanitizeHtml).pipe(
+    z.string().min(1, "Pickup address is required").max(500, "Pickup address must be less than 500 characters")
+  ),
+  dropoffAddress: z.string().trim().transform(sanitizeHtml).pipe(
+    z.string().min(1, "Dropoff address is required").max(500, "Dropoff address must be less than 500 characters")
+  ),
   pickupTime: z.string().optional(),
-  contactInfo: z.string().trim().min(1, "Contact info is required").max(200, "Contact info must be less than 200 characters"),
-  emergencyName: z.string().max(100, "Name must be less than 100 characters").optional(),
-  emergencyPhone: z.string().max(20, "Phone must be less than 20 characters").optional(),
+  contactInfo: z.string().trim().transform(sanitizeHtml).pipe(
+    z.string().min(1, "Contact info is required").max(200, "Contact info must be less than 200 characters")
+  ),
+  emergencyName: z.string().transform(sanitizeHtml).pipe(
+    z.string().max(100, "Name must be less than 100 characters")
+  ).optional(),
+  emergencyPhone: z.string().trim().max(20, "Phone must be less than 20 characters").optional(),
   priceOffer: z.string().optional().refine((val) => {
     if (!val || val === "") return true;
     const num = parseFloat(val);

@@ -418,6 +418,16 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      get_safe_profile_for_open_ride: {
+        Args: { _profile_id: string }
+        Returns: {
+          display_name: string
+          id: string
+          photo_url: string
+          rider_rating_avg: number
+          rider_rating_count: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

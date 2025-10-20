@@ -82,15 +82,21 @@ const Onboarding = () => {
 
       if (uploadError) throw uploadError;
 
+      // Generate signed URL with 1-hour expiry for security
       const {
-        data: { publicUrl },
-      } = supabase.storage.from("id-verifications").getPublicUrl(filePath);
+        data: { signedUrl },
+        error: urlError,
+      } = await supabase.storage
+        .from("id-verifications")
+        .createSignedUrl(filePath, 3600);
 
-      // Update profile with ID
+      if (urlError) throw urlError;
+
+      // Update profile with ID - store path, not URL (generate fresh signed URLs when needed)
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
-          id_image_url: publicUrl,
+          id_image_url: filePath, // Store path, not signed URL
           verification_status: "pending",
           verification_submitted_at: new Date().toISOString(),
         })

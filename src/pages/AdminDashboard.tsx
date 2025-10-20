@@ -306,21 +306,14 @@ const AdminDashboard = () => {
                             variant="outline"
                             onClick={async () => {
                               try {
-                                // Extract the file path from the full URL
-                                const urlParts = user.id_image_url.split('/object/public/id-verifications/');
-                                const filePath = urlParts[1] || user.id_image_url.split('/id-verifications/')[1];
+                                // id_image_url now stores the file path directly
+                                const { data, error } = await supabase.storage
+                                  .from('id-verifications')
+                                  .createSignedUrl(user.id_image_url, 3600); // 1 hour expiry
                                 
-                                if (filePath) {
-                                  const { data, error } = await supabase.storage
-                                    .from('id-verifications')
-                                    .createSignedUrl(filePath, 60); // 60 seconds expiry
-                                  
-                                  if (error) throw error;
-                                  if (data?.signedUrl) {
-                                    window.open(data.signedUrl, '_blank');
-                                  }
-                                } else {
-                                  window.open(user.id_image_url, '_blank');
+                                if (error) throw error;
+                                if (data?.signedUrl) {
+                                  window.open(data.signedUrl, '_blank');
                                 }
                               } catch (error) {
                                 console.error('Error opening ID image:', error);

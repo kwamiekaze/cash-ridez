@@ -76,23 +76,16 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
     }
   };
 
-  const handleViewIdImage = async (idImageUrl: string) => {
+  const handleViewIdImage = async (idImagePath: string) => {
     try {
-      // Extract the file path from the full URL
-      const urlParts = idImageUrl.split('/object/public/id-verifications/');
-      const filePath = urlParts[1] || idImageUrl.split('/id-verifications/')[1];
+      // idImagePath is now the file path directly (not a URL)
+      const { data, error } = await supabase.storage
+        .from('id-verifications')
+        .createSignedUrl(idImagePath, 3600); // 1 hour expiry
       
-      if (filePath) {
-        const { data, error } = await supabase.storage
-          .from('id-verifications')
-          .createSignedUrl(filePath, 60); // 60 seconds expiry
-        
-        if (error) throw error;
-        if (data?.signedUrl) {
-          window.open(data.signedUrl, '_blank');
-        }
-      } else {
-        window.open(idImageUrl, '_blank');
+      if (error) throw error;
+      if (data?.signedUrl) {
+        window.open(data.signedUrl, '_blank');
       }
     } catch (error) {
       console.error('Error opening ID image:', error);
