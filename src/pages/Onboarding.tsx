@@ -5,9 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Car, Users, Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
+import { Car, Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +20,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const Onboarding = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [isRider, setIsRider] = useState(false);
-  const [isDriver, setIsDriver] = useState(false);
   const [idFile, setIdFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
@@ -41,8 +38,6 @@ const Onboarding = () => {
       
       if (profileData) {
         setProfile(profileData);
-        setIsRider(profileData.is_rider || false);
-        setIsDriver(profileData.is_driver || false);
         if (profileData.is_verified || profileData.verification_status === "approved") {
           setIsVerified(true);
         }
@@ -69,11 +64,6 @@ const Onboarding = () => {
   };
 
   const handleSubmit = async () => {
-    if (!isRider && !isDriver) {
-      toast.error("Please select at least one role");
-      return;
-    }
-
     if (!idFile) {
       toast.error("Please upload your ID photo");
       return;
@@ -96,12 +86,10 @@ const Onboarding = () => {
         data: { publicUrl },
       } = supabase.storage.from("id-verifications").getPublicUrl(filePath);
 
-      // Update profile with roles and ID
+      // Update profile with ID
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
-          is_rider: isRider,
-          is_driver: isDriver,
           id_image_url: publicUrl,
           verification_status: "pending",
           verification_submitted_at: new Date().toISOString(),
@@ -123,8 +111,6 @@ const Onboarding = () => {
             userId: user?.id,
             userEmail: user?.email,
             displayName: profileData?.display_name || user?.email,
-            isRider,
-            isDriver,
             filePath, // include storage path so backend can create a signed URL for admins
           },
         });
@@ -206,74 +192,6 @@ const Onboarding = () => {
           </div>
 
         <div className="space-y-6">
-          <div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <Card
-                className={`p-6 transition-all ${
-                  isRider ? "border-primary bg-primary/5" : ""
-                } ${profile?.verification_status && profile.verification_status !== 'none' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg'}`}
-                onClick={() => {
-                  if (!profile?.verification_status || profile.verification_status === 'none') {
-                    setIsRider(!isRider);
-                  }
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  <Checkbox 
-                    checked={isRider} 
-                    onCheckedChange={(checked) => {
-                      if (!profile?.verification_status || profile.verification_status === 'none') {
-                        setIsRider(checked as boolean);
-                      }
-                    }}
-                    disabled={profile?.verification_status && profile.verification_status !== 'none'}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Post Trip Requests</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Share your travel plans and connect with the community
-                    </p>
-                  </div>
-                </div>
-              </Card>
-
-              <Card
-                className={`p-6 transition-all ${
-                  isDriver ? "border-primary bg-primary/5" : ""
-                } ${profile?.verification_status && profile.verification_status !== 'none' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-lg'}`}
-                onClick={() => {
-                  if (!profile?.verification_status || profile.verification_status === 'none') {
-                    setIsDriver(!isDriver);
-                  }
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  <Checkbox 
-                    checked={isDriver} 
-                    onCheckedChange={(checked) => {
-                      if (!profile?.verification_status || profile.verification_status === 'none') {
-                        setIsDriver(checked as boolean);
-                      }
-                    }}
-                    disabled={profile?.verification_status && profile.verification_status !== 'none'}
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Car className="w-5 h-5 text-primary" />
-                      <h3 className="font-semibold">Respond to Requests</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Help others with their travel coordination
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-
           {isVerified ? (
             <div>
               <h2 className="text-xl font-semibold mb-4">Account Status</h2>
