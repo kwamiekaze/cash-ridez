@@ -45,15 +45,16 @@ const TripActionDialog = ({
       const updates: any = {};
 
       if (action === "complete") {
-        // Mark as completed by this user
+        // Mark trip as completed immediately when one user completes
+        updates.status = "completed";
         updates[userRole === "rider" ? "rider_completed" : "driver_completed"] = true;
 
-        // Check if both have completed
-        const otherCompleted = userRole === "rider" ? request.driver_completed : request.rider_completed;
-        
-        if (otherCompleted) {
-          // Both completed - mark trip as completed
-          updates.status = "completed";
+        // Reset active ride for driver
+        if (request.assigned_driver_id) {
+          await supabase
+            .from("profiles")
+            .update({ active_assigned_ride_id: null })
+            .eq("id", request.assigned_driver_id);
         }
 
         const { error } = await supabase
@@ -63,11 +64,7 @@ const TripActionDialog = ({
 
         if (error) throw error;
 
-        if (otherCompleted) {
-          toast.success("Trip marked as completed!");
-        } else {
-          toast.success("Waiting for other user to confirm completion");
-        }
+        toast.success("Trip marked as completed!");
       } else {
         // Cancel trip
         updates.status = "cancelled";
@@ -133,11 +130,7 @@ const TripActionDialog = ({
         {action === "complete" && (
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              {request.rider_completed && userRole === "driver"
-                ? "The rider has already marked this trip as complete. Once you confirm, the trip will be completed."
-                : request.driver_completed && userRole === "rider"
-                ? "The driver has already marked this trip as complete. Once you confirm, the trip will be completed."
-                : "Both users must mark the trip as complete before it's finalized."}
+              Once you mark this trip as complete, you'll be able to request or accept new trips immediately.
             </p>
           </div>
         )}
