@@ -63,19 +63,26 @@ const RiderDashboard = () => {
   // Refresh requests when navigating back from creating a new one
   useEffect(() => {
     if (location.state?.refreshRequests && user) {
+      console.log("Refreshing requests from location state");
       const fetchRequests = async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("ride_requests")
           .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
           .eq("rider_id", user.id)
           .order("created_at", { ascending: false });
-        setRequests(data || []);
+        
+        if (error) {
+          console.error("Error fetching requests:", error);
+        } else {
+          console.log("Fetched requests:", data);
+          setRequests(data || []);
+        }
       };
       fetchRequests();
       // Clear the state to prevent repeated fetches
       window.history.replaceState({}, document.title);
     }
-  }, [location.state, user]);
+  }, [location.state?.timestamp, user]);
 
   return (
     <div className="min-h-screen bg-background">

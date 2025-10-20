@@ -172,9 +172,9 @@ const CreateRideRequest = () => {
 
       toast.success("Trip request created!");
       
-      // Small delay to ensure database commit completes before navigating
-      await new Promise(resolve => setTimeout(resolve, 300));
-      navigate("/rider", { state: { refreshRequests: true } });
+      // Longer delay to ensure database commit and replication completes
+      await new Promise(resolve => setTimeout(resolve, 800));
+      navigate("/rider", { state: { refreshRequests: true, timestamp: Date.now() } });
     } catch (error: any) {
       toast.error(error.message || "Failed to create trip request");
     } finally {
