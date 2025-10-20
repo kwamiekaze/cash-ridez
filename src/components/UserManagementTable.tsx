@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Eye, ExternalLink } from "lucide-react";
+import { Check, X, Eye, ExternalLink, Pause, Play } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface User {
@@ -19,6 +19,7 @@ interface User {
   driver_rating_avg: number;
   photo_url: string;
   id_image_url: string;
+  paused: boolean;
 }
 
 interface UserManagementTableProps {
@@ -47,6 +48,28 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
       onUpdate();
     } catch (error: any) {
       toast.error("Failed to update verification status");
+      console.error(error);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handlePauseToggle = async (userId: string, currentStatus: boolean) => {
+    setLoading(userId);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          paused: !currentStatus,
+        })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      toast.success(`Account ${!currentStatus ? "paused" : "unpaused"} successfully`);
+      onUpdate();
+    } catch (error: any) {
+      toast.error("Failed to update account status");
       console.error(error);
     } finally {
       setLoading(null);
@@ -84,10 +107,9 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
           <TableRow>
             <TableHead>User</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Type</TableHead>
+            <TableHead>Account Type</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Rider Rating</TableHead>
-            <TableHead>Driver Rating</TableHead>
+            <TableHead>Rating</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -105,23 +127,22 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
               </TableCell>
               <TableCell className="font-medium">{user.email}</TableCell>
               <TableCell>
-                <div className="flex gap-1">
-                  {user.is_rider && <Badge variant="secondary">Rider</Badge>}
-                  {user.is_driver && <Badge variant="secondary">Driver</Badge>}
+                <Badge variant="outline">User</Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col gap-1">
+                  {user.is_verified ? (
+                    <Badge className="bg-green-500">Verified</Badge>
+                  ) : (
+                    <Badge variant="destructive">Unverified</Badge>
+                  )}
+                  {user.paused && <Badge variant="secondary">Paused</Badge>}
                 </div>
               </TableCell>
               <TableCell>
-                {user.is_verified ? (
-                  <Badge className="bg-green-500">Verified</Badge>
-                ) : (
-                  <Badge variant="destructive">Unverified</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                {user.is_rider ? `${user.rider_rating_avg?.toFixed(1) || "N/A"}` : "-"}
-              </TableCell>
-              <TableCell>
-                {user.is_driver ? `${user.driver_rating_avg?.toFixed(1) || "N/A"}` : "-"}
+                {user.rider_rating_avg > 0 || user.driver_rating_avg > 0
+                  ? `${Math.max(user.rider_rating_avg, user.driver_rating_avg).toFixed(1)}`
+                  : "N/A"}
               </TableCell>
               <TableCell>
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -130,8 +151,18 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                     variant={user.is_verified ? "destructive" : "default"}
                     onClick={() => handleVerificationToggle(user.id, user.is_verified)}
                     disabled={loading === user.id}
+                    title={user.is_verified ? "Unverify" : "Verify"}
                   >
                     {user.is_verified ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={user.paused ? "default" : "outline"}
+                    onClick={() => handlePauseToggle(user.id, user.paused)}
+                    disabled={loading === user.id}
+                    title={user.paused ? "Unpause" : "Pause"}
+                  >
+                    {user.paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
                   </Button>
                   {user.id_image_url && (
                     <Button

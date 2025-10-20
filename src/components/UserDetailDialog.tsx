@@ -33,6 +33,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     full_name: "",
     phone_number: "",
     bio: "",
+    paused: false,
   });
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         full_name: data.full_name || "",
         phone_number: data.phone_number || "",
         bio: data.bio || "",
+        paused: data.paused || false,
       });
     } catch (error: any) {
       toast.error("Failed to fetch user details");
@@ -132,8 +134,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                 ) : (
                   <Badge variant="destructive">Unverified</Badge>
                 )}
-                {user.is_rider && <Badge variant="secondary">Rider</Badge>}
-                {user.is_driver && <Badge variant="secondary">Driver</Badge>}
+                <Badge variant="outline">User Account</Badge>
+                {user.paused && <Badge variant="secondary">Paused</Badge>}
               </div>
             </div>
           </div>
@@ -177,34 +179,35 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
           {/* Ratings */}
           <div className="grid grid-cols-2 gap-4">
-            {user.is_rider && (
-              <Card className="p-4">
-                <Label className="text-sm font-medium mb-2 block">Rider Rating</Label>
-                {user.rider_rating_count > 0 ? (
-                  <RatingDisplay
-                    rating={user.rider_rating_avg}
-                    count={user.rider_rating_count}
-                    size="lg"
+            <Card className="p-4">
+              <Label className="text-sm font-medium mb-2 block">User Rating</Label>
+              {(user.rider_rating_count > 0 || user.driver_rating_count > 0) ? (
+                <RatingDisplay
+                  rating={Math.max(user.rider_rating_avg || 0, user.driver_rating_avg || 0)}
+                  count={(user.rider_rating_count || 0) + (user.driver_rating_count || 0)}
+                  size="lg"
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">No ratings yet</p>
+              )}
+            </Card>
+            <Card className="p-4">
+              <Label className="text-sm font-medium mb-2 block">Account Status</Label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Paused</span>
+                  <input
+                    type="checkbox"
+                    checked={formData.paused}
+                    onChange={(e) => setFormData({ ...formData, paused: e.target.checked })}
+                    className="h-4 w-4"
                   />
-                ) : (
-                  <p className="text-sm text-muted-foreground">No ratings yet</p>
-                )}
-              </Card>
-            )}
-            {user.is_driver && (
-              <Card className="p-4">
-                <Label className="text-sm font-medium mb-2 block">Driver Rating</Label>
-                {user.driver_rating_count > 0 ? (
-                  <RatingDisplay
-                    rating={user.driver_rating_avg}
-                    count={user.driver_rating_count}
-                    size="lg"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">No ratings yet</p>
-                )}
-              </Card>
-            )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Paused accounts cannot create or accept trip requests
+                </p>
+              </div>
+            </Card>
           </div>
 
           {/* Edit Form */}
@@ -252,6 +255,10 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               <div>
                 <p className="text-muted-foreground">Verification Status</p>
                 <p className="capitalize">{user.verification_status}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Account Status</p>
+                <p className="capitalize">{user.paused ? "Paused" : "Active"}</p>
               </div>
               {user.blocked && (
                 <div>

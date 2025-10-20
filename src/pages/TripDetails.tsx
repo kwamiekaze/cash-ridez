@@ -414,8 +414,11 @@ export default function TripDetails() {
                     )}
                   </div>
                 </div>
-                {priceAgreed && request.assigned_driver_id === currentUserId && riderProfile.email && (
-                  <p className="text-xs text-muted-foreground">Contact: {riderProfile.email}</p>
+                {priceAgreed && request.assigned_driver_id === currentUserId && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {riderProfile.email && <p>Email: {riderProfile.email}</p>}
+                    {riderProfile.phone_number && <p>Phone: {riderProfile.phone_number}</p>}
+                  </div>
                 )}
               </div>
             )}
@@ -443,8 +446,11 @@ export default function TripDetails() {
                     )}
                   </div>
                 </div>
-                {priceAgreed && request.rider_id === currentUserId && driverProfile.email && (
-                  <p className="text-xs text-muted-foreground">Contact: {driverProfile.email}</p>
+                {priceAgreed && request.rider_id === currentUserId && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {driverProfile.email && <p>Email: {driverProfile.email}</p>}
+                    {driverProfile.phone_number && <p>Phone: {driverProfile.phone_number}</p>}
+                  </div>
                 )}
               </div>
             )}

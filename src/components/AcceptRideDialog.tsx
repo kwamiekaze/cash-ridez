@@ -38,6 +38,22 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
     setAccepting(true);
 
     try {
+      // Check if account is paused
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("paused")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      if (profile?.paused) {
+        toast.error("Your account is currently paused. Please contact support to reactivate it.");
+        setAccepting(false);
+        return;
+      }
+
       // Call the atomic edge function to handle race conditions
       const { data, error } = await supabase.functions.invoke('accept-ride', {
         body: {

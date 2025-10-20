@@ -161,6 +161,29 @@ export default function ChatPage() {
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="max-w-4xl mx-auto space-y-4">
+          {/* Safety Tips */}
+          <Card className="bg-muted/50 border-primary/20">
+            <CardContent className="pt-4">
+              <div className="space-y-2 text-sm">
+                {tripInfo?.assigned_driver_id === currentUserId ? (
+                  <div className="flex gap-2">
+                    <span className="text-primary font-semibold">Driver Tip:</span>
+                    <p className="text-muted-foreground">
+                      Consider sharing your phone number and estimated arrival time with the rider for better coordination.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <span className="text-primary font-semibold">Safety Reminder:</span>
+                    <p className="text-muted-foreground">
+                      Never send money to drivers before meeting in person. All payments should be handled face-to-face after the trip is complete.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {messages.length === 0 ? (
             <Card>
               <CardContent className="pt-6">

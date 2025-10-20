@@ -94,6 +94,21 @@ const CreateRideRequest = () => {
         return;
       }
 
+      // Check if account is paused
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("paused")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      if (profile?.paused) {
+        toast.error("Your account is currently paused. Please contact support to reactivate it.");
+        setIsSubmitting(false);
+        return;
+      }
+
       // Validate form data
       const validationResult = rideRequestSchema.safeParse(formData);
       if (!validationResult.success) {

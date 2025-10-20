@@ -102,6 +102,7 @@ export type Database = {
           is_driver: boolean | null
           is_rider: boolean | null
           is_verified: boolean | null
+          paused: boolean | null
           phone_number: string | null
           photo_url: string | null
           rider_rating_avg: number | null
@@ -132,6 +133,7 @@ export type Database = {
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
+          paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
           rider_rating_avg?: number | null
@@ -162,6 +164,7 @@ export type Database = {
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
+          paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
           rider_rating_avg?: number | null
@@ -403,6 +406,10 @@ export type Database = {
       accept_ride_atomic: {
         Args: { p_driver_id: string; p_eta_minutes: number; p_ride_id: string }
         Returns: Json
+      }
+      can_view_contact_info: {
+        Args: { _profile_id: string; _viewer_id: string }
+        Returns: boolean
       }
       check_active_ride: {
         Args: { _user_id: string }
