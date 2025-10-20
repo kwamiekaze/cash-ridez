@@ -164,17 +164,18 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
 
           <TabsContent value="counter" className="space-y-4 mt-4">
             <div>
-              <Label htmlFor="counterAmount">Your Price ($) *</Label>
+              <Label htmlFor="counterAmount">Your Price (in dollars) *</Label>
               <Input
                 id="counterAmount"
                 type="number"
-                placeholder="50.00"
-                step="0.01"
-                min="0"
+                placeholder="50"
+                step="1"
+                min="1"
                 value={counterAmount}
                 onChange={(e) => setCounterAmount(e.target.value)}
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">Enter whole dollar amount (e.g., 50 for $50)</p>
             </div>
             <div>
               <Label htmlFor="counterMessage">Message (Optional)</Label>

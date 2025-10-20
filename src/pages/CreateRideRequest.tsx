@@ -260,14 +260,15 @@ const CreateRideRequest = () => {
                 <Input
                   id="offer"
                   type="number"
-                  placeholder="50.00"
+                  placeholder="50"
                   className="pl-10"
-                  step="0.01"
-                  min="0"
+                  step="1"
+                  min="1"
                   value={formData.priceOffer}
                   onChange={(e) => setFormData({ ...formData, priceOffer: e.target.value })}
                 />
               </div>
+              <p className="text-xs text-muted-foreground">Enter whole dollar amount (e.g., 50 for $50)</p>
             </div>
 
             <div className="space-y-2">

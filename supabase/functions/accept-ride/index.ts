@@ -32,24 +32,27 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { rideId, etaMinutes } = await req.json();
+    const { rideId, etaMinutes, driverId, skipEtaCheck } = await req.json();
 
     // Validate inputs
-    if (!rideId || !etaMinutes) {
-      throw new Error('Missing required fields: rideId, etaMinutes');
+    if (!rideId) {
+      throw new Error('Missing required field: rideId');
     }
 
-    if (etaMinutes < 1 || etaMinutes > 240) {
+    if (!skipEtaCheck && (!etaMinutes || etaMinutes < 1 || etaMinutes > 240)) {
       throw new Error('ETA must be between 1 and 240 minutes');
     }
 
-    console.log(`Driver ${user.id} attempting to accept ride ${rideId} with ETA ${etaMinutes}`);
+    // Use provided driverId or default to current user
+    const finalDriverId = driverId || user.id;
+
+    console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}`);
 
     // Use a transaction-like approach with RPC call
     const { data, error } = await supabase.rpc('accept_ride_atomic', {
       p_ride_id: rideId,
-      p_driver_id: user.id,
-      p_eta_minutes: etaMinutes,
+      p_driver_id: finalDriverId,
+      p_eta_minutes: etaMinutes || 0,
     });
 
     if (error) {
@@ -75,7 +78,7 @@ serve(async (req) => {
       const { data: driverData, error: driverError } = await supabase
         .from('profiles')
         .select('display_name, full_name, email, phone_number')
-        .eq('id', user.id)
+        .eq('id', finalDriverId)
         .single();
 
       if (!rideError && !driverError && rideData && driverData && rideData.rider) {

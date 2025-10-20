@@ -32,6 +32,8 @@ export default function TripDetails() {
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"complete" | "cancel">("complete");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedOffer, setEditedOffer] = useState("");
 
   useEffect(() => {
     fetchTripData();
@@ -132,7 +134,7 @@ export default function TripDetails() {
         .from('counter_offers')
         .select(`
           *,
-          profiles:by_user_id (display_name, full_name, email)
+          profiles:by_user_id (display_name, full_name, email, photo_url, driver_rating_avg, driver_rating_count)
         `)
         .eq('ride_request_id', id)
         .order('created_at', { ascending: false});
@@ -191,15 +193,19 @@ export default function TripDetails() {
 
       // If accepted, update ride request with assigned driver and send notification
       if (action === 'accepted') {
-        const { error: rideError } = await supabase
-          .from('ride_requests')
-          .update({ 
-            assigned_driver_id: offer.by_user_id,
-            status: 'assigned'
-          })
-          .eq('id', id);
+        // Use atomic accept-ride function to prevent race conditions
+        const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-ride', {
+          body: {
+            rideId: id,
+            driverId: offer.by_user_id,
+            etaMinutes: 0, // Driver will provide ETA later
+            skipEtaCheck: true
+          },
+        });
 
-        if (rideError) throw rideError;
+        if (acceptError || !acceptData?.success) {
+          throw new Error(acceptData?.message || 'Failed to accept offer');
+        }
 
         // Send email notification to the person whose offer was accepted
         const { data: senderProfile } = await supabase
@@ -486,8 +492,90 @@ export default function TripDetails() {
             </div>
             {request.price_offer && (
               <div className="pt-2 border-t">
-                <p className="font-medium">Rider's Initial Offer</p>
-                <p className="text-2xl font-bold text-primary">${request.price_offer}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Rider's Initial Offer</p>
+                    {!isEditing ? (
+                      <p className="text-2xl font-bold text-primary">${request.price_offer}</p>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-2">
+                        <Input
+                          type="number"
+                          step="1"
+                          min="1"
+                          value={editedOffer}
+                          onChange={(e) => setEditedOffer(e.target.value)}
+                          className="w-32"
+                          placeholder="Amount"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {isRider && request.status === 'open' && (
+                    <div>
+                      {!isEditing ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditedOffer(request.price_offer?.toString() || "");
+                            setIsEditing(true);
+                          }}
+                        >
+                          Edit Offer
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const newAmount = parseFloat(editedOffer);
+                                if (!newAmount || newAmount < 1) {
+                                  toast({
+                                    title: "Invalid Amount",
+                                    description: "Please enter a valid dollar amount",
+                                    variant: "destructive",
+                                  });
+                                  return;
+                                }
+                                
+                                const { error } = await supabase
+                                  .from('ride_requests')
+                                  .update({ price_offer: newAmount })
+                                  .eq('id', id);
+
+                                if (error) throw error;
+
+                                toast({
+                                  title: "Success",
+                                  description: "Initial offer updated",
+                                });
+                                setIsEditing(false);
+                                fetchTripData();
+                              } catch (error: any) {
+                                toast({
+                                  title: "Error",
+                                  description: error.message,
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsEditing(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {request.rider_note && request.status === 'assigned' && (
@@ -700,19 +788,34 @@ export default function TripDetails() {
                 {offers.map((offer) => (
                   <Card key={offer.id}>
                     <CardContent className="pt-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-medium">
-                            {offer.role === 'driver' ? 'Offer by' : 'Counter offer by'}: {offer.profiles?.full_name || offer.profiles?.display_name || 'User'}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(offer.created_at).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter Offer'}
-                          </p>
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex items-start gap-3 flex-1">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={offer.profiles?.photo_url} />
+                            <AvatarFallback>
+                              {(offer.profiles?.full_name || offer.profiles?.display_name || 'U')[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium">
+                              {offer.profiles?.full_name || offer.profiles?.display_name || 'User'}
+                            </p>
+                            {offer.profiles?.driver_rating_count > 0 && (
+                              <RatingDisplay 
+                                rating={offer.profiles.driver_rating_avg} 
+                                count={offer.profiles.driver_rating_count}
+                                size="sm"
+                              />
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(offer.created_at).toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter Offer'}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                           <p className="text-2xl font-bold text-primary">${offer.amount}</p>
                           <Badge variant={
                             offer.status === 'accepted' ? 'default' :
@@ -780,22 +883,70 @@ export default function TripDetails() {
             <CardHeader>
               <CardTitle>Make an Offer</CardTitle>
               <CardDescription>
-                Enter your price offer for this trip
+                {request.price_offer 
+                  ? `Rider's initial offer: $${request.price_offer}. Accept it or make a different offer.`
+                  : 'Enter your price offer for this trip'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitOffer} className="space-y-4">
+                {request.price_offer && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={async () => {
+                      setSubmitting(true);
+                      try {
+                        const { error } = await supabase
+                          .from('counter_offers')
+                          .insert({
+                            ride_request_id: id,
+                            by_user_id: currentUserId,
+                            amount: request.price_offer,
+                            message: 'Accepting initial offer',
+                            role: 'driver'
+                          });
+
+                        if (error) throw error;
+
+                        toast({
+                          title: "Success",
+                          description: "You accepted the rider's offer!",
+                        });
+                        setCounterAmount("");
+                        fetchOffers();
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message,
+                          variant: "destructive",
+                        });
+                      } finally {
+                        setSubmitting(false);
+                      }
+                    }}
+                    disabled={submitting}
+                  >
+                    Accept ${request.price_offer}
+                  </Button>
+                )}
+                <div className="relative">
+                  <p className="text-sm text-center text-muted-foreground mb-2">or make a different offer</p>
+                </div>
                 <div>
-                  <Label htmlFor="amount">Your Offer Amount ($)</Label>
+                  <Label htmlFor="amount">Your Offer Amount (in dollars)</Label>
                   <Input 
                     id="amount"
                     type="number"
-                    step="0.01"
-                    placeholder="Enter your offer amount"
+                    step="1"
+                    min="1"
+                    placeholder="Enter amount in dollars (e.g., 50)"
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(e.target.value)}
                     required
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Enter whole dollar amount (e.g., 50 for $50)</p>
                 </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? "Submitting..." : "Submit Offer"}
@@ -817,16 +968,17 @@ export default function TripDetails() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="counter-amount">Counter Offer Amount ($)</Label>
+                  <Label htmlFor="counter-amount">Counter Offer Amount (in dollars)</Label>
                   <Input 
                     id="counter-amount"
                     type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="Enter your counter offer"
+                    step="1"
+                    min="1"
+                    placeholder="Enter amount in dollars (e.g., 50)"
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Enter whole dollar amount (e.g., 50 for $50)</p>
                 </div>
                 <Button
                   onClick={() => {
