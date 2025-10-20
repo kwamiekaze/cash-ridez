@@ -36,6 +36,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Handle navigation after auth state changes
+      if (event === 'SIGNED_IN' && session) {
+        navigate('/dashboard');
+      }
     });
 
     // Check for existing session
@@ -46,19 +51,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const signIn = async (email: string, password: string) => {
-    const redirectUrl = `${window.location.origin}/dashboard`;
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (!error) {
-      navigate(redirectUrl);
-    }
-
+    // Don't navigate here - let the auth state change handle it
     return { error };
   };
 
