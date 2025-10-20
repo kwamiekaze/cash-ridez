@@ -130,17 +130,31 @@ export default function TripDetails() {
 
   const fetchOffers = async () => {
     try {
-      const { data, error } = await supabase
+      // 1) Fetch offers for this trip (no joins to avoid RLS/FK issues)
+      const { data: offersData, error: offersError } = await supabase
         .from('counter_offers')
-        .select(`
-          *,
-          profiles:by_user_id (display_name, full_name, email, photo_url, driver_rating_avg, driver_rating_count)
-        `)
+        .select('*')
         .eq('ride_request_id', id)
         .order('created_at', { ascending: false});
 
-      if (error) throw error;
-      setOffers(data || []);
+      if (offersError) throw offersError;
+
+      const list = offersData || [];
+
+      // 2) Fetch profile basics for the offer makers that we are allowed to see
+      const userIds = Array.from(new Set(list.map((o: any) => o.by_user_id)));
+      let profilesMap: Record<string, any> = {};
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name, full_name, email, photo_url, driver_rating_avg, driver_rating_count')
+          .in('id', userIds);
+        (profilesData || []).forEach((p: any) => { profilesMap[p.id] = p; });
+      }
+
+      // 3) Attach profiles where available (may be null due to RLS, which is OK)
+      const enriched = list.map((o: any) => ({ ...o, profiles: profilesMap[o.by_user_id] }));
+      setOffers(enriched);
     } catch (error: any) {
       console.error('Error fetching offers:', error);
     }
@@ -152,17 +166,45 @@ export default function TripDetails() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase
+      const amount = parseFloat(counterAmount);
+      const message = counterMessage;
+
+      const { data: insertData, error } = await supabase
         .from('counter_offers')
         .insert({
           ride_request_id: id,
           by_user_id: currentUserId,
-          amount: parseFloat(counterAmount),
-          message: counterMessage,
+          amount,
+          message,
           role: 'driver'
-        });
+        })
+        .select('*')
+        .single();
 
       if (error) throw error;
+
+      // Optimistic update so it appears immediately
+      setOffers((prev) => [{
+        ...insertData,
+        profiles: null, // will be hydrated on refetch if visible
+      }, ...prev]);
+
+      // Notify rider about the new offer via email (server resolves recipient by profile id)
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', currentUserId)
+        .single();
+
+      await supabase.functions.invoke('send-offer-notification', {
+        body: {
+          actionType: 'new_offer',
+          recipientProfileId: request.rider_id,
+          senderName: senderProfile?.full_name || 'A driver',
+          offerAmount: amount,
+          tripId: id,
+        },
+      });
 
       toast({
         title: "Success",
@@ -210,22 +252,19 @@ export default function TripDetails() {
         // Send email notification to the person whose offer was accepted
         const { data: senderProfile } = await supabase
           .from('profiles')
-          .select('full_name, email')
+          .select('full_name')
           .eq('id', currentUserId)
           .single();
 
-        if (offer.profiles && senderProfile) {
-          await supabase.functions.invoke('send-offer-notification', {
-            body: {
-              recipientEmail: offer.profiles.email,
-              recipientName: offer.profiles.full_name || offer.profiles.display_name,
-              actionType: 'accepted',
-              senderName: senderProfile.full_name || 'A user',
-              offerAmount: offer.amount,
-              tripId: id
-            }
-          });
-        }
+        await supabase.functions.invoke('send-offer-notification', {
+          body: {
+            actionType: 'accepted',
+            recipientProfileId: offer.by_user_id,
+            senderName: senderProfile?.full_name || 'A user',
+            offerAmount: offer.amount,
+            tripId: id
+          }
+        });
 
         toast({
           title: "Offer Accepted",

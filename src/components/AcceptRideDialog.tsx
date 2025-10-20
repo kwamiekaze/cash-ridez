@@ -87,15 +87,33 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
     setAccepting(true);
 
     try {
+      const amount = parseFloat(counterAmount);
       const { error } = await supabase.from('counter_offers').insert({
         ride_request_id: request.id,
         by_user_id: driverId,
-        amount: parseFloat(counterAmount),
+        amount,
         message: counterMessage,
         role: 'driver',
       });
 
       if (error) throw error;
+
+      // Notify rider of the new counter offer
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', driverId)
+        .single();
+
+      await supabase.functions.invoke('send-offer-notification', {
+        body: {
+          actionType: 'new_offer',
+          recipientProfileId: request.rider_id,
+          senderName: senderProfile?.full_name || 'A driver',
+          offerAmount: amount,
+          tripId: request.id,
+        },
+      });
 
       toast.success("Counter offer sent! Rider will be notified.");
       onOpenChange(false);
