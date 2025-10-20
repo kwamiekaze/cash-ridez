@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MapPin, Search } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RatingDisplay } from "@/components/RatingDisplay";
 import { useToast } from "@/hooks/use-toast";
 
 export default function TripRequestsList() {
@@ -46,7 +48,16 @@ export default function TripRequestsList() {
     try {
       const { data, error } = await supabase
         .from('ride_requests')
-        .select('*')
+        .select(`
+          *,
+          rider:profiles!ride_requests_rider_id_fkey(
+            display_name,
+            full_name,
+            photo_url,
+            rider_rating_avg,
+            rider_rating_count
+          )
+        `)
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 
@@ -150,7 +161,26 @@ export default function TripRequestsList() {
               <Card key={request.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => navigate(`/trip/${request.id}`)}>
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between flex-wrap gap-2">
-                    <span>Trip Request</span>
+                    <div className="flex items-center gap-3 flex-1">
+                      {request.rider?.photo_url && (
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={request.rider.photo_url} alt={request.rider.full_name || request.rider.display_name || "Rider"} />
+                          <AvatarFallback>{(request.rider.full_name || request.rider.display_name || "R")[0]}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <div>
+                        <span className="block font-semibold">
+                          {request.rider?.full_name || request.rider?.display_name || "Anonymous"}
+                        </span>
+                        {request.rider?.rider_rating_count > 0 && (
+                          <RatingDisplay 
+                            rating={request.rider.rider_rating_avg || 0} 
+                            count={request.rider.rider_rating_count || 0}
+                            size="sm"
+                          />
+                        )}
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2">
                       {request.status === 'assigned' && (
                         <Badge variant="default" className="bg-green-500">Accepted</Badge>

@@ -14,3 +14,9 @@ verify_jwt = true
 
 [functions.send-offer-notification]
 verify_jwt = true
+
+[functions.send-ride-accepted-notification]
+verify_jwt = true
+
+[functions.send-cancellation-notification]
+verify_jwt = true
