@@ -1,33 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Car, Shield, MessageSquare, Users, Handshake, MapPin, Star, CheckCircle2 } from "lucide-react";
+import { Car, Shield, Users, MapPin, Star, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const navigate = useNavigate();
-
-  const features = [
-    {
-      icon: Shield,
-      title: "Verified Members",
-      description: "Each user verifies their ID to keep our community trustworthy and safe"
-    },
-    {
-      icon: Handshake,
-      title: "Flexible Arrangements",
-      description: "Discuss travel plans and compensation directly with community members"
-    },
-    {
-      icon: MessageSquare,
-      title: "Private Messaging",
-      description: "Coordinate and stay connected through secure in-app communication"
-    },
-    {
-      icon: Star,
-      title: "Reputation System",
-      description: "Build trust through transparent community feedback and ratings"
-    }
-  ];
 
   const trustBadges = [
     { icon: Shield, label: "ID Verified" },
@@ -214,33 +191,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-24 bg-gradient-hero">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              Why Join the CashRidez Community?
-            </h2>
-            <p className="text-xl text-foreground/70 max-w-2xl mx-auto font-medium">
-              A communication platform that puts safety, trust, and people first
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {features.map((feature) => (
-              <Card 
-                key={feature.title} 
-                className="p-8 hover:shadow-elegant transition-all hover:border-primary/30 bg-white rounded-2xl"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <feature.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">{feature.title}</h3>
-                <p className="text-foreground/70 leading-relaxed">{feature.description}</p>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 bg-white">
