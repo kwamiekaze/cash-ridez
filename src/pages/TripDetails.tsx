@@ -315,25 +315,22 @@ export default function TripDetails() {
 
       if (error) throw error;
 
-      // Send email notification to the original offer maker
-      if (originalOffer?.profiles) {
-        const { data: senderProfile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', currentUserId)
-          .single();
+      // Send email notification to the original offer maker using profile ID lookup
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', currentUserId)
+        .single();
 
-        await supabase.functions.invoke('send-offer-notification', {
-          body: {
-            recipientEmail: originalOffer.profiles.email,
-            recipientName: originalOffer.profiles.full_name || originalOffer.profiles.display_name,
-            actionType: 'countered',
-            senderName: senderProfile?.full_name || 'A user',
-            offerAmount: parseFloat(counterAmount),
-            tripId: id
-          }
-        });
-      }
+      await supabase.functions.invoke('send-offer-notification', {
+        body: {
+          actionType: 'countered',
+          recipientProfileId: originalOffer?.by_user_id,
+          senderName: senderProfile?.full_name || 'A user',
+          offerAmount: parseFloat(counterAmount),
+          tripId: id
+        }
+      });
 
       toast({
         title: "Counter Offer Sent",
@@ -876,6 +873,7 @@ export default function TripDetails() {
                               <Button 
                                 onClick={() => handleOfferAction(offer.id, 'accepted', offer)}
                                 className="flex-1 min-w-[100px]"
+                                disabled={request.status !== 'open'}
                               >
                                 Accept ${offer.amount}
                               </Button>
@@ -885,6 +883,7 @@ export default function TripDetails() {
                                 }}
                                 variant="outline"
                                 className="flex-1 min-w-[100px]"
+                                disabled={request.status !== 'open'}
                               >
                                 Counter Offer
                               </Button>
@@ -895,10 +894,16 @@ export default function TripDetails() {
                             <Button 
                               onClick={() => handleOfferAction(offer.id, 'accepted', offer)}
                               className="flex-1 min-w-[100px]"
+                              disabled={request.status !== 'open'}
                             >
                               Accept ${offer.amount}
                             </Button>
                           )}
+                        </div>
+                      )}
+                      {request.status !== 'open' && offer.status === 'pending' && (
+                        <div className="mt-3 p-2 bg-muted rounded text-sm text-muted-foreground">
+                          This trip is no longer open for offers
                         </div>
                       )}
                       {offer.status === 'accepted' && (
@@ -916,7 +921,7 @@ export default function TripDetails() {
           </CardContent>
         </Card>
 
-        {/* Make Offer Form (for drivers) */}
+        {/* Make Offer Form (for drivers) - only show if trip is open */}
         {!isRider && request.status === 'open' && (
           <Card id="counter-form">
             <CardHeader>
@@ -995,7 +1000,7 @@ export default function TripDetails() {
           </Card>
         )}
 
-        {/* Counter Offer Form (for riders) */}
+        {/* Counter Offer Form (for riders) - only show if trip is open */}
         {isRider && request.status === 'open' && offers.some(o => o.status === 'pending' && o.role === 'driver') && (
           <Card id="counter-form">
             <CardHeader>
@@ -1019,13 +1024,23 @@ export default function TripDetails() {
                   />
                   <p className="text-xs text-muted-foreground mt-1">Enter whole dollar amount (e.g., 50 for $50)</p>
                 </div>
+                <div>
+                  <Label htmlFor="counter-message">Message (Optional)</Label>
+                  <Textarea
+                    id="counter-message"
+                    placeholder="Explain your counter offer..."
+                    value={counterMessage}
+                    onChange={(e) => setCounterMessage(e.target.value)}
+                    rows={3}
+                  />
+                </div>
                 <Button
                   onClick={() => {
                     const pendingOffer = offers.find(o => o.status === 'pending' && o.role === 'driver');
                     if (pendingOffer) handleCounterOffer(pendingOffer.id);
                   }}
                   className="w-full" 
-                  disabled={submitting || !counterAmount}
+                  disabled={submitting || !counterAmount || request.status !== 'open'}
                 >
                   {submitting ? "Submitting..." : "Submit Counter Offer"}
                 </Button>
