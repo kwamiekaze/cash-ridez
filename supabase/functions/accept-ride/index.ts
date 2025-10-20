@@ -63,6 +63,44 @@ serve(async (req) => {
 
     console.log(`Ride ${rideId} successfully accepted by driver ${user.id}`);
 
+    // Send email notifications with contact information
+    try {
+      // Fetch ride and user details for email
+      const { data: rideData, error: rideError } = await supabase
+        .from('ride_requests')
+        .select('*, rider:profiles!ride_requests_rider_id_fkey(display_name, full_name, email, phone_number)')
+        .eq('id', rideId)
+        .single();
+
+      const { data: driverData, error: driverError } = await supabase
+        .from('profiles')
+        .select('display_name, full_name, email, phone_number')
+        .eq('id', user.id)
+        .single();
+
+      if (!rideError && !driverError && rideData && driverData && rideData.rider) {
+        await supabase.functions.invoke('send-ride-accepted-notification', {
+          body: {
+            riderEmail: rideData.rider.email,
+            riderName: rideData.rider.full_name || rideData.rider.display_name || 'Rider',
+            riderPhone: rideData.rider.phone_number || '',
+            driverEmail: driverData.email,
+            driverName: driverData.full_name || driverData.display_name || 'Driver',
+            driverPhone: driverData.phone_number || '',
+            pickupAddress: rideData.pickup_address,
+            dropoffAddress: rideData.dropoff_address,
+            pickupTime: rideData.pickup_time,
+            etaMinutes: etaMinutes,
+            rideId: rideId,
+          },
+        });
+        console.log('Email notifications sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Error sending notification emails:', emailError);
+      // Don't fail the whole operation if email fails
+    }
+
     return new Response(
       JSON.stringify({ success: true, message: 'Ride accepted successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

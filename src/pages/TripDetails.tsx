@@ -548,6 +548,17 @@ export default function TripDetails() {
                 <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
                   <Button
                     onClick={() => {
+                      // Check if rating has been submitted before allowing completion
+                      const hasRated = isRider ? request.rider_rating : request.driver_rating;
+                      if (!hasRated) {
+                        toast({
+                          title: "Rating Required",
+                          description: `Please rate the ${isRider ? 'driver' : 'rider'} before marking the trip as complete.`,
+                          variant: "destructive",
+                        });
+                        setShowRatingDialog(true);
+                        return;
+                      }
                       setActionType("complete");
                       setActionDialogOpen(true);
                     }}

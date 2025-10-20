@@ -207,13 +207,6 @@ const Onboarding = () => {
 
         <div className="space-y-6">
           <div>
-            {profile?.verification_status && profile.verification_status !== 'none' ? (
-              <div className="mb-4 p-3 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Your role selection is locked after verification submission. Contact support to change your roles.
-                </p>
-              </div>
-            ) : null}
             <div className="grid md:grid-cols-2 gap-4">
               <Card
                 className={`p-6 transition-all ${

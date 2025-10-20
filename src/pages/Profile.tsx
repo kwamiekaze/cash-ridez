@@ -11,6 +11,7 @@ import { ArrowLeft, Camera, Star, CheckCircle, Clock, XCircle } from "lucide-rea
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { UserRatingsDisplay } from "@/components/UserRatingsDisplay";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -366,6 +367,18 @@ const Profile = () => {
             </Button>
           </form>
         </Card>
+
+        {/* Individual Ratings Display */}
+        {user && (
+          <div className="mt-6 space-y-6">
+            {profile.is_rider && profile.rider_rating_count > 0 && (
+              <UserRatingsDisplay userId={user.id} ratingType="rider" />
+            )}
+            {profile.is_driver && profile.driver_rating_count > 0 && (
+              <UserRatingsDisplay userId={user.id} ratingType="driver" />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

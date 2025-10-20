@@ -116,12 +116,12 @@ const RiderDashboard = () => {
 
         {/* Trips Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="assigned">Connected</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1">
+            <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
+            <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
+            <TabsTrigger value="cancelled" className="text-xs sm:text-sm">Cancelled</TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6 space-y-4">
