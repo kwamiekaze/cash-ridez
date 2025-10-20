@@ -49,13 +49,18 @@ const TripActionDialog = ({
         updates.status = "completed";
         updates[userRole === "rider" ? "rider_completed" : "driver_completed"] = true;
 
-        // Reset active ride for driver
+        // Reset active ride for BOTH rider and driver so they can immediately take new trips
         if (request.assigned_driver_id) {
           await supabase
             .from("profiles")
             .update({ active_assigned_ride_id: null })
             .eq("id", request.assigned_driver_id);
         }
+        
+        await supabase
+          .from("profiles")
+          .update({ active_assigned_ride_id: null })
+          .eq("id", request.rider_id);
 
         const { error } = await supabase
           .from("ride_requests")
@@ -130,7 +135,7 @@ const TripActionDialog = ({
         {action === "complete" && (
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              Once you mark this trip as complete, you'll be able to request or accept new trips immediately.
+              Once you mark this trip as complete, both you and the other user will be able to request or accept new trips immediately. The other user will be prompted to rate you.
             </p>
           </div>
         )}

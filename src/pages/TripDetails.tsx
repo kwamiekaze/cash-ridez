@@ -626,21 +626,23 @@ export default function TripDetails() {
               </div>
             )}
             
-            {/* Actions for assigned trips */}
-            {request.status === 'assigned' && (
+            {/* Actions for assigned or completed trips */}
+            {(request.status === 'assigned' || request.status === 'completed') && (
               <>
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Button 
-                    onClick={() => navigate(`/chat/${id}`)}
-                    className="flex-1"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Open Chat
-                  </Button>
+                  {request.status === 'assigned' && (
+                    <Button 
+                      onClick={() => navigate(`/chat/${id}`)}
+                      className="flex-1"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Open Chat
+                    </Button>
+                  )}
                   {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && (
                     <Button 
                       onClick={() => setShowRatingDialog(true)}
-                      variant="outline"
+                      variant={request.status === 'completed' ? 'default' : 'outline'}
                       className="flex-1"
                     >
                       Rate {isRider ? 'Driver' : 'Rider'}
@@ -663,48 +665,62 @@ export default function TripDetails() {
                   </div>
                 )}
                 
-                {/* Complete/Cancel buttons */}
-                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                  <Button
-                    onClick={() => {
-                      // Check if rating has been submitted before allowing completion
-                      const hasRated = isRider ? request.rider_rating : request.driver_rating;
-                      if (!hasRated) {
-                        toast({
-                          title: "Rating Required",
-                          description: `Please rate the ${isRider ? 'driver' : 'rider'} before marking the trip as complete.`,
-                          variant: "destructive",
-                        });
-                        setShowRatingDialog(true);
-                        return;
+                {/* Complete/Cancel buttons - only show if trip is still assigned (not completed) */}
+                {request.status === 'assigned' && (
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                    <Button
+                      onClick={() => {
+                        // Check if rating has been submitted before allowing completion
+                        const hasRated = isRider ? request.rider_rating : request.driver_rating;
+                        if (!hasRated) {
+                          toast({
+                            title: "Rating Required",
+                            description: `Please rate the ${isRider ? 'driver' : 'rider'} before marking the trip as complete.`,
+                            variant: "destructive",
+                          });
+                          setShowRatingDialog(true);
+                          return;
+                        }
+                        setActionType("complete");
+                        setActionDialogOpen(true);
+                      }}
+                      variant="default"
+                      className="flex-1 bg-gradient-primary"
+                      disabled={
+                        (isRider && request.rider_completed) || 
+                        (!isRider && request.driver_completed)
                       }
-                      setActionType("complete");
-                      setActionDialogOpen(true);
-                    }}
-                    variant="default"
-                    className="flex-1 bg-gradient-primary"
-                    disabled={
-                      (isRider && request.rider_completed) || 
-                      (!isRider && request.driver_completed)
-                    }
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {(isRider && request.rider_completed) || (!isRider && request.driver_completed) 
-                      ? "Marked Complete" 
-                      : "Mark Complete"}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setActionType("cancel");
-                      setActionDialogOpen(true);
-                    }}
-                    variant="destructive"
-                    className="flex-1"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Trip
-                  </Button>
-                </div>
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {(isRider && request.rider_completed) || (!isRider && request.driver_completed) 
+                        ? "Marked Complete" 
+                        : "Mark Complete"}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setActionType("cancel");
+                        setActionDialogOpen(true);
+                      }}
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel Trip
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Show completion message if trip is completed and user hasn't rated */}
+                {request.status === 'completed' && (
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                    <p className="text-sm font-medium text-primary mb-2">Trip Completed</p>
+                    <p className="text-sm text-muted-foreground">
+                      {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating))
+                        ? `Please rate the ${isRider ? 'driver' : 'rider'} to complete your part of this trip.`
+                        : 'Thank you for rating! This trip is now complete.'}
+                    </p>
+                  </div>
+                )}
               </>
             )}
             

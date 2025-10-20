@@ -92,7 +92,20 @@ export default function TripRequestsList() {
           rider: profilesData?.find(p => p.id === request.rider_id)
         }));
 
-        setRequests(enrichedData);
+        // Filter out completed trips where the current user has already rated
+        const filtered = enrichedData.filter(request => {
+          if (request.status !== 'completed') return true;
+          const isRiderView = request.rider_id === user.id;
+          const isDriverView = request.assigned_driver_id === user.id;
+          if (isRiderView) {
+            return !request.rider_rating; // Show if rider hasn't rated
+          } else if (isDriverView) {
+            return !request.driver_rating; // Show if driver hasn't rated
+          }
+          return true; // Show if user made an offer but isn't rider/driver
+        });
+
+        setRequests(filtered);
       } else {
         setRequests([]);
       }

@@ -33,7 +33,16 @@ const RiderDashboard = () => {
         .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
         .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
-      setRequests(data || []);
+      
+      // Filter out completed trips where the current user has already rated
+      const filtered = data?.filter(request => {
+        if (request.status !== 'completed') return true;
+        const isRiderView = request.rider_id === user.id;
+        const hasRated = isRiderView ? request.rider_rating : request.driver_rating;
+        return !hasRated; // Only show completed trips if user hasn't rated yet
+      }) || [];
+      
+      setRequests(filtered);
     };
 
     fetchProfile();
@@ -77,7 +86,16 @@ const RiderDashboard = () => {
           console.error("Error fetching requests:", error);
         } else {
           console.log("Fetched requests:", data);
-          setRequests(data || []);
+          
+          // Filter out completed trips where the current user has already rated
+          const filtered = data?.filter(request => {
+            if (request.status !== 'completed') return true;
+            const isRiderView = request.rider_id === user.id;
+            const hasRated = isRiderView ? request.rider_rating : request.driver_rating;
+            return !hasRated; // Only show completed trips if user hasn't rated yet
+          }) || [];
+          
+          setRequests(filtered);
         }
       };
       fetchRequests();
