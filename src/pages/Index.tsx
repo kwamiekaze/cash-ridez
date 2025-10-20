@@ -2,18 +2,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Car, Shield, Users, MapPin, Star, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
 const Index = () => {
   const navigate = useNavigate();
-
-  const trustBadges = [
-    { icon: Shield, label: "ID Verified" },
-    { icon: CheckCircle2, label: "Safe Connections" },
-    { icon: Users, label: "Community-Driven" }
-  ];
-
-  return (
-    <div className="min-h-screen bg-background">
+  const trustBadges = [{
+    icon: Shield,
+    label: "ID Verified"
+  }, {
+    icon: CheckCircle2,
+    label: "Safe Connections"
+  }, {
+    icon: Users,
+    label: "Community-Driven"
+  }];
+  return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4">
@@ -74,20 +75,11 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Button 
-                size="lg" 
-                className="text-lg px-10 py-7 rounded-full shadow-glow"
-                onClick={() => navigate("/rider/create-request")}
-              >
+              <Button size="lg" className="text-lg px-10 py-7 rounded-full shadow-glow" onClick={() => navigate("/rider/create-request")}>
                 <MapPin className="w-5 h-5 mr-2" />
                 Post a Trip
               </Button>
-              <Button 
-                size="lg" 
-                variant="secondary"
-                className="text-lg px-10 py-7 rounded-full"
-                onClick={() => navigate("/trips")}
-              >
+              <Button size="lg" variant="secondary" className="text-lg px-10 py-7 rounded-full" onClick={() => navigate("/trips")}>
                 <Car className="w-5 h-5 mr-2" />
                 Respond to Trips
               </Button>
@@ -95,12 +87,10 @@ const Index = () => {
 
             {/* Trust Badges */}
             <div className="flex flex-wrap items-center justify-center gap-6 mb-8">
-              {trustBadges.map((badge) => (
-                <div key={badge.label} className="flex items-center gap-2 text-sm text-foreground/70">
+              {trustBadges.map(badge => <div key={badge.label} className="flex items-center gap-2 text-sm text-foreground/70">
                   <badge.icon className="w-4 h-4 text-primary" />
                   <span className="font-medium">{badge.label}</span>
-                </div>
-              ))}
+                </div>)}
             </div>
 
             <p className="text-sm text-foreground/50 max-w-2xl mx-auto">
@@ -246,12 +236,7 @@ const Index = () => {
             <p className="text-xl mb-10 opacity-95 font-medium">
               Join thousands of travelers coordinating trips across Georgia and beyond
             </p>
-            <Button 
-              size="lg" 
-              variant="secondary"
-              className="text-lg px-12 py-7 rounded-full shadow-elegant hover:scale-105 transition-transform"
-              onClick={() => navigate("/auth")}
-            >
+            <Button size="lg" variant="secondary" className="text-lg px-12 py-7 rounded-full shadow-elegant hover:scale-105 transition-transform" onClick={() => navigate("/auth")}>
               Sign Up Free
             </Button>
           </Card>
@@ -276,9 +261,7 @@ const Index = () => {
                 </div>
                 <span className="text-xl font-bold">CashRidez</span>
               </div>
-              <p className="text-foreground/60 text-sm leading-relaxed">
-                People-powered travel coordination platform
-              </p>
+              <p className="text-foreground/60 text-sm leading-relaxed">People powered travel coordination platform</p>
             </div>
             <div>
               <h4 className="font-bold mb-4">Platform</h4>
@@ -317,8 +300,6 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
