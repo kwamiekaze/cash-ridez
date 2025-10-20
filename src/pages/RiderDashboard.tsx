@@ -5,19 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppHeader from "@/components/AppHeader";
-import { Car, LogOut, Plus, User, History, MapPin, Clock } from "lucide-react";
+import { Car, LogOut, Plus, User, History, MapPin, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { RatingDisplay } from "@/components/RatingDisplay";
+import { useToast } from "@/hooks/use-toast";
+import TripActionDialog from "@/components/TripActionDialog";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("open");
   const [requests, setRequests] = useState<any[]>([]);
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [action, setAction] = useState<"complete" | "cancel">("complete");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -28,14 +34,14 @@ const RiderDashboard = () => {
 
     const fetchRequests = async () => {
       if (!user) return;
-      // Fetch trips where user is either the rider OR assigned driver
+      // Rider dashboard should ONLY show trips where user is the rider
       const { data } = await supabase
         .from("ride_requests")
         .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
-        .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+        .eq("rider_id", user.id)
         .order("created_at", { ascending: false });
       
-      // Show all trips including completed ones (don't filter out rated trips)
+      // Show all trips including completed ones
       setRequests(data || []);
     };
 
@@ -64,16 +70,44 @@ const RiderDashboard = () => {
     };
   }, [user]);
 
+  const handleCompleteTrip = (trip: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTrip(trip);
+    setAction("complete");
+    setActionDialogOpen(true);
+  };
+
+  const handleCancelTrip = (trip: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTrip(trip);
+    setAction("cancel");
+    setActionDialogOpen(true);
+  };
+
+  const handleSuccess = async () => {
+    if (!user) return;
+    
+    // Refresh the requests list
+    const { data } = await supabase
+      .from("ride_requests")
+      .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
+      .eq("rider_id", user.id)
+      .order("created_at", { ascending: false });
+    
+    setRequests(data || []);
+    setSelectedTrip(null);
+  };
+
   // Refresh requests when navigating back from creating a new one
   useEffect(() => {
     if (location.state?.refreshRequests && user) {
       console.log("Refreshing requests from location state");
       const fetchRequests = async () => {
-        // Fetch trips where user is either the rider OR assigned driver
+        // Rider dashboard should ONLY show trips where user is the rider
         const { data, error } = await supabase
           .from("ride_requests")
           .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
-          .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+          .eq("rider_id", user.id)
           .order("created_at", { ascending: false });
         
         if (error) {
@@ -166,9 +200,9 @@ const RiderDashboard = () => {
               </Card>
             ) : (
               requests.filter(r => r.status === "open").map(request => (
-                <Card key={request.id} className="p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/trip/${request.id}`)}>
+                <Card key={request.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
                       <div className="flex items-center gap-2 mb-2">
                         <StatusBadge status={request.status} />
                         <span className="text-xs text-muted-foreground">
@@ -197,6 +231,16 @@ const RiderDashboard = () => {
                         </p>
                       )}
                     </div>
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => handleCancelTrip(request, e)}
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))
@@ -210,9 +254,9 @@ const RiderDashboard = () => {
               </Card>
             ) : (
               requests.filter(r => r.status === "assigned").map(request => (
-                <Card key={request.id} className="p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/trip/${request.id}`)}>
+                <Card key={request.id} className="p-6 hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
+                    <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
                       <div className="flex items-center gap-2 mb-2">
                         <StatusBadge status={request.status} />
                         {request.assigned_driver && (
@@ -238,6 +282,24 @@ const RiderDashboard = () => {
                           <p className="text-sm">{request.dropoff_address}</p>
                         </div>
                       </div>
+                    </div>
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={(e) => handleCompleteTrip(request, e)}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Complete
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => handleCancelTrip(request, e)}
+                      >
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -394,6 +456,17 @@ const RiderDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {selectedTrip && (
+        <TripActionDialog
+          request={selectedTrip}
+          open={actionDialogOpen}
+          onOpenChange={setActionDialogOpen}
+          action={action}
+          userRole="rider"
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 };

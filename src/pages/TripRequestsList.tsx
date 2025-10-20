@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Search } from "lucide-react";
+import { ArrowLeft, MapPin, Search, CheckCircle, XCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import StatusBadge from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import TripActionDialog from "@/components/TripActionDialog";
 
 export default function TripRequestsList() {
   const navigate = useNavigate();
@@ -25,6 +26,9 @@ export default function TripRequestsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "closest">("newest");
   const [activeTab, setActiveTab] = useState("open");
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [action, setAction] = useState<"complete" | "cancel">("complete");
 
   useEffect(() => {
     fetchTripRequests();
@@ -157,10 +161,49 @@ export default function TripRequestsList() {
     setFilteredRequests(filtered);
   }, [requests, searchQuery, sortBy, activeTab, user]);
 
-  const renderTripCard = (request: any) => (
-    <Card key={request.id} className="p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/trip/${request.id}`)}>
+  const handleCompleteTrip = (trip: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTrip(trip);
+    setAction("complete");
+    setActionDialogOpen(true);
+  };
+
+  const handleCancelTrip = (trip: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTrip(trip);
+    setAction("cancel");
+    setActionDialogOpen(true);
+  };
+
+  const handleSuccess = () => {
+    fetchTripRequests();
+    setSelectedTrip(null);
+  };
+
+  const getUserRole = (request: any): "rider" | "driver" => {
+    return request.rider_id === user?.id ? "rider" : "driver";
+  };
+
+  const canUserActOnTrip = (request: any): boolean => {
+    // Riders can act on their own trips (open or assigned)
+    if (request.rider_id === user?.id && (request.status === "open" || request.status === "assigned")) {
+      return true;
+    }
+    // Drivers can act on trips they're assigned to
+    if (request.assigned_driver_id === user?.id && request.status === "assigned") {
+      return true;
+    }
+    return false;
+  };
+
+  const renderTripCard = (request: any) => {
+    const canAct = canUserActOnTrip(request);
+    const userRole = getUserRole(request);
+    
+    return (
+    <Card key={request.id} className="p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between">
-        <div className="flex-1">
+        <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
           <div className="flex items-center gap-2 mb-2">
             <StatusBadge status={request.status} />
             <span className="text-xs text-muted-foreground">
@@ -217,9 +260,32 @@ export default function TripRequestsList() {
             </p>
           )}
         </div>
+        {canAct && (
+          <div className="flex flex-col gap-2 ml-4">
+            {request.status === "assigned" && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={(e) => handleCompleteTrip(request, e)}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Complete
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => handleCancelTrip(request, e)}
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Cancel
+            </Button>
+          </div>
+        )}
       </div>
     </Card>
   );
+  };
 
   return (
     <div className="min-h-screen bg-background p-4">
@@ -327,6 +393,17 @@ export default function TripRequestsList() {
           </Tabs>
         )}
       </div>
+
+      {selectedTrip && (
+        <TripActionDialog
+          request={selectedTrip}
+          open={actionDialogOpen}
+          onOpenChange={setActionDialogOpen}
+          action={action}
+          userRole={getUserRole(selectedTrip)}
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 }
