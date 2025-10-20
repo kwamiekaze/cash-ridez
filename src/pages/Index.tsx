@@ -29,13 +29,6 @@ const Index = () => {
     }
   ];
 
-  const stats = [
-    { label: "Verified Members", value: "10K+" },
-    { label: "Connections Made", value: "50K+" },
-    { label: "Community Rating", value: "4.8" },
-    { label: "Active Cities", value: "25+" }
-  ];
-
   const trustBadges = [
     { icon: Shield, label: "ID Verified" },
     { icon: CheckCircle2, label: "Safe Connections" },
@@ -141,18 +134,82 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="py-16 bg-white border-y border-border shadow-sm">
+      {/* Why Join CashRidez */}
+      <section className="py-20 bg-white border-y border-border shadow-sm">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
-            {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="text-5xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-                  {stat.value}
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 bg-gradient-primary bg-clip-text text-transparent">
+              Why Join CashRidez?
+            </h2>
+            
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
+                  <CheckCircle2 className="w-7 h-7 text-white" />
                 </div>
-                <div className="text-foreground/60 font-medium">{stat.label}</div>
-              </div>
-            ))}
+                <h3 className="text-2xl font-bold mb-4">No Upfront Cost</h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  Join the CashRidez community for free — no hidden fees or upfront payments. Get started instantly and explore real trip opportunities near you.
+                </p>
+              </Card>
+
+              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
+                  <MapPin className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Request a Trip for Free</h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  Post your pickup and drop-off locations in seconds. It's fast, convenient, and completely free to request a trip.
+                </p>
+              </Card>
+
+              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
+                  <Car className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Accept a Trip for Free</h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  Drivers can view and accept available trip requests at no charge. There's no commission or middleman — just direct, people-powered connections.
+                </p>
+              </Card>
+
+              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
+                  <Shield className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Safe & Trusted Community</h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  Every member is part of a verified network built on safety, respect, and accountability. Your security and trust are our top priorities.
+                </p>
+              </Card>
+
+              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
+                  <Users className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Verified Members Only</h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  All users are verified through our secure system to maintain a reliable and transparent experience for everyone.
+                </p>
+              </Card>
+
+              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
+                  <Star className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold mb-4">Join the Movement</h3>
+                <p className="text-foreground/70 leading-relaxed">
+                  Experience a smarter, community-driven way to travel. CashRidez — Powered by People.
+                </p>
+              </Card>
+            </div>
+
+            <div className="bg-gradient-hero border-2 border-primary/20 rounded-2xl p-8 text-center shadow-elegant">
+              <p className="text-lg font-semibold mb-2 text-foreground">Note:</p>
+              <p className="text-foreground/70 leading-relaxed">
+                Requesting and accepting trips have limited actions for non-subscribed members. After subscribing, all users can make and accept unlimited trips with full access to the CashRidez network.
+              </p>
+            </div>
           </div>
         </div>
       </section>
