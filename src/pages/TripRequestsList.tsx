@@ -46,24 +46,35 @@ export default function TripRequestsList() {
 
   const fetchTripRequests = async () => {
     try {
-      const { data, error } = await supabase
+      // First get the ride requests
+      const { data: rideData, error: rideError } = await supabase
         .from('ride_requests')
-        .select(`
-          *,
-          rider:profiles!ride_requests_rider_id_fkey(
-            display_name,
-            full_name,
-            photo_url,
-            rider_rating_avg,
-            rider_rating_count
-          )
-        `)
+        .select('*')
         .eq('status', 'open')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests(data || []);
-      setFilteredRequests(data || []);
+      if (rideError) throw rideError;
+
+      // Then fetch rider profiles for each request
+      if (rideData && rideData.length > 0) {
+        const riderIds = [...new Set(rideData.map(r => r.rider_id))];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
+          .in('id', riderIds);
+
+        // Merge the data
+        const enrichedData = rideData.map(request => ({
+          ...request,
+          rider: profilesData?.find(p => p.id === request.rider_id)
+        }));
+
+        setRequests(enrichedData);
+        setFilteredRequests(enrichedData);
+      } else {
+        setRequests([]);
+        setFilteredRequests([]);
+      }
     } catch (error: any) {
       toast({
         title: "Error",
