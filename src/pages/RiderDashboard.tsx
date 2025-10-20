@@ -9,6 +9,7 @@ import { Car, LogOut, Plus, User, History, MapPin, Clock } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
+import { RatingDisplay } from "@/components/RatingDisplay";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -30,19 +31,12 @@ const RiderDashboard = () => {
       // Fetch trips where user is either the rider OR assigned driver
       const { data } = await supabase
         .from("ride_requests")
-        .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
+        .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
         .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
       
-      // Filter out completed trips where the current user has already rated
-      const filtered = data?.filter(request => {
-        if (request.status !== 'completed') return true;
-        const isRiderView = request.rider_id === user.id;
-        const hasRated = isRiderView ? request.rider_rating : request.driver_rating;
-        return !hasRated; // Only show completed trips if user hasn't rated yet
-      }) || [];
-      
-      setRequests(filtered);
+      // Show all trips including completed ones (don't filter out rated trips)
+      setRequests(data || []);
     };
 
     fetchProfile();
@@ -78,7 +72,7 @@ const RiderDashboard = () => {
         // Fetch trips where user is either the rider OR assigned driver
         const { data, error } = await supabase
           .from("ride_requests")
-          .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
+          .select("*, assigned_driver:profiles!assigned_driver_id(display_name, driver_rating_avg, driver_rating_count, rider_rating_avg, rider_rating_count, photo_url)")
           .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
           .order("created_at", { ascending: false });
         
@@ -87,15 +81,8 @@ const RiderDashboard = () => {
         } else {
           console.log("Fetched requests:", data);
           
-          // Filter out completed trips where the current user has already rated
-          const filtered = data?.filter(request => {
-            if (request.status !== 'completed') return true;
-            const isRiderView = request.rider_id === user.id;
-            const hasRated = isRiderView ? request.rider_rating : request.driver_rating;
-            return !hasRated; // Only show completed trips if user hasn't rated yet
-          }) || [];
-          
-          setRequests(filtered);
+          // Show all trips including completed ones
+          setRequests(data || []);
         }
       };
       fetchRequests();
@@ -229,9 +216,16 @@ const RiderDashboard = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <StatusBadge status={request.status} />
                         {request.assigned_driver && (
-                          <span className="text-sm text-muted-foreground">
-                            Connected with {request.assigned_driver.display_name}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                              Connected with {request.assigned_driver.display_name}
+                            </span>
+                            <RatingDisplay 
+                              rating={request.assigned_driver.driver_rating_avg || 0}
+                              count={request.assigned_driver.driver_rating_count || 0}
+                              size="sm"
+                            />
+                          </div>
                         )}
                       </div>
                       <div className="space-y-2">
@@ -267,6 +261,16 @@ const RiderDashboard = () => {
                           {format(new Date(request.updated_at), "MMM d, yyyy")}
                         </span>
                       </div>
+                      {request.assigned_driver && (
+                        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                          <span>Driver: {request.assigned_driver.display_name}</span>
+                          <RatingDisplay 
+                            rating={request.assigned_driver.driver_rating_avg || 0}
+                            count={request.assigned_driver.driver_rating_count || 0}
+                            size="sm"
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-success" />
@@ -277,6 +281,18 @@ const RiderDashboard = () => {
                           <p className="text-sm">{request.dropoff_address}</p>
                         </div>
                       </div>
+                      {request.rider_id === user?.id && request.driver_rating && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-muted-foreground">Your rating: </span>
+                          <RatingDisplay rating={request.driver_rating} count={0} size="sm" showCount={false} />
+                        </div>
+                      )}
+                      {request.assigned_driver_id === user?.id && request.rider_rating && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-muted-foreground">Your rating: </span>
+                          <RatingDisplay rating={request.rider_rating} count={0} size="sm" showCount={false} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -338,6 +354,16 @@ const RiderDashboard = () => {
                           {format(new Date(request.updated_at), "MMM d, yyyy")}
                         </span>
                       </div>
+                      {request.assigned_driver && (
+                        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
+                          <span>Driver: {request.assigned_driver.display_name}</span>
+                          <RatingDisplay 
+                            rating={request.assigned_driver.driver_rating_avg || 0}
+                            count={request.assigned_driver.driver_rating_count || 0}
+                            size="sm"
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-success" />
@@ -348,6 +374,18 @@ const RiderDashboard = () => {
                           <p className="text-sm">{request.dropoff_address}</p>
                         </div>
                       </div>
+                      {request.rider_id === user?.id && request.driver_rating && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-muted-foreground">Your rating: </span>
+                          <RatingDisplay rating={request.driver_rating} count={0} size="sm" showCount={false} />
+                        </div>
+                      )}
+                      {request.assigned_driver_id === user?.id && request.rider_rating && (
+                        <div className="mt-2 text-sm">
+                          <span className="text-muted-foreground">Your rating: </span>
+                          <RatingDisplay rating={request.rider_rating} count={0} size="sm" showCount={false} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>

@@ -10,6 +10,8 @@ import StatusBadge from "@/components/StatusBadge";
 import AcceptRideDialog from "@/components/AcceptRideDialog";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { RatingDisplay } from "@/components/RatingDisplay";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
@@ -30,7 +32,7 @@ const DriverDashboard = () => {
     const fetchRequests = async () => {
       let query = supabase
         .from("ride_requests")
-        .select("*, rider:profiles!rider_id(display_name, email)")
+        .select("*, rider:profiles!rider_id(display_name, email, full_name, photo_url, rider_rating_avg, rider_rating_count)")
         .eq("status", "open")
         .order("created_at", { ascending: false });
 
@@ -181,6 +183,27 @@ const DriverDashboard = () => {
                         Requested at {format(new Date(request.created_at), "h:mm a")}
                       </span>
                     </div>
+                    {/* Rider Info */}
+                    {request.rider && (
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={request.rider.photo_url || ""} alt={request.rider.full_name || request.rider.display_name || "Rider"} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {(request.rider.full_name || request.rider.display_name || "U")[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <span className="block font-semibold text-sm">
+                            {request.rider.full_name || request.rider.display_name}
+                          </span>
+                          <RatingDisplay 
+                            rating={request.rider.rider_rating_avg || 0} 
+                            count={request.rider.rider_rating_count || 0}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-start gap-2">
                         <MapPin className="w-4 h-4 mt-1 text-success" />

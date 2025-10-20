@@ -78,37 +78,33 @@ export default function TripRequestsList() {
 
       if (rideError) throw rideError;
 
-      // Fetch rider profiles for each request
-      if (rideData && rideData.length > 0) {
-        const riderIds = [...new Set(rideData.map(r => r.rider_id))];
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
-          .in('id', riderIds);
+        // Fetch profiles for each request (both rider and driver)
+        if (rideData && rideData.length > 0) {
+          const riderIds = [...new Set(rideData.map(r => r.rider_id))];
+          const driverIds = [...new Set(rideData.map(r => r.assigned_driver_id).filter(Boolean))];
+          
+          const { data: riderProfiles } = await supabase
+            .from('profiles')
+            .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
+            .in('id', riderIds);
 
-        // Merge the data
-        const enrichedData = rideData.map(request => ({
-          ...request,
-          rider: profilesData?.find(p => p.id === request.rider_id)
-        }));
+          const { data: driverProfiles } = await supabase
+            .from('profiles')
+            .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
+            .in('id', driverIds);
 
-        // Filter out completed trips where the current user has already rated
-        const filtered = enrichedData.filter(request => {
-          if (request.status !== 'completed') return true;
-          const isRiderView = request.rider_id === user.id;
-          const isDriverView = request.assigned_driver_id === user.id;
-          if (isRiderView) {
-            return !request.rider_rating; // Show if rider hasn't rated
-          } else if (isDriverView) {
-            return !request.driver_rating; // Show if driver hasn't rated
-          }
-          return true; // Show if user made an offer but isn't rider/driver
-        });
+          // Merge the data
+          const enrichedData = rideData.map(request => ({
+            ...request,
+            rider: riderProfiles?.find(p => p.id === request.rider_id),
+            driver: driverProfiles?.find(p => p.id === request.assigned_driver_id)
+          }));
 
-        setRequests(filtered);
-      } else {
-        setRequests([]);
-      }
+          // Show all trips including completed ones
+          setRequests(enrichedData);
+        } else {
+          setRequests([]);
+        }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -189,6 +185,16 @@ export default function TripRequestsList() {
               />
             </div>
           </div>
+          {request.driver && request.status !== 'open' && (
+            <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+              <span>Driver: {request.driver.display_name}</span>
+              <RatingDisplay 
+                rating={request.driver?.driver_rating_avg || 0}
+                count={request.driver?.driver_rating_count || 0}
+                size="sm"
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <div className="flex items-start gap-2">
               <MapPin className="w-4 h-4 mt-1 text-success" />
