@@ -62,15 +62,15 @@ export default function TripRequestsList() {
       
       const offerRideIds = offerData?.map(o => o.ride_request_id) || [];
       
-      // Get all rides where user is assigned driver OR where user made an offer
+      // Get all rides where user is rider, assigned driver, OR where user made an offer
       let query = supabase
         .from('ride_requests')
         .select('*');
       
       if (offerRideIds.length > 0) {
-        query = query.or(`assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
+        query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
       } else {
-        query = query.eq('assigned_driver_id', user.id);
+        query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
       }
       
       const { data: rideData, error: rideError } = await query

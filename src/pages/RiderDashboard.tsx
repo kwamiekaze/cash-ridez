@@ -27,10 +27,11 @@ const RiderDashboard = () => {
 
     const fetchRequests = async () => {
       if (!user) return;
+      // Fetch trips where user is either the rider OR assigned driver
       const { data } = await supabase
         .from("ride_requests")
         .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
-        .eq("rider_id", user.id)
+        .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
       setRequests(data || []);
     };
@@ -47,7 +48,7 @@ const RiderDashboard = () => {
           event: "*",
           schema: "public",
           table: "ride_requests",
-          filter: `rider_id=eq.${user?.id}`,
+          filter: `rider_id=eq.${user?.id}` // Note: realtime only supports single column filters
         },
         () => {
           fetchRequests();
@@ -65,10 +66,11 @@ const RiderDashboard = () => {
     if (location.state?.refreshRequests && user) {
       console.log("Refreshing requests from location state");
       const fetchRequests = async () => {
+        // Fetch trips where user is either the rider OR assigned driver
         const { data, error } = await supabase
           .from("ride_requests")
           .select("*, assigned_driver:profiles!assigned_driver_id(display_name, rider_rating_avg, rider_rating_count)")
-          .eq("rider_id", user.id)
+          .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
           .order("created_at", { ascending: false });
         
         if (error) {
