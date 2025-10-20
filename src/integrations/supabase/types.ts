@@ -404,6 +404,10 @@ export type Database = {
         Args: { p_driver_id: string; p_eta_minutes: number; p_ride_id: string }
         Returns: Json
       }
+      check_active_ride: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -79,6 +79,21 @@ const CreateRideRequest = () => {
     setIsSubmitting(true);
 
     try {
+      // Check for active trips
+      const { data: activeTrips, error: activeError } = await supabase
+        .from("ride_requests")
+        .select("id")
+        .or(`rider_id.eq.${user?.id},assigned_driver_id.eq.${user?.id}`)
+        .in("status", ["open", "assigned"]);
+
+      if (activeError) throw activeError;
+
+      if (activeTrips && activeTrips.length > 0) {
+        toast.error("You already have an active trip. Please complete or cancel it before creating a new one.");
+        setIsSubmitting(false);
+        return;
+      }
+
       // Validate form data
       const validationResult = rideRequestSchema.safeParse(formData);
       if (!validationResult.success) {

@@ -6,12 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, MessageSquare, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, MessageSquare, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { RatingDialog } from "@/components/RatingDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import TripActionDialog from "@/components/TripActionDialog";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,8 @@ export default function TripDetails() {
   const [driverProfile, setDriverProfile] = useState<any>(null);
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
   const [priceAgreed, setPriceAgreed] = useState(false);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionType, setActionType] = useState<"complete" | "cancel">("complete");
 
   useEffect(() => {
     fetchTripData();
@@ -489,24 +492,73 @@ export default function TripDetails() {
             
             {/* Actions for assigned trips */}
             {request.status === 'assigned' && priceAgreed && (
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                  onClick={() => navigate(`/chat/${id}`)}
-                  className="flex-1"
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Open Chat
-                </Button>
-                {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && (
+              <>
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
-                    onClick={() => setShowRatingDialog(true)}
-                    variant="outline"
+                    onClick={() => navigate(`/chat/${id}`)}
                     className="flex-1"
                   >
-                    Rate {isRider ? 'Driver' : 'Rider'}
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Open Chat
                   </Button>
+                  {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && (
+                    <Button 
+                      onClick={() => setShowRatingDialog(true)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Rate {isRider ? 'Driver' : 'Rider'}
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Completion status */}
+                {(request.rider_completed || request.driver_completed) && (
+                  <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                    <p className="text-sm font-medium text-primary mb-1">Completion Status</p>
+                    <div className="flex gap-4 text-xs">
+                      <span className={request.rider_completed ? "text-green-600" : "text-muted-foreground"}>
+                        Rider: {request.rider_completed ? "✓ Confirmed" : "Pending"}
+                      </span>
+                      <span className={request.driver_completed ? "text-green-600" : "text-muted-foreground"}>
+                        Driver: {request.driver_completed ? "✓ Confirmed" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
                 )}
-              </div>
+                
+                {/* Complete/Cancel buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                  <Button
+                    onClick={() => {
+                      setActionType("complete");
+                      setActionDialogOpen(true);
+                    }}
+                    variant="default"
+                    className="flex-1 bg-gradient-primary"
+                    disabled={
+                      (isRider && request.rider_completed) || 
+                      (!isRider && request.driver_completed)
+                    }
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {(isRider && request.rider_completed) || (!isRider && request.driver_completed) 
+                      ? "Marked Complete" 
+                      : "Mark Complete"}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setActionType("cancel");
+                      setActionDialogOpen(true);
+                    }}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Trip
+                  </Button>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -517,6 +569,20 @@ export default function TripDetails() {
           onSubmit={handleRatingSubmit}
           title={`Rate ${isRider ? 'Driver' : 'Rider'}`}
           description="Please rate your experience with this trip"
+        />
+
+        <TripActionDialog
+          request={request}
+          open={actionDialogOpen}
+          onOpenChange={setActionDialogOpen}
+          action={actionType}
+          userRole={isRider ? "rider" : "driver"}
+          onSuccess={() => {
+            fetchTripData();
+            if (actionType === "complete" || actionType === "cancel") {
+              navigate(isRider ? "/rider" : "/driver");
+            }
+          }}
         />
 
         {/* Offers Section */}

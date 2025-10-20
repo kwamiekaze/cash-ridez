@@ -25,11 +25,6 @@ const DriverDashboard = () => {
     const fetchProfile = async () => {
       const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
       setProfile(data);
-      
-      // Redirect if not verified
-      if (data && !data.is_verified) {
-        navigate("/dashboard");
-      }
     };
 
     const fetchRequests = async () => {
@@ -118,7 +113,7 @@ const DriverDashboard = () => {
             size="lg"
             className="h-20 text-lg bg-gradient-primary"
             onClick={() => navigate("/rider/create-request")}
-            disabled={!profile?.is_verified}
+            disabled={!(profile?.is_verified || profile?.verification_status === "approved")}
           >
             <Plus className="w-6 h-6 mr-2" />
             Post Trip Request
@@ -204,18 +199,17 @@ const DriverDashboard = () => {
                         </div>
                       </div>
                     </div>
-                    {request.rider_note && (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Note: {request.rider_note}
-                      </p>
-                    )}
                     {request.price_offer && (
                       <p className="text-lg font-semibold text-primary">
                         Offered: ${request.price_offer}
                       </p>
                     )}
                   </div>
-                  <Button className="bg-gradient-primary" disabled={!profile?.is_verified} onClick={() => handleAcceptClick(request)}>
+                  <Button 
+                    className="bg-gradient-primary" 
+                    disabled={!(profile?.is_verified || profile?.verification_status === "approved")} 
+                    onClick={() => handleAcceptClick(request)}
+                  >
                     Connect
                   </Button>
                 </div>

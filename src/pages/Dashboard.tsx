@@ -42,11 +42,8 @@ const Dashboard = () => {
 
       if (isAdmin) {
         navigate("/admin");
-      } else if (profile.is_driver && !profile.is_rider) {
-        navigate("/trips");
-      } else if (profile.is_rider && !profile.is_driver) {
-        navigate("/rider");
       } else {
+        // All verified users go to unified dashboard
         navigate("/rider");
       }
 

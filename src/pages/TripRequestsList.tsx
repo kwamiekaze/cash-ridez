@@ -171,11 +171,6 @@ export default function TripRequestsList() {
                       <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
                     </div>
                   </div>
-                  {request.rider_note && (
-                    <div className="pt-2 border-t">
-                      <p className="text-sm break-words"><span className="font-medium">Note:</span> {request.rider_note}</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             ))}
