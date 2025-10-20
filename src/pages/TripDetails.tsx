@@ -942,7 +942,8 @@ export default function TripDetails() {
                     onClick={async () => {
                       setSubmitting(true);
                       try {
-                        const { error } = await supabase
+                        // Record acceptance as a driver offer (for history/visibility)
+                        await supabase
                           .from('counter_offers')
                           .insert({
                             ride_request_id: id,
@@ -952,19 +953,32 @@ export default function TripDetails() {
                             role: 'driver'
                           });
 
-                        if (error) throw error;
+                        // Atomically assign the ride so others can no longer see/offer
+                        const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-ride', {
+                          body: {
+                            rideId: id,
+                            driverId: currentUserId,
+                            etaMinutes: 0,
+                            skipEtaCheck: true,
+                          },
+                        });
+
+                        if (acceptError || !acceptData?.success) {
+                          throw new Error(acceptData?.error || acceptData?.message || 'Failed to accept offer');
+                        }
 
                         toast({
-                          title: "Success",
-                          description: "You accepted the rider's offer!",
+                          title: 'Offer Accepted',
+                          description: 'Trip assigned to you. Contact details are now visible.',
                         });
-                        setCounterAmount("");
+                        setCounterAmount('');
+                        await fetchTripData();
                         fetchOffers();
                       } catch (error: any) {
                         toast({
-                          title: "Error",
+                          title: 'Error',
                           description: error.message,
-                          variant: "destructive",
+                          variant: 'destructive',
                         });
                       } finally {
                         setSubmitting(false);
