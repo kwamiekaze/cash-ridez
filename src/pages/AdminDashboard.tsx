@@ -6,15 +6,18 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Car, LogOut, Users, CheckCircle, XCircle, Shield } from "lucide-react";
+import { Car, LogOut, Users, CheckCircle, XCircle, Shield, Loader2 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { toast } from "sonner";
 import { UserManagementTable } from "@/components/UserManagementTable";
 import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { AdminRidesManagement } from "@/components/AdminRidesManagement";
+import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
   const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
     verifiedUsers: 0,
@@ -29,7 +32,43 @@ const AdminDashboard = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectUserId, setRejectUserId] = useState<string | null>(null);
   const [adminProfile, setAdminProfile] = useState<{ display_name?: string } | null>(null);
+
+  // Check admin role on component mount
   useEffect(() => {
+    const checkAdminRole = async () => {
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+
+        if (error || !data) {
+          console.error("Unauthorized access attempt to admin panel");
+          toast.error("Access denied. Admin privileges required.");
+          navigate("/dashboard");
+          return;
+        }
+
+        setIsAdmin(true);
+      } catch (error) {
+        console.error("Error checking admin role:", error);
+        toast.error("Access denied.");
+        navigate("/dashboard");
+      }
+    };
+
+    checkAdminRole();
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (isAdmin === null) return; // Wait for admin check to complete
     const fetchStats = async () => {
       const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true });
       const { count: verifiedUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_verified", true);
@@ -77,7 +116,21 @@ const AdminDashboard = () => {
     fetchPendingUsers();
     fetchAllUsers();
     fetchAdmin();
-  }, [user]);
+  }, [user, isAdmin]);
+
+  // Show loading while checking admin status
+  if (isAdmin === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // This should never render if not admin, but just in case
+  if (!isAdmin) {
+    return null;
+  }
 
   const handleViewUser = (userId: string) => {
     setSelectedUserId(userId);
