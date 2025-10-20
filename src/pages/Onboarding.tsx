@@ -120,6 +120,10 @@ const Onboarding = () => {
       }
 
       toast.success("Profile submitted for verification!");
+      toast.info(
+        "Please update your Full Name, Contact Information, and Emergency Contact on your profile to help cashridez.com staff and connected users coordinate with you safely.",
+        { duration: 8000 }
+      );
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error:", error);
@@ -233,6 +237,25 @@ const Onboarding = () => {
                       Need to update your submission? You can resubmit below.
                     </p>
                   </div>
+                  <Button
+                    variant="outline"
+                    className="w-full mt-4"
+                    onClick={() => navigate("/profile")}
+                  >
+                    Complete Your Profile
+                  </Button>
+                </div>
+              </Card>
+
+              <Card className="p-6 bg-primary/5 border-primary mt-6">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-foreground">Complete Your Profile</h3>
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    While your ID is being reviewed, please take a moment to update your <span className="font-medium">Full Name</span>, <span className="font-medium">Contact Information</span>, and <span className="font-medium">Emergency Contact</span> on your profile. This information helps cashridez.com staff and your future connected drivers and riders coordinate with you efficiently and safely.
+                  </p>
+                  <p className="text-xs text-muted-foreground pt-2">
+                    Your personal information is securely stored and only shared with verified users you connect with through trip assignments.
+                  </p>
                 </div>
               </Card>
               
