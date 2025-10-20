@@ -49,18 +49,16 @@ const TripActionDialog = ({
         updates.status = "completed";
         updates[userRole === "rider" ? "rider_completed" : "driver_completed"] = true;
 
-        // Reset active ride for BOTH rider and driver so they can immediately take new trips
-        if (request.assigned_driver_id) {
+        // Get current user ID from auth
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Only reset active ride for the CURRENT user (we don't have permission to update other user's profile)
+        if (user?.id) {
           await supabase
             .from("profiles")
             .update({ active_assigned_ride_id: null })
-            .eq("id", request.assigned_driver_id);
+            .eq("id", user.id);
         }
-        
-        await supabase
-          .from("profiles")
-          .update({ active_assigned_ride_id: null })
-          .eq("id", request.rider_id);
 
         const { error } = await supabase
           .from("ride_requests")
@@ -77,12 +75,15 @@ const TripActionDialog = ({
         updates[userRole === "rider" ? "cancel_reason_rider" : "cancel_reason_driver"] = reason;
         updates.cancelled_by = userRole;
 
-        // Reset active ride for driver
-        if (request.assigned_driver_id) {
+        // Get current user ID from auth
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Only reset active ride for the CURRENT user (we don't have permission to update other user's profile)
+        if (user?.id) {
           await supabase
             .from("profiles")
             .update({ active_assigned_ride_id: null })
-            .eq("id", request.assigned_driver_id);
+            .eq("id", user.id);
         }
 
         const { error } = await supabase
