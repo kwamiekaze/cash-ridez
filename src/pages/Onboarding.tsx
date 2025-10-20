@@ -125,6 +125,7 @@ const Onboarding = () => {
             displayName: profileData?.display_name || user?.email,
             isRider,
             isDriver,
+            filePath, // include storage path so backend can create a signed URL for admins
           },
         });
       } catch (emailError) {

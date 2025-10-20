@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Car, LogOut, Users, CheckCircle, XCircle, Shield } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { toast } from "sonner";
@@ -12,7 +14,7 @@ import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { AdminRidesManagement } from "@/components/AdminRidesManagement";
 
 const AdminDashboard = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [stats, setStats] = useState({
     totalUsers: 0,
     verifiedUsers: 0,
@@ -23,7 +25,10 @@ const AdminDashboard = () => {
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
-
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectUserId, setRejectUserId] = useState<string | null>(null);
+  const [adminProfile, setAdminProfile] = useState<{ display_name?: string } | null>(null);
   useEffect(() => {
     const fetchStats = async () => {
       const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true });
@@ -58,10 +63,21 @@ const AdminDashboard = () => {
       setAllUsers(data || []);
     };
 
+    const fetchAdmin = async () => {
+      if (!user?.id) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single();
+      setAdminProfile(data || null);
+    };
+
     fetchStats();
     fetchPendingUsers();
     fetchAllUsers();
-  }, []);
+    fetchAdmin();
+  }, [user]);
 
   const handleViewUser = (userId: string) => {
     setSelectedUserId(userId);
@@ -81,9 +97,9 @@ const AdminDashboard = () => {
     fetchAllUsers();
   };
 
-  const handleVerification = async (userId: string, approved: boolean) => {
-    const user = pendingUsers.find((u) => u.id === userId);
-    if (!user) return;
+  const handleVerification = async (userId: string, approved: boolean, reason?: string) => {
+    const userToUpdate = pendingUsers.find((u) => u.id === userId) || allUsers.find((u) => u.id === userId);
+    if (!userToUpdate) return;
 
     const { error } = await supabase
       .from("profiles")
@@ -91,6 +107,8 @@ const AdminDashboard = () => {
         verification_status: approved ? "approved" : "rejected",
         is_verified: approved,
         verification_reviewed_at: new Date().toISOString(),
+        verification_reviewer_id: user?.id || null,
+        verification_notes: approved ? null : (reason || null),
       })
       .eq("id", userId);
 
@@ -103,9 +121,11 @@ const AdminDashboard = () => {
     try {
       await supabase.functions.invoke("send-status-notification", {
         body: {
-          userEmail: user.email,
-          displayName: user.display_name || user.email,
+          userEmail: userToUpdate.email,
+          displayName: userToUpdate.display_name || userToUpdate.email,
           status: approved ? "approved" : "rejected",
+          adminDisplayName: adminProfile?.display_name,
+          reason: approved ? undefined : reason,
         },
       });
     } catch (emailError) {
@@ -115,6 +135,12 @@ const AdminDashboard = () => {
 
     toast.success(`User ${approved ? "approved" : "rejected"}`);
     setPendingUsers(pendingUsers.filter((u) => u.id !== userId));
+    // Refresh all users
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setAllUsers(data || []);
   };
 
   return (
@@ -297,6 +323,34 @@ const AdminDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Verification</DialogTitle>
+          </DialogHeader>
+          <Textarea
+            placeholder="Add a reason for rejection (optional)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (!rejectUserId) return;
+                handleVerification(rejectUserId, false, rejectReason);
+                setRejectDialogOpen(false);
+                setRejectUserId(null);
+                setRejectReason("");
+              }}
+            >
+              Reject
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <UserDetailDialog
         userId={selectedUserId}
