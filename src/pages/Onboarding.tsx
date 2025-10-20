@@ -207,7 +207,6 @@ const Onboarding = () => {
 
         <div className="space-y-6">
           <div>
-            <h2 className="text-xl font-semibold mb-4">Choose Your Role(s)</h2>
             {profile?.verification_status && profile.verification_status !== 'none' ? (
               <div className="mb-4 p-3 bg-muted rounded-lg">
                 <p className="text-sm text-muted-foreground">
@@ -481,7 +480,7 @@ const Onboarding = () => {
               onClick={handleSubmit}
               disabled={uploading || !idFile}
             >
-              {uploading ? "Submitting..." : profile?.verification_status === "pending" || profile?.verification_status === "rejected" ? "Resubmit for Verification" : "Submit for Verification"}
+              {uploading ? "Submitting..." : profile?.id_image_url ? "Resubmit for Verification" : "Submit for Verification"}
             </Button>
           )}
         </div>
