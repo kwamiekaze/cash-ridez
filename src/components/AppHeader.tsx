@@ -1,9 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Car, LogOut, User, History } from "lucide-react";
+import { Car, LogOut, User, History, HeadphonesIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import SupportDialog from "@/components/SupportDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
+  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -80,6 +82,11 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
                   History
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
+                  <HeadphonesIcon className="mr-2 h-4 w-4" />
+                  Support
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
@@ -89,6 +96,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
           </div>
         </div>
       </div>
+      <SupportDialog open={supportDialogOpen} onOpenChange={setSupportDialogOpen} />
     </header>
   );
 };

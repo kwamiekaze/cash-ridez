@@ -804,15 +804,6 @@ export default function TripDetails() {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="message">Message (Optional)</Label>
-                  <Textarea
-                    id="message"
-                    placeholder="Add a message to your offer..."
-                    value={counterMessage}
-                    onChange={(e) => setCounterMessage(e.target.value)}
-                  />
-                </div>
                 <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? "Submitting..." : "Submit Offer"}
                 </Button>
@@ -856,17 +847,7 @@ export default function TripDetails() {
                     onChange={(e) => setCounterAmount(e.target.value)}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="counter-message">Message (Optional)</Label>
-                  <Textarea
-                    id="counter-message"
-                    placeholder="Explain your counter offer"
-                    value={counterMessage}
-                    onChange={(e) => setCounterMessage(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <Button 
+                <Button
                   onClick={() => {
                     const pendingOffer = offers.find(o => o.status === 'pending');
                     if (pendingOffer) handleCounterOffer(pendingOffer.id);
