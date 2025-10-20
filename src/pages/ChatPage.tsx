@@ -82,7 +82,7 @@ export default function ChatPage() {
         .from('ride_messages')
         .select(`
           *,
-          sender:profiles(display_name, email)
+          sender:profiles!ride_messages_sender_id_fkey(display_name, email)
         `)
         .eq('ride_request_id', id)
         .order('created_at', { ascending: true });
