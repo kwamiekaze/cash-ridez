@@ -314,7 +314,7 @@ const Profile = () => {
 
             {/* Full Name */}
             <div className="space-y-2">
-              <Label htmlFor="full_name">Full Name</Label>
+              <Label htmlFor="full_name">Full Name (Legal Full Name)</Label>
               <Input
                 id="full_name"
                 value={profile.full_name}
@@ -356,6 +356,9 @@ const Profile = () => {
                 placeholder="Tell us a bit about yourself"
                 rows={4}
               />
+              <p className="text-sm text-muted-foreground mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                <strong className="text-destructive">Warning:</strong> Do not include contact information (phone numbers, email, social media handles, etc.) in your bio. Sharing contact information may result in account suspension. Multiple violations may result in account termination.
+              </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={loading}>
