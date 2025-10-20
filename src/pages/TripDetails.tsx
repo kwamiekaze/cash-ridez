@@ -483,7 +483,7 @@ export default function TripDetails() {
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">
-                      Driver: {driverProfile.full_name || driverProfile.display_name || 'Anonymous'}
+                      Assigned to: {driverProfile.full_name || driverProfile.display_name || 'Anonymous'}
                     </p>
                     {driverProfile.driver_rating_count > 0 && (
                       <RatingDisplay 
