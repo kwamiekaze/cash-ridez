@@ -33,6 +33,7 @@ export default function TripDetails() {
   const [priceAgreed, setPriceAgreed] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"complete" | "cancel">("complete");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchTripData();
@@ -63,6 +64,16 @@ export default function TripDetails() {
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
+    
+    // Check if user is admin
+    if (user?.id) {
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin');
+      setIsAdmin(roles && roles.length > 0);
+    }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -565,6 +576,85 @@ export default function TripDetails() {
                   </Button>
                 </div>
               </>
+            )}
+            
+            {/* Admin Actions */}
+            {isAdmin && request.status === 'assigned' && (
+              <div className="pt-4 border-t space-y-2">
+                <p className="text-sm font-medium text-primary">Admin Actions</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('ride_requests')
+                          .update({ status: 'completed' })
+                          .eq('id', id);
+                        
+                        if (error) throw error;
+                        
+                        toast({
+                          title: "Success",
+                          description: "Trip marked as completed",
+                        });
+                        fetchTripData();
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message,
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    variant="default"
+                    className="flex-1"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Complete Trip
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase
+                          .from('ride_requests')
+                          .update({ 
+                            status: 'cancelled',
+                            cancelled_by: 'admin',
+                            cancelled_at: new Date().toISOString()
+                          })
+                          .eq('id', id);
+                        
+                        if (error) throw error;
+                        
+                        // Clear driver's active ride
+                        if (request.assigned_driver_id) {
+                          await supabase
+                            .from('profiles')
+                            .update({ active_assigned_ride_id: null })
+                            .eq('id', request.assigned_driver_id);
+                        }
+                        
+                        toast({
+                          title: "Success",
+                          description: "Trip cancelled by admin",
+                        });
+                        fetchTripData();
+                      } catch (error: any) {
+                        toast({
+                          title: "Error",
+                          description: error.message,
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Trip
+                  </Button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
