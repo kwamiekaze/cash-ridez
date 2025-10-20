@@ -57,16 +57,27 @@ export default function ChatPage() {
     try {
       const { data, error } = await supabase
         .from('ride_requests')
-        .select(`
-          *,
-          rider:profiles!ride_requests_rider_id_fkey(display_name, email),
-          driver:profiles!ride_requests_assigned_driver_id_fkey(display_name, email)
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
       if (error) throw error;
-      setTripInfo(data);
+      
+      // Fetch rider and driver profiles separately
+      if (data) {
+        const [riderProfile, driverProfile] = await Promise.all([
+          supabase.from('profiles').select('display_name, email').eq('id', data.rider_id).single(),
+          data.assigned_driver_id 
+            ? supabase.from('profiles').select('display_name, email').eq('id', data.assigned_driver_id).single()
+            : Promise.resolve({ data: null })
+        ]);
+        
+        setTripInfo({
+          ...data,
+          rider: riderProfile.data,
+          driver: driverProfile.data
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -80,15 +91,31 @@ export default function ChatPage() {
     try {
       const { data, error } = await supabase
         .from('ride_messages')
-        .select(`
-          *,
-          sender:profiles!ride_messages_sender_id_fkey(display_name, email)
-        `)
+        .select('*')
         .eq('ride_request_id', id)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      
+      // Fetch sender profiles separately
+      if (data && data.length > 0) {
+        const senderIds = [...new Set(data.map(msg => msg.sender_id))];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name, email')
+          .in('id', senderIds);
+        
+        const profileMap = new Map(profiles?.map(p => [p.id, p]));
+        const messagesWithSenders = data.map(msg => ({
+          ...msg,
+          sender: profileMap.get(msg.sender_id)
+        }));
+        
+        setMessages(messagesWithSenders);
+      } else {
+        setMessages(data || []);
+      }
+      
       scrollToBottom();
     } catch (error: any) {
       toast({
@@ -176,7 +203,7 @@ export default function ChatPage() {
                   <div className="flex gap-2">
                     <span className="text-primary font-semibold">Safety Reminder:</span>
                     <p className="text-muted-foreground">
-                      Never send money to drivers before meeting in person. All payments should be handled face-to-face after the trip is complete.
+                      Never send money to drivers before meeting in person. All payments should be handled face-to-face.
                     </p>
                   </div>
                 )}
