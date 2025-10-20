@@ -29,8 +29,6 @@ export default function TripDetails() {
   const [showRatingDialog, setShowRatingDialog] = useState(false);
   const [riderProfile, setRiderProfile] = useState<any>(null);
   const [driverProfile, setDriverProfile] = useState<any>(null);
-  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
-  const [priceAgreed, setPriceAgreed] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [actionType, setActionType] = useState<"complete" | "cancel">("complete");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -76,29 +74,6 @@ export default function TripDetails() {
     }
   };
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 3959; // Earth radius in miles
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  const calculatePrice = (tripData: any) => {
-    const distance = calculateDistance(
-      tripData.pickup_lat,
-      tripData.pickup_lng,
-      tripData.dropoff_lat,
-      tripData.dropoff_lng
-    );
-    const baseFare = 5;
-    const ratePerMile = 2;
-    return Math.round((baseFare + (distance * ratePerMile)) * 100) / 100;
-  };
-
   const fetchTripData = async () => {
     try {
       const { data: tripData, error: tripError } = await supabase
@@ -109,13 +84,6 @@ export default function TripDetails() {
 
       if (tripError) throw tripError;
       setRequest(tripData);
-
-      // Calculate estimated price
-      const estimated = calculatePrice(tripData);
-      setCalculatedPrice(estimated);
-
-      // Check if price is agreed (status is assigned means offer was accepted)
-      setPriceAgreed(tripData.status === 'assigned');
 
       const { data: { user } } = await supabase.auth.getUser();
       setIsRider(tripData.rider_id === user?.id);
@@ -232,8 +200,6 @@ export default function TripDetails() {
           .eq('id', id);
 
         if (rideError) throw rideError;
-
-        setPriceAgreed(true);
 
         // Send email notification to the person whose offer was accepted
         const { data: senderProfile } = await supabase
@@ -431,20 +397,6 @@ export default function TripDetails() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Calculated Price Banner */}
-            <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Calculated Trip Price</p>
-                  <p className="text-3xl font-bold text-primary">${calculatedPrice.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Based on distance and base fare</p>
-                </div>
-                {priceAgreed && (
-                  <Badge variant="default" className="bg-green-500">Price Agreed ✓</Badge>
-                )}
-              </div>
-            </div>
-
             {/* Rider Info */}
             {riderProfile && (
               <div className="p-3 bg-muted/50 rounded-lg">
@@ -468,7 +420,7 @@ export default function TripDetails() {
                     )}
                   </div>
                 </div>
-                {priceAgreed && request.assigned_driver_id === currentUserId && (
+                {request.status === 'assigned' && request.assigned_driver_id === currentUserId && (
                   <div className="text-xs text-muted-foreground space-y-1">
                     {riderProfile.email && <p>Email: {riderProfile.email}</p>}
                     {riderProfile.phone_number && <p>Phone: {riderProfile.phone_number}</p>}
@@ -500,7 +452,7 @@ export default function TripDetails() {
                     )}
                   </div>
                 </div>
-                {priceAgreed && request.rider_id === currentUserId && (
+                {request.status === 'assigned' && request.rider_id === currentUserId && (
                   <div className="text-xs text-muted-foreground space-y-1">
                     {driverProfile.email && <p>Email: {driverProfile.email}</p>}
                     {driverProfile.phone_number && <p>Phone: {driverProfile.phone_number}</p>}
@@ -538,20 +490,20 @@ export default function TripDetails() {
                 <p className="text-2xl font-bold text-primary">${request.price_offer}</p>
               </div>
             )}
-            {request.rider_note && priceAgreed && (
+            {request.rider_note && request.status === 'assigned' && (
               <div className="pt-2 border-t">
                 <p className="font-medium">Contact & Emergency Info</p>
                 <p className="text-sm text-muted-foreground break-words whitespace-pre-wrap">{request.rider_note}</p>
               </div>
             )}
-            {request.rider_note && !priceAgreed && (
+            {request.rider_note && request.status !== 'assigned' && (
               <div className="pt-2 border-t">
                 <p className="text-sm text-muted-foreground italic">Contact information will be visible after price agreement</p>
               </div>
             )}
             
             {/* Actions for assigned trips */}
-            {request.status === 'assigned' && priceAgreed && (
+            {request.status === 'assigned' && (
               <>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Button 
@@ -767,14 +719,9 @@ export default function TripDetails() {
                             offer.status === 'rejected' ? 'destructive' : 
                             'secondary'
                           }>
-                            {offer.status}
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {offer.amount > calculatedPrice ? `+$${(offer.amount - calculatedPrice).toFixed(2)}` : 
-                             offer.amount < calculatedPrice ? `-$${(calculatedPrice - offer.amount).toFixed(2)}` : 
-                             'Matches calculated'}
-                          </p>
-                        </div>
+                          {offer.status}
+                        </Badge>
+                      </div>
                       </div>
                       {offer.message && (
                         <p className="text-sm mb-3">{offer.message}</p>
@@ -833,30 +780,18 @@ export default function TripDetails() {
             <CardHeader>
               <CardTitle>Make an Offer</CardTitle>
               <CardDescription>
-                Calculated price: ${calculatedPrice.toFixed(2)} - You can accept this or make a different offer
+                Enter your price offer for this trip
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmitOffer} className="space-y-4">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setCounterAmount(calculatedPrice.toString());
-                      setCounterMessage("Accepting the calculated price");
-                    }}
-                  >
-                    Accept ${calculatedPrice.toFixed(2)}
-                  </Button>
-                </div>
                 <div>
                   <Label htmlFor="amount">Your Offer Amount ($)</Label>
-                  <Input
+                  <Input 
                     id="amount"
                     type="number"
                     step="0.01"
-                    placeholder={calculatedPrice.toFixed(2)}
+                    placeholder="Enter your offer amount"
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(e.target.value)}
                     required
@@ -876,31 +811,19 @@ export default function TripDetails() {
             <CardHeader>
               <CardTitle>Make a Counter Offer</CardTitle>
               <CardDescription>
-                Calculated price: ${calculatedPrice.toFixed(2)} - Propose a different price or accept a driver's offer above
+                Review the offers above or propose a different price
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setCounterAmount(calculatedPrice.toString());
-                      setCounterMessage("Accepting the calculated price");
-                    }}
-                  >
-                    Use Calculated ${calculatedPrice.toFixed(2)}
-                  </Button>
-                </div>
                 <div>
                   <Label htmlFor="counter-amount">Counter Offer Amount ($)</Label>
-                  <Input
+                  <Input 
                     id="counter-amount"
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder={calculatedPrice.toFixed(2)}
+                    placeholder="Enter your counter offer"
                     value={counterAmount}
                     onChange={(e) => setCounterAmount(e.target.value)}
                   />
