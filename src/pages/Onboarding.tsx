@@ -306,7 +306,7 @@ const Onboarding = () => {
                 </div>
               </Card>
             </div>
-          ) : profile?.verification_status === "pending" ? (
+          ) : profile?.verification_status === "pending" && profile?.id_image_url ? (
             <div>
               <h2 className="text-xl font-semibold mb-4">Verification Status</h2>
               <Card className="p-6 border-warning bg-warning/5">
@@ -415,7 +415,31 @@ const Onboarding = () => {
             </div>
           ) : (
             <div>
-              <h2 className="text-xl font-semibold mb-4">Upload ID for Verification</h2>
+              <h2 className="text-xl font-semibold mb-4">Account Verification Required</h2>
+              <Card className="p-6 bg-primary/5 border-primary mb-6">
+                <div className="space-y-3">
+                  <p className="text-foreground/90 leading-relaxed">
+                    To ensure the safety and trustworthiness of our community, we require all users to verify their identity. 
+                    Please upload a clear photo of your <span className="font-semibold">unexpired driver's license, state ID card, or permit</span>.
+                  </p>
+                  <div className="pt-2 space-y-2 text-sm text-foreground/70">
+                    <p className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+                      <span>Your ID will only be shared with cashridez.com staff for verification purposes</span>
+                    </p>
+                    <p className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+                      <span>Your ID will never be displayed publicly or shared with other users</span>
+                    </p>
+                    <p className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 mt-0.5 text-primary flex-shrink-0" />
+                      <span>This verification process helps us maintain a safe and trustworthy community</span>
+                    </p>
+                  </div>
+                </div>
+              </Card>
+              
+              <h2 className="text-xl font-semibold mb-4">Upload Your ID</h2>
               <Card className="p-6">
                 <Label htmlFor="id-upload" className="cursor-pointer">
                   <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
