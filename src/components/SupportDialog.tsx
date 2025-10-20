@@ -22,8 +22,22 @@ export default function SupportDialog({ open, onOpenChange }: SupportDialogProps
     message: ""
   });
 
+  const isFormValid = formData.fullName.trim() !== "" && 
+                      formData.email.trim() !== "" && 
+                      formData.message.trim() !== "";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isFormValid) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill out all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -135,7 +149,7 @@ export default function SupportDialog({ open, onOpenChange }: SupportDialogProps
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting} className="flex-1">
+            <Button type="submit" disabled={submitting || !isFormValid} className="flex-1">
               {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Submit
             </Button>

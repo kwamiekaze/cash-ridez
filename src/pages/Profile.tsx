@@ -152,6 +152,16 @@ const Profile = () => {
     e.preventDefault();
     if (!user) return;
 
+    // Validate full name doesn't contain numbers
+    if (profile.full_name && /\d/.test(profile.full_name)) {
+      toast({
+        title: "Invalid Name",
+        description: "Full name cannot contain numbers",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase
@@ -319,9 +329,16 @@ const Profile = () => {
               <Input
                 id="full_name"
                 value={profile.full_name}
-                onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Prevent typing numbers
+                  if (!/\d/.test(value)) {
+                    setProfile({ ...profile, full_name: value });
+                  }
+                }}
                 placeholder="Enter your full name"
               />
+              <p className="text-xs text-muted-foreground">Letters and spaces only, no numbers allowed</p>
             </div>
 
             {/* Email (read-only) */}

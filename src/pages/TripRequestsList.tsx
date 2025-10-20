@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MapPin, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -150,7 +151,12 @@ export default function TripRequestsList() {
                 <CardHeader>
                   <CardTitle className="flex items-start justify-between flex-wrap gap-2">
                     <span>Trip Request</span>
-                    <span className="text-lg font-bold text-primary">${request.price_offer}</span>
+                    <div className="flex items-center gap-2">
+                      {request.status === 'assigned' && (
+                        <Badge variant="default" className="bg-green-500">Accepted</Badge>
+                      )}
+                      <span className="text-lg font-bold text-primary">${request.price_offer}</span>
+                    </div>
                   </CardTitle>
                   <CardDescription>
                     Posted {new Date(request.created_at).toLocaleDateString()} | Pickup: {new Date(request.pickup_time).toLocaleString()}

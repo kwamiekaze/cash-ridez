@@ -164,10 +164,10 @@ export default function TripDetails() {
         .from('counter_offers')
         .select(`
           *,
-          profiles:by_user_id (display_name, email)
+          profiles:by_user_id (display_name, full_name, email)
         `)
         .eq('ride_request_id', id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
 
       if (error) throw error;
       setOffers(data || []);
@@ -221,7 +221,7 @@ export default function TripDetails() {
 
       if (error) throw error;
 
-      // If accepted, update ride request with assigned driver
+      // If accepted, update ride request with assigned driver and send notification
       if (action === 'accepted') {
         const { error: rideError } = await supabase
           .from('ride_requests')
@@ -234,6 +234,26 @@ export default function TripDetails() {
         if (rideError) throw rideError;
 
         setPriceAgreed(true);
+
+        // Send email notification to the person whose offer was accepted
+        const { data: senderProfile } = await supabase
+          .from('profiles')
+          .select('full_name, email')
+          .eq('id', currentUserId)
+          .single();
+
+        if (offer.profiles && senderProfile) {
+          await supabase.functions.invoke('send-offer-notification', {
+            body: {
+              recipientEmail: offer.profiles.email,
+              recipientName: offer.profiles.full_name || offer.profiles.display_name,
+              actionType: 'accepted',
+              senderName: senderProfile.full_name || 'A user',
+              offerAmount: offer.amount,
+              tripId: id
+            }
+          });
+        }
 
         toast({
           title: "Offer Accepted",
@@ -262,6 +282,9 @@ export default function TripDetails() {
 
     setSubmitting(true);
     try {
+      // Get the original offer info for notification
+      const originalOffer = offers.find(o => o.id === originalOfferId);
+      
       // Reject the original offer
       await supabase
         .from('counter_offers')
@@ -280,6 +303,26 @@ export default function TripDetails() {
         });
 
       if (error) throw error;
+
+      // Send email notification to the original offer maker
+      if (originalOffer?.profiles) {
+        const { data: senderProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', currentUserId)
+          .single();
+
+        await supabase.functions.invoke('send-offer-notification', {
+          body: {
+            recipientEmail: originalOffer.profiles.email,
+            recipientName: originalOffer.profiles.full_name || originalOffer.profiles.display_name,
+            actionType: 'countered',
+            senderName: senderProfile?.full_name || 'A user',
+            offerAmount: parseFloat(counterAmount),
+            tripId: id
+          }
+        });
+      }
 
       toast({
         title: "Counter Offer Sent",
@@ -707,12 +750,14 @@ export default function TripDetails() {
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <p className="font-medium">{offer.profiles?.display_name || 'User'}</p>
+                          <p className="font-medium">
+                            {offer.role === 'driver' ? 'Offer by' : 'Counter offer by'}: {offer.profiles?.full_name || offer.profiles?.display_name || 'User'}
+                          </p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(offer.created_at).toLocaleString()}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Role: {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter'}
+                            {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter Offer'}
                           </p>
                         </div>
                         <div className="text-right">
@@ -734,31 +779,44 @@ export default function TripDetails() {
                       {offer.message && (
                         <p className="text-sm mb-3">{offer.message}</p>
                       )}
-                      {isRider && offer.status === 'pending' && (
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={() => handleOfferAction(offer.id, 'accepted', offer)}
-                            className="flex-1"
-                          >
-                            Accept
-                          </Button>
-                          <Button 
-                            onClick={() => handleOfferAction(offer.id, 'rejected', offer)}
-                            variant="destructive"
-                            className="flex-1"
-                          >
-                            Reject
-                          </Button>
-                          <Button 
-                            onClick={() => {
-                              // Show counter offer form
-                              document.getElementById('counter-form')?.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                            variant="outline"
-                            className="flex-1"
-                          >
-                            Counter
-                          </Button>
+                      {offer.status === 'pending' && request.status === 'open' && (
+                        <div className="flex gap-2 flex-wrap">
+                          {/* Rider can accept/reject driver offers */}
+                          {isRider && offer.role === 'driver' && (
+                            <>
+                              <Button 
+                                onClick={() => handleOfferAction(offer.id, 'accepted', offer)}
+                                className="flex-1 min-w-[100px]"
+                              >
+                                Accept ${offer.amount}
+                              </Button>
+                              <Button 
+                                onClick={() => {
+                                  document.getElementById('counter-form')?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                variant="outline"
+                                className="flex-1 min-w-[100px]"
+                              >
+                                Counter Offer
+                              </Button>
+                            </>
+                          )}
+                          {/* Driver can accept rider counter offers */}
+                          {!isRider && offer.role === 'rider' && (
+                            <Button 
+                              onClick={() => handleOfferAction(offer.id, 'accepted', offer)}
+                              className="flex-1 min-w-[100px]"
+                            >
+                              Accept ${offer.amount}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {offer.status === 'accepted' && (
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                          <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                            ✓ This offer was accepted - Trip is now assigned
+                          </p>
                         </div>
                       )}
                     </CardContent>
@@ -813,7 +871,7 @@ export default function TripDetails() {
         )}
 
         {/* Counter Offer Form (for riders) */}
-        {isRider && offers.some(o => o.status === 'pending') && (
+        {isRider && request.status === 'open' && offers.some(o => o.status === 'pending' && o.role === 'driver') && (
           <Card id="counter-form">
             <CardHeader>
               <CardTitle>Make a Counter Offer</CardTitle>
@@ -849,7 +907,7 @@ export default function TripDetails() {
                 </div>
                 <Button
                   onClick={() => {
-                    const pendingOffer = offers.find(o => o.status === 'pending');
+                    const pendingOffer = offers.find(o => o.status === 'pending' && o.role === 'driver');
                     if (pendingOffer) handleCounterOffer(pendingOffer.id);
                   }}
                   className="w-full" 
