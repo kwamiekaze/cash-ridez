@@ -144,7 +144,7 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className={cn(
             "h-5 w-5 transition-all",
-            unreadCount > 0 && "animate-bounce text-primary"
+            unreadCount > 0 && "text-primary"
           )} />
           {unreadCount > 0 && (
             <Badge 

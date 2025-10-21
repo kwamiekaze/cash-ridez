@@ -93,8 +93,8 @@ export default function TripDetails() {
 
       // Fetch rider profile - limited info if not assigned
       const riderFields = tripData.status === 'assigned' && tripData.assigned_driver_id === user?.id
-        ? 'display_name, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url'
-        : 'display_name, full_name, rider_rating_avg, rider_rating_count, photo_url';
+        ? 'id, display_name, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url'
+        : 'id, display_name, rider_rating_avg, rider_rating_count, photo_url';
       
       const { data: riderData } = await supabase
         .from('profiles')
@@ -106,8 +106,8 @@ export default function TripDetails() {
       // Fetch driver profile if assigned
       if (tripData.assigned_driver_id) {
         const driverFields = tripData.status === 'assigned' && tripData.rider_id === user?.id
-          ? 'display_name, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url'
-          : 'display_name, full_name, driver_rating_avg, driver_rating_count, photo_url';
+          ? 'id, display_name, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url'
+          : 'id, display_name, driver_rating_avg, driver_rating_count, photo_url';
         
         const { data: driverData } = await supabase
           .from('profiles')
@@ -146,9 +146,9 @@ export default function TripDetails() {
       const userIds = Array.from(new Set(list.map((o: any) => o.by_user_id)));
       let profilesMap: Record<string, any> = {};
       if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
+      const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
+          .select('id, display_name, photo_url, driver_rating_avg, driver_rating_count')
           .in('id', userIds);
         (profilesData || []).forEach((p: any) => { profilesMap[p.id] = p; });
       }
@@ -421,12 +421,12 @@ export default function TripDetails() {
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={riderProfile.photo_url} />
                     <AvatarFallback>
-                      {(riderProfile.full_name || riderProfile.display_name || request.rider_id)[0].toUpperCase()}
+                      {(riderProfile.display_name || riderProfile.id?.slice(0, 8) || 'U')[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">
-                      Rider: {riderProfile.full_name || riderProfile.display_name || request.rider_id}
+                      Rider: {riderProfile.full_name || riderProfile.display_name || `User ${riderProfile.id?.slice(0, 8)}`}
                     </p>
                     {riderProfile.rider_rating_count > 0 && (
                       <RatingDisplay 
@@ -453,12 +453,12 @@ export default function TripDetails() {
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={driverProfile.photo_url} />
                     <AvatarFallback>
-                      {(driverProfile.full_name || driverProfile.display_name || request.assigned_driver_id)[0].toUpperCase()}
+                      {(driverProfile.display_name || driverProfile.id?.slice(0, 8) || 'D')[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">
-                      Assigned to: {driverProfile.full_name || driverProfile.display_name || request.assigned_driver_id}
+                      Assigned to: {driverProfile.full_name || driverProfile.display_name || `User ${driverProfile.id?.slice(0, 8)}`}
                     </p>
                     {driverProfile.driver_rating_count > 0 && (
                       <RatingDisplay 

@@ -110,12 +110,12 @@ export default function TripRequestsList() {
           
           const { data: riderProfiles } = await supabase
             .from('profiles')
-            .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
+            .select('id, display_name, photo_url, rider_rating_avg, rider_rating_count')
             .in('id', riderIds);
 
           const { data: driverProfiles } = await supabase
             .from('profiles')
-            .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
+            .select('id, display_name, photo_url, driver_rating_avg, driver_rating_count')
             .in('id', driverIds);
 
           // Merge the data
@@ -240,7 +240,7 @@ export default function TripRequestsList() {
             </Avatar>
             <div>
               <span className="block font-semibold text-sm">
-                {request.rider?.full_name || request.rider?.display_name || "User"}
+                {request.rider?.display_name || `User ${request.rider_id?.slice(0, 8)}`}
               </span>
               <RatingDisplay 
                 rating={request.rider?.rider_rating_avg || 0} 
