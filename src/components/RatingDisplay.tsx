@@ -25,7 +25,7 @@ export function RatingDisplay({ rating, count = 0, size = "md", showCount = true
   if (count === 0) {
     return (
       <span className={cn("text-muted-foreground", textSizeClasses[size], className)}>
-        New user
+        No Reviews
       </span>
     );
   }

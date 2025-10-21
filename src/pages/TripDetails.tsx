@@ -356,43 +356,15 @@ export default function TripDetails() {
     try {
       // Determine if current user is rating as rider or driver
       const updateField = isRider ? 'rider_rating' : 'driver_rating';
-      const otherUserId = isRider ? request.assigned_driver_id : request.rider_id;
-      const profileField = isRider ? 'driver_rating_avg' : 'rider_rating_avg';
-      const countField = isRider ? 'driver_rating_count' : 'rider_rating_count';
 
       // Update the ride request with the rating
+      // Database triggers will automatically update the profile ratings
       const { error: rideError } = await supabase
         .from('ride_requests')
         .update({ [updateField]: rating })
         .eq('id', id);
 
       if (rideError) throw rideError;
-
-      // Fetch current profile stats
-      const { data: profileData, error: fetchError } = await supabase
-        .from('profiles')
-        .select(profileField + ', ' + countField)
-        .eq('id', otherUserId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Calculate new average
-      const currentAvg = profileData?.[profileField] || 0;
-      const currentCount = profileData?.[countField] || 0;
-      const newCount = currentCount + 1;
-      const newAvg = ((currentAvg * currentCount) + rating) / newCount;
-
-      // Update profile with new rating
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          [profileField]: newAvg,
-          [countField]: newCount
-        })
-        .eq('id', otherUserId);
-
-      if (profileError) throw profileError;
 
       toast({
         title: "Rating Submitted",
