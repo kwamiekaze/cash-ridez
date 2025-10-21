@@ -59,6 +59,13 @@ const CreateRideRequest = () => {
       
       setProfile(profileData);
       
+      // Check if user is set as driver - redirect them
+      if (profileData?.active_role === 'driver') {
+        toast.error("You're currently set as a driver. Access this feature from your profile settings.");
+        navigate("/trips");
+        return;
+      }
+      
       if (!profileData?.is_verified && profileData?.verification_status !== 'approved') {
         toast.error("You must be verified to post trip requests");
         navigate("/dashboard");

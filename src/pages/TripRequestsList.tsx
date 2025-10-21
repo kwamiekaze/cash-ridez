@@ -110,12 +110,12 @@ export default function TripRequestsList() {
           
           const { data: riderProfiles } = await supabase
             .from('profiles')
-            .select('id, display_name, photo_url, rider_rating_avg, rider_rating_count')
+            .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
             .in('id', riderIds);
 
           const { data: driverProfiles } = await supabase
             .from('profiles')
-            .select('id, display_name, photo_url, driver_rating_avg, driver_rating_count')
+            .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
             .in('id', driverIds);
 
           // Merge the data
@@ -233,14 +233,17 @@ export default function TripRequestsList() {
           </div>
           <div className="flex items-center gap-3 mb-3">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={request.rider?.photo_url || ""} alt={request.rider?.full_name || request.rider?.display_name || "Rider"} />
+              <AvatarImage src={request.rider?.photo_url || ""} alt={request.rider?.full_name || "Rider"} />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {(request.rider?.full_name || request.rider?.display_name || "U")[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
               <span className="block font-semibold text-sm">
-                {request.rider?.display_name || `User ${request.rider_id?.slice(0, 8)}`}
+                {request.rider?.full_name || `User ${request.rider_id?.slice(0, 8)}`}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                ID: {request.rider_id?.slice(0, 8)}
               </span>
               <RatingDisplay 
                 rating={request.rider?.rider_rating_avg || 0} 
@@ -250,8 +253,9 @@ export default function TripRequestsList() {
             </div>
           </div>
           {request.driver && request.status !== 'open' && (
-            <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
-              <span>Driver: {request.driver.display_name}</span>
+            <div className="flex items-center gap-2 mb-3 text-sm">
+              <span className="font-medium">Driver: {request.driver.full_name || request.driver.display_name}</span>
+              <span className="text-xs text-muted-foreground">ID: {request.assigned_driver_id?.slice(0, 8)}</span>
               <RatingDisplay 
                 rating={request.driver?.driver_rating_avg || 0}
                 count={request.driver?.driver_rating_count || 0}

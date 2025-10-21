@@ -52,11 +52,14 @@ const TripActionDialog = ({
         // Get current user ID from auth
         const { data: { user } } = await supabase.auth.getUser();
         
-        // Only reset active ride for the CURRENT user (we don't have permission to update other user's profile)
+        // Set active_role based on completion and reset active ride
         if (user?.id) {
           await supabase
             .from("profiles")
-            .update({ active_assigned_ride_id: null })
+            .update({ 
+              active_assigned_ride_id: null,
+              active_role: userRole  // Set to 'rider' or 'driver' based on who completed
+            })
             .eq("id", user.id);
         }
 

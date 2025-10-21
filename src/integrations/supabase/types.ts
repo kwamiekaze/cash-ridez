@@ -142,6 +142,7 @@ export type Database = {
       profiles: {
         Row: {
           active_assigned_ride_id: string | null
+          active_role: string | null
           admin_locked_fields: string[] | null
           bio: string | null
           blocked: boolean | null
@@ -174,6 +175,7 @@ export type Database = {
         }
         Insert: {
           active_assigned_ride_id?: string | null
+          active_role?: string | null
           admin_locked_fields?: string[] | null
           bio?: string | null
           blocked?: boolean | null
@@ -206,6 +208,7 @@ export type Database = {
         }
         Update: {
           active_assigned_ride_id?: string | null
+          active_role?: string | null
           admin_locked_fields?: string[] | null
           bio?: string | null
           blocked?: boolean | null

@@ -185,7 +185,10 @@ const DriverDashboard = () => {
                         </Avatar>
                         <div>
                           <span className="block font-semibold text-sm">
-                            {trip.rider.full_name || trip.rider.display_name || trip.rider_id}
+                            {trip.rider.full_name || `User ${trip.rider_id?.slice(0, 8)}`}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            ID: {trip.rider_id?.slice(0, 8)}
                           </span>
                           <RatingDisplay 
                             rating={trip.rider.rider_rating_avg || 0} 
@@ -280,7 +283,10 @@ const DriverDashboard = () => {
                         </Avatar>
                         <div>
                           <span className="block font-semibold text-sm">
-                            {request.rider.full_name || request.rider.display_name || request.rider_id}
+                            {request.rider.full_name || `User ${request.rider_id?.slice(0, 8)}`}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            ID: {request.rider_id?.slice(0, 8)}
                           </span>
                           <RatingDisplay 
                             rating={request.rider.rider_rating_avg || 0} 

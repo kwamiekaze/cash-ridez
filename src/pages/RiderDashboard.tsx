@@ -31,6 +31,15 @@ const RiderDashboard = () => {
       if (!user) return;
       const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
       setProfile(data);
+      
+      // Check if user has active_role set to driver - if so, redirect to trips
+      if (data?.active_role === 'driver') {
+        navigate('/trips');
+        toast({
+          title: "Redirected",
+          description: "You're set as a driver. Access rider features from your profile.",
+        });
+      }
     };
 
     const fetchRequests = async () => {
@@ -271,9 +280,13 @@ const RiderDashboard = () => {
             variant="secondary" 
             className="h-20 text-lg"
             onClick={() => navigate("/trips")}
+            disabled={profile?.active_role === 'driver'}
           >
             <Car className="w-6 h-6 mr-2" />
             Respond to Requests
+            {profile?.active_role === 'driver' && (
+              <span className="text-xs ml-2">(Driver Mode)</span>
+            )}
           </Button>
           <Button 
             size="lg" 

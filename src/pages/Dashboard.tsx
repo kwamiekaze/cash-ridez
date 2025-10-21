@@ -44,8 +44,13 @@ const Dashboard = () => {
       if (isAdmin) {
         navigate("/admin");
       } else {
-        // All verified users go to unified dashboard
-        navigate("/rider");
+        // Route based on active_role if set
+        if (profile.active_role === 'driver') {
+          navigate("/trips");
+        } else {
+          // Default to rider dashboard (includes new users)
+          navigate("/rider");
+        }
       }
 
       setLoading(false);

@@ -444,18 +444,19 @@ export default function TripDetails() {
                       {(riderProfile.display_name || riderProfile.id?.slice(0, 8) || 'U')[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">
-                      Rider: {riderProfile.full_name || riderProfile.display_name || `User ${riderProfile.id?.slice(0, 8)}`}
-                    </p>
-                    {riderProfile.rider_rating_count > 0 && (
-                      <RatingDisplay 
-                        rating={riderProfile.rider_rating_avg} 
-                        count={riderProfile.rider_rating_count}
-                        size="sm"
-                      />
-                    )}
-                  </div>
+            <div>
+              <p className="text-sm font-medium">
+                Rider: {riderProfile.full_name || riderProfile.display_name || `User ${riderProfile.id?.slice(0, 8)}`}
+              </p>
+              <p className="text-xs text-muted-foreground">ID: {riderProfile.id?.slice(0, 8)}</p>
+              {riderProfile.rider_rating_count > 0 && (
+                <RatingDisplay 
+                  rating={riderProfile.rider_rating_avg} 
+                  count={riderProfile.rider_rating_count}
+                  size="sm"
+                />
+              )}
+            </div>
                 </div>
                 {request.status === 'assigned' && request.assigned_driver_id === currentUserId && (
                   <div className="text-xs text-muted-foreground space-y-1">
@@ -480,6 +481,7 @@ export default function TripDetails() {
                     <p className="text-sm font-medium">
                       Assigned to: {driverProfile.full_name || driverProfile.display_name || `User ${driverProfile.id?.slice(0, 8)}`}
                     </p>
+                    <p className="text-xs text-muted-foreground">ID: {driverProfile.id?.slice(0, 8)}</p>
                     {driverProfile.driver_rating_count > 0 && (
                       <RatingDisplay 
                         rating={driverProfile.driver_rating_avg} 
