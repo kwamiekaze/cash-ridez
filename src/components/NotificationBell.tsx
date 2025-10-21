@@ -148,7 +148,7 @@ export function NotificationBell() {
           )} />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 bg-destructive text-white text-xs font-bold animate-pulse shadow-lg"
+              className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 bg-destructive text-white text-xs font-bold shadow-lg"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
@@ -196,7 +196,7 @@ export function NotificationBell() {
                         {notification.title}
                       </h4>
                       {!notification.read && (
-                        <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0 mt-1 shadow-lg shadow-primary/50 animate-pulse" />
+                        <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0 mt-1 shadow-lg shadow-primary/50" />
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-1">

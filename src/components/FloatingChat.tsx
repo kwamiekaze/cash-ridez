@@ -115,8 +115,7 @@ export function FloatingChat() {
         onClick={() => setOpen(!open)}
         className={cn(
           "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 p-0",
-          "hover:scale-110 transition-transform duration-200",
-          totalUnread > 0 && "animate-pulse"
+          "hover:scale-110 transition-transform duration-200"
         )}
         size="icon"
       >
@@ -126,7 +125,7 @@ export function FloatingChat() {
           <>
             <MessageCircle className="h-6 w-6" />
             {totalUnread > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 bg-destructive text-white animate-bounce">
+              <Badge className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 bg-destructive text-white">
                 {totalUnread > 9 ? '9+' : totalUnread}
               </Badge>
             )}
