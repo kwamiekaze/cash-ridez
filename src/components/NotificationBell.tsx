@@ -178,25 +178,25 @@ export function NotificationBell() {
           ) : (
             <div className="divide-y">
               {notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  onClick={() => handleNotificationClick(notification)}
-                  className={cn(
-                    "w-full p-4 text-left hover:bg-muted/50 transition-colors flex gap-3",
-                    !notification.read && "bg-primary/5"
-                  )}
-                >
+                  <button
+                    key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
+                    className={cn(
+                      "w-full p-4 text-left hover:bg-muted/50 transition-colors flex gap-3 relative",
+                      !notification.read && "bg-primary/10 border-l-4 border-l-primary"
+                    )}
+                  >
                   {getNotificationIcon(notification.type)}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h4 className={cn(
                         "font-medium text-sm",
-                        !notification.read && "text-primary"
+                        !notification.read && "text-primary font-bold"
                       )}>
                         {notification.title}
                       </h4>
                       {!notification.read && (
-                        <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1" />
+                        <div className="w-3 h-3 rounded-full bg-primary flex-shrink-0 mt-1 shadow-lg shadow-primary/50 animate-pulse" />
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-1">
