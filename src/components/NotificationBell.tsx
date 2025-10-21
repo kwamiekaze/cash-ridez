@@ -83,15 +83,30 @@ export function NotificationBell() {
   };
 
   const markAsRead = async (notificationId: string) => {
-    await supabase
+    // Find the notification to check if it's already read
+    const notification = notifications.find(n => n.id === notificationId);
+    const wasUnread = notification && !notification.read;
+
+    // Update in database
+    const { error } = await supabase
       .from('notifications')
       .update({ read: true })
       .eq('id', notificationId);
 
+    if (error) {
+      console.error('Error marking notification as read:', error);
+      return;
+    }
+
+    // Update local state
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    
+    // Only decrement count if notification was previously unread
+    if (wasUnread) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
   };
 
   const markAllAsRead = async () => {
