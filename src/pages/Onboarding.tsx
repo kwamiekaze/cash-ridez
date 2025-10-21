@@ -196,7 +196,11 @@ const Onboarding = () => {
         </div>
       </header>
 
-      <div className="flex items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
+      <div className="flex flex-col items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
+        <div className="text-center mb-6 max-w-2xl w-full">
+          <h1 className="text-4xl font-bold mb-6">Welcome to Cash Ridez!</h1>
+        </div>
+
         <Card className="max-w-2xl w-full p-8">
           {/* Video Section */}
           <div className="relative rounded-lg overflow-hidden bg-muted mb-6">
@@ -213,8 +217,7 @@ const Onboarding = () => {
           </div>
 
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Welcome to Cash Ridez!</h1>
-            <p className="text-muted-foreground">Let's set up your account</p>
+            <p className="text-2xl font-semibold text-primary">Let's set up your account</p>
           </div>
 
         <div className="space-y-6">
