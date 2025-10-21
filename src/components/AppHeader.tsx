@@ -5,6 +5,7 @@ import { Car, LogOut, User, History, HeadphonesIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
+import { NotificationBell } from "./NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +51,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
           </div>
           <div className="flex items-center gap-4">
             {showStatus && profile && <StatusBadge status={profile.verification_status} />}
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">

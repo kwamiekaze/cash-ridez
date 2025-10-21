@@ -34,6 +34,10 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
   const handleVerificationToggle = async (userId: string, currentStatus: boolean) => {
     setLoading(userId);
     try {
+      // Get user details first
+      const user = users.find(u => u.id === userId);
+      if (!user) throw new Error("User not found");
+
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -43,6 +47,21 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
         .eq("id", userId);
 
       if (error) throw error;
+
+      // Send email notification
+      if (!currentStatus) {
+        try {
+          await supabase.functions.invoke("send-status-notification", {
+            body: {
+              userEmail: user.email,
+              displayName: user.display_name || user.email,
+              status: "approved",
+            },
+          });
+        } catch (emailError) {
+          console.error("Error sending notification email:", emailError);
+        }
+      }
 
       toast.success(`User ${!currentStatus ? "verified" : "unverified"} successfully`);
       onUpdate();
