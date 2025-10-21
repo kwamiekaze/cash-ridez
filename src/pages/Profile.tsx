@@ -12,7 +12,9 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { UserRatingsDisplay } from "@/components/UserRatingsDisplay";
+import { RatingDisplay } from "@/components/RatingDisplay";
 import AppHeader from "@/components/AppHeader";
+import { ImageCropDialog } from "@/components/ImageCropDialog";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -20,6 +22,8 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     full_name: "",
     email: "",
@@ -80,7 +84,7 @@ const Profile = () => {
     fetchProfile();
   }, [user, toast]);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
@@ -103,14 +107,26 @@ const Profile = () => {
       return;
     }
 
+    // Create image URL for cropping
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImage(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) return;
+
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
+      const fileExt = "jpg";
       const filePath = `${user.id}/profile.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from("profile-pictures")
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, croppedBlob, { upsert: true, contentType: "image/jpeg" });
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
@@ -146,6 +162,7 @@ const Profile = () => {
       });
     } finally {
       setUploading(false);
+      setSelectedImage(null);
     }
   };
 
@@ -284,7 +301,7 @@ const Profile = () => {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={handlePhotoUpload}
+                    onChange={handlePhotoSelect}
                     disabled={uploading}
                   />
                 </Label>
@@ -292,38 +309,28 @@ const Profile = () => {
             </div>
 
             {/* Rating Display */}
-            {(profile.rider_rating_count > 0 || profile.driver_rating_count > 0) && (
-              <div className="grid md:grid-cols-2 gap-4">
-                {profile.rider_rating_count > 0 && (
-                  <Card className="p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Rider Rating</p>
-                    <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-2xl font-bold">
-                        {Number(profile.rider_rating_avg).toFixed(1)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        ({profile.rider_rating_count} rides)
-                      </span>
-                    </div>
-                  </Card>
-                )}
-                {profile.driver_rating_count > 0 && (
-                  <Card className="p-4">
-                    <p className="text-sm text-muted-foreground mb-1">Driver Rating</p>
-                    <div className="flex items-center gap-2">
-                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-2xl font-bold">
-                        {Number(profile.driver_rating_avg).toFixed(1)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        ({profile.driver_rating_count} rides)
-                      </span>
-                    </div>
-                  </Card>
-                )}
-              </div>
-            )}
+            <div className="grid md:grid-cols-2 gap-4">
+              {profile.is_rider && (
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground mb-2">Rider Rating</p>
+                  <RatingDisplay 
+                    rating={profile.rider_rating_avg || 0} 
+                    count={profile.rider_rating_count || 0}
+                    size="lg"
+                  />
+                </Card>
+              )}
+              {profile.is_driver && (
+                <Card className="p-4">
+                  <p className="text-sm text-muted-foreground mb-2">Driver Rating</p>
+                  <RatingDisplay 
+                    rating={profile.driver_rating_avg || 0} 
+                    count={profile.driver_rating_count || 0}
+                    size="lg"
+                  />
+                </Card>
+              )}
+            </div>
 
             {/* Full Name */}
             <div className="space-y-2">
@@ -399,6 +406,16 @@ const Profile = () => {
           </div>
         )}
       </div>
+
+      {/* Image Crop Dialog */}
+      {selectedImage && (
+        <ImageCropDialog
+          open={cropDialogOpen}
+          onOpenChange={setCropDialogOpen}
+          imageSrc={selectedImage}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </div>
   );
 };
