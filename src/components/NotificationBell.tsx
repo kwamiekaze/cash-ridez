@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 
 interface Notification {
   id: string;
@@ -27,6 +28,7 @@ interface Notification {
 export function NotificationBell() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { playNotificationSound } = useBrowserNotifications();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
@@ -48,7 +50,11 @@ export function NotificationBell() {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => {
+        (payload) => {
+          // Play sound for new notifications
+          if (payload.eventType === 'INSERT') {
+            playNotificationSound();
+          }
           // Refetch notifications when any change occurs
           fetchNotifications();
         }
@@ -136,10 +142,13 @@ export function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+          <Bell className={cn(
+            "h-5 w-5 transition-all",
+            unreadCount > 0 && "animate-bounce text-primary"
+          )} />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-white text-xs"
+              className="absolute -top-1 -right-1 h-6 w-6 flex items-center justify-center p-0 bg-destructive text-white text-xs font-bold animate-pulse shadow-lg"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
