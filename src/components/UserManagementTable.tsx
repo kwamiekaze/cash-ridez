@@ -48,19 +48,17 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
 
       if (error) throw error;
 
-      // Send email notification
-      if (!currentStatus) {
-        try {
-          await supabase.functions.invoke("send-status-notification", {
-            body: {
-              userEmail: user.email,
-              displayName: user.display_name || user.email,
-              status: "approved",
-            },
-          });
-        } catch (emailError) {
-          console.error("Error sending notification email:", emailError);
-        }
+      // Send email notification for both approve and reject
+      try {
+        await supabase.functions.invoke("send-status-notification", {
+          body: {
+            userEmail: user.email,
+            displayName: user.display_name || user.email,
+            status: !currentStatus ? "approved" : "rejected",
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending notification email:", emailError);
       }
 
       toast.success(`User ${!currentStatus ? "verified" : "unverified"} successfully`);
