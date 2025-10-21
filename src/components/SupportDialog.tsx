@@ -41,37 +41,38 @@ export default function SupportDialog({ open, onOpenChange }: SupportDialogProps
     setSubmitting(true);
 
     try {
-      // Get current user
+      // Get current user (may be null for non-authenticated users)
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error("You must be logged in to submit a support request");
+
+      // Insert support ticket only if user is authenticated
+      if (user) {
+        const { error: ticketError } = await supabase
+          .from("support_tickets")
+          .insert({
+            user_id: user.id,
+            subject: `Support Request from ${formData.fullName}`,
+            body: formData.message
+          });
+
+        if (ticketError) {
+          console.error("Error inserting support ticket:", ticketError);
+          // Continue even if ticket insertion fails
+        }
       }
 
-      // Insert support ticket
-      const { error: ticketError } = await supabase
-        .from("support_tickets")
-        .insert({
-          user_id: user.id,
-          subject: `Support Request from ${formData.fullName}`,
-          body: formData.message
-        });
-
-      if (ticketError) throw ticketError;
-
-      // Send email notification to admins
+      // Send email notification to admins (works for both authenticated and non-authenticated users)
       const { error: emailError } = await supabase.functions.invoke("send-support-notification", {
         body: {
           fullName: formData.fullName,
           email: formData.email,
           message: formData.message,
-          userId: user.id
+          userId: user?.id || null
         }
       });
 
       if (emailError) {
         console.error("Error sending support notification:", emailError);
-        // Don't fail the whole operation if email fails
+        throw new Error("Failed to send support request. Please try again.");
       }
 
       toast({

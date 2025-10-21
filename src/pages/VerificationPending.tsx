@@ -152,7 +152,7 @@ export default function VerificationPending() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-semibold text-primary mt-0.5">3.</span>
-                <span>This typically takes 24-48 hours during business days</span>
+                <span>This typically takes just a few moments. For speedy responses and to check current wait times, click the support icon in the bottom left corner—an available team member will respond quickly.</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-semibold text-primary mt-0.5">4.</span>
@@ -163,7 +163,6 @@ export default function VerificationPending() {
 
           <div className="text-center text-sm text-muted-foreground">
             <p>You'll be automatically redirected once your account is verified.</p>
-            <p className="mt-2">You can safely close this page and return later.</p>
           </div>
         </CardContent>
       </Card>

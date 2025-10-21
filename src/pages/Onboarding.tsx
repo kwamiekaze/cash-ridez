@@ -198,6 +198,20 @@ const Onboarding = () => {
 
       <div className="flex items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
         <Card className="max-w-2xl w-full p-8">
+          {/* Video Section */}
+          <div className="relative rounded-lg overflow-hidden bg-muted mb-6">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-auto"
+              src="/verification-intro.mp4"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Welcome to Cash Ridez!</h1>
             <p className="text-muted-foreground">Let's set up your account</p>
