@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -25,7 +24,6 @@ interface AcceptRideDialogProps {
 const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideDialogProps) => {
   const [eta, setEta] = useState("");
   const [counterAmount, setCounterAmount] = useState(request?.price_offer?.toString() || "");
-  const [counterMessage, setCounterMessage] = useState("");
   const [accepting, setAccepting] = useState(false);
   const [activeTab, setActiveTab] = useState<"accept" | "counter">("accept");
 
@@ -92,7 +90,7 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
         ride_request_id: request.id,
         by_user_id: driverId,
         amount,
-        message: counterMessage,
+        message: null,
         role: 'driver',
       });
 
@@ -194,16 +192,6 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
                 required
               />
               <p className="text-xs text-muted-foreground mt-1">Enter whole dollar amount (e.g., 50 for $50)</p>
-            </div>
-            <div>
-              <Label htmlFor="counterMessage">Message (Optional)</Label>
-              <Textarea
-                id="counterMessage"
-                placeholder="Explain your counter offer..."
-                value={counterMessage}
-                onChange={(e) => setCounterMessage(e.target.value)}
-                rows={3}
-              />
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={accepting}>

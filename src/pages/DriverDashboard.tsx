@@ -32,7 +32,7 @@ const DriverDashboard = () => {
     const fetchRequests = async () => {
       let query = supabase
         .from("ride_requests")
-        .select("*, rider:profiles!rider_id(display_name, email, full_name, photo_url, rider_rating_avg, rider_rating_count)")
+        .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count)")
         .eq("status", "open")
         .order("created_at", { ascending: false });
 
@@ -189,12 +189,12 @@ const DriverDashboard = () => {
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={request.rider.photo_url || ""} alt={request.rider.full_name || request.rider.display_name || "Rider"} />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {(request.rider.full_name || request.rider.display_name || "U")[0].toUpperCase()}
+                            {(request.rider.full_name || request.rider.display_name || request.rider_id)[0].toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <span className="block font-semibold text-sm">
-                            {request.rider.full_name || request.rider.display_name}
+                            {request.rider.full_name || request.rider.display_name || request.rider_id}
                           </span>
                           <RatingDisplay 
                             rating={request.rider.rider_rating_avg || 0} 

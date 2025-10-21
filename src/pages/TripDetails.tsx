@@ -147,7 +147,7 @@ export default function TripDetails() {
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, display_name, full_name, email, photo_url, driver_rating_avg, driver_rating_count')
+          .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
           .in('id', userIds);
         (profilesData || []).forEach((p: any) => { profilesMap[p.id] = p; });
       }
@@ -446,12 +446,12 @@ export default function TripDetails() {
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={riderProfile.photo_url} />
                     <AvatarFallback>
-                      {(riderProfile.full_name || riderProfile.display_name || 'R')[0].toUpperCase()}
+                      {(riderProfile.full_name || riderProfile.display_name || request.rider_id)[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">
-                      Rider: {riderProfile.full_name || riderProfile.display_name || 'Anonymous'}
+                      Rider: {riderProfile.full_name || riderProfile.display_name || request.rider_id}
                     </p>
                     {riderProfile.rider_rating_count > 0 && (
                       <RatingDisplay 
@@ -478,12 +478,12 @@ export default function TripDetails() {
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={driverProfile.photo_url} />
                     <AvatarFallback>
-                      {(driverProfile.full_name || driverProfile.display_name || 'D')[0].toUpperCase()}
+                      {(driverProfile.full_name || driverProfile.display_name || request.assigned_driver_id)[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-medium">
-                      Assigned to: {driverProfile.full_name || driverProfile.display_name || 'Anonymous'}
+                      Assigned to: {driverProfile.full_name || driverProfile.display_name || request.assigned_driver_id}
                     </p>
                     {driverProfile.driver_rating_count > 0 && (
                       <RatingDisplay 
@@ -845,12 +845,12 @@ export default function TripDetails() {
                           <Avatar className="h-12 w-12">
                             <AvatarImage src={offer.profiles?.photo_url} />
                             <AvatarFallback>
-                              {(offer.profiles?.full_name || offer.profiles?.display_name || 'U')[0].toUpperCase()}
+                              {(offer.profiles?.full_name || offer.profiles?.display_name || offer.by_user_id)[0].toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium">
-                              {offer.profiles?.full_name || offer.profiles?.display_name || 'User'}
+                              {offer.profiles?.full_name || offer.profiles?.display_name || offer.by_user_id}
                             </p>
                             {offer.profiles?.driver_rating_count > 0 && (
                               <RatingDisplay 
@@ -1053,16 +1053,6 @@ export default function TripDetails() {
                     onChange={(e) => setCounterAmount(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground mt-1">Enter whole dollar amount (e.g., 50 for $50)</p>
-                </div>
-                <div>
-                  <Label htmlFor="counter-message">Message (Optional)</Label>
-                  <Textarea
-                    id="counter-message"
-                    placeholder="Explain your counter offer..."
-                    value={counterMessage}
-                    onChange={(e) => setCounterMessage(e.target.value)}
-                    rows={3}
-                  />
                 </div>
                 <Button
                   onClick={() => {

@@ -66,9 +66,9 @@ export default function ChatPage() {
       // Fetch rider and driver profiles separately
       if (data) {
         const [riderProfile, driverProfile] = await Promise.all([
-          supabase.from('profiles').select('display_name, email').eq('id', data.rider_id).single(),
+          supabase.from('profiles').select('display_name, full_name').eq('id', data.rider_id).single(),
           data.assigned_driver_id 
-            ? supabase.from('profiles').select('display_name, email').eq('id', data.assigned_driver_id).single()
+            ? supabase.from('profiles').select('display_name, full_name').eq('id', data.assigned_driver_id).single()
             : Promise.resolve({ data: null })
         ]);
         
@@ -102,7 +102,7 @@ export default function ChatPage() {
         const senderIds = [...new Set(data.map(msg => msg.sender_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, display_name, email')
+          .select('id, display_name, full_name')
           .in('id', senderIds);
         
         const profileMap = new Map(profiles?.map(p => [p.id, p]));
@@ -227,12 +227,12 @@ export default function ChatPage() {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback>
-                      {message.sender?.display_name?.charAt(0) || message.sender?.email?.charAt(0) || '?'}
+                      {(message.sender?.full_name || message.sender?.display_name || message.sender_id)?.charAt(0) || '?'}
                     </AvatarFallback>
                   </Avatar>
                   <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} max-w-[70%]`}>
                     <div className="text-xs text-muted-foreground mb-1">
-                      {message.sender?.display_name || message.sender?.email}
+                      {message.sender?.full_name || message.sender?.display_name || message.sender_id}
                     </div>
                     <div
                       className={`rounded-lg px-4 py-2 ${
