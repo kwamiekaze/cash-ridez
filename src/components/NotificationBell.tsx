@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,8 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const { playNotificationSound } = useBrowserNotifications();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  // derive count from notifications to avoid state desync
+  const unreadCount = useMemo(() => notifications.reduce((c, n) => c + ((n.read ?? false) ? 0 : 1), 0), [notifications]);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -54,8 +55,8 @@ export function NotificationBell() {
           const newNotif = (payload as any).new as Notification | undefined;
           if (newNotif) {
             // Optimistically prepend and cap list
-            setNotifications((prev) => [newNotif, ...prev].slice(0, 20));
-            setUnreadCount((prev) => prev + 1);
+            const normalized = { ...newNotif, read: newNotif.read ?? false } as Notification;
+            setNotifications((prev) => [normalized, ...prev].slice(0, 20));
           }
           // Play sound for new notifications
           playNotificationSound();
@@ -79,8 +80,9 @@ export function NotificationBell() {
       .limit(20);
 
     if (!error && data) {
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.read).length);
+      // Normalize null reads to false
+      const normalized = data.map(n => ({ ...n, read: n.read ?? false })) as Notification[];
+      setNotifications(normalized);
     }
   };
 
@@ -93,7 +95,6 @@ export function NotificationBell() {
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
-    setUnreadCount(prev => Math.max(0, prev - 1));
 
     // Update in database
     const { error } = await supabase
@@ -107,7 +108,6 @@ export function NotificationBell() {
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
       );
-      setUnreadCount(prev => prev + 1);
     }
   };
 
@@ -120,7 +120,7 @@ export function NotificationBell() {
 
     // Optimistically update local state first
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+
 
     // Update database - mark all user's notifications as read (handles nulls too)
     const { error } = await supabase
@@ -170,7 +170,7 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (nextOpen && unreadCount > 0) { markAllAsRead(); } }}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative" onClick={() => { if (unreadCount > 0) markAllAsRead(); }}>
           <Bell className={cn(
             "h-5 w-5 transition-all",
             unreadCount > 0 && "text-primary"
