@@ -407,7 +407,12 @@ export type Database = {
     }
     Functions: {
       accept_ride_atomic: {
-        Args: { p_driver_id: string; p_eta_minutes: number; p_ride_id: string }
+        Args: {
+          p_driver_id: string
+          p_eta_minutes: number
+          p_ride_id: string
+          p_skip_active_check?: boolean
+        }
         Returns: Json
       }
       can_view_contact_info: {

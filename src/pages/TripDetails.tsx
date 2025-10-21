@@ -242,12 +242,13 @@ export default function TripDetails() {
             rideId: id,
             driverId: offer.by_user_id,
             etaMinutes: 0, // Driver will provide ETA later
-            skipEtaCheck: true
+            skipEtaCheck: true,
+            skipActiveRideCheck: true // Allow accepting even if driver has another active ride
           },
         });
 
         if (acceptError || !acceptData?.success) {
-          throw new Error(acceptData?.message || 'Failed to accept offer');
+          throw new Error(acceptData?.error || acceptData?.message || acceptError?.message || 'Failed to accept offer');
         }
 
         // Send email notification to the person whose offer was accepted

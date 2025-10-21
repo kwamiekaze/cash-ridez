@@ -32,7 +32,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { rideId, etaMinutes, driverId, skipEtaCheck } = await req.json();
+    const { rideId, etaMinutes, driverId, skipEtaCheck, skipActiveRideCheck } = await req.json();
 
     // Validate inputs
     if (!rideId) {
@@ -46,13 +46,14 @@ serve(async (req) => {
     // Use provided driverId or default to current user
     const finalDriverId = driverId || user.id;
 
-    console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}`);
+    console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}, skipActiveRideCheck: ${skipActiveRideCheck || false}`);
 
     // Use a transaction-like approach with RPC call
     const { data, error } = await supabase.rpc('accept_ride_atomic', {
       p_ride_id: rideId,
       p_driver_id: finalDriverId,
       p_eta_minutes: etaMinutes || 0,
+      p_skip_active_check: skipActiveRideCheck || false,
     });
 
     if (error) {
