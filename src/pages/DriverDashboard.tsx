@@ -37,7 +37,7 @@ const DriverDashboard = () => {
         .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count)")
         .eq("assigned_driver_id", user?.id)
         .eq("status", "assigned")
-        .order("created_at", { ascending: false });
+        .order("updated_at", { ascending: false }); // Most recently updated first
       
       setMyActiveTrips(data || []);
     };

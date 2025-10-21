@@ -48,8 +48,7 @@ const RiderDashboard = () => {
       const { data, error } = await supabase
         .from("ride_requests")
         .select("*")
-        .eq("rider_id", user.id)
-        .order("created_at", { ascending: false });
+        .eq("rider_id", user.id);
       
       if (error) {
         console.error("Error fetching requests:", error);
@@ -77,9 +76,41 @@ const RiderDashboard = () => {
               : null
           }));
 
-          setRequests(enrichedData);
+          // Sort: assigned trips first, then open, then by date
+          const sortedData = enrichedData.sort((a, b) => {
+            // Priority: assigned > open > completed/cancelled
+            const statusPriority: Record<string, number> = {
+              assigned: 0,
+              open: 1,
+              completed: 2,
+              cancelled: 3
+            };
+            
+            const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+            if (priorityDiff !== 0) return priorityDiff;
+            
+            // Within same status, sort by most recent
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+
+          setRequests(sortedData);
         } else {
-          setRequests(data);
+          // Sort even without driver profiles
+          const sortedData = data.sort((a, b) => {
+            const statusPriority: Record<string, number> = {
+              assigned: 0,
+              open: 1,
+              completed: 2,
+              cancelled: 3
+            };
+            
+            const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+            if (priorityDiff !== 0) return priorityDiff;
+            
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          });
+          
+          setRequests(sortedData);
         }
       } else {
         setRequests([]);
@@ -148,8 +179,7 @@ const RiderDashboard = () => {
     const { data, error } = await supabase
       .from("ride_requests")
       .select("*")
-      .eq("rider_id", user.id)
-      .order("created_at", { ascending: false });
+      .eq("rider_id", user.id);
     
     if (error) {
       console.error("Error fetching requests:", error);
@@ -176,9 +206,38 @@ const RiderDashboard = () => {
             : null
         }));
 
-        setRequests(enrichedData);
+        // Sort: assigned trips first, then open, then by date
+        const sortedData = enrichedData.sort((a, b) => {
+          const statusPriority: Record<string, number> = {
+            assigned: 0,
+            open: 1,
+            completed: 2,
+            cancelled: 3
+          };
+          
+          const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+          if (priorityDiff !== 0) return priorityDiff;
+          
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        setRequests(sortedData);
       } else {
-        setRequests(data);
+        const sortedData = data.sort((a, b) => {
+          const statusPriority: Record<string, number> = {
+            assigned: 0,
+            open: 1,
+            completed: 2,
+            cancelled: 3
+          };
+          
+          const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+          if (priorityDiff !== 0) return priorityDiff;
+          
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        
+        setRequests(sortedData);
       }
     } else {
       setRequests([]);
@@ -192,12 +251,11 @@ const RiderDashboard = () => {
     if (location.state?.refreshRequests && user) {
       console.log("Refreshing requests from location state");
       const fetchRequests = async () => {
-        // Rider dashboard should ONLY show trips where user is the rider
+      // Rider dashboard should ONLY show trips where user is the rider
         const { data, error } = await supabase
           .from("ride_requests")
           .select("*")
-          .eq("rider_id", user.id)
-          .order("created_at", { ascending: false });
+          .eq("rider_id", user.id);
         
         if (error) {
           console.error("Error fetching requests:", error);
@@ -226,9 +284,38 @@ const RiderDashboard = () => {
                 : null
             }));
 
-            setRequests(enrichedData);
+            // Sort: assigned trips first, then open, then by date
+            const sortedData = enrichedData.sort((a, b) => {
+              const statusPriority: Record<string, number> = {
+                assigned: 0,
+                open: 1,
+                completed: 2,
+                cancelled: 3
+              };
+              
+              const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+              if (priorityDiff !== 0) return priorityDiff;
+              
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+
+            setRequests(sortedData);
           } else {
-            setRequests(data);
+            const sortedData = data.sort((a, b) => {
+              const statusPriority: Record<string, number> = {
+                assigned: 0,
+                open: 1,
+                completed: 2,
+                cancelled: 3
+              };
+              
+              const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+              if (priorityDiff !== 0) return priorityDiff;
+              
+              return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+            
+            setRequests(sortedData);
           }
         } else {
           setRequests([]);

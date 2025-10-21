@@ -30,9 +30,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Note: Active trips will be shown prominently on the dashboard itself
-      // No need to redirect away - users can navigate freely
-
       // Check if user is admin
       const { data: roles } = await supabase
         .from("user_roles")
@@ -43,14 +40,18 @@ const Dashboard = () => {
 
       if (isAdmin) {
         navigate("/admin");
+        setLoading(false);
+        return;
+      }
+
+      // Route based on active_role - if set, send them to their role's dashboard
+      if (profile.active_role === 'driver') {
+        navigate("/trips");
+      } else if (profile.active_role === 'rider') {
+        navigate("/rider");
       } else {
-        // Route based on active_role if set
-        if (profile.active_role === 'driver') {
-          navigate("/trips");
-        } else {
-          // Default to rider dashboard (includes new users)
-          navigate("/rider");
-        }
+        // No role set yet - default to rider dashboard for first-time users
+        navigate("/rider");
       }
 
       setLoading(false);
