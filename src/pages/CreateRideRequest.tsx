@@ -33,11 +33,10 @@ const rideRequestSchema = z.object({
     z.string().max(100, "Name must be less than 100 characters")
   ).optional(),
   emergencyPhone: z.string().trim().max(20, "Phone must be less than 20 characters").optional(),
-  priceOffer: z.string().optional().refine((val) => {
-    if (!val || val === "") return true;
+  priceOffer: z.string().min(1, "Price offer is required").refine((val) => {
     const num = parseFloat(val);
-    return !isNaN(num) && num >= 0 && num <= 9999;
-  }, "Price must be between $0 and $9999"),
+    return !isNaN(num) && num > 0 && num <= 9999;
+  }, "Price must be between $1 and $9999"),
 });
 
 const CreateRideRequest = () => {
@@ -178,7 +177,7 @@ const CreateRideRequest = () => {
         pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
         rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
         rider_note_image_url: null,
-        price_offer: formData.priceOffer ? parseFloat(formData.priceOffer) : null,
+        price_offer: parseFloat(formData.priceOffer),
         search_keywords: keywords,
         status: "open",
       });
@@ -272,7 +271,7 @@ const CreateRideRequest = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="offer">Price Offer (Optional)</Label>
+              <Label htmlFor="offer">Price Offer *</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -282,6 +281,7 @@ const CreateRideRequest = () => {
                   className="pl-10"
                   step="1"
                   min="1"
+                  required
                   value={formData.priceOffer}
                   onChange={(e) => setFormData({ ...formData, priceOffer: e.target.value })}
                 />

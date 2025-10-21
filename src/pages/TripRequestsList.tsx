@@ -58,6 +58,15 @@ export default function TripRequestsList() {
     if (!user) return;
     
     try {
+      // Check if user is verified to see all open trips
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_verified, verification_status')
+        .eq('id', user.id)
+        .single();
+      
+      const isVerified = profile?.is_verified || profile?.verification_status === 'approved';
+      
       // Get all rides where user has made an offer
       const { data: offerData } = await supabase
         .from('counter_offers')
@@ -66,15 +75,26 @@ export default function TripRequestsList() {
       
       const offerRideIds = offerData?.map(o => o.ride_request_id) || [];
       
-      // Get all rides where user is rider, assigned driver, OR where user made an offer
+      // For verified users, get ALL open trips plus their own involved trips
+      // For non-verified users, only show trips they're involved in
       let query = supabase
         .from('ride_requests')
         .select('*');
       
-      if (offerRideIds.length > 0) {
-        query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
+      if (isVerified) {
+        // Verified users can see all open trips OR trips they're involved in
+        if (offerRideIds.length > 0) {
+          query = query.or(`status.eq.open,rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
+        } else {
+          query = query.or(`status.eq.open,rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
+        }
       } else {
-        query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
+        // Non-verified users only see trips they're directly involved in
+        if (offerRideIds.length > 0) {
+          query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
+        } else {
+          query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
+        }
       }
       
       const { data: rideData, error: rideError } = await query

@@ -284,7 +284,7 @@ const RiderDashboard = () => {
               <Card className="p-8 text-center">
                 <p className="text-muted-foreground">No open trip requests</p>
                 <Button className="mt-4" onClick={() => navigate("/rider/create-request")}>
-                  Create Your First Trip Request
+                  {requests.length > 0 ? "Create New Trip Request" : "Create Your First Trip Request"}
                 </Button>
               </Card>
             ) : (
