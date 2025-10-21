@@ -132,8 +132,8 @@ export function NotificationBell() {
     }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
-    markAsRead(notification.id);
+  const handleNotificationClick = async (notification: Notification) => {
+    await markAsRead(notification.id);
     setOpen(false);
     if (notification.link) {
       navigate(notification.link);
