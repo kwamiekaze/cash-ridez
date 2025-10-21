@@ -122,12 +122,12 @@ export function NotificationBell() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
 
-    // Update database
+    // Update database - mark all user's notifications as read (handles nulls too)
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
-      .eq('user_id', user.id)
-      .eq('read', false);
+      .eq('user_id', user.id);
+
 
     if (error) {
       console.error('Error marking all as read:', error);
