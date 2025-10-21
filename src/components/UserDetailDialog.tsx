@@ -75,6 +75,12 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const handleSave = async () => {
     if (!userId) return;
 
+    // Validate full name - only allow letters, spaces, hyphens, apostrophes, and periods
+    if (formData.full_name && !/^[a-zA-Z\s'\-\.]+$/.test(formData.full_name)) {
+      toast.error("Full name can only contain letters, spaces, hyphens, apostrophes, and periods");
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -212,8 +218,15 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               <Input
                 id="full_name"
                 value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Only allow letters, spaces, hyphens, apostrophes, and periods
+                  if (value === '' || /^[a-zA-Z\s'\-\.]+$/.test(value)) {
+                    setFormData({ ...formData, full_name: value });
+                  }
+                }}
               />
+              <p className="text-xs text-muted-foreground">Letters, spaces, hyphens, apostrophes, and periods only</p>
               <div className="flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"

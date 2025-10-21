@@ -18,6 +18,7 @@ const DriverDashboard = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
+  const [myActiveTrips, setMyActiveTrips] = useState<any[]>([]);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [zipFilter, setZipFilter] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -27,6 +28,18 @@ const DriverDashboard = () => {
     const fetchProfile = async () => {
       const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
       setProfile(data);
+    };
+
+    const fetchMyActiveTrips = async () => {
+      // Fetch trips where current user is the assigned driver
+      const { data } = await supabase
+        .from("ride_requests")
+        .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count)")
+        .eq("assigned_driver_id", user?.id)
+        .eq("status", "assigned")
+        .order("created_at", { ascending: false });
+      
+      setMyActiveTrips(data || []);
     };
 
     const fetchRequests = async () => {
@@ -45,6 +58,7 @@ const DriverDashboard = () => {
     };
 
     fetchProfile();
+    fetchMyActiveTrips();
     fetchRequests();
 
     // Subscribe to new requests
@@ -58,6 +72,7 @@ const DriverDashboard = () => {
           table: "ride_requests",
         },
         () => {
+          fetchMyActiveTrips();
           fetchRequests();
         }
       )
@@ -139,6 +154,77 @@ const DriverDashboard = () => {
             View Profile
           </Button>
         </div>
+
+        {/* My Active Trips (Connected) - Show prominently if any exist */}
+        {myActiveTrips.length > 0 && (
+          <div className="space-y-4 mb-8">
+            <h2 className="text-2xl font-bold text-primary">My Active Trips ({myActiveTrips.length})</h2>
+            <p className="text-sm text-muted-foreground mb-4">Trips you've accepted and are currently active</p>
+            {myActiveTrips.map((trip) => (
+              <Card 
+                key={trip.id} 
+                className="p-6 border-2 border-primary hover:shadow-glow transition-all cursor-pointer"
+                onClick={() => navigate(`/trip/${trip.id}`)}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <StatusBadge status={trip.status} />
+                      <span className="text-xs text-muted-foreground">
+                        Connected at {format(new Date(trip.updated_at), "h:mm a")}
+                      </span>
+                    </div>
+                    {/* Rider Info */}
+                    {trip.rider && (
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={trip.rider.photo_url || ""} alt={trip.rider.full_name || trip.rider.display_name || "Rider"} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {(trip.rider.full_name || trip.rider.display_name || trip.rider_id)[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <span className="block font-semibold text-sm">
+                            {trip.rider.full_name || trip.rider.display_name || trip.rider_id}
+                          </span>
+                          <RatingDisplay 
+                            rating={trip.rider.rider_rating_avg || 0} 
+                            count={trip.rider.rider_rating_count || 0}
+                            size="sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 mt-1 text-success" />
+                        <div>
+                          <p className="font-medium">Pickup</p>
+                          <p className="text-sm text-muted-foreground">{trip.pickup_address}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 mt-1 text-destructive" />
+                        <div>
+                          <p className="font-medium">Dropoff</p>
+                          <p className="text-sm text-muted-foreground">{trip.dropoff_address}</p>
+                        </div>
+                      </div>
+                    </div>
+                    {trip.price_offer && (
+                      <p className="text-lg font-semibold text-primary">
+                        Price: ${trip.price_offer}
+                      </p>
+                    )}
+                  </div>
+                  <Button variant="default" onClick={(e) => { e.stopPropagation(); navigate(`/trip/${trip.id}`); }}>
+                    View Trip
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Filters */}
         <Card className="p-6 mb-6">

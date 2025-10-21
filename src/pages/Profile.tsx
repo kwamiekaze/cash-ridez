@@ -153,11 +153,11 @@ const Profile = () => {
     e.preventDefault();
     if (!user) return;
 
-    // Validate full name doesn't contain numbers
-    if (profile.full_name && /\d/.test(profile.full_name)) {
+    // Validate full name - only allow letters, spaces, hyphens, apostrophes, and periods
+    if (profile.full_name && !/^[a-zA-Z\s'\-\.]+$/.test(profile.full_name)) {
       toast({
         title: "Invalid Name",
-        description: "Full name cannot contain numbers",
+        description: "Full name can only contain letters, spaces, hyphens, apostrophes, and periods",
         variant: "destructive",
       });
       return;
@@ -333,14 +333,14 @@ const Profile = () => {
                 value={profile.full_name}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Prevent typing numbers
-                  if (!/\d/.test(value)) {
+                  // Only allow letters, spaces, hyphens, apostrophes, and periods
+                  if (value === '' || /^[a-zA-Z\s'\-\.]+$/.test(value)) {
                     setProfile({ ...profile, full_name: value });
                   }
                 }}
                 placeholder="Enter your full name"
               />
-              <p className="text-xs text-muted-foreground">Letters and spaces only, no numbers allowed</p>
+              <p className="text-xs text-muted-foreground">Letters, spaces, hyphens, apostrophes, and periods only</p>
             </div>
 
             {/* Email (read-only) */}

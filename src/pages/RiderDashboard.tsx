@@ -21,6 +21,7 @@ const RiderDashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("open");
   const [requests, setRequests] = useState<any[]>([]);
+  const [initialTabSet, setInitialTabSet] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [action, setAction] = useState<"complete" | "cancel">("complete");
@@ -100,6 +101,22 @@ const RiderDashboard = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  // Auto-select the appropriate tab based on active trips (PRIORITY: assigned > open)
+  useEffect(() => {
+    if (!initialTabSet && requests.length > 0) {
+      const hasAssignedTrips = requests.some(r => r.status === "assigned");
+      const hasOpenTrips = requests.some(r => r.status === "open");
+      
+      if (hasAssignedTrips) {
+        setActiveTab("assigned");
+      } else if (hasOpenTrips) {
+        setActiveTab("open");
+      }
+      
+      setInitialTabSet(true);
+    }
+  }, [requests, initialTabSet]);
 
   const handleCompleteTrip = (trip: any, e: React.MouseEvent) => {
     e.stopPropagation();

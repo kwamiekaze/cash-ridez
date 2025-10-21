@@ -30,20 +30,8 @@ const Dashboard = () => {
         return;
       }
 
-      // PRIORITY: Check for active trips FIRST (assigned > open)
-      const { data: activeTrips } = await supabase
-        .from("ride_requests")
-        .select("*")
-        .or(`and(rider_id.eq.${user.id},status.eq.assigned),and(assigned_driver_id.eq.${user.id},status.eq.assigned),and(rider_id.eq.${user.id},status.eq.open)`)
-        .order("status", { ascending: true }) // assigned comes before open
-        .limit(1);
-
-      // If user has an active trip, show it immediately
-      if (activeTrips && activeTrips.length > 0) {
-        navigate(`/trip/${activeTrips[0].id}`);
-        setLoading(false);
-        return;
-      }
+      // Note: Active trips will be shown prominently on the dashboard itself
+      // No need to redirect away - users can navigate freely
 
       // Check if user is admin
       const { data: roles } = await supabase
