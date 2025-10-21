@@ -50,8 +50,26 @@ const Dashboard = () => {
       } else if (profile.active_role === 'rider') {
         navigate("/rider");
       } else {
-        // No role set yet - default to rider dashboard for first-time users
-        navigate("/rider");
+        // No role set yet - check for any active trips to determine routing
+        const { data: activeTrips } = await supabase
+          .from("ride_requests")
+          .select("*")
+          .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+          .in("status", ["open", "assigned"])
+          .limit(1);
+        
+        if (activeTrips && activeTrips.length > 0) {
+          // Has active trips - route based on their role in the trip
+          const trip = activeTrips[0];
+          if (trip.assigned_driver_id === user.id) {
+            navigate("/trips");
+          } else {
+            navigate("/rider");
+          }
+        } else {
+          // New user with no trips - default to rider dashboard
+          navigate("/rider");
+        }
       }
 
       setLoading(false);

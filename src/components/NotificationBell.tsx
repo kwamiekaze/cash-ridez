@@ -153,9 +153,16 @@ export function NotificationBell() {
         return <div className={cn(iconClass, "bg-green-500/20")}><Bell className="w-4 h-4 text-green-500" /></div>;
       case 'trip_accepted':
       case 'trip_assigned':
+      case 'trip_completed':
         return <div className={cn(iconClass, "bg-verified/20")}><Bell className="w-4 h-4 text-verified" /></div>;
       case 'trip_cancelled':
         return <div className={cn(iconClass, "bg-destructive/20")}><Bell className="w-4 h-4 text-destructive" /></div>;
+      case 'rating_reminder':
+        return <div className={cn(iconClass, "bg-warning/20")}><Bell className="w-4 h-4 text-warning" /></div>;
+      case 'rating_received':
+        return <div className={cn(iconClass, "bg-primary/20")}><Bell className="w-4 h-4 text-primary" /></div>;
+      case 'completion_reminder':
+        return <div className={cn(iconClass, "bg-blue-500/20")}><Bell className="w-4 h-4 text-blue-500" /></div>;
       case 'verification_approved':
         return <div className={cn(iconClass, "bg-verified/20")}><Bell className="w-4 h-4 text-verified" /></div>;
       case 'verification_rejected':

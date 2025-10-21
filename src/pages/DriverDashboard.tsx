@@ -47,7 +47,7 @@ const DriverDashboard = () => {
         .from("ride_requests")
         .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count)")
         .eq("status", "open")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }); // Most recent first
 
       if (zipFilter) {
         query = query.or(`pickup_zip.eq.${zipFilter},dropoff_zip.eq.${zipFilter}`);
