@@ -45,17 +45,15 @@ export function NotificationBell() {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT', // Only listen for new notifications
           schema: 'public',
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
           // Play sound for new notifications
-          if (payload.eventType === 'INSERT') {
-            playNotificationSound();
-          }
-          // Refetch notifications when any change occurs
+          playNotificationSound();
+          // Refetch to get the new notification
           fetchNotifications();
         }
       )
@@ -85,7 +83,13 @@ export function NotificationBell() {
   const markAsRead = async (notificationId: string) => {
     // Find the notification to check if it's already read
     const notification = notifications.find(n => n.id === notificationId);
-    const wasUnread = notification && !notification.read;
+    if (!notification || notification.read) return; // Already read, nothing to do
+
+    // Optimistically update local state first
+    setNotifications(prev =>
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
 
     // Update in database
     const { error } = await supabase
@@ -95,31 +99,37 @@ export function NotificationBell() {
 
     if (error) {
       console.error('Error marking notification as read:', error);
-      return;
-    }
-
-    // Update local state
-    setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-    );
-    
-    // Only decrement count if notification was previously unread
-    if (wasUnread) {
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      // Rollback on error
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
+      );
+      setUnreadCount(prev => prev + 1);
     }
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
 
-    await supabase
+    // Get current unread notifications
+    const unreadNotifications = notifications.filter(n => !n.read);
+    if (unreadNotifications.length === 0) return;
+
+    // Optimistically update local state first
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+
+    // Update database
+    const { error } = await supabase
       .from('notifications')
       .update({ read: true })
       .eq('user_id', user.id)
       .eq('read', false);
 
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    setUnreadCount(0);
+    if (error) {
+      console.error('Error marking all as read:', error);
+      // Rollback on error
+      fetchNotifications();
+    }
   };
 
   const handleNotificationClick = (notification: Notification) => {
