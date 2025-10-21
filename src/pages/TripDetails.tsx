@@ -356,6 +356,8 @@ export default function TripDetails() {
     try {
       // Determine if current user is rating as rider or driver
       const updateField = isRider ? 'rider_rating' : 'driver_rating';
+      const ratingType = isRider ? 'driver' : 'rider';
+      const ratedUserId = isRider ? request.assigned_driver_id : request.rider_id;
 
       // Update the ride request with the rating
       // Database triggers will automatically update the profile ratings
@@ -365,6 +367,24 @@ export default function TripDetails() {
         .eq('id', id);
 
       if (rideError) throw rideError;
+
+      // Get current user's name for notification
+      const { data: currentUserProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', currentUserId)
+        .single();
+
+      // Send rating notification
+      await supabase.functions.invoke('send-rating-notification', {
+        body: {
+          ratedUserId,
+          raterName: currentUserProfile?.display_name || 'A user',
+          rating,
+          rideId: id,
+          ratingType
+        }
+      });
 
       toast({
         title: "Rating Submitted",

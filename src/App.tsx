@@ -11,6 +11,7 @@ import AdminRoute from "./components/AdminRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
+import VerificationPending from "./pages/VerificationPending";
 import Dashboard from "./pages/Dashboard";
 import RiderDashboard from "./pages/RiderDashboard";
 import DriverDashboard from "./pages/DriverDashboard";
@@ -41,6 +42,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/verification-pending"
+              element={
+                <ProtectedRoute>
+                  <VerificationPending />
                 </ProtectedRoute>
               }
             />

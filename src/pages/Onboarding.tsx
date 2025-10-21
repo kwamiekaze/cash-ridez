@@ -108,7 +108,7 @@ const Onboarding = () => {
       try {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("display_name")
+          .select("display_name, is_rider, is_driver")
           .eq("id", user?.id)
           .single();
 
@@ -117,6 +117,8 @@ const Onboarding = () => {
             userId: user?.id,
             userEmail: user?.email,
             displayName: profileData?.display_name || user?.email,
+            isRider: profileData?.is_rider || false,
+            isDriver: profileData?.is_driver || false,
             filePath, // include storage path so backend can create a signed URL for admins
           },
         });
@@ -125,12 +127,12 @@ const Onboarding = () => {
         // Don't fail the whole process if email fails
       }
 
-      toast.success("Profile submitted for verification!");
+      toast.success("ID submitted for verification!");
       toast.info(
-        "Please update your Full Name, Contact Information, and Emergency Contact on your profile to help cashridez.com staff and connected users coordinate with you safely.",
-        { duration: 8000 }
+        "Our team will review your submission shortly. You'll be notified once your account is verified.",
+        { duration: 6000 }
       );
-      navigate("/dashboard");
+      navigate("/verification-pending");
     } catch (error: any) {
       console.error("Error:", error);
       toast.error(error.message || "Failed to submit");

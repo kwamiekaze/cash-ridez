@@ -63,6 +63,18 @@ const handler = async (req: Request): Promise<Response> => {
   if (isDriver) roles.push("Driver");
   const rolesText = roles.join(" & ");
 
+  // Create notifications for all admins
+  for (const admin of adminUsers) {
+    await supabase.from('notifications').insert({
+      user_id: admin.user_id,
+      type: 'verification_submitted',
+      title: 'New ID Verification Submitted',
+      message: `${displayName} (${userEmail}) has submitted their ID for verification as ${rolesText}`,
+      link: '/admin',
+      related_user_id: userId
+    });
+  }
+
   // Generate a signed URL for the ID image if provided
   let idSignedUrl: string | null = null;
   if (filePath) {
