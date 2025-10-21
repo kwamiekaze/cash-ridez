@@ -13,6 +13,19 @@ export default function VerificationPending() {
   const [verificationStatus, setVerificationStatus] = useState<string>("pending");
   const [loading, setLoading] = useState(true);
 
+  // SEO
+  useEffect(() => {
+    document.title = "Verification Pending | Cash Ridez";
+    const desc = "We received your ID submission. We'll review and notify you shortly.";
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute("content", desc);
+  }, []);
+
   useEffect(() => {
     if (!user) {
       navigate("/auth");
