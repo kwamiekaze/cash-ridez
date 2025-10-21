@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, MapPin, Clock, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import AppHeader from "@/components/AppHeader";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -206,15 +207,8 @@ const CreateRideRequest = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate("/rider")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-        </div>
-      </header>
-
+      <AppHeader />
+      
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>

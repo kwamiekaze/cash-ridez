@@ -15,6 +15,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import TripActionDialog from "@/components/TripActionDialog";
+import AppHeader from "@/components/AppHeader";
 
 export default function TripRequestsList() {
   const navigate = useNavigate();
@@ -308,8 +309,9 @@ export default function TripRequestsList() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <div className="max-w-4xl mx-auto p-4">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />

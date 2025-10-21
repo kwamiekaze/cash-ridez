@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { UserRatingsDisplay } from "@/components/UserRatingsDisplay";
+import AppHeader from "@/components/AppHeader";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -204,6 +205,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppHeader />
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Button
           variant="ghost"
