@@ -51,10 +51,14 @@ export function NotificationBell() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
+          const newNotif = (payload as any).new as Notification | undefined;
+          if (newNotif) {
+            // Optimistically prepend and cap list
+            setNotifications((prev) => [newNotif, ...prev].slice(0, 20));
+            setUnreadCount((prev) => prev + 1);
+          }
           // Play sound for new notifications
           playNotificationSound();
-          // Refetch to get the new notification
-          fetchNotifications();
         }
       )
       .subscribe();
@@ -164,7 +168,7 @@ export function NotificationBell() {
   if (!user) return null;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(nextOpen) => { setOpen(nextOpen); if (nextOpen && unreadCount > 0) { markAllAsRead(); } }}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className={cn(
