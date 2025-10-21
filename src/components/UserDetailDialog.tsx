@@ -34,6 +34,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     phone_number: "",
     bio: "",
     paused: false,
+    admin_locked_fields: [] as string[],
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         phone_number: data.phone_number || "",
         bio: data.bio || "",
         paused: data.paused || false,
+        admin_locked_fields: data.admin_locked_fields || [],
       });
     } catch (error: any) {
       toast.error("Failed to fetch user details");
@@ -212,6 +214,29 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               />
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="lock_full_name"
+                  checked={formData.admin_locked_fields.includes('full_name')}
+                  onChange={(e) => {
+                    const locked = e.target.checked;
+                    setFormData({
+                      ...formData,
+                      admin_locked_fields: locked
+                        ? [...formData.admin_locked_fields.filter(f => f !== 'full_name'), 'full_name']
+                        : formData.admin_locked_fields.filter(f => f !== 'full_name')
+                    });
+                  }}
+                  className="h-4 w-4"
+                />
+                <Label htmlFor="lock_full_name" className="text-sm font-normal cursor-pointer">
+                  Lock full name (user cannot change)
+                </Label>
+              </div>
+              {formData.admin_locked_fields.includes('full_name') && (
+                <p className="text-xs text-warning">⚠️ This field is locked. User cannot edit it.</p>
+              )}
             </div>
 
             <div className="space-y-2">
