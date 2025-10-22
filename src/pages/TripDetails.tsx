@@ -14,7 +14,6 @@ import { RatingDialog } from "@/components/RatingDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
-import { RideLocationSharing } from "@/components/RideLocationSharing";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -661,14 +660,6 @@ export default function TripDetails() {
                       </span>
                     </div>
                   </div>
-                )}
-                
-                {/* Location Sharing for Assigned Rides */}
-                {request.status === 'assigned' && (
-                  <RideLocationSharing 
-                    rideId={request.id}
-                    participantName={isRider ? (driverProfile?.display_name || 'Driver') : (riderProfile?.display_name || 'Rider')}
-                  />
                 )}
                 
                 {/* Complete/Cancel buttons - only show if trip is still assigned (not completed) */}

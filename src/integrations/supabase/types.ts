@@ -149,8 +149,6 @@ export type Database = {
           blocked_until: string | null
           consecutive_cancellations: number | null
           created_at: string | null
-          current_lat: number | null
-          current_lng: number | null
           display_name: string | null
           driver_rating_avg: number | null
           driver_rating_count: number | null
@@ -162,8 +160,6 @@ export type Database = {
           is_driver: boolean | null
           is_rider: boolean | null
           is_verified: boolean | null
-          location_sharing_enabled: boolean | null
-          location_updated_at: string | null
           paused: boolean | null
           phone_number: string | null
           photo_url: string | null
@@ -191,8 +187,6 @@ export type Database = {
           blocked_until?: string | null
           consecutive_cancellations?: number | null
           created_at?: string | null
-          current_lat?: number | null
-          current_lng?: number | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
@@ -204,8 +198,6 @@ export type Database = {
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
-          location_sharing_enabled?: boolean | null
-          location_updated_at?: string | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
@@ -233,8 +225,6 @@ export type Database = {
           blocked_until?: string | null
           consecutive_cancellations?: number | null
           created_at?: string | null
-          current_lat?: number | null
-          current_lng?: number | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
@@ -246,8 +236,6 @@ export type Database = {
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
-          location_sharing_enabled?: boolean | null
-          location_updated_at?: string | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
@@ -267,41 +255,6 @@ export type Database = {
           warning_count?: number | null
         }
         Relationships: []
-      }
-      ride_locations: {
-        Row: {
-          id: string
-          lat: number
-          lng: number
-          ride_request_id: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          lat: number
-          lng: number
-          ride_request_id: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          lat?: number
-          lng?: number
-          ride_request_id?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ride_locations_ride_request_id_fkey"
-            columns: ["ride_request_id"]
-            isOneToOne: false
-            referencedRelation: "ride_requests"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       ride_messages: {
         Row: {

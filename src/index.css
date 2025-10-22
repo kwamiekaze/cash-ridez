@@ -1,5 +1,3 @@
-@import 'leaflet/dist/leaflet.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -143,63 +141,4 @@ All colors MUST be HSL.
     font-weight: 700;
     letter-spacing: -0.02em;
   }
-}
-
-/* Custom utility classes */
-.bg-gradient-primary {
-  background: var(--gradient-primary);
-}
-
-.shadow-glow {
-  box-shadow: var(--shadow-glow);
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-muted/20;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-primary/40 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-primary/60;
-}
-
-/* Leaflet map custom styles */
-.leaflet-container {
-  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  z-index: 0;
-}
-
-.leaflet-popup-content-wrapper {
-  @apply rounded-lg shadow-lg bg-card;
-  padding: 0 !important;
-}
-
-.leaflet-popup-content {
-  margin: 0 !important;
-  min-width: 250px !important;
-}
-
-.leaflet-popup-tip {
-  @apply bg-card;
-}
-
-.leaflet-control-zoom {
-  @apply border-border;
-}
-
-.leaflet-control-zoom a {
-  @apply bg-card text-foreground border-border;
-}
-
-.leaflet-control-zoom a:hover {
-  @apply bg-muted;
 }

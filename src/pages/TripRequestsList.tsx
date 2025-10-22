@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Search, CheckCircle, XCircle, Calendar, DollarSign, Map as MapIcon, List, RefreshCw } from "lucide-react";
+import { ArrowLeft, MapPin, Search, CheckCircle, XCircle, Calendar, DollarSign } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import StatusBadge from "@/components/StatusBadge";
@@ -15,12 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
-import TripFilters, { FilterOption } from "@/components/TripFilters";
-import TripMapView from "@/components/TripMapView";
-import { calculateDistance, getCurrentLocation, calculateTripDistance } from "@/utils/geolocation";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { SafeBoundary } from "@/components/SafeBoundary";
 
 export default function TripRequestsList() {
   const navigate = useNavigate();
@@ -30,18 +25,13 @@ export default function TripRequestsList() {
   const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "closest">("newest");
   const [activeTab, setActiveTab] = useState("open");
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [action, setAction] = useState<"complete" | "cancel">("complete");
-  const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>(['newest']);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showMap, setShowMap] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
-    fetchUserProfile();
     fetchTripRequests();
 
     // Subscribe to realtime updates
@@ -65,51 +55,6 @@ export default function TripRequestsList() {
     };
   }, []);
 
-  // Auto-refresh every 30 seconds if enabled
-  useEffect(() => {
-    if (!autoRefresh) return;
-    
-    const interval = setInterval(() => {
-      fetchTripRequests();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
-
-  const fetchUserProfile = async () => {
-    if (!user) return;
-    
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-    
-    setUserProfile(data);
-  };
-
-  const requestUserLocation = async () => {
-    try {
-      toast({
-        title: "Getting your location...",
-        description: "This may take a few seconds",
-      });
-      const location = await getCurrentLocation();
-      setUserLocation(location);
-      toast({
-        title: "Location Enabled ✓",
-        description: "Now showing trips near you",
-      });
-    } catch (error: any) {
-      console.error('Location error:', error);
-      toast({
-        title: "Location Failed",
-        description: error.message || "Unable to access location. Please check your browser settings and try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const fetchTripRequests = async () => {
     if (!user) return;
     
@@ -131,17 +76,21 @@ export default function TripRequestsList() {
       
       const offerRideIds = offerData?.map(o => o.ride_request_id) || [];
       
+      // For verified users, get ALL open trips plus their own involved trips
+      // For non-verified users, only show trips they're involved in
       let query = supabase
         .from('ride_requests')
         .select('*');
       
       if (isVerified) {
+        // Verified users can see all open trips OR trips they're involved in
         if (offerRideIds.length > 0) {
           query = query.or(`status.eq.open,rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
         } else {
           query = query.or(`status.eq.open,rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
         }
       } else {
+        // Non-verified users only see trips they're directly involved in
         if (offerRideIds.length > 0) {
           query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
         } else {
@@ -154,51 +103,33 @@ export default function TripRequestsList() {
 
       if (rideError) throw rideError;
 
-      if (rideData && rideData.length > 0) {
-        const riderIds = [...new Set(rideData.map(r => r.rider_id))];
-        const driverIds = [...new Set(rideData.map(r => r.assigned_driver_id).filter(Boolean))];
-        
-        const { data: riderProfiles } = await supabase
-          .from('profiles')
-          .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
-          .in('id', riderIds);
+        // Fetch profiles for each request (both rider and driver)
+        if (rideData && rideData.length > 0) {
+          const riderIds = [...new Set(rideData.map(r => r.rider_id))];
+          const driverIds = [...new Set(rideData.map(r => r.assigned_driver_id).filter(Boolean))];
+          
+          const { data: riderProfiles } = await supabase
+            .from('profiles')
+            .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
+            .in('id', riderIds);
 
-        const { data: driverProfiles } = await supabase
-          .from('profiles')
-          .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
-          .in('id', driverIds);
+          const { data: driverProfiles } = await supabase
+            .from('profiles')
+            .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
+            .in('id', driverIds);
 
-        // Enrich with distance calculations
-        const enrichedData = rideData.map(request => {
-          const tripDistance = calculateTripDistance(
-            Number(request.pickup_lat),
-            Number(request.pickup_lng),
-            Number(request.dropoff_lat),
-            Number(request.dropoff_lng)
-          );
-
-          const distanceFromUser = userLocation
-            ? calculateDistance(
-                userLocation.lat,
-                userLocation.lng,
-                Number(request.pickup_lat),
-                Number(request.pickup_lng)
-              )
-            : null;
-
-          return {
+          // Merge the data
+          const enrichedData = rideData.map(request => ({
             ...request,
             rider: riderProfiles?.find(p => p.id === request.rider_id),
-            driver: driverProfiles?.find(p => p.id === request.assigned_driver_id),
-            tripDistance,
-            distance: distanceFromUser,
-          };
-        });
+            driver: driverProfiles?.find(p => p.id === request.assigned_driver_id)
+          }));
 
-        setRequests(enrichedData);
-      } else {
-        setRequests([]);
-      }
+          // Show all trips including completed ones
+          setRequests(enrichedData);
+        } else {
+          setRequests([]);
+        }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -210,14 +141,7 @@ export default function TripRequestsList() {
     }
   };
 
-  // Re-fetch when user location changes
-  useEffect(() => {
-    if (userLocation && requests.length > 0) {
-      fetchTripRequests();
-    }
-  }, [userLocation]);
-
-  // Filter and sort requests based on active filters
+  // Filter and sort requests based on active tab
   useEffect(() => {
     let filtered = [...requests];
 
@@ -246,52 +170,17 @@ export default function TripRequestsList() {
       });
     }
 
-    // Apply local-only filter
-    if (selectedFilters.includes('local-only') && userProfile) {
-      // This would filter by matching city/county - for now, using zip as proxy
-      // In production, you'd extract city/county from profile
-      filtered = filtered.filter(req => 
-        req.pickup_zip === userProfile.zip_code || req.dropoff_zip === userProfile.zip_code
-      );
-    }
-
-    // Apply sorting based on selected filters (primary sort is first filter)
-    const primaryFilter = selectedFilters[0] || 'newest';
-
-    switch (primaryFilter) {
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
-      case 'oldest':
-        filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        break;
-      case 'closest-pickup':
-        filtered.sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime());
-        break;
-      case 'closest-gps':
-        if (userLocation) {
-          filtered.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-        }
-        break;
-      case 'highest-paying':
-        filtered.sort((a, b) => (b.price_offer || 0) - (a.price_offer || 0));
-        break;
-      case 'shortest-distance':
-        filtered.sort((a, b) => (a.tripDistance || 0) - (b.tripDistance || 0));
-        break;
-      case 'longest-distance':
-        filtered.sort((a, b) => (b.tripDistance || 0) - (a.tripDistance || 0));
-        break;
-      case 'highest-rated':
-        filtered.sort((a, b) => (b.rider?.rider_rating_avg || 0) - (a.rider?.rider_rating_avg || 0));
-        break;
-      case 'recently-updated':
-        filtered.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-        break;
+    // Apply sorting
+    if (sortBy === "newest") {
+      filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    } else if (sortBy === "oldest") {
+      filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    } else if (sortBy === "closest") {
+      filtered.sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime());
     }
 
     setFilteredRequests(filtered);
-  }, [requests, searchQuery, selectedFilters, activeTab, user, userLocation, userProfile]);
+  }, [requests, searchQuery, sortBy, activeTab, user]);
 
   const handleCompleteTrip = (trip: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -316,27 +205,21 @@ export default function TripRequestsList() {
     return request.rider_id === user?.id ? "rider" : "driver";
   };
 
-  const getSelectedTripUserRole = (): "rider" | "driver" => {
-    if (!selectedTrip) return "driver";
-    return selectedTrip.rider_id === user?.id ? "rider" : "driver";
-  };
-
   const canUserActOnTrip = (request: any): boolean => {
+    // Riders can act on their own trips (open or assigned)
     if (request.rider_id === user?.id && (request.status === "open" || request.status === "assigned")) {
       return true;
     }
+    // Drivers can act on trips they're assigned to
     if (request.assigned_driver_id === user?.id && request.status === "assigned") {
       return true;
     }
     return false;
   };
 
-  const handleTripSelect = (trip: any) => {
-    navigate(`/trip/${trip.id}`);
-  };
-
   const renderTripCard = (request: any) => {
     const canAct = canUserActOnTrip(request);
+    const userRole = getUserRole(request);
     
     return (
     <Card 
@@ -345,23 +228,13 @@ export default function TripRequestsList() {
       onClick={() => navigate(`/trip/${request.id}`)}
     >
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <div className="flex-1" onClick={() => navigate(`/trip/${request.id}`)}>
+          <div className="flex items-center gap-2 mb-3">
             <StatusBadge status={request.status} />
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {format(new Date(request.created_at), "MMM d, yyyy 'at' h:mm a")}
             </span>
-            {request.distance !== null && (
-              <Badge variant="outline" className="text-xs">
-                {request.distance} mi away
-              </Badge>
-            )}
-            {request.tripDistance && (
-              <Badge variant="secondary" className="text-xs">
-                {request.tripDistance} mi trip
-              </Badge>
-            )}
           </div>
           <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
             <Avatar className="h-12 w-12 border-2 border-background">
@@ -468,46 +341,17 @@ export default function TripRequestsList() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <div className="max-w-7xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto p-4">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">My Trips</h1>
-          <div className="ml-auto flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="auto-refresh"
-                checked={autoRefresh}
-                onCheckedChange={setAutoRefresh}
-              />
-              <Label htmlFor="auto-refresh" className="text-sm cursor-pointer">
-                Auto-refresh (30s)
-              </Label>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchTripRequests()}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
         </div>
 
-        {/* Advanced Filters */}
-        <TripFilters
-          selectedFilters={selectedFilters}
-          onFiltersChange={setSelectedFilters}
-          onRequestLocation={requestUserLocation}
-          hasUserLocation={!!userLocation}
-        />
-
-        {/* Search Section */}
-        <Card className="my-6">
-          <CardContent className="pt-6">
+        {/* Search and Filter Section */}
+        <Card className="mb-6">
+          <CardContent className="pt-6 space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
@@ -517,63 +361,28 @@ export default function TripRequestsList() {
                 className="pl-10"
               />
             </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="closest">Closest Pickup Time</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" onClick={() => { setSearchQuery(""); setSortBy("newest"); }}>
+                Clear Filters
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Map/List View Toggle */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant={!showMap ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowMap(false)}
-              className="gap-2"
-            >
-              <List className="w-4 h-4" />
-              List View
-            </Button>
-            <Button
-              variant={showMap ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowMap(true)}
-              className="gap-2"
-            >
-              <MapIcon className="w-4 h-4" />
-              Map View
-            </Button>
-          </div>
-          <Badge variant="secondary">
-            {filteredRequests.length} {filteredRequests.length === 1 ? 'Trip' : 'Trips'}
-          </Badge>
-        </div>
-
         {loading ? (
           <div className="text-center py-8">Loading...</div>
-        ) : showMap ? (
-          <SafeBoundary
-            fallback={
-              <div className="relative">
-                <TripMapView
-                  trips={filteredRequests}
-                  onTripSelect={handleTripSelect}
-                  userLocation={userLocation}
-                />
-                <div className="absolute left-3 top-3 z-10 rounded-md bg-background/80 backdrop-blur px-3 py-1 text-xs border">
-                  Using fallback map (load error)
-                </div>
-                <div className="mt-4 text-center">
-                  <Button variant="outline" size="sm" onClick={() => setShowMap(false)}>Back to List</Button>
-                </div>
-              </div>
-            }
-          >
-            <TripMapView
-              trips={filteredRequests}
-              onTripSelect={handleTripSelect}
-              userLocation={userLocation}
-              onRequestLocation={requestUserLocation}
-            />
-          </SafeBoundary>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1">
@@ -631,7 +440,7 @@ export default function TripRequestsList() {
             <TabsContent value="history" className="mt-6 space-y-4">
               {filteredRequests.length === 0 ? (
                 <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">No trip history</p>
+                  <p className="text-muted-foreground">No trip history yet</p>
                 </Card>
               ) : (
                 filteredRequests.map(request => renderTripCard(request))
@@ -639,18 +448,18 @@ export default function TripRequestsList() {
             </TabsContent>
           </Tabs>
         )}
-
-        {selectedTrip && (
-          <TripActionDialog
-            request={selectedTrip}
-            action={action}
-            open={actionDialogOpen}
-            onOpenChange={setActionDialogOpen}
-            userRole={getSelectedTripUserRole()}
-            onSuccess={handleSuccess}
-          />
-        )}
       </div>
+
+      {selectedTrip && (
+        <TripActionDialog
+          request={selectedTrip}
+          open={actionDialogOpen}
+          onOpenChange={setActionDialogOpen}
+          action={action}
+          userRole={getUserRole(selectedTrip)}
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 }

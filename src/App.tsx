@@ -4,10 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-import { useState } from "react";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
-import { LocationPermissionDialog } from "@/components/LocationPermissionDialog";
-import { GoogleMapsKeyPrompt } from "@/components/GoogleMapsKeyPrompt";
 import { FloatingChat } from "@/components/FloatingChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -30,10 +27,7 @@ import TripHistory from "./pages/TripHistory";
 
 const queryClient = new QueryClient();
 
-const App = () => {
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-
-  return (
+const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -41,8 +35,6 @@ const App = () => {
       <BrowserRouter>
         <AuthProvider>
           <NotificationPermissionDialog />
-          <LocationPermissionDialog onLocationEnabled={setUserLocation} />
-          <GoogleMapsKeyPrompt />
           <FloatingChat />
           <FloatingSupport />
           <Routes>
@@ -151,7 +143,6 @@ const App = () => {
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-  );
-};
+);
 
 export default App;
