@@ -87,113 +87,125 @@ export default function GoogleTripMapView({ trips, onTripSelect, userLocation, o
     return <div className={containerClass} />;
   }
 
-  return (
-    <div className={containerClass}>
-      {/* Enable location control */}
-      {!userLocation && onRequestLocation && (
-        <div className="absolute z-10 top-3 right-3">
-          <Button variant="outline" size="sm" onClick={onRequestLocation}>Enable location</Button>
-        </div>
-      )}
-
-      <GoogleMap
-        center={center}
-        zoom={12}
-        options={{
-          disableDefaultUI: false,
-          streetViewControl: false,
-          mapTypeControl: false,
-          clickableIcons: true,
-          fullscreenControl: true,
-        }}
-        mapContainerStyle={{ width: "100%", height: "100%" }}
-      >
-        {/* User Location Marker */}
-        {userLocation && isValidLatLng(userLocation.lat, userLocation.lng) && (
-          <Marker
-            position={{ lat: Number(userLocation.lat), lng: Number(userLocation.lng) }}
-            onClick={() => setActiveTripId(null)}
-          >
-            <InfoWindow>
-              <div className="text-center font-semibold">
-                <Navigation className="w-4 h-4 inline mr-1" />
-                Your Location
-              </div>
-            </InfoWindow>
-          </Marker>
+  try {
+    return (
+      <div className={containerClass}>
+        {/* Enable location control */}
+        {!userLocation && onRequestLocation && (
+          <div className="absolute z-10 top-3 right-3">
+            <Button variant="outline" size="sm" onClick={onRequestLocation}>Enable location</Button>
+          </div>
         )}
 
-        {/* Trip Markers */}
-        {trips
-          .filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng))
-          .map((trip) => {
-            const lat = Number(trip.pickup_lat);
-            const lng = Number(trip.pickup_lng);
-            return (
-              <Marker
-                key={trip.id}
-                position={{ lat, lng }}
-                onClick={() => setActiveTripId(trip.id)}
-              >
-                {activeTripId === trip.id && (
-                  <InfoWindow onCloseClick={() => setActiveTripId(null)} options={{ maxWidth: 280 }}>
-                    <Card className="border-0 shadow-none p-2">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={trip.status} />
-                        </div>
-                        {trip.rider && (
+        <GoogleMap
+          center={center}
+          zoom={12}
+          options={{
+            disableDefaultUI: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+            clickableIcons: true,
+            fullscreenControl: true,
+          }}
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+        >
+          {/* User Location Marker */}
+          {userLocation && isValidLatLng(userLocation.lat, userLocation.lng) && (
+            <Marker
+              position={{ lat: Number(userLocation.lat), lng: Number(userLocation.lng) }}
+              onClick={() => setActiveTripId(null)}
+            >
+              <InfoWindow>
+                <div className="text-center font-semibold">
+                  <Navigation className="w-4 h-4 inline mr-1" />
+                  Your Location
+                </div>
+              </InfoWindow>
+            </Marker>
+          )}
+
+          {/* Trip Markers */}
+          {trips
+            .filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng))
+            .map((trip) => {
+              const lat = Number(trip.pickup_lat);
+              const lng = Number(trip.pickup_lng);
+              return (
+                <Marker
+                  key={trip.id}
+                  position={{ lat, lng }}
+                  onClick={() => setActiveTripId(trip.id)}
+                >
+                  {activeTripId === trip.id && (
+                    <InfoWindow onCloseClick={() => setActiveTripId(null)} options={{ maxWidth: 280 }}>
+                      <Card className="border-0 shadow-none p-2">
+                        <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={trip.rider.photo_url || ""} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                {(trip.rider.full_name || trip.rider.display_name || "U")[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold">{trip.rider.full_name || trip.rider.display_name}</p>
-                              <RatingDisplay 
-                                rating={trip.rider.rider_rating_avg || 0} 
-                                count={trip.rider.rider_rating_count || 0}
-                                size="sm"
-                              />
+                            <StatusBadge status={trip.status} />
+                          </div>
+                          {trip.rider && (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={trip.rider.photo_url || ""} />
+                                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                  {(trip.rider.full_name || trip.rider.display_name || "U")[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold">{trip.rider.full_name || trip.rider.display_name}</p>
+                                <RatingDisplay 
+                                  rating={trip.rider.rider_rating_avg || 0} 
+                                  count={trip.rider.rider_rating_count || 0}
+                                  size="sm"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            <div className="flex items-start gap-1 text-xs">
+                              <MapPin className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
+                              <p className="text-muted-foreground">{trip.pickup_address}</p>
+                            </div>
+                            <div className="flex items-start gap-1 text-xs">
+                              <MapPin className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
+                              <p className="text-muted-foreground">{trip.dropoff_address}</p>
                             </div>
                           </div>
-                        )}
-                        <div className="space-y-1">
-                          <div className="flex items-start gap-1 text-xs">
-                            <MapPin className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
-                            <p className="text-muted-foreground">{trip.pickup_address}</p>
-                          </div>
-                          <div className="flex items-start gap-1 text-xs">
-                            <MapPin className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
-                            <p className="text-muted-foreground">{trip.dropoff_address}</p>
-                          </div>
+                          {trip.price_offer && (
+                            <div className="flex items-center gap-1 pt-2 border-t">
+                              <DollarSign className="w-4 h-4 text-primary" />
+                              <span className="text-lg font-bold text-primary">${trip.price_offer}</span>
+                            </div>
+                          )}
+                          {trip.distance && (
+                            <p className="text-xs text-muted-foreground">Distance from you: {trip.distance} mi</p>
+                          )}
+                          <Button 
+                            size="sm" 
+                            className="w-full mt-2"
+                            onClick={() => onTripSelect(trip)}
+                          >
+                            View Details
+                          </Button>
                         </div>
-                        {trip.price_offer && (
-                          <div className="flex items-center gap-1 pt-2 border-t">
-                            <DollarSign className="w-4 h-4 text-primary" />
-                            <span className="text-lg font-bold text-primary">${trip.price_offer}</span>
-                          </div>
-                        )}
-                        {trip.distance && (
-                          <p className="text-xs text-muted-foreground">Distance from you: {trip.distance} mi</p>
-                        )}
-                        <Button 
-                          size="sm" 
-                          className="w-full mt-2"
-                          onClick={() => onTripSelect(trip)}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </Card>
-                  </InfoWindow>
-                )}
-              </Marker>
-            );
-          })}
-      </GoogleMap>
-    </div>
-  );
+                      </Card>
+                    </InfoWindow>
+                  )}
+                </Marker>
+              );
+            })}
+        </GoogleMap>
+      </div>
+    );
+  } catch (e) {
+    console.error('[GoogleTripMapView] Render error, falling back to Leaflet:', e);
+    return (
+      <div className="relative">
+        <TripMapView trips={trips} onTripSelect={onTripSelect} userLocation={userLocation} />
+        <div className="absolute left-3 top-3 z-10 rounded-md bg-background/80 backdrop-blur px-3 py-1 text-xs border">
+          Using fallback map (render error)
+        </div>
+      </div>
+    );
+  }
 }

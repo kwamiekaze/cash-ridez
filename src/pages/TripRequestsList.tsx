@@ -17,6 +17,7 @@ import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
 import TripFilters, { FilterOption } from "@/components/TripFilters";
 import GoogleTripMapView from "@/components/GoogleTripMapView";
+import TripMapView from "@/components/TripMapView";
 import { calculateDistance, getCurrentLocation, calculateTripDistance } from "@/utils/geolocation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -552,10 +553,19 @@ export default function TripRequestsList() {
         ) : showMap ? (
           <SafeBoundary
             fallback={
-              <Card className="p-6 text-center">
-                <p className="mb-4">Map failed to load. Try again.</p>
-                <Button variant="outline" size="sm" onClick={() => setShowMap(false)}>Back to List</Button>
-              </Card>
+              <div className="relative">
+                <TripMapView
+                  trips={filteredRequests}
+                  onTripSelect={handleTripSelect}
+                  userLocation={userLocation}
+                />
+                <div className="absolute left-3 top-3 z-10 rounded-md bg-background/80 backdrop-blur px-3 py-1 text-xs border">
+                  Using fallback map (load error)
+                </div>
+                <div className="mt-4 text-center">
+                  <Button variant="outline" size="sm" onClick={() => setShowMap(false)}>Back to List</Button>
+                </div>
+              </div>
             }
           >
             <GoogleTripMapView
