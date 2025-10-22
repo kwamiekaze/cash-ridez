@@ -7,6 +7,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { useState } from "react";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 import { LocationPermissionDialog } from "@/components/LocationPermissionDialog";
+import { GoogleMapsKeyPrompt } from "@/components/GoogleMapsKeyPrompt";
 import { FloatingChat } from "@/components/FloatingChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -41,6 +42,7 @@ const App = () => {
         <AuthProvider>
           <NotificationPermissionDialog />
           <LocationPermissionDialog onLocationEnabled={setUserLocation} />
+          <GoogleMapsKeyPrompt />
           <FloatingChat />
           <FloatingSupport />
           <Routes>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from "@react-google-maps/api";
+import TripMapView from "@/components/TripMapView";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +28,24 @@ export default function GoogleTripMapView({ trips, onTripSelect, userLocation, o
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
   const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: 37.7749, lng: -122.4194 });
   const [activeTripId, setActiveTripId] = useState<string | number | null>(null);
+  const [authFailed, setAuthFailed] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({ id: "google-map-script", googleMapsApiKey: apiKey || "" });
+
+  // Capture Google Maps authorization failures (invalid key, billing, referrer restrictions)
+  useEffect(() => {
+    (window as any).gm_authFailure = () => {
+      console.error("[Google Maps] Authorization failure. Check API key, billing, or HTTP referrer restrictions.");
+      setAuthFailed(true);
+    };
+    return () => {
+      if ((window as any).gm_authFailure) {
+        delete (window as any).gm_authFailure;
+      }
+    };
+  }, []);
+
+  const shouldFallback = !!loadError || authFailed;
 
   const firstValidTripLatLng = useMemo(() => {
     const valid = trips.find(t => isValidLatLng(t.pickup_lat, t.pickup_lng));
@@ -46,20 +63,23 @@ export default function GoogleTripMapView({ trips, onTripSelect, userLocation, o
 
   if (!apiKey) {
     return (
-      <Card className="p-6 text-center">
-        <p className="mb-2 font-medium">Google Maps API key required</p>
-        <p className="text-sm text-muted-foreground mb-4">Add VITE_GOOGLE_MAPS_API_KEY to enable the map.</p>
-        <p className="text-xs text-muted-foreground">Contact support to set a restricted browser key.</p>
-      </Card>
+      <div className="relative">
+        <TripMapView trips={trips} onTripSelect={onTripSelect} userLocation={userLocation} />
+        <div className="absolute left-3 top-3 z-10 rounded-md bg-background/80 backdrop-blur px-3 py-1 text-xs border">
+          Using fallback map (no API key)
+        </div>
+      </div>
     );
   }
 
-  if (loadError) {
+  if (shouldFallback) {
     return (
-      <Card className="p-6 text-center">
-        <p className="mb-2 font-medium">Map failed to load</p>
-        <p className="text-sm text-muted-foreground">Please refresh the page and try again.</p>
-      </Card>
+      <div className="relative">
+        <TripMapView trips={trips} onTripSelect={onTripSelect} userLocation={userLocation} />
+        <div className="absolute left-3 top-3 z-10 rounded-md bg-background/80 backdrop-blur px-3 py-1 text-xs border">
+          Using fallback map
+        </div>
+      </div>
     );
   }
 
