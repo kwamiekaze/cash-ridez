@@ -63,7 +63,7 @@ export const ZIP_CENTROIDS: Record<string, { lat: number; lng: number }> = {
 };
 
 // Configuration
-export const NEARBY_RADIUS_MI = 10; // Default radius in miles
+export const NEARBY_RADIUS_MI = 25; // Default radius in miles
 
 /**
  * Haversine distance between two points in miles

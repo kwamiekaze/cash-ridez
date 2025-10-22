@@ -188,14 +188,14 @@ export const AvailableDriversList = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Available Drivers Near {userZip}
+            Available Drivers Within 25 Miles of {userZip}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {drivers.length === 0 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-center py-8">
-                No drivers are available near {userZip} yet.
+                No drivers are available within 25 miles of {userZip} yet.
               </p>
               
               <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">

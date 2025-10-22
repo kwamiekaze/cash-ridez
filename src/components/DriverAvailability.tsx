@@ -91,6 +91,21 @@ export const DriverAvailability = () => {
       if (error) throw error;
 
       setCurrentZip(normalizedZip || '');
+      
+      // Trigger notification function when driver becomes available
+      if (state === 'available' && normalizedZip) {
+        supabase.functions.invoke('send-driver-available-notification', {
+          body: {
+            driver_id: user.id,
+            current_zip: normalizedZip,
+            state: state
+          }
+        }).catch(err => {
+          console.error('Error sending driver availability notifications:', err);
+          // Don't show error to user - notifications are non-critical
+        });
+      }
+
       toast.success('Availability updated successfully');
     } catch (error: any) {
       console.error('Error updating availability:', error);
