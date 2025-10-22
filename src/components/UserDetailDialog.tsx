@@ -41,6 +41,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     created_at: "",
     verification_status: "pending" as "approved" | "pending" | "rejected",
     active_role: null as string | null,
+    is_rider: false,
+    is_driver: false,
   });
 
   useEffect(() => {
@@ -72,6 +74,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         created_at: data.created_at || "",
         verification_status: data.verification_status || "pending",
         active_role: data.active_role || null,
+        is_rider: data.is_rider || false,
+        is_driver: data.is_driver || false,
       });
     } catch (error: any) {
       toast.error("Failed to fetch user details");
@@ -306,15 +310,49 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               </div>
             </div>
             <div>
-              <Label className="text-muted-foreground">Active Role</Label>
-              <div className="flex items-center gap-2 mt-1">
-                {formData.active_role ? (
-                  <Badge variant="secondary" className="capitalize">
-                    {formData.active_role}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground text-sm">Not set</span>
-                )}
+              <Label className="text-muted-foreground mb-3 block">User Roles</Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Rider Role</span>
+                    {formData.is_rider && <Badge variant="secondary" className="text-xs">Active</Badge>}
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.is_rider}
+                    onChange={(e) => {
+                      const isRider = e.target.checked;
+                      setFormData({ 
+                        ...formData, 
+                        is_rider: isRider,
+                        active_role: isRider ? 'rider' : (formData.is_driver ? 'driver' : null)
+                      });
+                    }}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Driver Role</span>
+                    {formData.is_driver && <Badge variant="secondary" className="text-xs">Active</Badge>}
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.is_driver}
+                    onChange={(e) => {
+                      const isDriver = e.target.checked;
+                      setFormData({ 
+                        ...formData, 
+                        is_driver: isDriver,
+                        active_role: isDriver ? 'driver' : (formData.is_rider ? 'rider' : null)
+                      });
+                    }}
+                    className="h-4 w-4"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Toggle roles to control user access. Active role determines initial dashboard view.
+                </p>
               </div>
             </div>
             {formData.admin_locked_fields && formData.admin_locked_fields.length > 0 && (
