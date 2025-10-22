@@ -42,7 +42,7 @@ export const RolePicker = ({ onRoleSelect, selectedRole }: RolePickerProps) => {
             <div>
               <h4 className="font-semibold text-lg mb-2">Rider</h4>
               <p className="text-sm text-muted-foreground">
-                Request rides and connect with drivers
+                Request rides from community
               </p>
             </div>
           </div>
@@ -70,7 +70,7 @@ export const RolePicker = ({ onRoleSelect, selectedRole }: RolePickerProps) => {
             <div>
               <h4 className="font-semibold text-lg mb-2">Driver</h4>
               <p className="text-sm text-muted-foreground">
-                Provide rides and earn money
+                Provide rides to community
               </p>
             </div>
           </div>
