@@ -557,6 +557,7 @@ export default function TripRequestsList() {
               trips={filteredRequests}
               onTripSelect={handleTripSelect}
               userLocation={userLocation}
+              onRequestLocation={requestUserLocation}
             />
           </SafeBoundary>
         ) : (
