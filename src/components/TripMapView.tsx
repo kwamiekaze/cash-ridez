@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, DollarSign, Navigation } from 'lucide-react';
@@ -97,14 +98,16 @@ export default function TripMapView({ trips, onTripSelect, userLocation, onReque
   const [mapCenter, setMapCenter] = useState<[number, number]>([37.7749, -122.4194]); // Default to SF
 
   useEffect(() => {
-    if (userLocation) {
-      setMapCenter([userLocation.lat, userLocation.lng]);
+    if (userLocation && isValidLatLng(userLocation.lat, userLocation.lng)) {
+      const next: [number, number] = [userLocation.lat, userLocation.lng];
+      if (next[0] !== mapCenter[0] || next[1] !== mapCenter[1]) setMapCenter(next);
     } else if (trips.length > 0) {
-      const firstTrip = trips[0];
-      const lat = Number(firstTrip.pickup_lat);
-      const lng = Number(firstTrip.pickup_lng);
+      const firstTrip = trips.find((t) => isValidLatLng(t.pickup_lat, t.pickup_lng)) || trips[0];
+      const lat = Number(firstTrip?.pickup_lat);
+      const lng = Number(firstTrip?.pickup_lng);
       if (!isNaN(lat) && !isNaN(lng)) {
-        setMapCenter([lat, lng]);
+        const next: [number, number] = [lat, lng];
+        if (next[0] !== mapCenter[0] || next[1] !== mapCenter[1]) setMapCenter(next);
       }
     }
   }, [userLocation, trips]);
@@ -167,84 +170,94 @@ export default function TripMapView({ trips, onTripSelect, userLocation, onReque
           </Marker>
         )}
 
-        {/* Trip markers */}
-        {trips
-          .filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng))
-          .map((trip) => {
-            try {
-              const lat = Number(trip.pickup_lat);
-              const lng = Number(trip.pickup_lng);
-              return (
-                <Marker
-                  key={trip.id}
-                  position={[lat, lng]}
-                  icon={getMarkerIcon(trip.status)}
-                  eventHandlers={{
-                    click: () => onTripSelect(trip),
-                  }}
-                >
-                  <Popup maxWidth={300}>
-                    <Card className="border-0 shadow-none p-2">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={trip.status} />
-                        </div>
-                        {trip.rider && (
+        {/* Trip markers (clustered for performance) */}
+        <MarkerClusterGroup
+          chunkedLoading
+          removeOutsideVisibleBounds
+          maxClusterRadius={60}
+          spiderfyOnEveryZoom
+          showCoverageOnHover={false}
+        >
+          {trips
+            .filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng))
+            .slice(0, 5000)
+            .map((trip) => {
+              try {
+                const lat = Number(trip.pickup_lat);
+                const lng = Number(trip.pickup_lng);
+                return (
+                  <Marker
+                    key={trip.id}
+                    position={[lat, lng]}
+                    icon={getMarkerIcon(trip.status)}
+                    eventHandlers={{
+                      click: () => onTripSelect(trip),
+                    }}
+                  >
+                    <Popup maxWidth={300}>
+                      <Card className="border-0 shadow-none p-2">
+                        <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={trip.rider.photo_url || ""} />
-                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                                {(trip.rider.full_name || trip.rider.display_name || 'U')[0].toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <p className="text-sm font-semibold">{trip.rider.full_name || trip.rider.display_name}</p>
-                              <RatingDisplay 
-                                rating={trip.rider.rider_rating_avg || 0} 
-                                count={trip.rider.rider_rating_count || 0}
-                                size="sm"
-                              />
+                            <StatusBadge status={trip.status} />
+                          </div>
+                          {trip.rider && (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={trip.rider.photo_url || ""} />
+                                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                  {(trip.rider.full_name || trip.rider.display_name || 'U')[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold">{trip.rider.full_name || trip.rider.display_name}</p>
+                                <RatingDisplay 
+                                  rating={trip.rider.rider_rating_avg || 0} 
+                                  count={trip.rider.rider_rating_count || 0}
+                                  size="sm"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div className="space-y-1">
+                            <div className="flex items-start gap-1 text-xs">
+                              <MapPin className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
+                              <p className="text-muted-foreground">{trip.pickup_address}</p>
+                            </div>
+                            <div className="flex items-start gap-1 text-xs">
+                              <MapPin className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
+                              <p className="text-muted-foreground">{trip.dropoff_address}</p>
                             </div>
                           </div>
-                        )}
-                        <div className="space-y-1">
-                          <div className="flex items-start gap-1 text-xs">
-                            <MapPin className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
-                            <p className="text-muted-foreground">{trip.pickup_address}</p>
-                          </div>
-                          <div className="flex items-start gap-1 text-xs">
-                            <MapPin className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
-                            <p className="text-muted-foreground">{trip.dropoff_address}</p>
-                          </div>
+                          {trip.price_offer && (
+                            <div className="flex items-center gap-1 pt-2 border-t">
+                              <DollarSign className="w-4 h-4 text-primary" />
+                              <span className="text-lg font-bold text-primary">${trip.price_offer}</span>
+                            </div>
+                          )}
+                          {trip.distance && (
+                            <p className="text-xs text-muted-foreground">
+                              Distance from you: {trip.distance} mi
+                            </p>
+                          )}
+                          <Button 
+                            size="sm" 
+                            className="w-full mt-2"
+                            onClick={() => onTripSelect(trip)}
+                          >
+                            View Details
+                          </Button>
                         </div>
-                        {trip.price_offer && (
-                          <div className="flex items-center gap-1 pt-2 border-t">
-                            <DollarSign className="w-4 h-4 text-primary" />
-                            <span className="text-lg font-bold text-primary">${trip.price_offer}</span>
-                          </div>
-                        )}
-                        {trip.distance && (
-                          <p className="text-xs text-muted-foreground">
-                            Distance from you: {trip.distance} mi
-                          </p>
-                        )}
-                        <Button 
-                          size="sm" 
-                          className="w-full mt-2"
-                          onClick={() => onTripSelect(trip)}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </Card>
-                  </Popup>
-                </Marker>
-              );
-            } catch (e) {
-              console.error('Failed to render marker for trip', trip?.id, e);
-              return null;
-            }
-          })}
+                      </Card>
+                    </Popup>
+                  </Marker>
+                );
+              } catch (e) {
+                console.error('Failed to render marker for trip', trip?.id, e);
+                return null;
+              }
+            })}
+        </MarkerClusterGroup>
+
       </MapContainer>
       {!userLocation && onRequestLocation && (
         <div className="absolute z-10 top-3 right-3">
