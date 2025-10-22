@@ -355,6 +355,16 @@ export default function TripDetails() {
 
   const handleRatingSubmit = async (rating: number, comment?: string) => {
     try {
+      // Prevent rating on cancelled trips
+      if (request.status === 'cancelled') {
+        toast({
+          title: "Cannot Rate",
+          description: "You cannot rate users on cancelled trips.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Determine if current user is rating as rider or driver
       const updateField = isRider ? 'rider_rating' : 'driver_rating';
       const completionField = isRider ? 'rider_completed' : 'driver_completed';
@@ -362,13 +372,21 @@ export default function TripDetails() {
       const ratedUserId = isRider ? request.assigned_driver_id : request.rider_id;
 
       // Update the ride request with the rating AND mark as completed by this user
-      // Database triggers will automatically update the profile ratings
+      // Also update status to completed if both users have now marked complete
+      const otherCompletionField = isRider ? 'driver_completed' : 'rider_completed';
+      const updates: any = { 
+        [updateField]: rating,
+        [completionField]: true
+      };
+      
+      // If other user already completed, mark trip as completed
+      if (request[otherCompletionField]) {
+        updates.status = 'completed';
+      }
+
       const { error: rideError } = await supabase
         .from('ride_requests')
-        .update({ 
-          [updateField]: rating,
-          [completionField]: true
-        })
+        .update(updates)
         .eq('id', id);
 
       if (rideError) throw rideError;
@@ -393,7 +411,7 @@ export default function TripDetails() {
 
       toast({
         title: "Rating Submitted",
-        description: "Thank you for your feedback!",
+        description: "Thank you for your feedback! Trip marked as complete.",
       });
 
       fetchTripData();
@@ -619,7 +637,7 @@ export default function TripDetails() {
                       Open Chat
                     </Button>
                   )}
-                  {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && (
+                  {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && request.status !== 'cancelled' && (
                     <Button 
                       onClick={() => setShowRatingDialog(true)}
                       variant={request.status === 'completed' ? 'default' : 'outline'}

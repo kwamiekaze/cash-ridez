@@ -44,6 +44,33 @@ export type Database = {
         }
         Relationships: []
       }
+      cancellation_feedback: {
+        Row: {
+          about_user_id: string
+          created_at: string
+          feedback: string | null
+          from_user_id: string
+          id: string
+          trip_id: string
+        }
+        Insert: {
+          about_user_id: string
+          created_at?: string
+          feedback?: string | null
+          from_user_id: string
+          id?: string
+          trip_id: string
+        }
+        Update: {
+          about_user_id?: string
+          created_at?: string
+          feedback?: string | null
+          from_user_id?: string
+          id?: string
+          trip_id?: string
+        }
+        Relationships: []
+      }
       cancellation_stats: {
         Row: {
           badge_tier: string

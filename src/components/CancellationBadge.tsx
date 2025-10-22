@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertTriangle, CheckCircle2, AlertCircle, Info, Minus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { 
   Dialog, 
   DialogContent, 
@@ -84,8 +84,6 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
     }
   };
 
-  if (loading || !stats) return null;
-
   const getVariant = (tier: string) => {
     switch (tier) {
       case 'green': return 'default';
@@ -104,49 +102,58 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
     }
   };
 
-  const Icon = getIcon(stats.badge_tier);
   const sizeClass = size === "sm" ? "text-[10px] px-1.5 py-0" : "text-xs px-2 py-0.5";
 
+  if (loading) {
+    return null;
+  }
+
+  // Always render for all users - even if no stats yet
+  if (!stats) {
+    // Show 0% badge if no stats available yet
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="default" className={`${sizeClass} flex items-center gap-1`}>
+              <CheckCircle2 className="h-3 w-3" />
+              Cancel: 0%
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            <div className="space-y-1 text-xs">
+              <p className="font-semibold">No Cancellation Data</p>
+              <p>This user has no cancellation history yet.</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   const renderBadge = (roleType: "rider" | "driver") => {
-    const rate90d = roleType === "rider" ? stats.rider_rate_90d : stats.driver_rate_90d;
-    const rateLifetime = roleType === "rider" ? stats.rider_rate_lifetime : stats.driver_rate_lifetime;
-    const committed90d = roleType === "rider" ? stats.rider_90d_committed : stats.driver_90d_committed;
-    const cancels90d = roleType === "rider" ? stats.rider_90d_cancels : stats.driver_90d_cancels;
-    const committedLifetime = roleType === "rider" ? stats.rider_lifetime_committed : stats.driver_lifetime_committed;
-    const cancelsLifetime = roleType === "rider" ? stats.rider_lifetime_cancels : stats.driver_lifetime_cancels;
+    const rate90d = roleType === "rider" ? (stats?.rider_rate_90d || 0) : (stats?.driver_rate_90d || 0);
+    const rateLifetime = roleType === "rider" ? (stats?.rider_rate_lifetime || 0) : (stats?.driver_rate_lifetime || 0);
+    const committed90d = roleType === "rider" ? (stats?.rider_90d_committed || 0) : (stats?.driver_90d_committed || 0);
+    const cancels90d = roleType === "rider" ? (stats?.rider_90d_cancels || 0) : (stats?.driver_90d_cancels || 0);
+    const committedLifetime = roleType === "rider" ? (stats?.rider_lifetime_committed || 0) : (stats?.driver_lifetime_committed || 0);
+    const cancelsLifetime = roleType === "rider" ? (stats?.rider_lifetime_cancels || 0) : (stats?.driver_lifetime_cancels || 0);
 
-    if (committed90d === 0 && committedLifetime === 0) {
-      return (
-        <TooltipProvider key={roleType}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="outline" className={`${sizeClass} flex items-center gap-1 text-muted-foreground`}>
-                <Minus className="h-3 w-3" />
-                Cancel: —
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs">
-              <div className="space-y-1 text-xs">
-                <p className="font-semibold">No Trip History</p>
-                <p>This user hasn't completed any trips yet.</p>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
+    const badgeTier = stats?.badge_tier || 'green';
+    const IconComponent = getIcon(badgeTier);
 
+    // Always show badge, even for 0%
     return (
       <TooltipProvider key={roleType}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Badge 
-              variant={getVariant(stats.badge_tier)} 
+              variant={getVariant(badgeTier)} 
               className={`${sizeClass} flex items-center gap-1`}
               aria-label={`Cancellation rate ${rate90d.toFixed(0)} percent in last 90 days`}
             >
-              {showIcon && <Icon className="h-3 w-3" />}
-              Cancel: {rate90d.toFixed(0)}% (90d)
+              {showIcon && <IconComponent className="h-3 w-3" />}
+              Cancel: {rate90d.toFixed(0)}%
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="sm" className="p-0 h-auto ml-1" onClick={(e) => e.stopPropagation()}>
@@ -189,12 +196,13 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
           <TooltipContent side="top" className="max-w-xs">
             <div className="space-y-1 text-xs">
               <p className="font-semibold capitalize">{roleType} Cancellation Rate</p>
-              <p>90-day: {rate90d.toFixed(1)}% ({cancels90d.toFixed(1)}/{committed90d})</p>
-              <p>Lifetime: {rateLifetime.toFixed(1)}% ({cancelsLifetime.toFixed(1)}/{committedLifetime})</p>
+              <p>90-day: {rate90d.toFixed(1)}% ({cancels90d.toFixed(1)}/{committed90d || 0})</p>
+              <p>Lifetime: {rateLifetime.toFixed(1)}% ({cancelsLifetime.toFixed(1)}/{committedLifetime || 0})</p>
               <p className="text-muted-foreground mt-2">
-                {rate90d < 5 && "Excellent reliability"}
-                {rate90d >= 5 && rate90d <= 15 && "Moderate cancellation rate"}
-                {rate90d > 15 && "High cancellation rate - caution advised"}
+                {committed90d === 0 && committedLifetime === 0 && "No trip history"}
+                {(committed90d > 0 || committedLifetime > 0) && rate90d < 5 && "Excellent reliability"}
+                {(committed90d > 0 || committedLifetime > 0) && rate90d >= 5 && rate90d <= 15 && "Moderate cancellation rate"}
+                {(committed90d > 0 || committedLifetime > 0) && rate90d > 15 && "High cancellation rate - caution advised"}
               </p>
             </div>
           </TooltipContent>
@@ -206,28 +214,6 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
   if (role === "both") {
     const riderBadge = renderBadge("rider");
     const driverBadge = renderBadge("driver");
-    
-    if (!riderBadge && !driverBadge) {
-      // Show neutral badge if no stats for either role
-      return (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="outline" className={`${sizeClass} flex items-center gap-1 text-muted-foreground`}>
-                <Minus className="h-3 w-3" />
-                Cancel: —
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs">
-              <div className="space-y-1 text-xs">
-                <p className="font-semibold">No Trip History</p>
-                <p>This user hasn't completed any trips yet.</p>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
     
     return (
       <div className="flex items-center gap-1 flex-wrap">
