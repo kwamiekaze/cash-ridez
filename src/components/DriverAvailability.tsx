@@ -111,33 +111,33 @@ export const DriverAvailability = () => {
   }
 
   return (
-    <Card>
+    <Card className="border-2 border-primary/20" role="region" aria-label="Driver Availability">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="h-5 w-5" />
-          Driver Availability
+        <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+          <Activity className="h-5 w-5 text-primary" />
+          Your Current Availability
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm">
           Update your availability status and location for riders to see
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-5 sm:space-y-6">
         {/* Availability States */}
         <div className="space-y-3">
-          <Label>Current Status</Label>
-          <div className="grid grid-cols-2 gap-3">
+          <Label className="text-sm font-medium">Current Status</Label>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             {availabilityStates.map((status) => (
               <Button
                 key={status.value}
                 variant={state === status.value ? "default" : "outline"}
                 className={cn(
-                  "justify-start",
-                  state === status.value && "ring-2 ring-offset-2 ring-primary"
+                  "justify-start h-auto py-3 sm:py-3.5",
+                  state === status.value && "ring-2 ring-offset-2 ring-primary shadow-md"
                 )}
                 onClick={() => setState(status.value)}
               >
-                <div className={cn("w-3 h-3 rounded-full mr-2", status.color)} />
-                {status.label}
+                <div className={cn("w-3 h-3 rounded-full mr-2 flex-shrink-0", status.color)} />
+                <span className="text-sm sm:text-base">{status.label}</span>
               </Button>
             ))}
           </div>
@@ -145,8 +145,8 @@ export const DriverAvailability = () => {
 
         {/* ZIP Code */}
         <div className="space-y-3">
-          <Label htmlFor="zip" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
+          <Label htmlFor="zip" className="flex items-center gap-2 text-sm font-medium">
+            <MapPin className="h-4 w-4 text-primary" />
             Current ZIP Code
           </Label>
           <Input
@@ -160,11 +160,12 @@ export const DriverAvailability = () => {
               setCurrentZip(normalized);
             }}
             maxLength={5}
+            className="text-base sm:text-lg font-medium h-11 sm:h-12"
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
             {state === 'available' 
-              ? "Required to appear in riders' Available Drivers list"
-              : "Riders in your ZIP will be notified when you become available"}
+              ? "✓ Required to appear in riders' Available Drivers list"
+              : "ⓘ Riders in your ZIP will be notified when you become available"}
           </p>
         </div>
 
@@ -172,9 +173,10 @@ export const DriverAvailability = () => {
         <Button
           onClick={updateAvailability}
           disabled={updating}
-          className="w-full"
+          className="w-full h-11 sm:h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all"
+          size="lg"
         >
-          {updating ? 'Updating...' : 'Update Availability'}
+          {updating ? 'Updating...' : 'Save Availability'}
         </Button>
       </CardContent>
     </Card>

@@ -2,16 +2,17 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import AppHeader from "@/components/AppHeader";
-import { Car, LogOut, MapPin, Search, User, Plus, History } from "lucide-react";
+import { MapPin, User, History, Activity, AlertCircle } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import AcceptRideDialog from "@/components/AcceptRideDialog";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { UserChip } from "@/components/UserChip";
 import { DriverAvailability } from "@/components/DriverAvailability";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
@@ -103,72 +104,73 @@ const DriverDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Verification Notice */}
-        {profile && !profile.is_verified && (
-          <Card className="p-6 mb-6 bg-warning/10 border-warning">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
-                <StatusBadge status={profile.verification_status} />
+        {!profile?.is_verified && (
+          <Card className="mb-6 border-warning bg-warning/5">
+            <CardContent className="p-6">
+              <div className="flex gap-4">
+                <AlertCircle className="h-6 w-6 text-warning flex-shrink-0 mt-1" />
+                <div>
+                  <h3 className="font-semibold mb-2">Account Verification Required</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Your account needs verification before you can accept rides. Submit your documents to get verified.
+                  </p>
+                  <Button onClick={() => navigate("/verification")}>
+                    Complete Verification
+                  </Button>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">Verification {profile.verification_status}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {profile.verification_status === "pending"
-                    ? "Your ID is being reviewed. You'll be able to connect with trip requests once verified."
-                    : "Please upload your ID to get verified and start connecting with members."}
-                </p>
-              </div>
-            </div>
+            </CardContent>
           </Card>
         )}
 
-        {/* Driver Availability - Prominent at Top */}
-        <div className="mb-8">
+        {/* Top Section: Driver Availability */}
+        <div className="mb-6">
           <DriverAvailability />
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <Button
-            size="lg"
             variant="outline"
-            className="h-16"
+            className="h-auto py-3 sm:py-4 flex flex-col gap-2 border-2 border-primary/20 hover:border-primary hover:bg-primary/5 transition-all"
             onClick={() => {
-              const openRequests = document.getElementById('available-requests');
-              openRequests?.scrollIntoView({ behavior: 'smooth' });
+              const openSection = document.getElementById("available-requests");
+              openSection?.scrollIntoView({ behavior: "smooth" });
             }}
           >
-            <Search className="w-5 h-5 mr-2" />
-            Find Requests
+            <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="text-xs sm:text-sm font-medium">Find Requests</span>
           </Button>
-          <Button 
-            size="lg" 
-            variant="outline" 
-            className="h-16"
-            onClick={() => navigate("/trip-requests")}
-          >
-            <Car className="w-5 h-5 mr-2" />
-            My Offers
-          </Button>
-          <Button 
-            size="lg" 
-            variant="outline" 
-            className="h-16"
+          
+          <Button
+            variant="outline"
+            className="h-auto py-3 sm:py-4 flex flex-col gap-2 border-2 border-primary/20 hover:border-primary hover:bg-primary/5 transition-all"
             onClick={() => navigate("/profile")}
           >
-            <User className="w-5 h-5 mr-2" />
-            View Profile
+            <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="text-xs sm:text-sm font-medium">View Profile</span>
           </Button>
+          
           <Button
-            size="lg"
             variant="outline"
-            className="h-16"
+            className="h-auto py-3 sm:py-4 flex flex-col gap-2 border-2 border-primary/20 hover:border-primary hover:bg-primary/5 transition-all"
             onClick={() => navigate("/trip-history")}
           >
-            <History className="w-5 h-5 mr-2" />
-            Trip History
+            <History className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="text-xs sm:text-sm font-medium">Trip History</span>
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="h-auto py-3 sm:py-4 flex flex-col gap-2 border-2 border-primary/20 hover:border-primary hover:bg-primary/5 transition-all"
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <span className="text-xs sm:text-sm font-medium">Availability</span>
           </Button>
         </div>
 
