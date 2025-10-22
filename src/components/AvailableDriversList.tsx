@@ -77,16 +77,11 @@ export const AvailableDriversList = () => {
       setUserZip(profile.profile_zip);
       setNotifyNewDriver(profile.notify_new_driver || false);
 
-      // Get nearby ZIPs using SCF matching and radius
-      const nearbyZipsData = findNearbyZips(profile.profile_zip);
-      const nearbyZipCodes = [profile.profile_zip, ...nearbyZipsData.map(z => z.zip)];
-
-      // Get available drivers in nearby ZIPs
+      // Get ALL available drivers (we'll filter by distance client-side)
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
         .select('*')
-        .eq('state', 'available')
-        .in('current_zip', nearbyZipCodes);
+        .eq('state', 'available');
 
       if (error) throw error;
 
@@ -98,16 +93,32 @@ export const AvailableDriversList = () => {
           .select('id, full_name, display_name, driver_rating_avg, driver_rating_count, photo_url')
           .in('id', driverIds);
 
-        // Merge data and calculate distances
+        // Merge data, calculate distances, and filter by 25-mile radius
         const enrichedDrivers = driverStatuses.map(status => {
           const driverProfile = driverProfiles?.find(p => p.id === status.user_id);
-          const distance = getZipDistance(userZip, status.current_zip);
+          const distance = getZipDistance(profile.profile_zip, status.current_zip);
+          
+          // Check if driver is within 25 miles or same SCF prefix
+          const isSameSCF = status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3);
+          const isWithinRadius = distance !== null && distance <= 25;
+          
           return {
             ...status,
             ...driverProfile,
-            distance
+            distance,
+            isNearby: isSameSCF || isWithinRadius
           };
-        }).filter(d => d.full_name); // Only include drivers with complete profiles
+        })
+        .filter(d => 
+          d.full_name && // Only include drivers with complete profiles
+          d.isNearby // Only include drivers within 25 miles or same SCF
+        )
+        .sort((a, b) => {
+          // Sort by distance (nulls last)
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+        });
 
         setDrivers(enrichedDrivers);
       } else {

@@ -9,6 +9,8 @@ export const ZIP_CENTROIDS: Record<string, { lat: number; lng: number }> = {
   '30118': { lat: 34.1518, lng: -84.5844 }, // Cartersville
   '30120': { lat: 34.0151, lng: -84.5522 }, // Cartersville
   '30121': { lat: 34.1681, lng: -84.8299 }, // Cartersville
+  '30135': { lat: 33.9207, lng: -84.9299 }, // Douglasville
+  '30140': { lat: 33.9032, lng: -84.2877 }, // Lithia Springs
   '30141': { lat: 33.9965, lng: -84.7844 }, // Hiram
   '30144': { lat: 33.9526, lng: -84.5499 }, // Kennesaw
   '30152': { lat: 33.9526, lng: -84.5180 }, // Kennesaw
