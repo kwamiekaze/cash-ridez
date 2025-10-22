@@ -56,7 +56,11 @@ const completedIcon = createCustomIcon('#ef4444');
 const MapController = ({ center }: { center: [number, number] }) => {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, 12);
+    const [lat, lng] = center;
+    const isValid = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    if (isValid) {
+      map.setView(center, 12);
+    }
   }, [center, map]);
   return null;
 };
@@ -99,6 +103,7 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
   return (
     <div className="w-full h-[600px] rounded-lg overflow-hidden border-2 border-border">
       <MapContainer
+        key={`${mapCenter[0]}-${mapCenter[1]}`}
         center={mapCenter}
         zoom={12}
         style={{ height: '100%', width: '100%' }}
@@ -143,7 +148,7 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
         {trips.filter(trip => {
           const lat = Number(trip.pickup_lat);
           const lng = Number(trip.pickup_lng);
-          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+          return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
         }).map((trip) => (
           <Marker
             key={trip.id}

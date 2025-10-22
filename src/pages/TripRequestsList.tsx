@@ -20,6 +20,7 @@ import TripMapView from "@/components/TripMapView";
 import { calculateDistance, getCurrentLocation, calculateTripDistance } from "@/utils/geolocation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { SafeBoundary } from "@/components/SafeBoundary";
 
 export default function TripRequestsList() {
   const navigate = useNavigate();
@@ -544,11 +545,20 @@ export default function TripRequestsList() {
         {loading ? (
           <div className="text-center py-8">Loading...</div>
         ) : showMap ? (
-          <TripMapView
-            trips={filteredRequests}
-            onTripSelect={handleTripSelect}
-            userLocation={userLocation}
-          />
+          <SafeBoundary
+            fallback={
+              <Card className="p-6 text-center">
+                <p className="mb-4">Map failed to load. Try again.</p>
+                <Button variant="outline" size="sm" onClick={() => setShowMap(false)}>Back to List</Button>
+              </Card>
+            }
+          >
+            <TripMapView
+              trips={filteredRequests}
+              onTripSelect={handleTripSelect}
+              userLocation={userLocation}
+            />
+          </SafeBoundary>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1">
