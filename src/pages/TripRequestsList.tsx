@@ -90,16 +90,21 @@ export default function TripRequestsList() {
 
   const requestUserLocation = async () => {
     try {
+      toast({
+        title: "Getting your location...",
+        description: "This may take a few seconds",
+      });
       const location = await getCurrentLocation();
       setUserLocation(location);
       toast({
-        title: "Location Enabled",
+        title: "Location Enabled ✓",
         description: "Now showing trips near you",
       });
     } catch (error: any) {
+      console.error('Location error:', error);
       toast({
-        title: "Location Access Denied",
-        description: "Please enable location access in your browser settings to use GPS-based sorting",
+        title: "Location Failed",
+        description: error.message || "Unable to access location. Please check your browser settings and try again.",
         variant: "destructive",
       });
     }

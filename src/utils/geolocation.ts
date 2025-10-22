@@ -41,12 +41,25 @@ export const getCurrentLocation = (): Promise<{ lat: number; lng: number }> => {
         });
       },
       (error) => {
-        reject(error);
+        // Provide specific error messages based on error code
+        let message = 'Unable to get your location';
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            message = 'Location access denied. Please enable location permissions in your browser settings.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            message = 'Location information unavailable. Please check your device settings.';
+            break;
+          case error.TIMEOUT:
+            message = 'Location request timed out. Please try again.';
+            break;
+        }
+        reject(new Error(message));
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000, // Cache for 5 minutes
+        enableHighAccuracy: false, // Changed to false for faster response
+        timeout: 15000, // Increased timeout to 15 seconds
+        maximumAge: 60000, // Cache for 1 minute (reduced for more accurate location)
       }
     );
   });
