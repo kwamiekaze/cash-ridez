@@ -34,6 +34,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
+    display_name: "",
     phone_number: "",
     bio: "",
     paused: false,
@@ -67,6 +68,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
       setUser(data);
       setFormData({
         full_name: data.full_name || "",
+        display_name: data.display_name || "",
         phone_number: data.phone_number || "",
         bio: data.bio || "",
         paused: data.paused || false,
@@ -96,9 +98,15 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
     setSaving(true);
     try {
+      // When admin updates full_name, also update display_name to keep them in sync
+      const updateData = {
+        ...formData,
+        display_name: formData.full_name || formData.display_name,
+      };
+
       const { error } = await supabase
         .from("profiles")
-        .update(formData)
+        .update(updateData)
         .eq("id", userId);
 
       if (error) throw error;
@@ -244,6 +252,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                 }}
               />
               <p className="text-xs text-muted-foreground">Letters, spaces, hyphens, apostrophes, and periods only</p>
+              <p className="text-xs text-primary">This will update the user's name everywhere on the site</p>
               <div className="flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"
