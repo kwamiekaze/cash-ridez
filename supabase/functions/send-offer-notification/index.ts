@@ -13,7 +13,7 @@ interface OfferNotificationRequest {
   recipientEmail?: string;
   recipientName?: string;
   recipientProfileId?: string; // If provided, we'll look up email/name server-side
-  actionType: "accepted" | "countered" | "new_offer";
+  actionType: "accepted" | "countered" | "new_offer" | "rejected";
   senderName: string;
   offerAmount: number;
   tripId: string;
@@ -63,6 +63,16 @@ const handler = async (req: Request): Promise<Response> => {
         <p>Please visit your CashRidez dashboard to view the trip details and contact information:</p>
         <p><a href="https://cashridez.com/trip/${tripId}" style="display: inline-block; padding: 12px 24px; background-color: #22c55e; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">View Trip Details</a></p>
         <p>You can now see contact details in the trip chat.</p>
+        <p>Best regards,<br>CashRidez Team</p>
+      `;
+    } else if (actionType === 'rejected') {
+      subject = 'Your Offer Was Declined';
+      htmlContent = `
+        <h1>Offer Status Update</h1>
+        <p>Hi ${recipientName || 'there'},</p>
+        <p><strong>${senderName}</strong> has declined your offer of <strong>$${offerAmount}</strong>.</p>
+        <p>Don't worry! There are other trips available that you can browse:</p>
+        <p><a href="https://cashridez.com/trips" style="display: inline-block; padding: 12px 24px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 4px; margin: 16px 0;">Browse Available Trips</a></p>
         <p>Best regards,<br>CashRidez Team</p>
       `;
     } else if (actionType === 'countered') {

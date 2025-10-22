@@ -68,7 +68,10 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
 
       toast.success("Ride accepted! Rider has been notified.");
       onOpenChange(false);
-      window.location.reload();
+      // Trigger a refresh of the parent component instead of full page reload
+      setTimeout(() => {
+        window.location.href = `/trip/${request.id}`;
+      }, 500);
     } catch (error: any) {
       toast.error(error.message || "Failed to accept ride");
     } finally {

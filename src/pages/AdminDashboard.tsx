@@ -221,51 +221,51 @@ const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
+          <Card className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 md:w-6 md:h-6 text-primary" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.totalUsers}</p>
-                <p className="text-sm text-muted-foreground">Total Users</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-verified/20 flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-verified" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.verifiedUsers}</p>
-                <p className="text-sm text-muted-foreground">Verified</p>
+              <div className="text-center md:text-left">
+                <p className="text-xl md:text-2xl font-bold">{stats.totalUsers}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Total Users</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-warning/20 flex items-center justify-center">
-                <Shield className="w-6 h-6 text-warning" />
+          <Card className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-verified/20 flex items-center justify-center flex-shrink-0">
+                <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-verified" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.pendingVerifications}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
+              <div className="text-center md:text-left">
+                <p className="text-xl md:text-2xl font-bold">{stats.verifiedUsers}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Verified</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center">
-                <Car className="w-6 h-6 text-accent" />
+          <Card className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
+                <Shield className="w-5 h-5 md:w-6 md:h-6 text-warning" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.openRequests}</p>
-                <p className="text-sm text-muted-foreground">Open Rides</p>
+              <div className="text-center md:text-left">
+                <p className="text-xl md:text-2xl font-bold">{stats.pendingVerifications}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Pending</p>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-4 md:p-6">
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <Car className="w-5 h-5 md:w-6 md:h-6 text-accent" />
+              </div>
+              <div className="text-center md:text-left">
+                <p className="text-xl md:text-2xl font-bold">{stats.openRequests}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Open Rides</p>
               </div>
             </div>
           </Card>
@@ -273,30 +273,30 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="verifications" className="w-full">
-          <TabsList>
-            <TabsTrigger value="verifications">Verifications</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="rides">Rides</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="verifications" className="text-xs md:text-sm">Verifications</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs md:text-sm">Users</TabsTrigger>
+            <TabsTrigger value="rides" className="text-xs md:text-sm">Rides</TabsTrigger>
           </TabsList>
 
           <TabsContent value="verifications" className="mt-6">
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Pending Verifications</h2>
+              <h2 className="text-xl md:text-2xl font-bold">Pending Verifications</h2>
               {pendingUsers.length === 0 ? (
                 <Card className="p-8 text-center">
                   <p className="text-muted-foreground">No pending verifications</p>
                 </Card>
               ) : (
                 pendingUsers.map((user) => (
-                  <Card key={user.id} className="p-6">
-                    <div className="flex items-start justify-between">
+                  <Card key={user.id} className="p-4 md:p-6">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">{user.display_name || user.email}</h3>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-sm md:text-base break-words">{user.display_name || user.email}</h3>
                           <StatusBadge status={user.verification_status} />
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">{user.email}</p>
-                        <div className="flex gap-2 mb-4">
+                        <p className="text-xs md:text-sm text-muted-foreground mb-2 break-all">{user.email}</p>
+                        <div className="flex gap-2 mb-4 flex-wrap">
                           {user.is_rider && <StatusBadge status="open" className="text-xs" />}
                           {user.is_driver && <StatusBadge status="assigned" className="text-xs" />}
                         </div>
@@ -304,6 +304,7 @@ const AdminDashboard = () => {
                           <Button
                             size="sm"
                             variant="outline"
+                            className="text-xs md:text-sm"
                             onClick={async () => {
                               try {
                                 // id_image_url now stores the file path directly
@@ -325,21 +326,22 @@ const AdminDashboard = () => {
                           </Button>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-col sm:flex-row w-full md:w-auto">
                         <Button
                           size="sm"
-                          className="bg-verified"
+                          className="bg-verified text-xs md:text-sm flex-1 md:flex-initial"
                           onClick={() => handleVerification(user.id, true)}
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" />
+                          <CheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                           Approve
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
+                          className="text-xs md:text-sm flex-1 md:flex-initial"
                           onClick={() => handleVerification(user.id, false)}
                         >
-                          <XCircle className="w-4 h-4 mr-1" />
+                          <XCircle className="w-3 h-3 md:w-4 md:h-4 mr-1" />
                           Reject
                         </Button>
                       </div>
@@ -352,18 +354,20 @@ const AdminDashboard = () => {
 
           <TabsContent value="users" className="mt-6">
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">All Users</h2>
-              <UserManagementTable 
-                users={allUsers} 
-                onUpdate={handleUserUpdate}
-                onViewUser={handleViewUser}
-              />
+              <h2 className="text-xl md:text-2xl font-bold">All Users</h2>
+              <div className="overflow-x-auto">
+                <UserManagementTable 
+                  users={allUsers} 
+                  onUpdate={handleUserUpdate}
+                  onViewUser={handleViewUser}
+                />
+              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="rides" className="mt-6">
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">All Rides</h2>
+              <h2 className="text-xl md:text-2xl font-bold">All Rides</h2>
               <AdminRidesManagement />
             </div>
           </TabsContent>

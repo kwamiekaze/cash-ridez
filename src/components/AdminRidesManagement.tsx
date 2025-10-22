@@ -181,23 +181,23 @@ export function AdminRidesManagement() {
           <p className="text-muted-foreground">No rides found</p>
         </Card>
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Rider</TableHead>
-                <TableHead>Driver</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Pickup Time</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="min-w-[150px]">Rider</TableHead>
+                <TableHead className="min-w-[150px]">Driver</TableHead>
+                <TableHead className="min-w-[200px]">Route</TableHead>
+                <TableHead className="min-w-[150px]">Pickup Time</TableHead>
+                <TableHead className="min-w-[80px]">Price</TableHead>
+                <TableHead className="min-w-[100px]">Status</TableHead>
+                <TableHead className="min-w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredRides.map((ride) => (
                 <TableRow key={ride.id}>
-                  <TableCell>
+                  <TableCell className="min-w-[150px]">
                     <UserChip 
                       userId={ride.rider_id} 
                       displayName={ride.rider_profile.display_name} 
@@ -207,7 +207,7 @@ export function AdminRidesManagement() {
                       size="sm"
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="min-w-[150px]">
                     {ride.driver_profile && ride.assigned_driver_id ? (
                       <UserChip 
                         userId={ride.assigned_driver_id} 
@@ -221,7 +221,7 @@ export function AdminRidesManagement() {
                       <span className="text-sm text-muted-foreground">Unassigned</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="min-w-[200px]">
                     <div className="flex items-start gap-1 text-xs max-w-[200px]">
                       <MapPin className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
                       <div className="truncate">{ride.pickup_address}</div>
@@ -231,12 +231,14 @@ export function AdminRidesManagement() {
                       <div className="truncate">{ride.dropoff_address}</div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {new Date(ride.pickup_time).toLocaleString()}
+                  <TableCell className="text-sm min-w-[150px]">
+                    <div className="whitespace-normal break-words">
+                      {new Date(ride.pickup_time).toLocaleString()}
+                    </div>
                   </TableCell>
-                  <TableCell className="font-medium">${ride.price_offer}</TableCell>
-                  <TableCell>{getStatusBadge(ride.status)}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium min-w-[80px]">${ride.price_offer}</TableCell>
+                  <TableCell className="min-w-[100px]">{getStatusBadge(ride.status)}</TableCell>
+                  <TableCell className="min-w-[80px]">
                     <Button
                       size="sm"
                       variant="ghost"

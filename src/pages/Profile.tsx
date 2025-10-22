@@ -15,6 +15,7 @@ import { UserRatingsDisplay } from "@/components/UserRatingsDisplay";
 import AppHeader from "@/components/AppHeader";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { CancellationBadge } from "@/components/CancellationBadge";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -418,6 +419,9 @@ const Profile = () => {
             {profile.is_driver && profile.driver_rating_count > 0 && (
               <UserRatingsDisplay userId={user.id} ratingType="driver" />
             )}
+            
+            {/* Notification Preferences */}
+            <NotificationPreferences />
           </div>
         )}
       </div>

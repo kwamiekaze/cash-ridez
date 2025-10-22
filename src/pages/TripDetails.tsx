@@ -235,6 +235,13 @@ export default function TripDetails() {
 
       if (error) throw error;
 
+      // Get current user profile for notifications
+      const { data: senderProfile } = await supabase
+        .from('profiles')
+        .select('full_name, display_name')
+        .eq('id', currentUserId)
+        .single();
+
       // If accepted, update ride request with assigned driver and send notification
       if (action === 'accepted') {
         // Use atomic accept-ride function to prevent race conditions
@@ -253,17 +260,11 @@ export default function TripDetails() {
         }
 
         // Send email notification to the person whose offer was accepted
-        const { data: senderProfile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', currentUserId)
-          .single();
-
         await supabase.functions.invoke('send-offer-notification', {
           body: {
             actionType: 'accepted',
             recipientProfileId: offer.by_user_id,
-            senderName: senderProfile?.full_name || 'A user',
+            senderName: senderProfile?.full_name || senderProfile?.display_name || 'A user',
             offerAmount: offer.amount,
             tripId: id
           }
@@ -274,6 +275,17 @@ export default function TripDetails() {
           description: "Price agreed! Contact information is now visible.",
         });
       } else {
+        // Send rejection notification
+        await supabase.functions.invoke('send-offer-notification', {
+          body: {
+            actionType: 'rejected',
+            recipientProfileId: offer.by_user_id,
+            senderName: senderProfile?.full_name || senderProfile?.display_name || 'A user',
+            offerAmount: offer.amount,
+            tripId: id
+          }
+        });
+
         toast({
           title: "Offer Rejected",
           description: "The offer has been rejected.",
@@ -876,6 +888,14 @@ export default function TripDetails() {
                                 disabled={request.status !== 'open'}
                               >
                                 Accept ${offer.amount}
+                              </Button>
+                              <Button 
+                                onClick={() => handleOfferAction(offer.id, 'rejected', offer)}
+                                variant="destructive"
+                                className="flex-1 min-w-[100px]"
+                                disabled={request.status !== 'open'}
+                              >
+                                Reject
                               </Button>
                               <Button 
                                 onClick={() => {
