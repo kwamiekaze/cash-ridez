@@ -9,7 +9,7 @@ import { Car, LogOut, Plus, User, History, MapPin, Clock, CheckCircle, XCircle }
 import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
-import { RatingDisplay } from "@/components/RatingDisplay";
+import { UserChip } from "@/components/UserChip";
 import { useToast } from "@/hooks/use-toast";
 import TripActionDialog from "@/components/TripActionDialog";
 

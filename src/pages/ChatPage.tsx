@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CancellationBadge } from "@/components/CancellationBadge";
+import { UserChip } from "@/components/UserChip";
 import AppHeader from "@/components/AppHeader";
 
 export default function ChatPage() {
@@ -234,9 +234,19 @@ export default function ChatPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} max-w-[70%]`}>
-                    <div className="text-xs text-muted-foreground mb-1">
-                      {message.sender?.full_name || message.sender?.display_name || message.sender_id}
-                    </div>
+                     <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+                       <span>{message.sender?.full_name || message.sender?.display_name || message.sender_id}</span>
+                       {message.sender_id && (
+                         <UserChip
+                           userId={message.sender_id}
+                           displayName={message.sender?.display_name}
+                           fullName={message.sender?.full_name}
+                           showCancellationBadge={true}
+                           size="sm"
+                           className="inline-flex"
+                         />
+                       )}
+                     </div>
                     <div
                       className={`rounded-lg px-4 py-2 ${
                         isCurrentUser

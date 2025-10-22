@@ -26,7 +26,7 @@ export default function TripRequestsList() {
   const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "closest" | "highest_paying" | "shortest_distance" | "highest_rated" | "local_only" | "recently_updated">("newest");
+  const [sortBy, setSortBy] = useState<"newest" | "recently_updated" | "highest_paying" | "highest_rated" | "shortest_distance" | "closest">("newest");
   const [activeTab, setActiveTab] = useState("open");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -257,18 +257,16 @@ export default function TripRequestsList() {
     // Apply sorting
     if (sortBy === "newest") {
       filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    } else if (sortBy === "oldest") {
-      filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    } else if (sortBy === "closest") {
-      filtered.sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime());
-    } else if (sortBy === "highest_paying") {
-      filtered.sort((a, b) => (b.price_offer || 0) - (a.price_offer || 0));
-    } else if (sortBy === "shortest_distance") {
-      filtered.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
-    } else if (sortBy === "highest_rated") {
-      filtered.sort((a, b) => (b.rider?.rider_rating_avg || 0) - (a.rider?.rider_rating_avg || 0));
     } else if (sortBy === "recently_updated") {
       filtered.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    } else if (sortBy === "highest_paying") {
+      filtered.sort((a, b) => (b.price_offer || 0) - (a.price_offer || 0));
+    } else if (sortBy === "highest_rated") {
+      filtered.sort((a, b) => (b.rider?.rider_rating_avg || 0) - (a.rider?.rider_rating_avg || 0));
+    } else if (sortBy === "shortest_distance") {
+      filtered.sort((a, b) => (a.distance || Infinity) - (b.distance || Infinity));
+    } else if (sortBy === "closest") {
+      filtered.sort((a, b) => new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime());
     }
 
     setFilteredRequests(filtered);
@@ -441,12 +439,11 @@ export default function TripRequestsList() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="newest">⏱️ Newest First</SelectItem>
-                    <SelectItem value="oldest">📅 Oldest First</SelectItem>
-                    <SelectItem value="closest">🕐 Closest Pickup Time</SelectItem>
-                    <SelectItem value="highest_paying">💰 Highest Paying First</SelectItem>
-                    <SelectItem value="shortest_distance">📍 Shortest Distance</SelectItem>
-                    <SelectItem value="highest_rated">⭐ Highest Rated Riders</SelectItem>
                     <SelectItem value="recently_updated">🔄 Recently Updated</SelectItem>
+                    <SelectItem value="highest_paying">💰 Highest Paying First</SelectItem>
+                    <SelectItem value="highest_rated">⭐ Highest Rated Riders</SelectItem>
+                    <SelectItem value="shortest_distance">📍 Shortest Distance</SelectItem>
+                    <SelectItem value="closest">🕐 Closest Pickup Time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

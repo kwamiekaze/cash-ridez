@@ -815,21 +815,36 @@ export default function TripDetails() {
               <div className="space-y-4">
                 {offers.map((offer) => (
                   <Card key={offer.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex items-start gap-3 flex-1">
-                          <Avatar className="h-12 w-12">
-                            <AvatarImage src={offer.profiles?.photo_url} />
-                            <AvatarFallback>
-                              {(offer.profiles?.full_name || offer.profiles?.display_name || offer.by_user_id)[0].toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium">
-                              {offer.profiles?.full_name || offer.profiles?.display_name || offer.by_user_id}
-                            </p>
-                            {offer.profiles?.driver_rating_count > 0 && (
-                              <RatingDisplay 
+                     <CardContent className="pt-6">
+                       <div className="flex items-start justify-between gap-4 mb-3">
+                         <div className="flex items-start gap-3 flex-1">
+                           {offer.profiles ? (
+                             <UserChip
+                               userId={offer.by_user_id}
+                               displayName={offer.profiles.display_name}
+                               fullName={offer.profiles.full_name}
+                               photoUrl={offer.profiles.photo_url}
+                               role="driver"
+                               ratingAvg={offer.profiles.driver_rating_avg}
+                               ratingCount={offer.profiles.driver_rating_count}
+                               size="md"
+                             />
+                           ) : (
+                             <div className="flex items-start gap-3 flex-1">
+                               <Avatar className="h-12 w-12">
+                                 <AvatarFallback>
+                                   {offer.by_user_id[0].toUpperCase()}
+                                 </AvatarFallback>
+                               </Avatar>
+                               <div className="flex-1 min-w-0">
+                                 <p className="font-medium">{offer.by_user_id}</p>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                         <div className="text-right">
+                           {offer.profiles?.driver_rating_count > 0 && (
+                             <RatingDisplay
                                 rating={offer.profiles.driver_rating_avg} 
                                 count={offer.profiles.driver_rating_count}
                                 size="sm"

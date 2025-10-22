@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, AlertCircle, Info, Minus } from "lucide-react";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface CancellationBadgeProps {
   userId: string;
@@ -106,15 +115,75 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
     const committedLifetime = roleType === "rider" ? stats.rider_lifetime_committed : stats.driver_lifetime_committed;
     const cancelsLifetime = roleType === "rider" ? stats.rider_lifetime_cancels : stats.driver_lifetime_cancels;
 
-    if (committed90d === 0 && committedLifetime === 0) return null;
+    if (committed90d === 0 && committedLifetime === 0) {
+      return (
+        <TooltipProvider key={roleType}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className={`${sizeClass} flex items-center gap-1 text-muted-foreground`}>
+                <Minus className="h-3 w-3" />
+                Cancel: —
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <div className="space-y-1 text-xs">
+                <p className="font-semibold">No Trip History</p>
+                <p>This user hasn't completed any trips yet.</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
 
     return (
       <TooltipProvider key={roleType}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge variant={getVariant(stats.badge_tier)} className={`${sizeClass} flex items-center gap-1`}>
+            <Badge 
+              variant={getVariant(stats.badge_tier)} 
+              className={`${sizeClass} flex items-center gap-1`}
+              aria-label={`Cancellation rate ${rate90d.toFixed(0)} percent in last 90 days`}
+            >
               {showIcon && <Icon className="h-3 w-3" />}
-              <span className="capitalize">{roleType}</span>: {rate90d.toFixed(1)}%
+              Cancel: {rate90d.toFixed(0)}% (90d)
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="p-0 h-auto ml-1" onClick={(e) => e.stopPropagation()}>
+                    <Info className="h-3 w-3" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Cancellation Rate Explained</DialogTitle>
+                    <DialogDescription>
+                      How we calculate reliability scores
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-semibold mb-2">90-Day Rate (Primary)</h4>
+                      <p>Percentage of trips cancelled in the last 90 days. This is the main score shown.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Lifetime Rate (Secondary)</h4>
+                      <p>Overall cancellation rate across all trips ever taken.</p>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Color Coding</h4>
+                      <ul className="space-y-1">
+                        <li>🟢 Green: Under 5% (Excellent)</li>
+                        <li>🟡 Yellow: 5-15% (Moderate)</li>
+                        <li>🔴 Red: Over 15% (High risk)</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Notes</h4>
+                      <p>Only trips that were committed to (accepted by a driver) count toward cancellation rates. Safety-related cancellations may not be counted.</p>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </Badge>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-xs">
@@ -138,7 +207,27 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
     const riderBadge = renderBadge("rider");
     const driverBadge = renderBadge("driver");
     
-    if (!riderBadge && !driverBadge) return null;
+    if (!riderBadge && !driverBadge) {
+      // Show neutral badge if no stats for either role
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className={`${sizeClass} flex items-center gap-1 text-muted-foreground`}>
+                <Minus className="h-3 w-3" />
+                Cancel: —
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <div className="space-y-1 text-xs">
+                <p className="font-semibold">No Trip History</p>
+                <p>This user hasn't completed any trips yet.</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
     
     return (
       <div className="flex items-center gap-1 flex-wrap">
