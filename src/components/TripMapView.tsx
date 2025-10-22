@@ -75,7 +75,11 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
       setMapCenter([userLocation.lat, userLocation.lng]);
     } else if (trips.length > 0) {
       const firstTrip = trips[0];
-      setMapCenter([Number(firstTrip.pickup_lat), Number(firstTrip.pickup_lng)]);
+      const lat = Number(firstTrip.pickup_lat);
+      const lng = Number(firstTrip.pickup_lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setMapCenter([lat, lng]);
+      }
     }
   }, [userLocation, trips]);
 
@@ -136,7 +140,11 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
         )}
 
         {/* Trip markers */}
-        {trips.map((trip) => (
+        {trips.filter(trip => {
+          const lat = Number(trip.pickup_lat);
+          const lng = Number(trip.pickup_lng);
+          return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        }).map((trip) => (
           <Marker
             key={trip.id}
             position={[Number(trip.pickup_lat), Number(trip.pickup_lng)]}
