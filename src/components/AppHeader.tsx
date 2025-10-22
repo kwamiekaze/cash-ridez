@@ -79,7 +79,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/rider")} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => navigate("/history")} className="cursor-pointer">
                   <History className="mr-2 h-4 w-4" />
                   History
                 </DropdownMenuItem>
