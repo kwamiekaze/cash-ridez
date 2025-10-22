@@ -135,10 +135,11 @@ serve(async (req) => {
       await logBillingEvent(supabaseClient, user.id, 'checkout_session_error', { priceId }, null, error);
       
       // Provide helpful error messages
-      let errorMessage = error.message;
-      if (error.code === 'resource_missing') {
+      const err = error as any;
+      let errorMessage = err.message || 'An error occurred';
+      if (err.code === 'resource_missing') {
         errorMessage = 'Subscription plan not found. Please contact support.';
-      } else if (error.type === 'StripePermissionError') {
+      } else if (err.type === 'StripePermissionError') {
         errorMessage = 'Stripe API key missing required permissions. Please contact support.';
       }
       
@@ -146,11 +147,12 @@ serve(async (req) => {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const err = error as any;
     console.error('[CHECKOUT] ERROR:', errorMessage);
     
     return new Response(JSON.stringify({ 
       error: errorMessage,
-      code: error.code || 'unknown_error'
+      code: err.code || 'unknown_error'
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

@@ -44,8 +44,9 @@ serve(async (req) => {
       cryptoProvider
     );
   } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`Webhook signature verification failed: ${errorMessage}`);
+    return new Response(`Webhook Error: ${errorMessage}`, { status: 400 });
   }
 
   console.log(`[WEBHOOK] Event received: ${event.type}`);
@@ -219,10 +220,11 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error(`[WEBHOOK] Error processing event: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[WEBHOOK] Error processing event: ${errorMessage}`);
     await logBillingEvent(supabase, null, event.type, event.id, event.data.object, error);
     
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
