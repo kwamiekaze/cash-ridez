@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, MapPin, Search, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Search, CheckCircle, XCircle, Calendar, DollarSign } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import StatusBadge from "@/components/StatusBadge";
@@ -222,27 +222,37 @@ export default function TripRequestsList() {
     const userRole = getUserRole(request);
     
     return (
-    <Card key={request.id} className="p-6 hover:shadow-lg transition-shadow">
+    <Card 
+      key={request.id} 
+      className="p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-card to-card/50"
+      onClick={() => navigate(`/trip/${request.id}`)}
+    >
       <div className="flex items-start justify-between">
-        <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
-          <div className="flex items-center gap-2 mb-2">
+        <div className="flex-1" onClick={() => navigate(`/trip/${request.id}`)}>
+          <div className="flex items-center gap-2 mb-3">
             <StatusBadge status={request.status} />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
               {format(new Date(request.created_at), "MMM d, yyyy 'at' h:mm a")}
             </span>
           </div>
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar className="h-10 w-10">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
+            <Avatar className="h-12 w-12 border-2 border-background">
               <AvatarImage src={request.rider?.photo_url || ""} alt={request.rider?.full_name || "Rider"} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
                 {(request.rider?.full_name || request.rider?.display_name || "U")[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <span className="block font-semibold text-sm">
-                {request.rider?.full_name || `User ${request.rider_id?.slice(0, 8)}`}
-              </span>
-              <span className="block text-xs text-muted-foreground">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-base">
+                  {request.rider?.full_name || `User ${request.rider_id?.slice(0, 8)}`}
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                  Rider
+                </span>
+              </div>
+              <span className="block text-xs text-muted-foreground mb-1">
                 ID: {request.rider_id?.slice(0, 8)}
               </span>
               <RatingDisplay 
@@ -253,36 +263,52 @@ export default function TripRequestsList() {
             </div>
           </div>
           {request.driver && request.status !== 'open' && (
-            <div className="flex items-center gap-2 mb-3 text-sm">
-              <span className="font-medium">Driver: {request.driver.full_name || request.driver.display_name}</span>
-              <span className="text-xs text-muted-foreground">ID: {request.assigned_driver_id?.slice(0, 8)}</span>
-              <RatingDisplay 
-                rating={request.driver?.driver_rating_avg || 0}
-                count={request.driver?.driver_rating_count || 0}
-                size="sm"
-              />
-            </div>
-          )}
-          <div className="space-y-2">
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 mt-1 text-success" />
-              <div>
-                <p className="font-medium">Pickup</p>
-                <p className="text-sm text-muted-foreground">{request.pickup_address}</p>
+            <div className="flex items-center gap-3 mb-4 p-3 bg-accent/20 rounded-lg">
+              <Avatar className="h-10 w-10 border-2 border-background">
+                <AvatarImage src={request.driver?.photo_url || ""} alt={request.driver?.full_name || "Driver"} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {(request.driver?.full_name || request.driver?.display_name || "D")[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold">{request.driver.full_name || request.driver.display_name}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
+                    Driver
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground block mb-1">
+                  ID: {request.assigned_driver_id?.slice(0, 8)}
+                </span>
+                <RatingDisplay 
+                  rating={request.driver?.driver_rating_avg || 0}
+                  count={request.driver?.driver_rating_count || 0}
+                  size="sm"
+                />
               </div>
             </div>
-            <div className="flex items-start gap-2">
-              <MapPin className="w-4 h-4 mt-1 text-destructive" />
+          )}
+          <div className="space-y-3 mb-4">
+            <div className="flex items-start gap-3 pl-2 border-l-2 border-success">
+              <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
               <div>
-                <p className="font-medium">Dropoff</p>
-                <p className="text-sm text-muted-foreground">{request.dropoff_address}</p>
+                <p className="text-xs font-medium text-success">Pickup</p>
+                <p className="text-sm">{request.pickup_address}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 pl-2 border-l-2 border-destructive">
+              <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
+              <div>
+                <p className="text-xs font-medium text-destructive">Dropoff</p>
+                <p className="text-sm">{request.dropoff_address}</p>
               </div>
             </div>
           </div>
           {request.price_offer && (
-            <p className="text-lg font-semibold text-primary mt-2">
-              Price: ${request.price_offer}
-            </p>
+            <div className="flex items-center gap-2 pt-3 border-t border-border">
+              <DollarSign className="w-5 h-5 text-primary" />
+              <span className="text-xl font-bold text-primary">${request.price_offer}</span>
+            </div>
           )}
         </div>
         {canAct && (
@@ -369,8 +395,12 @@ export default function TripRequestsList() {
 
             <TabsContent value="open" className="mt-6 space-y-4">
               {filteredRequests.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">No open trips with offers</p>
+                <Card className="p-12 text-center bg-gradient-to-br from-card to-muted/20">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                    <MapPin className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No Open Trips</h3>
+                  <p className="text-muted-foreground">Available trips will appear here</p>
                 </Card>
               ) : (
                 filteredRequests.map(request => renderTripCard(request))

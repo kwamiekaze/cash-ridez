@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import TripRequestsList from "./pages/TripRequestsList";
 import TripDetails from "./pages/TripDetails";
 import ChatPage from "./pages/ChatPage";
+import TripHistory from "./pages/TripHistory";
 
 const queryClient = new QueryClient();
 
@@ -124,6 +125,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ChatPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute>
+                  <TripHistory />
                 </ProtectedRoute>
               }
             />

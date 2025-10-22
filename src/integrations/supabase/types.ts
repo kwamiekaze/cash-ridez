@@ -147,11 +147,13 @@ export type Database = {
           bio: string | null
           blocked: boolean | null
           blocked_until: string | null
+          consecutive_cancellations: number | null
           created_at: string | null
           display_name: string | null
           driver_rating_avg: number | null
           driver_rating_count: number | null
           email: string
+          free_uses_remaining: number | null
           full_name: string | null
           id: string
           id_image_url: string | null
@@ -163,6 +165,9 @@ export type Database = {
           photo_url: string | null
           rider_rating_avg: number | null
           rider_rating_count: number | null
+          subscription_expires_at: string | null
+          subscription_started_at: string | null
+          subscription_status: string | null
           updated_at: string | null
           verification_notes: string | null
           verification_reviewed_at: string | null
@@ -180,11 +185,13 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          consecutive_cancellations?: number | null
           created_at?: string | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
           email: string
+          free_uses_remaining?: number | null
           full_name?: string | null
           id: string
           id_image_url?: string | null
@@ -196,6 +203,9 @@ export type Database = {
           photo_url?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
+          subscription_expires_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           updated_at?: string | null
           verification_notes?: string | null
           verification_reviewed_at?: string | null
@@ -213,11 +223,13 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          consecutive_cancellations?: number | null
           created_at?: string | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
           email?: string
+          free_uses_remaining?: number | null
           full_name?: string | null
           id?: string
           id_image_url?: string | null
@@ -229,6 +241,9 @@ export type Database = {
           photo_url?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
+          subscription_expires_at?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           updated_at?: string | null
           verification_notes?: string | null
           verification_reviewed_at?: string | null

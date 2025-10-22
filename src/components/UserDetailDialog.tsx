@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import StatusBadge from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +37,9 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     bio: "",
     paused: false,
     admin_locked_fields: [] as string[],
+    created_at: "",
+    verification_status: "pending" as "approved" | "pending" | "rejected",
+    active_role: null as string | null,
   });
 
   useEffect(() => {
@@ -63,6 +68,9 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         bio: data.bio || "",
         paused: data.paused || false,
         admin_locked_fields: data.admin_locked_fields || [],
+        created_at: data.created_at || "",
+        verification_status: data.verification_status || "pending",
+        active_role: data.active_role || null,
       });
     } catch (error: any) {
       toast.error("Failed to fetch user details");
@@ -273,34 +281,50 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
           </div>
 
           {/* Account Info */}
-          <Card className="p-4 bg-muted/50">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">User ID</p>
-                <p className="font-mono text-xs">{user.id}</p>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-muted-foreground">User ID</Label>
+              <div className="font-mono text-xs break-all bg-muted p-2 rounded">
+                {userId}
               </div>
-              <div>
-                <p className="text-muted-foreground">Member Since</p>
-                <p>{new Date(user.created_at).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Verification Status</p>
-                <p className="capitalize">{user.verification_status}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Account Status</p>
-                <p className="capitalize">{user.paused ? "Paused" : "Active"}</p>
-              </div>
-              {user.blocked && (
-                <div>
-                  <p className="text-destructive font-medium">Account Blocked</p>
-                  {user.blocked_until && (
-                    <p className="text-xs">Until: {new Date(user.blocked_until).toLocaleString()}</p>
-                  )}
-                </div>
-              )}
             </div>
-          </Card>
+            <div>
+              <Label className="text-muted-foreground">Member Since</Label>
+              <div className="font-medium">
+                {formData.created_at ? format(new Date(formData.created_at), "MMMM d, yyyy") : "N/A"}
+              </div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Verification Status</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <StatusBadge status={formData.verification_status} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Active Role</Label>
+              <div className="flex items-center gap-2 mt-1">
+                {formData.active_role ? (
+                  <Badge variant="secondary" className="capitalize">
+                    {formData.active_role}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Not set</span>
+                )}
+              </div>
+            </div>
+            {formData.admin_locked_fields && formData.admin_locked_fields.length > 0 && (
+              <div>
+                <Label className="text-muted-foreground">Locked Fields</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {formData.admin_locked_fields.map((field: string) => (
+                    <Badge key={field} variant="destructive" className="text-xs">
+                      {field.replace('_', ' ')}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-2">

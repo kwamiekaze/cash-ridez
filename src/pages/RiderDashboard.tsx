@@ -352,33 +352,31 @@ const RiderDashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className={`grid grid-cols-1 gap-4 mb-8 ${profile?.active_role !== 'rider' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
           <Button
             size="lg"
-            className="h-20 text-lg bg-gradient-primary"
+            className="h-20 text-lg bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg"
             onClick={() => navigate("/rider/create-request")}
             disabled={!(profile?.is_verified || profile?.verification_status === "approved")}
           >
             <Plus className="w-6 h-6 mr-2" />
             Post Trip Request
           </Button>
-          <Button 
-            size="lg" 
-            variant="secondary" 
-            className="h-20 text-lg"
-            onClick={() => navigate("/trips")}
-            disabled={profile?.active_role === 'driver'}
-          >
-            <Car className="w-6 h-6 mr-2" />
-            Respond to Requests
-            {profile?.active_role === 'driver' && (
-              <span className="text-xs ml-2">(Driver Mode)</span>
-            )}
-          </Button>
+          {profile?.active_role !== 'rider' && (
+            <Button 
+              size="lg" 
+              variant="secondary" 
+              className="h-20 text-lg"
+              onClick={() => navigate("/trips")}
+            >
+              <Car className="w-6 h-6 mr-2" />
+              Respond to Requests
+            </Button>
+          )}
           <Button 
             size="lg" 
             variant="outline" 
-            className="h-20 text-lg"
+            className="h-20 text-lg hover:bg-accent transition-colors"
             onClick={() => navigate("/profile")}
           >
             <User className="w-6 h-6 mr-2" />
@@ -398,15 +396,19 @@ const RiderDashboard = () => {
 
           <TabsContent value="open" className="mt-6 space-y-4">
             {requests.filter(r => r.status === "open").length === 0 ? (
-              <Card className="p-8 text-center">
-                <p className="text-muted-foreground">No open trip requests</p>
-                <Button className="mt-4" onClick={() => navigate("/rider/create-request")}>
+              <Card className="p-12 text-center bg-gradient-to-br from-card to-muted/20">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MapPin className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Open Trips</h3>
+                <p className="text-muted-foreground mb-6">Start your journey by creating a trip request</p>
+                <Button className="bg-gradient-primary hover:opacity-90" onClick={() => navigate("/rider/create-request")}>
                   {requests.length > 0 ? "Create New Trip Request" : "Create Your First Trip Request"}
                 </Button>
               </Card>
             ) : (
               requests.filter(r => r.status === "open").map(request => (
-                <Card key={request.id} className="p-6 hover:shadow-lg transition-shadow">
+                <Card key={request.id} className="p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-card to-card/50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
                       <div className="flex items-center gap-2 mb-2">
@@ -455,12 +457,16 @@ const RiderDashboard = () => {
 
           <TabsContent value="assigned" className="mt-6 space-y-4">
             {requests.filter(r => r.status === "assigned").length === 0 ? (
-              <Card className="p-8 text-center">
-                <p className="text-muted-foreground">No connected trips</p>
+              <Card className="p-12 text-center bg-gradient-to-br from-card to-muted/20">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Car className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Connected Trips</h3>
+                <p className="text-muted-foreground">Your active trips will appear here</p>
               </Card>
             ) : (
               requests.filter(r => r.status === "assigned").map(request => (
-                <Card key={request.id} className="p-6 hover:shadow-lg transition-shadow">
+                <Card key={request.id} className="p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 bg-gradient-to-br from-card to-primary/5 border-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
                       <div className="flex items-center gap-2 mb-2">
