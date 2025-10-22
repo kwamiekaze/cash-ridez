@@ -9,13 +9,24 @@ import StatusBadge from '@/components/StatusBadge';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default marker icons in React-Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+// Fix for default marker icons in React-Leaflet (guarded)
+try {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+} catch (e) {
+  console.warn('Leaflet default icon fix skipped', e);
+}
+
+// LatLng validation helper
+const isValidLatLng = (lat: any, lng: any) => {
+  const la = Number(lat);
+  const ln = Number(lng);
+  return Number.isFinite(la) && Number.isFinite(ln) && la >= -90 && la <= 90 && ln >= -180 && ln <= 180;
+};
 
 // Custom marker icons
 const createCustomIcon = (color: string) => {
@@ -47,6 +58,16 @@ const createCustomIcon = (color: string) => {
     iconAnchor: [16, 32],
     popupAnchor: [0, -32],
   });
+};
+
+const MapInvalidate = () => {
+  const map = useMap();
+  useEffect(() => {
+    setTimeout(() => {
+      try { map.invalidateSize(); } catch {}
+    }, 0);
+  }, [map]);
+  return null;
 };
 
 const availableIcon = createCustomIcon('#22c55e');
@@ -110,15 +131,16 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
         className="z-0"
       >
         <MapController center={mapCenter} />
+        <MapInvalidate />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
         {/* User location marker */}
-        {userLocation && (
+        {userLocation && isValidLatLng(userLocation.lat, userLocation.lng) && (
           <Marker
-            position={[userLocation.lat, userLocation.lng]}
+            position={[Number(userLocation.lat), Number(userLocation.lng)]}
             icon={L.divIcon({
               className: 'user-location-marker',
               html: `
@@ -145,82 +167,85 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
         )}
 
         {/* Trip markers */}
-        {trips.filter(trip => {
-          const lat = Number(trip.pickup_lat);
-          const lng = Number(trip.pickup_lng);
-          return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
-        }).map((trip) => (
-          <Marker
-            key={trip.id}
-            position={[Number(trip.pickup_lat), Number(trip.pickup_lng)]}
-            icon={getMarkerIcon(trip.status)}
-            eventHandlers={{
-              click: () => onTripSelect(trip),
-            }}
-          >
-            <Popup maxWidth={300}>
-              <Card className="border-0 shadow-none p-2">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={trip.status} />
-                  </div>
-                  
-                  {trip.rider && (
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={trip.rider.photo_url || ""} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {(trip.rider.full_name || trip.rider.display_name || 'U')[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold">{trip.rider.full_name || trip.rider.display_name}</p>
-                        <RatingDisplay 
-                          rating={trip.rider.rider_rating_avg || 0} 
-                          count={trip.rider.rider_rating_count || 0}
-                          size="sm"
-                        />
+        {trips
+          .filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng))
+          .map((trip) => {
+            try {
+              const lat = Number(trip.pickup_lat);
+              const lng = Number(trip.pickup_lng);
+              return (
+                <Marker
+                  key={trip.id}
+                  position={[lat, lng]}
+                  icon={getMarkerIcon(trip.status)}
+                  eventHandlers={{
+                    click: () => onTripSelect(trip),
+                  }}
+                >
+                  <Popup maxWidth={300}>
+                    <Card className="border-0 shadow-none p-2">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={trip.status} />
+                        </div>
+                        {trip.rider && (
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={trip.rider.photo_url || ""} />
+                              <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                                {(trip.rider.full_name || trip.rider.display_name || 'U')[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold">{trip.rider.full_name || trip.rider.display_name}</p>
+                              <RatingDisplay 
+                                rating={trip.rider.rider_rating_avg || 0} 
+                                count={trip.rider.rider_rating_count || 0}
+                                size="sm"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <div className="flex items-start gap-1 text-xs">
+                            <MapPin className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
+                            <p className="text-muted-foreground">{trip.pickup_address}</p>
+                          </div>
+                          <div className="flex items-start gap-1 text-xs">
+                            <MapPin className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
+                            <p className="text-muted-foreground">{trip.dropoff_address}</p>
+                          </div>
+                        </div>
+                        {trip.price_offer && (
+                          <div className="flex items-center gap-1 pt-2 border-t">
+                            <DollarSign className="w-4 h-4 text-primary" />
+                            <span className="text-lg font-bold text-primary">${trip.price_offer}</span>
+                          </div>
+                        )}
+                        {trip.distance && (
+                          <p className="text-xs text-muted-foreground">
+                            Distance from you: {trip.distance} mi
+                          </p>
+                        )}
+                        <Button 
+                          size="sm" 
+                          className="w-full mt-2"
+                          onClick={() => onTripSelect(trip)}
+                        >
+                          View Details
+                        </Button>
                       </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-1">
-                    <div className="flex items-start gap-1 text-xs">
-                      <MapPin className="w-3 h-3 text-success mt-0.5 flex-shrink-0" />
-                      <p className="text-muted-foreground">{trip.pickup_address}</p>
-                    </div>
-                    <div className="flex items-start gap-1 text-xs">
-                      <MapPin className="w-3 h-3 text-destructive mt-0.5 flex-shrink-0" />
-                      <p className="text-muted-foreground">{trip.dropoff_address}</p>
-                    </div>
-                  </div>
-                  
-                  {trip.price_offer && (
-                    <div className="flex items-center gap-1 pt-2 border-t">
-                      <DollarSign className="w-4 h-4 text-primary" />
-                      <span className="text-lg font-bold text-primary">${trip.price_offer}</span>
-                    </div>
-                  )}
-                  
-                  {trip.distance && (
-                    <p className="text-xs text-muted-foreground">
-                      Distance from you: {trip.distance} mi
-                    </p>
-                  )}
-                  
-                  <Button 
-                    size="sm" 
-                    className="w-full mt-2"
-                    onClick={() => onTripSelect(trip)}
-                  >
-                    View Details
-                  </Button>
-                </div>
-              </Card>
-            </Popup>
-          </Marker>
-        ))}
+                    </Card>
+                  </Popup>
+                </Marker>
+              );
+            } catch (e) {
+              console.error('Failed to render marker for trip', trip?.id, e);
+              return null;
+            }
+          })}
       </MapContainer>
     </div>
   );
 }
+
