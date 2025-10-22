@@ -618,6 +618,33 @@ export type Database = {
           },
         ]
       }
+      user_public_stats: {
+        Row: {
+          driver_rating_avg: number
+          driver_rating_count: number
+          rider_rating_avg: number
+          rider_rating_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          driver_rating_avg?: number
+          driver_rating_count?: number
+          rider_rating_avg?: number
+          rider_rating_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          driver_rating_avg?: number
+          driver_rating_count?: number
+          rider_rating_avg?: number
+          rider_rating_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -665,10 +692,7 @@ export type Database = {
         Args: { _profile_id: string; _viewer_id: string }
         Returns: boolean
       }
-      check_active_ride: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
+      check_active_ride: { Args: { _user_id: string }; Returns: boolean }
       create_notification: {
         Args: {
           p_link?: string
@@ -713,18 +737,9 @@ export type Database = {
         Args: { _profile_id: string; _user_id: string }
         Returns: boolean
       }
-      is_verified_rider: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      is_verified_user: {
-        Args: { _user_id: string }
-        Returns: boolean
-      }
-      recalculate_all_cancellation_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      is_verified_rider: { Args: { _user_id: string }; Returns: boolean }
+      is_verified_user: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
       update_cancellation_stats: {
         Args: { p_role: string; p_user_id: string }
         Returns: undefined

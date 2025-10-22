@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserChipProps {
   userId: string;
@@ -21,12 +23,46 @@ export function UserChip({
   fullName,
   photoUrl,
   role,
-  ratingAvg,
-  ratingCount,
+  ratingAvg: providedRatingAvg,
+  ratingCount: providedRatingCount,
   showCancellationBadge = true,
   size = "md",
   className = "",
 }: UserChipProps) {
+  const [ratingAvg, setRatingAvg] = useState(providedRatingAvg);
+  const [ratingCount, setRatingCount] = useState(providedRatingCount);
+
+  useEffect(() => {
+    // Fetch ratings from public table if not provided
+    if ((providedRatingAvg === undefined || providedRatingCount === undefined) && role) {
+      fetchPublicStats();
+    } else {
+      setRatingAvg(providedRatingAvg);
+      setRatingCount(providedRatingCount);
+    }
+  }, [userId, role, providedRatingAvg, providedRatingCount]);
+
+  const fetchPublicStats = async () => {
+    try {
+      const { data } = await supabase
+        .from('user_public_stats')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (data && role) {
+        if (role === "rider") {
+          setRatingAvg(data.rider_rating_avg);
+          setRatingCount(data.rider_rating_count);
+        } else if (role === "driver") {
+          setRatingAvg(data.driver_rating_avg);
+          setRatingCount(data.driver_rating_count);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching public stats:', error);
+    }
+  };
   const avatarSizes = {
     sm: "h-8 w-8",
     md: "h-10 w-10",
