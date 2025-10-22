@@ -52,32 +52,20 @@ export function zipDistanceMiles(zipA?: string | null, zipB?: string | null, pre
   const a = normalizeZip(zipA);
   const b = normalizeZip(zipB);
   if (!a || !b) return null;
+  
   const key = `${a}_${b}`;
   if (memoDistances[key] != null) return memoDistances[key];
-  const run = async () => {
-    const ZIP = preload || (await loadZipCentroids());
-    const A = ZIP[a];
-    const B = ZIP[b];
-    if (!A || !B) return null;
-    return haversineMiles(A.lat, A.lng, B.lat, B.lng);
-  };
-  // We cannot make zipDistanceMiles async without refactor; do a best-effort sync fallback
-  // Callers should call loadZipCentroids() before using this to ensure data is present.
-  // If not loaded yet, return null now; next call after load will compute distance.
-  if (!preload && !zipDataPromise) return null;
-  // At this point, try to synchronously read from resolved promise (not ideal)
-  // but in practice we call loadZipCentroids() first in our flows.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ZIP: any = (zipDataPromise as any)?._value || preload;
-  if (ZIP) {
-    const A = ZIP[a];
-    const B = ZIP[b];
-    if (!A || !B) return null;
-    const d = haversineMiles(A.lat, A.lng, B.lat, B.lng);
-    memoDistances[key] = d;
-    return d;
-  }
-  return null;
+  
+  const ZIP = preload;
+  if (!ZIP) return null;
+  
+  const A = ZIP[a];
+  const B = ZIP[b];
+  if (!A || !B) return null;
+  
+  const d = haversineMiles(A.lat, A.lng, B.lat, B.lng);
+  memoDistances[key] = d;
+  return d;
 }
 
 export function isWithin25Miles(zipA?: string | null, zipB?: string | null, preload?: ZipCentroids): boolean {
