@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
 import TripFilters, { FilterOption } from "@/components/TripFilters";
-import TripMapView from "@/components/TripMapView";
+import GoogleTripMapView from "@/components/GoogleTripMapView";
 import { calculateDistance, getCurrentLocation, calculateTripDistance } from "@/utils/geolocation";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -553,7 +553,7 @@ export default function TripRequestsList() {
               </Card>
             }
           >
-            <TripMapView
+            <GoogleTripMapView
               trips={filteredRequests}
               onTripSelect={handleTripSelect}
               userLocation={userLocation}
