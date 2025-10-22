@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CancellationBadge } from "@/components/CancellationBadge";
 import AppHeader from "@/components/AppHeader";
 
 export default function ChatPage() {

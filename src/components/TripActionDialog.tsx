@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 interface TripActionDialogProps {
@@ -31,12 +32,31 @@ const TripActionDialog = ({
   onSuccess,
 }: TripActionDialogProps) => {
   const [reason, setReason] = useState("");
+  const [reasonCode, setReasonCode] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
 
+  const cancelReasons = [
+    { value: "rider_changed_mind", label: "Changed my mind" },
+    { value: "driver_unavailable", label: "Driver unavailable" },
+    { value: "price_dispute", label: "Price issue" },
+    { value: "no_show", label: "No-show" },
+    { value: "late", label: "Running late" },
+    { value: "duplicate_request", label: "Duplicate request" },
+    { value: "safety", label: "Safety concern" },
+    { value: "weather", label: "Weather conditions" },
+    { value: "other", label: "Other reason" },
+  ];
+
   const handleSubmit = async () => {
-    if (action === "cancel" && !reason.trim()) {
-      toast.error("Please provide a cancellation reason");
-      return;
+    if (action === "cancel") {
+      if (!reason.trim()) {
+        toast.error("Please provide a cancellation reason");
+        return;
+      }
+      if (!reasonCode) {
+        toast.error("Please select a reason category");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -77,6 +97,7 @@ const TripActionDialog = ({
         updates.cancelled_at = new Date().toISOString();
         updates[userRole === "rider" ? "cancel_reason_rider" : "cancel_reason_driver"] = reason;
         updates.cancelled_by = userRole;
+        updates.cancel_reason_code = reasonCode;
 
         // Get current user ID from auth
         const { data: { user } } = await supabase.auth.getUser();
@@ -123,16 +144,38 @@ const TripActionDialog = ({
         </DialogHeader>
 
         {action === "cancel" && (
-          <div className="space-y-2">
-            <Label htmlFor="reason">Cancellation Reason *</Label>
-            <Textarea
-              id="reason"
-              placeholder="Explain why you're cancelling..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={4}
-              required
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="reasonCode">Reason Category *</Label>
+              <Select value={reasonCode} onValueChange={setReasonCode}>
+                <SelectTrigger id="reasonCode">
+                  <SelectValue placeholder="Select a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {cancelReasons.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reason">Additional Details *</Label>
+              <Textarea
+                id="reason"
+                placeholder="Explain why you're cancelling..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                required
+              />
+            </div>
+            {reasonCode && ['safety', 'weather', 'duplicate_request'].includes(reasonCode) && (
+              <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                ℹ️ This cancellation type may not affect your cancellation rate.
+              </p>
+            )}
           </div>
         )}
 

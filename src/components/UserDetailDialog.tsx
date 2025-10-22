@@ -19,6 +19,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { ExternalLink } from "lucide-react";
 import { RatingDisplay } from "@/components/RatingDisplay";
+import { CancellationBadge } from "@/components/CancellationBadge";
 
 interface UserDetailDialogProps {
   userId: string | null;
@@ -188,6 +189,10 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
           {/* Ratings */}
           <div className="grid grid-cols-2 gap-4">
+            <Card className="p-4">
+              <Label className="text-sm font-medium mb-2 block">Cancellation Rate</Label>
+              <CancellationBadge userId={user.id} role="both" size="md" showIcon={true} />
+            </Card>
             <Card className="p-4">
               <Label className="text-sm font-medium mb-2 block">User Rating</Label>
               {(user.rider_rating_count > 0 || user.driver_rating_count > 0) ? (

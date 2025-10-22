@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { RatingDialog } from "@/components/RatingDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserChip } from "@/components/UserChip";
 import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
 
@@ -437,29 +438,18 @@ export default function TripDetails() {
             {/* Rider Info */}
             {riderProfile && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={riderProfile.photo_url} />
-                    <AvatarFallback>
-                      {(riderProfile.display_name || riderProfile.id?.slice(0, 8) || 'U')[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-            <div>
-              <p className="text-sm font-medium">
-                Rider: {riderProfile.full_name || riderProfile.display_name || `User ${riderProfile.id?.slice(0, 8)}`}
-              </p>
-              <p className="text-xs text-muted-foreground">ID: {riderProfile.id?.slice(0, 8)}</p>
-              {riderProfile.rider_rating_count > 0 && (
-                <RatingDisplay 
-                  rating={riderProfile.rider_rating_avg} 
-                  count={riderProfile.rider_rating_count}
-                  size="sm"
+                <UserChip
+                  userId={riderProfile.id}
+                  displayName={riderProfile.display_name}
+                  fullName={riderProfile.full_name}
+                  photoUrl={riderProfile.photo_url}
+                  role="rider"
+                  ratingAvg={riderProfile.rider_rating_avg}
+                  ratingCount={riderProfile.rider_rating_count}
+                  size="md"
                 />
-              )}
-            </div>
-                </div>
                 {request.status === 'assigned' && request.assigned_driver_id === currentUserId && (
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="text-xs text-muted-foreground space-y-1 mt-2">
                     {riderProfile.email && <p>Email: {riderProfile.email}</p>}
                     {riderProfile.phone_number && <p>Phone: {riderProfile.phone_number}</p>}
                   </div>
@@ -470,29 +460,18 @@ export default function TripDetails() {
             {/* Driver Info */}
             {driverProfile && request.status === 'assigned' && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-3 mb-2">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={driverProfile.photo_url} />
-                    <AvatarFallback>
-                      {(driverProfile.display_name || driverProfile.id?.slice(0, 8) || 'D')[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm font-medium">
-                      Assigned to: {driverProfile.full_name || driverProfile.display_name || `User ${driverProfile.id?.slice(0, 8)}`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">ID: {driverProfile.id?.slice(0, 8)}</p>
-                    {driverProfile.driver_rating_count > 0 && (
-                      <RatingDisplay 
-                        rating={driverProfile.driver_rating_avg} 
-                        count={driverProfile.driver_rating_count}
-                        size="sm"
-                      />
-                    )}
-                  </div>
-                </div>
+                <UserChip
+                  userId={driverProfile.id}
+                  displayName={driverProfile.display_name}
+                  fullName={driverProfile.full_name}
+                  photoUrl={driverProfile.photo_url}
+                  role="driver"
+                  ratingAvg={driverProfile.driver_rating_avg}
+                  ratingCount={driverProfile.driver_rating_count}
+                  size="md"
+                />
                 {request.status === 'assigned' && request.rider_id === currentUserId && (
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="text-xs text-muted-foreground space-y-1 mt-2">
                     {driverProfile.email && <p>Email: {driverProfile.email}</p>}
                     {driverProfile.phone_number && <p>Phone: {driverProfile.phone_number}</p>}
                   </div>

@@ -44,6 +44,116 @@ export type Database = {
         }
         Relationships: []
       }
+      cancellation_stats: {
+        Row: {
+          badge_tier: string
+          driver_90d_cancels: number
+          driver_90d_committed: number
+          driver_cancels_chargeable: number
+          driver_lifetime_cancels: number
+          driver_lifetime_committed: number
+          driver_rate_90d: number
+          driver_rate_lifetime: number
+          driver_total_committed: number
+          rider_90d_cancels: number
+          rider_90d_committed: number
+          rider_cancels_chargeable: number
+          rider_lifetime_cancels: number
+          rider_lifetime_committed: number
+          rider_rate_90d: number
+          rider_rate_lifetime: number
+          rider_total_committed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          badge_tier?: string
+          driver_90d_cancels?: number
+          driver_90d_committed?: number
+          driver_cancels_chargeable?: number
+          driver_lifetime_cancels?: number
+          driver_lifetime_committed?: number
+          driver_rate_90d?: number
+          driver_rate_lifetime?: number
+          driver_total_committed?: number
+          rider_90d_cancels?: number
+          rider_90d_committed?: number
+          rider_cancels_chargeable?: number
+          rider_lifetime_cancels?: number
+          rider_lifetime_committed?: number
+          rider_rate_90d?: number
+          rider_rate_lifetime?: number
+          rider_total_committed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          badge_tier?: string
+          driver_90d_cancels?: number
+          driver_90d_committed?: number
+          driver_cancels_chargeable?: number
+          driver_lifetime_cancels?: number
+          driver_lifetime_committed?: number
+          driver_rate_90d?: number
+          driver_rate_lifetime?: number
+          driver_total_committed?: number
+          rider_90d_cancels?: number
+          rider_90d_committed?: number
+          rider_cancels_chargeable?: number
+          rider_lifetime_cancels?: number
+          rider_lifetime_committed?: number
+          rider_rate_90d?: number
+          rider_rate_lifetime?: number
+          rider_total_committed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cancellations: {
+        Row: {
+          created_at: string
+          event_id: string
+          is_chargeable: boolean
+          reason_code: Database["public"]["Enums"]["cancel_reason_code"]
+          role: string
+          timestamp: string
+          trip_id: string
+          user_id: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string
+          is_chargeable?: boolean
+          reason_code: Database["public"]["Enums"]["cancel_reason_code"]
+          role: string
+          timestamp?: string
+          trip_id: string
+          user_id: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          is_chargeable?: boolean
+          reason_code?: Database["public"]["Enums"]["cancel_reason_code"]
+          role?: string
+          timestamp?: string
+          trip_id?: string
+          user_id?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancellations_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       counter_offers: {
         Row: {
           amount: number
@@ -149,6 +259,8 @@ export type Database = {
           blocked_until: string | null
           consecutive_cancellations: number | null
           created_at: string | null
+          current_lat: number | null
+          current_lng: number | null
           display_name: string | null
           driver_rating_avg: number | null
           driver_rating_count: number | null
@@ -160,6 +272,8 @@ export type Database = {
           is_driver: boolean | null
           is_rider: boolean | null
           is_verified: boolean | null
+          location_sharing_enabled: boolean | null
+          location_updated_at: string | null
           paused: boolean | null
           phone_number: string | null
           photo_url: string | null
@@ -187,6 +301,8 @@ export type Database = {
           blocked_until?: string | null
           consecutive_cancellations?: number | null
           created_at?: string | null
+          current_lat?: number | null
+          current_lng?: number | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
@@ -198,6 +314,8 @@ export type Database = {
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
+          location_sharing_enabled?: boolean | null
+          location_updated_at?: string | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
@@ -225,6 +343,8 @@ export type Database = {
           blocked_until?: string | null
           consecutive_cancellations?: number | null
           created_at?: string | null
+          current_lat?: number | null
+          current_lng?: number | null
           display_name?: string | null
           driver_rating_avg?: number | null
           driver_rating_count?: number | null
@@ -236,6 +356,8 @@ export type Database = {
           is_driver?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
+          location_sharing_enabled?: boolean | null
+          location_updated_at?: string | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
@@ -255,6 +377,41 @@ export type Database = {
           warning_count?: number | null
         }
         Relationships: []
+      }
+      ride_locations: {
+        Row: {
+          id: string
+          lat: number
+          lng: number
+          ride_request_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          lat: number
+          lng: number
+          ride_request_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          lat?: number
+          lng?: number
+          ride_request_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_locations_ride_request_id_fkey"
+            columns: ["ride_request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_messages: {
         Row: {
@@ -294,6 +451,9 @@ export type Database = {
       ride_requests: {
         Row: {
           assigned_driver_id: string | null
+          cancel_reason_code:
+            | Database["public"]["Enums"]["cancel_reason_code"]
+            | null
           cancel_reason_driver: string | null
           cancel_reason_rider: string | null
           cancelled_at: string | null
@@ -324,6 +484,9 @@ export type Database = {
         }
         Insert: {
           assigned_driver_id?: string | null
+          cancel_reason_code?:
+            | Database["public"]["Enums"]["cancel_reason_code"]
+            | null
           cancel_reason_driver?: string | null
           cancel_reason_rider?: string | null
           cancelled_at?: string | null
@@ -354,6 +517,9 @@ export type Database = {
         }
         Update: {
           assigned_driver_id?: string | null
+          cancel_reason_code?:
+            | Database["public"]["Enums"]["cancel_reason_code"]
+            | null
           cancel_reason_driver?: string | null
           cancel_reason_rider?: string | null
           cancelled_at?: string | null
@@ -487,6 +653,14 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_cancel_weight: {
+        Args: {
+          p_cancelled_at: string
+          p_pickup_time: string
+          p_reason_code: Database["public"]["Enums"]["cancel_reason_code"]
+        }
+        Returns: number
+      }
       can_view_contact_info: {
         Args: { _profile_id: string; _viewer_id: string }
         Returns: boolean
@@ -524,6 +698,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_cancel_chargeable: {
+        Args: {
+          p_accepted_at: string
+          p_cancelled_at: string
+          p_cancelled_by: string
+          p_pickup_time: string
+          p_reason_code: Database["public"]["Enums"]["cancel_reason_code"]
+          p_trip_id: string
+        }
+        Returns: boolean
+      }
       is_ride_participant: {
         Args: { _profile_id: string; _user_id: string }
         Returns: boolean
@@ -536,9 +721,28 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      recalculate_all_cancellation_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_cancellation_stats: {
+        Args: { p_role: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "driver" | "rider"
+      cancel_reason_code:
+        | "rider_changed_mind"
+        | "driver_unavailable"
+        | "price_dispute"
+        | "no_show"
+        | "late"
+        | "duplicate_request"
+        | "safety"
+        | "weather"
+        | "system_timeout"
+        | "other"
       ride_status: "open" | "assigned" | "completed" | "cancelled"
       verification_status: "pending" | "approved" | "rejected"
     }
@@ -669,6 +873,18 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "driver", "rider"],
+      cancel_reason_code: [
+        "rider_changed_mind",
+        "driver_unavailable",
+        "price_dispute",
+        "no_show",
+        "late",
+        "duplicate_request",
+        "safety",
+        "weather",
+        "system_timeout",
+        "other",
+      ],
       ride_status: ["open", "assigned", "completed", "cancelled"],
       verification_status: ["pending", "approved", "rejected"],
     },

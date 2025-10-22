@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, MapPin, Search, CheckCircle, XCircle, Calendar, DollarSign, SlidersHorizontal, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
+import { UserChip } from "@/components/UserChip";
 import StatusBadge from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -332,56 +333,30 @@ export default function TripRequestsList() {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-3 mb-4 p-3 bg-muted/30 rounded-lg">
-            <Avatar className="h-12 w-12 border-2 border-background">
-              <AvatarImage src={request.rider?.photo_url || ""} alt={request.rider?.full_name || "Rider"} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-base">
-                {(request.rider?.full_name || request.rider?.display_name || "U")[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-semibold text-base">
-                  {request.rider?.full_name || `User ${request.rider_id?.slice(0, 8)}`}
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                  Rider
-                </span>
-              </div>
-              <span className="block text-xs text-muted-foreground mb-1">
-                ID: {request.rider_id?.slice(0, 8)}
-              </span>
-              <RatingDisplay 
-                rating={request.rider?.rider_rating_avg || 0} 
-                count={request.rider?.rider_rating_count || 0}
-                size="sm"
-              />
-            </div>
+          <div className="p-3 bg-muted/30 rounded-lg mb-4">
+            <UserChip
+              userId={request.rider_id}
+              displayName={request.rider?.display_name}
+              fullName={request.rider?.full_name}
+              photoUrl={request.rider?.photo_url}
+              role="rider"
+              ratingAvg={request.rider?.rider_rating_avg}
+              ratingCount={request.rider?.rider_rating_count}
+              size="md"
+            />
           </div>
           {request.driver && request.status !== 'open' && (
-            <div className="flex items-center gap-3 mb-4 p-3 bg-accent/20 rounded-lg">
-              <Avatar className="h-10 w-10 border-2 border-background">
-                <AvatarImage src={request.driver?.photo_url || ""} alt={request.driver?.full_name || "Driver"} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {(request.driver?.full_name || request.driver?.display_name || "D")[0].toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold">{request.driver.full_name || request.driver.display_name}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
-                    Driver
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground block mb-1">
-                  ID: {request.assigned_driver_id?.slice(0, 8)}
-                </span>
-                <RatingDisplay 
-                  rating={request.driver?.driver_rating_avg || 0}
-                  count={request.driver?.driver_rating_count || 0}
-                  size="sm"
-                />
-              </div>
+            <div className="p-3 bg-accent/20 rounded-lg mb-4">
+              <UserChip
+                userId={request.assigned_driver_id}
+                displayName={request.driver?.display_name}
+                fullName={request.driver?.full_name}
+                photoUrl={request.driver?.photo_url}
+                role="driver"
+                ratingAvg={request.driver?.driver_rating_avg}
+                ratingCount={request.driver?.driver_rating_count}
+                size="md"
+              />
             </div>
           )}
           <div className="space-y-3 mb-4">
