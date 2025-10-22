@@ -301,6 +301,7 @@ export type Database = {
           is_verified: boolean | null
           location_sharing_enabled: boolean | null
           location_updated_at: string | null
+          notification_preferences: Json | null
           paused: boolean | null
           phone_number: string | null
           photo_url: string | null
@@ -343,6 +344,7 @@ export type Database = {
           is_verified?: boolean | null
           location_sharing_enabled?: boolean | null
           location_updated_at?: string | null
+          notification_preferences?: Json | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           is_verified?: boolean | null
           location_sharing_enabled?: boolean | null
           location_updated_at?: string | null
+          notification_preferences?: Json | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
