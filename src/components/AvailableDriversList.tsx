@@ -9,8 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, MapPin, Star, User } from "lucide-react";
 import { toast } from "sonner";
 import { RiderZipEditor } from "./RiderZipEditor";
-import { findNearbyZips, formatDistance, getZipDistance } from "@/lib/zipUtils";
-import { CancellationBadge } from "./CancellationBadge";
+import { formatDistance, getZipDistance } from "@/lib/zipUtils";
 import { useNavigate } from "react-router-dom";
 
 const statusLabels = {
@@ -68,12 +67,14 @@ export const AvailableDriversList = () => {
         .single();
 
       if (!profile?.profile_zip) {
+        console.log('❌ No rider ZIP set');
         setUserZip(null);
         setNotifyNewDriver(false);
         setLoading(false);
         return;
       }
 
+      console.log('✅ Rider ZIP:', profile.profile_zip);
       setUserZip(profile.profile_zip);
       setNotifyNewDriver(profile.notify_new_driver || false);
 
@@ -85,34 +86,64 @@ export const AvailableDriversList = () => {
 
       if (error) throw error;
 
+      console.log(`📍 Found ${driverStatuses?.length || 0} available drivers total`);
+
       if (driverStatuses && driverStatuses.length > 0) {
         // Get driver profiles with full details
         const driverIds = driverStatuses.map(d => d.user_id);
-        const { data: driverProfiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, display_name, driver_rating_avg, driver_rating_count, photo_url')
-          .in('id', driverIds);
+        
+        // Fetch profiles and cancellation stats in parallel
+        const [profilesResult, cancelStatsResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, full_name, display_name, driver_rating_avg, driver_rating_count, photo_url')
+            .in('id', driverIds),
+          supabase
+            .from('cancellation_stats')
+            .select('user_id, driver_rate_90d, badge_tier')
+            .in('user_id', driverIds)
+        ]);
+
+        const driverProfiles = profilesResult.data;
+        const cancelStats = cancelStatsResult.data;
 
         // Merge data, calculate distances, and filter by 25-mile radius
         const enrichedDrivers = driverStatuses.map(status => {
           const driverProfile = driverProfiles?.find(p => p.id === status.user_id);
+          const cancelData = cancelStats?.find(c => c.user_id === status.user_id);
           const distance = getZipDistance(profile.profile_zip, status.current_zip);
           
           // Check if driver is within 25 miles or same SCF prefix
           const isSameSCF = status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3);
           const isWithinRadius = distance !== null && distance <= 25;
           
+          console.log(`🚗 Driver ${driverProfile?.full_name || status.user_id}:`, {
+            current_zip: status.current_zip,
+            distance: distance ? `${distance.toFixed(1)} mi` : 'unknown',
+            isSameSCF,
+            isWithinRadius,
+            isNearby: isSameSCF || isWithinRadius
+          });
+          
           return {
             ...status,
             ...driverProfile,
             distance,
+            cancelRate: cancelData?.driver_rate_90d || 0,
+            badgeTier: cancelData?.badge_tier || 'green',
             isNearby: isSameSCF || isWithinRadius
           };
         })
-        .filter(d => 
-          d.full_name && // Only include drivers with complete profiles
-          d.isNearby // Only include drivers within 25 miles or same SCF
-        )
+        .filter(d => {
+          const included = d.full_name && d.isNearby;
+          if (!included) {
+            console.log(`❌ Excluding driver:`, {
+              id: d.user_id,
+              reason: !d.full_name ? 'no name' : 'not nearby'
+            });
+          }
+          return included;
+        })
         .sort((a, b) => {
           // Sort by distance (nulls last)
           if (a.distance === null) return 1;
@@ -120,12 +151,13 @@ export const AvailableDriversList = () => {
           return a.distance - b.distance;
         });
 
+        console.log(`✅ ${enrichedDrivers.length} drivers within 25 miles`);
         setDrivers(enrichedDrivers);
       } else {
         setDrivers([]);
       }
     } catch (error) {
-      console.error('Error loading drivers:', error);
+      console.error('❌ Error loading drivers:', error);
     } finally {
       setLoading(false);
     }
@@ -260,7 +292,13 @@ export const AvailableDriversList = () => {
                               
                               <div className="flex items-center gap-1">
                                 <span className="font-medium whitespace-nowrap">Cancel Rate:</span>
-                                <CancellationBadge userId={driver.id} role="driver" size="sm" showIcon={false} />
+                                <span className={`font-medium ${
+                                  driver.cancelRate > 15 ? 'text-red-600 dark:text-red-400' : 
+                                  driver.cancelRate >= 5 ? 'text-yellow-600 dark:text-yellow-400' : 
+                                  'text-green-600 dark:text-green-400'
+                                }`}>
+                                  {driver.cancelRate?.toFixed(1)}%
+                                </span>
                               </div>
                             </div>
                           </div>
