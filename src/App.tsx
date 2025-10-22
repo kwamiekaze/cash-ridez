@@ -24,6 +24,8 @@ import TripRequestsList from "./pages/TripRequestsList";
 import TripDetails from "./pages/TripDetails";
 import ChatPage from "./pages/ChatPage";
 import TripHistory from "./pages/TripHistory";
+import BillingSuccess from "./pages/BillingSuccess";
+import BillingCancelled from "./pages/BillingCancelled";
 
 const queryClient = new QueryClient();
 
@@ -133,6 +135,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <TripHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing/success"
+              element={
+                <ProtectedRoute>
+                  <BillingSuccess />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/billing/cancelled"
+              element={
+                <ProtectedRoute>
+                  <BillingCancelled />
                 </ProtectedRoute>
               }
             />

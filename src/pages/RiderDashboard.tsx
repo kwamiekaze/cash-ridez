@@ -14,6 +14,8 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { useToast } from "@/hooks/use-toast";
 import TripActionDialog from "@/components/TripActionDialog";
 import { AvailableDriversList } from "@/components/AvailableDriversList";
+import { SubscriptionPanel } from "@/components/SubscriptionPanel";
+import { TripLimitGate } from "@/components/TripLimitGate";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -355,15 +357,19 @@ const RiderDashboard = () => {
 
         {/* Quick Actions */}
         <div className={`grid grid-cols-1 gap-4 mb-8 ${profile?.active_role !== 'rider' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-          <Button
-            size="lg"
-            className="h-20 text-lg bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg"
-            onClick={() => navigate("/rider/create-request")}
-            disabled={!(profile?.is_verified || profile?.verification_status === "approved")}
+          <TripLimitGate
+            action="create trip request"
+            onProceed={() => navigate("/rider/create-request")}
           >
-            <Plus className="w-6 h-6 mr-2" />
-            Post Trip Request
-          </Button>
+            <Button
+              size="lg"
+              className="h-20 text-lg bg-gradient-primary hover:opacity-90 transition-opacity shadow-lg w-full"
+              disabled={!(profile?.is_verified || profile?.verification_status === "approved")}
+            >
+              <Plus className="w-6 h-6 mr-2" />
+              Post Trip Request
+            </Button>
+          </TripLimitGate>
           {profile?.active_role !== 'rider' && (
             <Button 
               size="lg" 
@@ -384,6 +390,11 @@ const RiderDashboard = () => {
             <User className="w-6 h-6 mr-2" />
             View Profile
           </Button>
+        </div>
+
+        {/* Subscription Panel */}
+        <div className="mb-8">
+          <SubscriptionPanel />
         </div>
 
         {/* Trips Tabs */}

@@ -13,6 +13,8 @@ import { UserChip } from "@/components/UserChip";
 import { DriverAvailability } from "@/components/DriverAvailability";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { SubscriptionPanel } from "@/components/SubscriptionPanel";
+import { TripLimitGate } from "@/components/TripLimitGate";
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
@@ -125,9 +127,10 @@ const DriverDashboard = () => {
           </Card>
         )}
 
-        {/* Top Section: Driver Availability */}
-        <div className="mb-6">
+        {/* Top Section: Driver Availability and Subscription */}
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
           <DriverAvailability />
+          <SubscriptionPanel />
         </div>
 
         {/* Quick Actions */}
@@ -295,13 +298,17 @@ const DriverDashboard = () => {
                       </p>
                     )}
                   </div>
-                  <Button 
-                    className="bg-gradient-primary" 
-                    disabled={!(profile?.is_verified || profile?.verification_status === "approved")} 
-                    onClick={() => handleAcceptClick(request)}
+                  <TripLimitGate
+                    action="accept trip request"
+                    onProceed={() => handleAcceptClick(request)}
                   >
-                    Connect
-                  </Button>
+                    <Button 
+                      className="bg-gradient-primary w-full" 
+                      disabled={!(profile?.is_verified || profile?.verification_status === "approved")} 
+                    >
+                      Connect
+                    </Button>
+                  </TripLimitGate>
                 </div>
               </Card>
             ))

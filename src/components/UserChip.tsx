@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
+import { MemberBadge } from "@/components/MemberBadge";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserChipProps {
@@ -31,6 +32,7 @@ export function UserChip({
 }: UserChipProps) {
   const [ratingAvg, setRatingAvg] = useState(providedRatingAvg);
   const [ratingCount, setRatingCount] = useState(providedRatingCount);
+  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     // Fetch ratings from public table if not provided
@@ -40,7 +42,26 @@ export function UserChip({
       setRatingAvg(providedRatingAvg);
       setRatingCount(providedRatingCount);
     }
+    
+    // Fetch member status
+    fetchMemberStatus();
   }, [userId, role, providedRatingAvg, providedRatingCount]);
+
+  const fetchMemberStatus = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_member')
+        .eq('id', userId)
+        .single();
+      
+      if (data) {
+        setIsMember(data.is_member || false);
+      }
+    } catch (error) {
+      console.error('Error fetching member status:', error);
+    }
+  };
 
   const fetchPublicStats = async () => {
     try {
@@ -87,6 +108,7 @@ export function UserChip({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className={`font-medium ${textSizes[size]} truncate`}>{name}</p>
+          <MemberBadge isMember={isMember} />
           {showCancellationBadge && (
             <CancellationBadge userId={userId} role={role} size="sm" />
           )}

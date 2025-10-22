@@ -44,6 +44,50 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_logs: {
+        Row: {
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          request_body: Json | null
+          response_body: Json | null
+          stripe_event_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          request_body?: Json | null
+          response_body?: Json | null
+          stripe_event_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          request_body?: Json | null
+          response_body?: Json | null
+          stripe_event_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cancellation_feedback: {
         Row: {
           about_user_id: string
@@ -350,6 +394,7 @@ export type Database = {
           bio: string | null
           blocked: boolean | null
           blocked_until: string | null
+          completed_trips_count: number | null
           consecutive_cancellations: number | null
           created_at: string | null
           current_lat: number | null
@@ -363,6 +408,7 @@ export type Database = {
           id: string
           id_image_url: string | null
           is_driver: boolean | null
+          is_member: boolean | null
           is_rider: boolean | null
           is_verified: boolean | null
           location_sharing_enabled: boolean | null
@@ -379,6 +425,8 @@ export type Database = {
           role_set_at: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          subscription_active: boolean | null
+          subscription_current_period_end: number | null
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
@@ -399,6 +447,7 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          completed_trips_count?: number | null
           consecutive_cancellations?: number | null
           created_at?: string | null
           current_lat?: number | null
@@ -412,6 +461,7 @@ export type Database = {
           id: string
           id_image_url?: string | null
           is_driver?: boolean | null
+          is_member?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
           location_sharing_enabled?: boolean | null
@@ -428,6 +478,8 @@ export type Database = {
           role_set_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_active?: boolean | null
+          subscription_current_period_end?: number | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -448,6 +500,7 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          completed_trips_count?: number | null
           consecutive_cancellations?: number | null
           created_at?: string | null
           current_lat?: number | null
@@ -461,6 +514,7 @@ export type Database = {
           id?: string
           id_image_url?: string | null
           is_driver?: boolean | null
+          is_member?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
           location_sharing_enabled?: boolean | null
@@ -477,6 +531,8 @@ export type Database = {
           role_set_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_active?: boolean | null
+          subscription_current_period_end?: number | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -802,6 +858,7 @@ export type Database = {
         }
         Returns: number
       }
+      can_use_trip_features: { Args: { p_user_id: string }; Returns: boolean }
       can_view_contact_info: {
         Args: { _profile_id: string; _viewer_id: string }
         Returns: boolean
