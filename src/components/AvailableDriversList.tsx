@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, MapPin, Star, User } from "lucide-react";
 import { toast } from "sonner";
 import { RiderZipEditor } from "./RiderZipEditor";
-import { formatDistance, getZipDistance } from "@/lib/zipUtils";
+import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
 import { useNavigate } from "react-router-dom";
 
 const statusLabels = {
@@ -78,6 +78,9 @@ export const AvailableDriversList = () => {
       setUserZip(profile.profile_zip);
       setNotifyNewDriver(profile.notify_new_driver || false);
 
+      // Ensure ZIP centroids are loaded before computing distances
+      await loadZipCentroids();
+
       // Get ALL available drivers (we'll filter by distance client-side)
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
@@ -111,18 +114,19 @@ export const AvailableDriversList = () => {
         const enrichedDrivers = driverStatuses.map(status => {
           const driverProfile = driverProfiles?.find(p => p.id === status.user_id);
           const cancelData = cancelStats?.find(c => c.user_id === status.user_id);
-          const distance = getZipDistance(profile.profile_zip, status.current_zip);
+          const distance = zipDistanceMiles(profile.profile_zip, status.current_zip);
           
-          // Check if driver is within 25 miles or same SCF prefix
+          // Compute proximity using 25-mile rule with SCF fallback
+          const isNearby = isWithin25Miles(profile.profile_zip, status.current_zip);
           const isSameSCF = status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3);
           const isWithinRadius = distance !== null && distance <= 25;
           
-          console.log(`🚗 Driver ${driverProfile?.full_name || status.user_id}:`, {
+          console.info(`🚗 Driver ${driverProfile?.full_name || status.user_id}:`, {
             current_zip: status.current_zip,
             distance: distance ? `${distance.toFixed(1)} mi` : 'unknown',
             isSameSCF,
             isWithinRadius,
-            isNearby: isSameSCF || isWithinRadius
+            isNearby
           });
           
           return {

@@ -155,20 +155,21 @@ Deno.serve(async (req) => {
     // Filter riders within 25 miles or same SCF
     const nearbyRiders = riders.filter(rider => {
       if (!rider.profile_zip) return false;
-      
+
       const distance = getZipDistance(rider.profile_zip, current_zip);
-      
-      // If distance is calculable, use it
-      if (distance !== null && distance <= NEARBY_RADIUS_MI) {
-        return true;
-      }
-      
-      // Fallback to SCF (3-digit) matching
-      if (isSameScf(rider.profile_zip, current_zip)) {
-        return true;
-      }
-      
-      return false;
+      const withinRadius = distance !== null && distance <= NEARBY_RADIUS_MI;
+      const scfMatch = isSameScf(rider.profile_zip, current_zip);
+
+      console.info('Notif check:', {
+        riderZip: rider.profile_zip,
+        driverZip: current_zip,
+        distance,
+        within25Miles: withinRadius,
+        scfMatch,
+        decision: withinRadius || scfMatch
+      });
+
+      return withinRadius || scfMatch;
     });
 
     console.log(`Found ${nearbyRiders.length} nearby riders to potentially notify`);
@@ -196,24 +197,33 @@ Deno.serve(async (req) => {
       const distance = getZipDistance(rider.profile_zip, current_zip);
       const distanceText = distance ? `~${Math.round(distance)} mi away` : 'nearby';
 
-      // Create notification
-      const { error: notifError } = await supabaseClient
-        .from('notifications')
-        .insert({
-          user_id: rider.id,
-          related_user_id: driver_id,
-          type: 'driver_available',
-          title: 'Driver Available Near You',
-          message: `${driverProfile.full_name} is now available near you (ZIP ${current_zip}, ${distanceText}).`,
-          link: `/profile/${driver_id}`,
-        });
+      // Create notification with simple retry
+      let notifError: any = null;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const { error } = await supabaseClient
+          .from('notifications')
+          .insert({
+            user_id: rider.id,
+            related_user_id: driver_id,
+            type: 'driver_available',
+            title: 'Driver Available Near You',
+            message: `${driverProfile.full_name} is now available near you (ZIP ${current_zip}, ${distanceText}).`,
+            link: `/profile/${driver_id}`,
+          });
+        if (!error) {
+          console.log(`Sent notification to rider ${rider.id} (attempt ${attempt})`);
+          notifError = null;
+          break;
+        }
+        notifError = error;
+        console.warn(`Retrying notification for rider ${rider.id} after error:`, error);
+      }
 
       if (notifError) {
         console.error(`Error creating notification for rider ${rider.id}:`, notifError);
         return null;
       }
 
-      console.log(`Sent notification to rider ${rider.id}`);
       return rider.id;
     });
 
