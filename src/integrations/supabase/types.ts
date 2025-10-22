@@ -377,6 +377,8 @@ export type Database = {
           rider_rating_avg: number | null
           rider_rating_count: number | null
           role_set_at: string | null
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
@@ -424,6 +426,8 @@ export type Database = {
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
           role_set_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -471,6 +475,8 @@ export type Database = {
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
           role_set_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
