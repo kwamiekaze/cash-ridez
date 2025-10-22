@@ -64,9 +64,27 @@ const createCustomIcon = (color: string) => {
 const MapInvalidate = () => {
   const map = useMap();
   useEffect(() => {
-    setTimeout(() => {
+    const invalidate = () => {
       try { map.invalidateSize(); } catch {}
-    }, 0);
+    };
+    // Initial invalidations (handles mount in hidden tab/panels)
+    const t1 = setTimeout(invalidate, 0);
+    const t2 = setTimeout(invalidate, 300);
+
+    const onResize = () => { setTimeout(invalidate, 50); };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') setTimeout(invalidate, 50);
+    };
+
+    window.addEventListener('resize', onResize);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', onResize);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [map]);
   return null;
 };
@@ -112,6 +130,8 @@ export default function TripMapView({ trips, onTripSelect, userLocation, onReque
     }
   }, [userLocation, trips]);
 
+  const validTrips = useMemo(() => trips.filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng)), [trips]);
+
   const getMarkerIcon = (status: string) => {
     switch (status) {
       case 'open':
@@ -128,11 +148,13 @@ export default function TripMapView({ trips, onTripSelect, userLocation, onReque
   return (
     <div className="relative w-full h-[600px] rounded-lg overflow-hidden border-2 border-border">
       <MapContainer
-        key={`${mapCenter[0]}-${mapCenter[1]}`}
         center={mapCenter}
         zoom={12}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
+        preferCanvas
+        wheelDebounceTime={50}
+        wheelPxPerZoomLevel={60}
       >
         <MapController center={mapCenter} />
         <MapInvalidate />
@@ -173,15 +195,14 @@ export default function TripMapView({ trips, onTripSelect, userLocation, onReque
         {/* Trip markers (clustered for performance) */}
         <MarkerClusterGroup
           chunkedLoading
+          chunkInterval={100}
           removeOutsideVisibleBounds
           maxClusterRadius={60}
+          disableClusteringAtZoom={16}
           spiderfyOnEveryZoom
           showCoverageOnHover={false}
         >
-          {trips
-            .filter((trip) => isValidLatLng(trip.pickup_lat, trip.pickup_lng))
-            .slice(0, 5000)
-            .map((trip) => {
+          {validTrips.slice(0, 5000).map((trip) => {
               try {
                 const lat = Number(trip.pickup_lat);
                 const lng = Number(trip.pickup_lng);
