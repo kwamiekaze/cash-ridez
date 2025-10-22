@@ -222,6 +222,72 @@ export type Database = {
           },
         ]
       }
+      driver_status: {
+        Row: {
+          current_zip: string | null
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_zip?: string | null
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_zip?: string | null
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      kyc_submissions: {
+        Row: {
+          back_image_url: string | null
+          front_image_url: string | null
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          role: string
+          selfie_image_url: string | null
+          status: string
+          submitted_at: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          back_image_url?: string | null
+          front_image_url?: string | null
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          role: string
+          selfie_image_url?: string | null
+          status?: string
+          submitted_at?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          back_image_url?: string | null
+          front_image_url?: string | null
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          role?: string
+          selfie_image_url?: string | null
+          status?: string
+          submitted_at?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -305,8 +371,10 @@ export type Database = {
           paused: boolean | null
           phone_number: string | null
           photo_url: string | null
+          profile_zip: string | null
           rider_rating_avg: number | null
           rider_rating_count: number | null
+          role_set_at: string | null
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
@@ -348,8 +416,10 @@ export type Database = {
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
+          profile_zip?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
+          role_set_at?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
@@ -391,8 +461,10 @@ export type Database = {
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
+          profile_zip?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
+          role_set_at?: string | null
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
