@@ -210,7 +210,7 @@ const Onboarding = () => {
               muted
               playsInline
               className="w-full h-auto"
-              src="/verification-intro.mp4"
+              src="/onboarding-intro.mov"
             >
               Your browser does not support the video tag.
             </video>
