@@ -16,6 +16,8 @@ import AppHeader from "@/components/AppHeader";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { RiderZipEditor } from "@/components/RiderZipEditor";
+import { DriverAvailability } from "@/components/DriverAvailability";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -410,9 +412,16 @@ const Profile = () => {
           </form>
         </Card>
 
-        {/* Individual Ratings Display */}
+        {/* Role-specific sections */}
         {user && (
           <div className="mt-6 space-y-6">
+            {/* Rider ZIP Editor */}
+            {profile.is_rider && <RiderZipEditor />}
+            
+            {/* Driver Availability */}
+            {profile.is_driver && <DriverAvailability />}
+            
+            {/* Individual Ratings Display */}
             {profile.is_rider && profile.rider_rating_count > 0 && (
               <UserRatingsDisplay userId={user.id} ratingType="rider" />
             )}

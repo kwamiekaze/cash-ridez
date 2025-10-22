@@ -1,12 +1,16 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { UserChip } from "@/components/UserChip";
-import { MapPin, User as UserIcon, AlertCircle } from "lucide-react";
+import { MapPin, Loader2, Bell, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RiderZipEditor } from "./RiderZipEditor";
+import { toast } from "sonner";
 
 const statusColors = {
   available: "bg-green-500",
@@ -24,31 +28,59 @@ const statusLabels = {
 
 export const AvailableDriversList = () => {
   const { user } = useAuth();
-  const [drivers, setDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [drivers, setDrivers] = useState<any[]>([]);
   const [userZip, setUserZip] = useState<string | null>(null);
+  const [notifyNewDriver, setNotifyNewDriver] = useState(false);
+  const [updatingNotification, setUpdatingNotification] = useState(false);
 
   useEffect(() => {
     if (user) {
-      loadDrivers();
+      loadAvailableDrivers();
+      
+      // Subscribe to driver_status changes for realtime updates
+      const channel = supabase
+        .channel('driver_status_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'driver_status',
+          },
+          () => {
+            // Reload drivers when any status changes
+            loadAvailableDrivers();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
-  const loadDrivers = async () => {
+  const loadAvailableDrivers = async () => {
+    if (!user) return;
+
     try {
-      // Get user's ZIP code
+      // Get user's ZIP code and notification preference
       const { data: profile } = await supabase
         .from('profiles')
-        .select('profile_zip')
-        .eq('id', user?.id)
+        .select('profile_zip, notify_new_driver')
+        .eq('id', user.id)
         .single();
 
-      setUserZip(profile?.profile_zip || null);
-
       if (!profile?.profile_zip) {
+        setUserZip(null);
+        setNotifyNewDriver(false);
         setLoading(false);
         return;
       }
+
+      setUserZip(profile.profile_zip);
+      setNotifyNewDriver(profile.notify_new_driver || false);
 
       // Get available drivers in the same ZIP
       const { data: driverStatuses, error } = await supabase
@@ -73,10 +105,11 @@ export const AvailableDriversList = () => {
           profile: driverProfiles?.find(p => p.id === status.user_id),
         })).filter(d => d.profile); // Only include drivers with profiles
 
-        // Sort by most recently updated, then by rating
+        // Sort by updated_at (most recent first), then by rating
         enrichedDrivers.sort((a, b) => {
-          const timeDiff = new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-          if (timeDiff !== 0) return timeDiff;
+          const timeA = new Date(a.updated_at).getTime();
+          const timeB = new Date(b.updated_at).getTime();
+          if (timeB !== timeA) return timeB - timeA;
           return (b.profile?.driver_rating_avg || 0) - (a.profile?.driver_rating_avg || 0);
         });
 
@@ -91,99 +124,165 @@ export const AvailableDriversList = () => {
     }
   };
 
+  const handleZipSaved = (zip: string) => {
+    setUserZip(zip);
+    loadAvailableDrivers();
+  };
+
+  const handleNotificationToggle = async (enabled: boolean) => {
+    if (!user) return;
+
+    setUpdatingNotification(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notify_new_driver: enabled })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setNotifyNewDriver(enabled);
+      toast.success(
+        enabled 
+          ? "You'll be notified when a driver becomes available in your ZIP"
+          : "Driver notifications turned off"
+      );
+    } catch (error) {
+      console.error('Error updating notification preference:', error);
+      toast.error('Failed to update notification preference');
+    } finally {
+      setUpdatingNotification(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <p className="text-muted-foreground">Loading available drivers...</p>
-      </div>
+      <Card>
+        <CardContent className="p-6 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </CardContent>
+      </Card>
     );
   }
 
   if (!userZip) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-warning" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-2">ZIP Code Required</h3>
-            <p className="text-muted-foreground mb-4">
-              Please set your ZIP code in your profile to see available drivers near you
-            </p>
-            <Button onClick={() => window.location.href = '/profile'}>
-              Go to Profile
-            </Button>
-          </div>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Available Drivers
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RiderZipEditor variant="inline" onZipSaved={handleZipSaved} />
+        </CardContent>
       </Card>
     );
   }
 
   if (drivers.length === 0) {
     return (
-      <Card className="p-8 text-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-            <MapPin className="w-8 h-8 text-muted-foreground" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Available Drivers in {userZip}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground text-center py-4">
+            No drivers are available in {userZip} yet.
+          </p>
+          
+          {/* Notification Toggle */}
+          <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="notify-driver" className="text-sm font-normal cursor-pointer">
+                Notify me when a driver becomes available in my ZIP
+              </Label>
+            </div>
+            <Switch
+              id="notify-driver"
+              checked={notifyNewDriver}
+              onCheckedChange={handleNotificationToggle}
+              disabled={updatingNotification}
+            />
           </div>
-          <div>
-            <h3 className="text-lg font-semibold mb-2">No Drivers Available</h3>
-            <p className="text-muted-foreground">
-              There are currently no available drivers in your area (ZIP {userZip})
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              We'll notify you when a driver becomes available
-            </p>
-          </div>
-        </div>
+        </CardContent>
       </Card>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Available Drivers in ZIP {userZip}</h3>
-        <Badge variant="secondary">{drivers.length} Available</Badge>
-      </div>
-
-      {drivers.map((driver) => (
-        <Card key={driver.user_id} className="p-4 hover:shadow-lg transition-shadow">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <UserChip
-                userId={driver.user_id}
-                displayName={driver.profile.display_name}
-                photoUrl={driver.profile.photo_url}
-                role="driver"
-                ratingAvg={driver.profile.driver_rating_avg}
-                ratingCount={driver.profile.driver_rating_count}
-              />
-
-              <div className="flex items-center gap-4 mt-3 ml-12">
-                <div className="flex items-center gap-2 text-sm">
-                  <div className={cn("w-2 h-2 rounded-full", statusColors[driver.state as keyof typeof statusColors])} />
-                  <span className="text-muted-foreground">{statusLabels[driver.state as keyof typeof statusLabels]}</span>
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <MapPin className="w-3 h-3" />
-                  ZIP {driver.current_zip}
-                </div>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.href = `/profile?user=${driver.user_id}`}
-            >
-              <UserIcon className="w-4 h-4 mr-2" />
-              View Profile
-            </Button>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Available Drivers in {userZip}
+            </CardTitle>
+            <Badge variant="secondary">{drivers.length} Available</Badge>
           </div>
-        </Card>
-      ))}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Notification Toggle */}
+          <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="notify-driver-list" className="text-sm font-normal cursor-pointer">
+                Notify me when new drivers become available
+              </Label>
+            </div>
+            <Switch
+              id="notify-driver-list"
+              checked={notifyNewDriver}
+              onCheckedChange={handleNotificationToggle}
+              disabled={updatingNotification}
+            />
+          </div>
+
+          {/* Driver List */}
+          {drivers.map((driver) => (
+            <Card key={driver.user_id} className="p-4 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <UserChip
+                    userId={driver.user_id}
+                    displayName={driver.profile.display_name}
+                    photoUrl={driver.profile.photo_url}
+                    role="driver"
+                    ratingAvg={driver.profile.driver_rating_avg}
+                    ratingCount={driver.profile.driver_rating_count}
+                  />
+
+                  <div className="flex items-center gap-4 mt-3 ml-12">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className={cn("w-2 h-2 rounded-full", statusColors[driver.state as keyof typeof statusColors])} />
+                      <span className="text-muted-foreground">{statusLabels[driver.state as keyof typeof statusLabels]}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      ZIP {driver.current_zip}
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = `/profile?user=${driver.user_id}`}
+                >
+                  <UserIcon className="w-4 h-4 mr-2" />
+                  View Profile
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 };

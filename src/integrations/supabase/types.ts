@@ -368,10 +368,12 @@ export type Database = {
           location_sharing_enabled: boolean | null
           location_updated_at: string | null
           notification_preferences: Json | null
+          notify_new_driver: boolean | null
           paused: boolean | null
           phone_number: string | null
           photo_url: string | null
           profile_zip: string | null
+          profile_zip_updated_at: string | null
           rider_rating_avg: number | null
           rider_rating_count: number | null
           role_set_at: string | null
@@ -413,10 +415,12 @@ export type Database = {
           location_sharing_enabled?: boolean | null
           location_updated_at?: string | null
           notification_preferences?: Json | null
+          notify_new_driver?: boolean | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
           profile_zip?: string | null
+          profile_zip_updated_at?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
           role_set_at?: string | null
@@ -458,10 +462,12 @@ export type Database = {
           location_sharing_enabled?: boolean | null
           location_updated_at?: string | null
           notification_preferences?: Json | null
+          notify_new_driver?: boolean | null
           paused?: boolean | null
           phone_number?: string | null
           photo_url?: string | null
           profile_zip?: string | null
+          profile_zip_updated_at?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
           role_set_at?: string | null
@@ -839,8 +845,10 @@ export type Database = {
         Args: { _profile_id: string; _user_id: string }
         Returns: boolean
       }
+      is_valid_zip: { Args: { zip_input: string }; Returns: boolean }
       is_verified_rider: { Args: { _user_id: string }; Returns: boolean }
       is_verified_user: { Args: { _user_id: string }; Returns: boolean }
+      normalize_zip: { Args: { zip_input: string }; Returns: string }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
       update_cancellation_stats: {
         Args: { p_role: string; p_user_id: string }

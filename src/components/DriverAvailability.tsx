@@ -50,13 +50,28 @@ export const DriverAvailability = () => {
     }
   };
 
+  const normalizeZip = (input: string): string => {
+    // Remove all non-digits and take first 5
+    const digits = input.replace(/\D/g, "");
+    return digits.slice(0, 5);
+  };
+
   const updateAvailability = async () => {
     if (!user) return;
 
+    // Normalize ZIP (handle ZIP+4 format)
+    const normalizedZip = currentZip ? normalizeZip(currentZip) : null;
+
     // Basic ZIP validation
     const zipRegex = /^\d{5}$/;
-    if (currentZip && !zipRegex.test(currentZip)) {
-      toast.error('Please enter a valid 5-digit ZIP code');
+    if (normalizedZip && !zipRegex.test(normalizedZip)) {
+      toast.error('Enter a valid ZIP (5 digits, e.g., 30117)');
+      return;
+    }
+
+    // If setting to available, require a ZIP
+    if (state === 'available' && !normalizedZip) {
+      toast.error('Enter your current ZIP to appear in riders\' "Available Drivers" list');
       return;
     }
 
@@ -67,7 +82,7 @@ export const DriverAvailability = () => {
         .upsert({
           user_id: user.id,
           state,
-          current_zip: currentZip || null,
+          current_zip: normalizedZip,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id'
@@ -75,6 +90,7 @@ export const DriverAvailability = () => {
 
       if (error) throw error;
 
+      setCurrentZip(normalizedZip || '');
       toast.success('Availability updated successfully');
     } catch (error: any) {
       console.error('Error updating availability:', error);
@@ -136,14 +152,19 @@ export const DriverAvailability = () => {
           <Input
             id="zip"
             type="text"
-            placeholder="Enter 5-digit ZIP"
+            inputMode="numeric"
+            placeholder="Enter 5-digit ZIP (e.g., 30117)"
             value={currentZip}
-            onChange={(e) => setCurrentZip(e.target.value)}
+            onChange={(e) => {
+              const normalized = e.target.value.replace(/\D/g, "").slice(0, 5);
+              setCurrentZip(normalized);
+            }}
             maxLength={5}
-            pattern="\d{5}"
           />
           <p className="text-xs text-muted-foreground">
-            Riders in your ZIP code will be notified when you become available
+            {state === 'available' 
+              ? "Required to appear in riders' Available Drivers list"
+              : "Riders in your ZIP will be notified when you become available"}
           </p>
         </div>
 
