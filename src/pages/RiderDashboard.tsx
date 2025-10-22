@@ -20,7 +20,7 @@ const RiderDashboard = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState("open");
+  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed">("open");
   const [requests, setRequests] = useState<any[]>([]);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -386,13 +386,11 @@ const RiderDashboard = () => {
         </div>
 
         {/* Trips Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed")} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 gap-1">
             <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
             <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
-            <TabsTrigger value="cancelled" className="text-xs sm:text-sm">Cancelled</TabsTrigger>
-            <TabsTrigger value="history" className="text-xs sm:text-sm">History</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6 space-y-4">
@@ -526,101 +524,6 @@ const RiderDashboard = () => {
               </Card>
             ) : (
               requests.filter(r => r.status === "completed").map(request => (
-                <Card key={request.id} className="p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/trip/${request.id}`)}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <StatusBadge status={request.status} />
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(request.updated_at), "MMM d, yyyy")}
-                        </span>
-                      </div>
-                      {request.assigned_driver && (
-                        <UserChip
-                          userId={request.assigned_driver_id}
-                          displayName={request.assigned_driver.display_name}
-                          photoUrl={request.assigned_driver.photo_url}
-                          role="driver"
-                          ratingAvg={request.assigned_driver.driver_rating_avg}
-                          ratingCount={request.assigned_driver.driver_rating_count}
-                          size="sm"
-                          className="mb-2"
-                        />
-                      )}
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-success" />
-                          <p className="text-sm">{request.pickup_address}</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-destructive" />
-                          <p className="text-sm">{request.dropoff_address}</p>
-                        </div>
-                      </div>
-                      {request.rider_id === user?.id && request.driver_rating && (
-                        <div className="mt-2 text-sm">
-                          <span className="text-muted-foreground">Your rating: </span>
-                          <RatingDisplay rating={request.driver_rating} count={0} size="sm" showCount={false} />
-                        </div>
-                      )}
-                      {request.assigned_driver_id === user?.id && request.rider_rating && (
-                        <div className="mt-2 text-sm">
-                          <span className="text-muted-foreground">Your rating: </span>
-                          <RatingDisplay rating={request.rider_rating} count={0} size="sm" showCount={false} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="cancelled" className="mt-6 space-y-4">
-            {requests.filter(r => r.status === "cancelled").length === 0 ? (
-              <Card className="p-8 text-center">
-                <p className="text-muted-foreground">No cancelled trips</p>
-              </Card>
-            ) : (
-              requests.filter(r => r.status === "cancelled").map(request => (
-                <Card key={request.id} className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <StatusBadge status={request.status} />
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(request.cancelled_at || request.updated_at), "MMM d, yyyy")}
-                        </span>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-success" />
-                          <p className="text-sm">{request.pickup_address}</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-destructive" />
-                          <p className="text-sm">{request.dropoff_address}</p>
-                        </div>
-                      </div>
-                      {request.cancel_reason_rider && (
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Reason: {request.cancel_reason_rider}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-
-          <TabsContent value="history" className="mt-6 space-y-4">
-            {requests.filter(r => r.status === "completed" || r.status === "cancelled").length === 0 ? (
-              <Card className="p-8 text-center">
-                <p className="text-muted-foreground">No trip history yet</p>
-              </Card>
-            ) : (
-              requests.filter(r => r.status === "completed" || r.status === "cancelled").map(request => (
                 <Card key={request.id} className="p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/trip/${request.id}`)}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

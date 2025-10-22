@@ -202,13 +202,6 @@ export default function TripRequestsList() {
       filtered = filtered.filter(r => r.status === "assigned" && r.assigned_driver_id === user?.id);
     } else if (activeTab === "completed") {
       filtered = filtered.filter(r => r.status === "completed" && r.assigned_driver_id === user?.id);
-    } else if (activeTab === "cancelled") {
-      filtered = filtered.filter(r => r.status === "cancelled" && (r.assigned_driver_id === user?.id || r.cancelled_by === "driver"));
-    } else if (activeTab === "history") {
-      filtered = filtered.filter(r => 
-        (r.status === "completed" || r.status === "cancelled") && 
-        r.assigned_driver_id === user?.id
-      );
     }
 
     // Apply fuzzy search filter
@@ -520,12 +513,10 @@ export default function TripRequestsList() {
           <div className="text-center py-8">Loading...</div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 gap-1">
+            <TabsList className="grid w-full grid-cols-3 gap-1">
               <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
               <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
               <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
-              <TabsTrigger value="cancelled" className="text-xs sm:text-sm">Cancelled</TabsTrigger>
-              <TabsTrigger value="history" className="text-xs sm:text-sm">History</TabsTrigger>
             </TabsList>
 
             <TabsContent value="open" className="mt-6 space-y-4">
@@ -556,26 +547,6 @@ export default function TripRequestsList() {
               {filteredRequests.length === 0 ? (
                 <Card className="p-8 text-center">
                   <p className="text-muted-foreground">No completed trips yet</p>
-                </Card>
-              ) : (
-                filteredRequests.map(request => renderTripCard(request))
-              )}
-            </TabsContent>
-
-            <TabsContent value="cancelled" className="mt-6 space-y-4">
-              {filteredRequests.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">No cancelled trips</p>
-                </Card>
-              ) : (
-                filteredRequests.map(request => renderTripCard(request))
-              )}
-            </TabsContent>
-
-            <TabsContent value="history" className="mt-6 space-y-4">
-              {filteredRequests.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">No trip history yet</p>
                 </Card>
               ) : (
                 filteredRequests.map(request => renderTripCard(request))

@@ -357,14 +357,18 @@ export default function TripDetails() {
     try {
       // Determine if current user is rating as rider or driver
       const updateField = isRider ? 'rider_rating' : 'driver_rating';
+      const completionField = isRider ? 'rider_completed' : 'driver_completed';
       const ratingType = isRider ? 'driver' : 'rider';
       const ratedUserId = isRider ? request.assigned_driver_id : request.rider_id;
 
-      // Update the ride request with the rating
+      // Update the ride request with the rating AND mark as completed by this user
       // Database triggers will automatically update the profile ratings
       const { error: rideError } = await supabase
         .from('ride_requests')
-        .update({ [updateField]: rating })
+        .update({ 
+          [updateField]: rating,
+          [completionField]: true
+        })
         .eq('id', id);
 
       if (rideError) throw rideError;
@@ -624,6 +628,15 @@ export default function TripDetails() {
                       Rate {isRider ? 'Driver' : 'Rider'}
                     </Button>
                   )}
+                  {((isRider && request.rider_rating) || (!isRider && request.driver_rating)) && (
+                    <Button 
+                      variant="outline"
+                      className="flex-1"
+                      disabled
+                    >
+                      ✓ Rated
+                    </Button>
+                  )}
                 </div>
                 
                 {/* Completion status */}
@@ -644,34 +657,6 @@ export default function TripDetails() {
                 {/* Complete/Cancel buttons - only show if trip is still assigned (not completed) */}
                 {request.status === 'assigned' && (
                   <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                    <Button
-                      onClick={() => {
-                        // Check if rating has been submitted before allowing completion
-                        const hasRated = isRider ? request.rider_rating : request.driver_rating;
-                        if (!hasRated) {
-                          toast({
-                            title: "Rating Required",
-                            description: `Please rate the ${isRider ? 'driver' : 'rider'} before marking the trip as complete.`,
-                            variant: "destructive",
-                          });
-                          setShowRatingDialog(true);
-                          return;
-                        }
-                        setActionType("complete");
-                        setActionDialogOpen(true);
-                      }}
-                      variant="default"
-                      className="flex-1 bg-gradient-primary"
-                      disabled={
-                        (isRider && request.rider_completed) || 
-                        (!isRider && request.driver_completed)
-                      }
-                    >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {(isRider && request.rider_completed) || (!isRider && request.driver_completed) 
-                        ? "Marked Complete" 
-                        : "Mark Complete"}
-                    </Button>
                     <Button
                       onClick={() => {
                         setActionType("cancel");

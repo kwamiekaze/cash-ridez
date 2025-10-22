@@ -101,17 +101,31 @@ const CreateRideRequest = () => {
     setIsSubmitting(true);
 
     try {
-      // Check for active trips
-      const { data: activeTrips, error: activeError } = await supabase
+      // Check for active trips - allow max 2 open trips and 1 connected trip
+      const { data: openTrips, error: openError } = await supabase
+        .from("ride_requests")
+        .select("id")
+        .eq("rider_id", user?.id)
+        .eq("status", "open");
+
+      if (openError) throw openError;
+
+      if (openTrips && openTrips.length >= 2) {
+        toast.error("You can have a maximum of 2 open trip requests at a time.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: assignedTrips, error: assignedError } = await supabase
         .from("ride_requests")
         .select("id")
         .or(`rider_id.eq.${user?.id},assigned_driver_id.eq.${user?.id}`)
-        .in("status", ["open", "assigned"]);
+        .eq("status", "assigned");
 
-      if (activeError) throw activeError;
+      if (assignedError) throw assignedError;
 
-      if (activeTrips && activeTrips.length > 0) {
-        toast.error("You already have an active trip. Please complete or cancel it before creating a new one.");
+      if (assignedTrips && assignedTrips.length >= 1) {
+        toast.error("You already have a connected trip. Please complete or cancel it before creating a new one.");
         setIsSubmitting(false);
         return;
       }
