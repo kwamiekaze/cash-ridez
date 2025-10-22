@@ -124,31 +124,52 @@ const DriverDashboard = () => {
           </Card>
         )}
 
+        {/* Driver Availability - Prominent at Top */}
+        <div className="mb-8">
+          <DriverAvailability />
+        </div>
+
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Button
             size="lg"
-            className="h-20 text-lg bg-gradient-primary"
-            onClick={() => navigate("/rider/create-request")}
-            disabled={!(profile?.is_verified || profile?.verification_status === "approved")}
+            variant="outline"
+            className="h-16"
+            onClick={() => {
+              const openRequests = document.getElementById('available-requests');
+              openRequests?.scrollIntoView({ behavior: 'smooth' });
+            }}
           >
-            <Plus className="w-6 h-6 mr-2" />
-            Post Trip Request
+            <Search className="w-5 h-5 mr-2" />
+            Find Requests
           </Button>
           <Button 
             size="lg" 
             variant="outline" 
-            className="h-20 text-lg"
+            className="h-16"
+            onClick={() => navigate("/trip-requests")}
+          >
+            <Car className="w-5 h-5 mr-2" />
+            My Offers
+          </Button>
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="h-16"
             onClick={() => navigate("/profile")}
           >
-            <User className="w-6 h-6 mr-2" />
+            <User className="w-5 h-5 mr-2" />
             View Profile
           </Button>
-        </div>
-
-        {/* Driver Availability */}
-        <div className="mb-8">
-          <DriverAvailability />
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-16"
+            onClick={() => navigate("/trip-history")}
+          >
+            <History className="w-5 h-5 mr-2" />
+            Trip History
+          </Button>
         </div>
 
         {/* My Active Trips (Connected) - Show prominently if any exist */}
@@ -229,7 +250,7 @@ const DriverDashboard = () => {
         </Card>
 
         {/* Available Trip Requests */}
-        <div className="space-y-4">
+        <div className="space-y-4" id="available-requests">
           <h2 className="text-2xl font-bold">Available Trip Requests ({filteredRequests.length})</h2>
           {filteredRequests.length === 0 ? (
             <Card className="p-8 text-center">

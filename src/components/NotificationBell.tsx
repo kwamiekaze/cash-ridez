@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Notification {
   id: string;
@@ -23,6 +24,14 @@ interface Notification {
   link: string | null;
   read: boolean;
   created_at: string;
+  related_user_id: string | null;
+}
+
+interface RelatedUser {
+  id: string;
+  display_name: string | null;
+  full_name: string | null;
+  photo_url: string | null;
 }
 
 export function NotificationBell() {
@@ -30,6 +39,7 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const { playNotificationSound } = useBrowserNotifications();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [relatedUsers, setRelatedUsers] = useState<Record<string, RelatedUser>>({});
   // derive count from notifications to avoid state desync
   const unreadCount = useMemo(() => notifications.reduce((c, n) => c + ((n.read ?? false) ? 0 : 1), 0), [notifications]);
   const [open, setOpen] = useState(false);
@@ -83,6 +93,28 @@ export function NotificationBell() {
       // Normalize null reads to false
       const normalized = data.map(n => ({ ...n, read: n.read ?? false })) as Notification[];
       setNotifications(normalized);
+      
+      // Fetch related user profiles for driver_available notifications
+      const relatedUserIds = [...new Set(
+        normalized
+          .filter(n => n.related_user_id)
+          .map(n => n.related_user_id!)
+      )];
+      
+      if (relatedUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, display_name, full_name, photo_url')
+          .in('id', relatedUserIds);
+        
+        if (profiles) {
+          const usersMap: Record<string, RelatedUser> = {};
+          profiles.forEach(p => {
+            usersMap[p.id] = p;
+          });
+          setRelatedUsers(usersMap);
+        }
+      }
     }
   };
 
@@ -144,8 +176,31 @@ export function NotificationBell() {
     }
   };
 
-  const getNotificationIcon = (type: string) => {
-    const iconClass = "w-8 h-8 rounded-full flex items-center justify-center";
+  const getNotificationIcon = (notification: Notification) => {
+    const iconClass = "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0";
+    
+    // For driver_available notifications, show driver's avatar
+    if (notification.type === 'driver_available' && notification.related_user_id) {
+      const relatedUser = relatedUsers[notification.related_user_id];
+      if (relatedUser) {
+        const initials = (relatedUser.full_name || relatedUser.display_name || 'D')
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2);
+        
+        return (
+          <Avatar className="w-10 h-10 flex-shrink-0">
+            <AvatarImage src={relatedUser.photo_url || undefined} alt={relatedUser.display_name || 'Driver'} />
+            <AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback>
+          </Avatar>
+        );
+      }
+    }
+    
+    // Default icons for other notification types
+    const type = notification.type;
     switch (type) {
       case 'message':
         return <div className={cn(iconClass, "bg-blue-500/20")}><Bell className="w-4 h-4 text-blue-500" /></div>;
@@ -167,6 +222,8 @@ export function NotificationBell() {
         return <div className={cn(iconClass, "bg-verified/20")}><Bell className="w-4 h-4 text-verified" /></div>;
       case 'verification_rejected':
         return <div className={cn(iconClass, "bg-warning/20")}><Bell className="w-4 h-4 text-warning" /></div>;
+      case 'driver_available':
+        return <div className={cn(iconClass, "bg-primary/20")}><Bell className="w-4 h-4 text-primary" /></div>;
       default:
         return <div className={cn(iconClass, "bg-primary/20")}><Bell className="w-4 h-4 text-primary" /></div>;
     }
@@ -222,7 +279,7 @@ export function NotificationBell() {
                       !notification.read && "bg-primary/10 border-l-4 border-l-primary"
                     )}
                   >
-                  {getNotificationIcon(notification.type)}
+                  {getNotificationIcon(notification)}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h4 className={cn(

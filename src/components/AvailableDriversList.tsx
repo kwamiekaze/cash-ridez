@@ -11,6 +11,7 @@ import { MapPin, Loader2, Bell, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RiderZipEditor } from "./RiderZipEditor";
 import { toast } from "sonner";
+import { findNearbyZips } from "@/lib/zipUtils";
 
 const statusColors = {
   available: "bg-green-500",
@@ -82,12 +83,16 @@ export const AvailableDriversList = () => {
       setUserZip(profile.profile_zip);
       setNotifyNewDriver(profile.notify_new_driver || false);
 
-      // Get available drivers in the same ZIP
+      // Get nearby ZIPs using SCF matching and radius
+      const nearbyZipsData = findNearbyZips(profile.profile_zip);
+      const nearbyZipCodes = [profile.profile_zip, ...nearbyZipsData.map(z => z.zip)];
+
+      // Get available drivers in nearby ZIPs
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
         .select('*')
         .eq('state', 'available')
-        .eq('current_zip', profile.profile_zip);
+        .in('current_zip', nearbyZipCodes);
 
       if (error) throw error;
 
@@ -144,7 +149,7 @@ export const AvailableDriversList = () => {
       setNotifyNewDriver(enabled);
       toast.success(
         enabled 
-          ? "You'll be notified when a driver becomes available in your ZIP"
+          ? "You'll be notified when a driver becomes available near you"
           : "Driver notifications turned off"
       );
     } catch (error) {
@@ -187,12 +192,12 @@ export const AvailableDriversList = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Available Drivers in {userZip}
+            Available Drivers Near {userZip}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-center py-4">
-            No drivers are available in {userZip} yet.
+            No drivers are available near {userZip} yet.
           </p>
           
           {/* Notification Toggle */}
@@ -200,7 +205,7 @@ export const AvailableDriversList = () => {
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-muted-foreground" />
               <Label htmlFor="notify-driver" className="text-sm font-normal cursor-pointer">
-                Notify me when a driver becomes available in my ZIP
+                Notify me when a driver becomes available near me
               </Label>
             </div>
             <Switch
@@ -222,7 +227,7 @@ export const AvailableDriversList = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5" />
-              Available Drivers in {userZip}
+              Available Drivers Near {userZip}
             </CardTitle>
             <Badge variant="secondary">{drivers.length} Available</Badge>
           </div>
