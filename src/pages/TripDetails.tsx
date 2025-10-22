@@ -815,48 +815,38 @@ export default function TripDetails() {
               <div className="space-y-4">
                 {offers.map((offer) => (
                   <Card key={offer.id}>
-                     <CardContent className="pt-6">
-                       <div className="flex items-start justify-between gap-4 mb-3">
-                         <div className="flex items-start gap-3 flex-1">
-                           {offer.profiles ? (
-                             <UserChip
-                               userId={offer.by_user_id}
-                               displayName={offer.profiles.display_name}
-                               fullName={offer.profiles.full_name}
-                               photoUrl={offer.profiles.photo_url}
-                               role="driver"
-                               ratingAvg={offer.profiles.driver_rating_avg}
-                               ratingCount={offer.profiles.driver_rating_count}
-                               size="md"
-                             />
-                           ) : (
-                             <div className="flex items-start gap-3 flex-1">
-                               <Avatar className="h-12 w-12">
-                                 <AvatarFallback>
-                                   {offer.by_user_id[0].toUpperCase()}
-                                 </AvatarFallback>
-                               </Avatar>
-                               <div className="flex-1 min-w-0">
-                                 <p className="font-medium">{offer.by_user_id}</p>
-                               </div>
-                             </div>
-                           )}
-                         </div>
-                         <div className="text-right">
-                           {offer.profiles?.driver_rating_count > 0 && (
-                             <RatingDisplay
-                                rating={offer.profiles.driver_rating_avg} 
-                                count={offer.profiles.driver_rating_count}
-                                size="sm"
-                              />
-                            )}
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(offer.created_at).toLocaleString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter Offer'}
-                            </p>
-                          </div>
+                    <CardContent className="pt-6">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1">
+                          {offer.profiles ? (
+                            <UserChip
+                              userId={offer.by_user_id}
+                              displayName={offer.profiles.display_name}
+                              fullName={offer.profiles.full_name}
+                              photoUrl={offer.profiles.photo_url}
+                              role="driver"
+                              ratingAvg={offer.profiles.driver_rating_avg}
+                              ratingCount={offer.profiles.driver_rating_count}
+                              size="md"
+                            />
+                          ) : (
+                            <div className="flex items-start gap-3">
+                              <Avatar className="h-12 w-12">
+                                <AvatarFallback>
+                                  {offer.by_user_id[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium">{offer.by_user_id}</p>
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {new Date(offer.created_at).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {offer.role === 'driver' ? 'Driver Offer' : 'Rider Counter Offer'}
+                          </p>
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="text-2xl font-bold text-primary">${offer.amount}</p>
@@ -865,9 +855,9 @@ export default function TripDetails() {
                             offer.status === 'rejected' ? 'destructive' : 
                             'secondary'
                           }>
-                          {offer.status}
-                        </Badge>
-                      </div>
+                            {offer.status}
+                          </Badge>
+                        </div>
                       </div>
                       {offer.message && (
                         <p className="text-sm mb-3">{offer.message}</p>

@@ -10,6 +10,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { UserChip } from "@/components/UserChip";
+import { RatingDisplay } from "@/components/RatingDisplay";
 import { useToast } from "@/hooks/use-toast";
 import TripActionDialog from "@/components/TripActionDialog";
 
@@ -472,16 +473,15 @@ const RiderDashboard = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <StatusBadge status={request.status} />
                         {request.assigned_driver && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                              Connected with {request.assigned_driver.display_name}
-                            </span>
-                            <RatingDisplay 
-                              rating={request.assigned_driver.driver_rating_avg || 0}
-                              count={request.assigned_driver.driver_rating_count || 0}
-                              size="sm"
-                            />
-                          </div>
+                          <UserChip
+                            userId={request.assigned_driver_id}
+                            displayName={request.assigned_driver.display_name}
+                            photoUrl={request.assigned_driver.photo_url}
+                            role="driver"
+                            ratingAvg={request.assigned_driver.driver_rating_avg}
+                            ratingCount={request.assigned_driver.driver_rating_count}
+                            size="sm"
+                          />
                         )}
                       </div>
                       <div className="space-y-2">
@@ -536,14 +536,16 @@ const RiderDashboard = () => {
                         </span>
                       </div>
                       {request.assigned_driver && (
-                        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                          <span>Driver: {request.assigned_driver.display_name}</span>
-                          <RatingDisplay 
-                            rating={request.assigned_driver.driver_rating_avg || 0}
-                            count={request.assigned_driver.driver_rating_count || 0}
-                            size="sm"
-                          />
-                        </div>
+                        <UserChip
+                          userId={request.assigned_driver_id}
+                          displayName={request.assigned_driver.display_name}
+                          photoUrl={request.assigned_driver.photo_url}
+                          role="driver"
+                          ratingAvg={request.assigned_driver.driver_rating_avg}
+                          ratingCount={request.assigned_driver.driver_rating_count}
+                          size="sm"
+                          className="mb-2"
+                        />
                       )}
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
@@ -629,14 +631,16 @@ const RiderDashboard = () => {
                         </span>
                       </div>
                       {request.assigned_driver && (
-                        <div className="flex items-center gap-2 mb-2 text-sm text-muted-foreground">
-                          <span>Driver: {request.assigned_driver.display_name}</span>
-                          <RatingDisplay 
-                            rating={request.assigned_driver.driver_rating_avg || 0}
-                            count={request.assigned_driver.driver_rating_count || 0}
-                            size="sm"
-                          />
-                        </div>
+                        <UserChip
+                          userId={request.assigned_driver_id}
+                          displayName={request.assigned_driver.display_name}
+                          photoUrl={request.assigned_driver.photo_url}
+                          role="driver"
+                          ratingAvg={request.assigned_driver.driver_rating_avg}
+                          ratingCount={request.assigned_driver.driver_rating_count}
+                          size="sm"
+                          className="mb-2"
+                        />
                       )}
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
