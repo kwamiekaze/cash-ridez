@@ -11,15 +11,50 @@ interface CancellationBadgeProps {
   showIcon?: boolean;
 }
 
+// Global cache for stats to avoid redundant fetches
+const statsCache = new Map<string, any>();
+
 export function CancellationBadge({ userId, role = "both", size = "sm", showIcon = true }: CancellationBadgeProps) {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(statsCache.get(userId) || null);
+  const [loading, setLoading] = useState(!statsCache.has(userId));
 
   useEffect(() => {
     fetchStats();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel(`cancellation_stats:${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'cancellation_stats',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          if (newData) {
+            setStats(newData);
+            statsCache.set(userId, newData);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   const fetchStats = async () => {
+    // Check cache first
+    if (statsCache.has(userId)) {
+      setStats(statsCache.get(userId));
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('cancellation_stats')
@@ -28,7 +63,11 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
         .maybeSingle();
 
       if (error) throw error;
-      setStats(data);
+      
+      if (data) {
+        setStats(data);
+        statsCache.set(userId, data);
+      }
     } catch (error) {
       console.error('Error fetching cancellation stats:', error);
     } finally {

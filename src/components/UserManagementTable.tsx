@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Check, X, Eye, ExternalLink, Pause, Play } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserChip } from "@/components/UserChip";
 
 interface User {
   id: string;
@@ -127,13 +127,13 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
           {users.map((user) => (
             <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onViewUser(user.id)}>
               <TableCell>
-                <div className="flex items-center gap-2">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.photo_url} />
-                    <AvatarFallback>{(user.display_name || user.email || "U")[0].toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <span>{user.display_name}</span>
-                </div>
+                <UserChip 
+                  userId={user.id}
+                  displayName={user.display_name}
+                  photoUrl={user.photo_url}
+                  size="sm"
+                  showCancellationBadge={false}
+                />
               </TableCell>
               <TableCell className="font-medium">{user.email}</TableCell>
               <TableCell>

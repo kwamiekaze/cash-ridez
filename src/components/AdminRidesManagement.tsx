@@ -8,8 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Eye } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { UserChip } from "@/components/UserChip";
 
 interface RideWithProfiles {
   id: string;
@@ -19,6 +19,8 @@ interface RideWithProfiles {
   pickup_time: string;
   price_offer: number;
   created_at: string;
+  rider_id: string;
+  assigned_driver_id?: string;
   rider_profile: {
     display_name: string;
     full_name: string;
@@ -196,31 +198,25 @@ export function AdminRidesManagement() {
               {filteredRides.map((ride) => (
                 <TableRow key={ride.id}>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={ride.rider_profile.photo_url} />
-                        <AvatarFallback>
-                          {(ride.rider_profile.full_name || ride.rider_profile.display_name || "U")[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm">
-                        {ride.rider_profile.full_name || ride.rider_profile.display_name}
-                      </span>
-                    </div>
+                    <UserChip 
+                      userId={ride.rider_id} 
+                      displayName={ride.rider_profile.display_name} 
+                      fullName={ride.rider_profile.full_name} 
+                      photoUrl={ride.rider_profile.photo_url}
+                      role="rider"
+                      size="sm"
+                    />
                   </TableCell>
                   <TableCell>
-                    {ride.driver_profile ? (
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={ride.driver_profile.photo_url} />
-                          <AvatarFallback>
-                            {(ride.driver_profile.full_name || ride.driver_profile.display_name || "D")[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">
-                          {ride.driver_profile.full_name || ride.driver_profile.display_name}
-                        </span>
-                      </div>
+                    {ride.driver_profile && ride.assigned_driver_id ? (
+                      <UserChip 
+                        userId={ride.assigned_driver_id} 
+                        displayName={ride.driver_profile.display_name} 
+                        fullName={ride.driver_profile.full_name} 
+                        photoUrl={ride.driver_profile.photo_url}
+                        role="driver"
+                        size="sm"
+                      />
                     ) : (
                       <span className="text-sm text-muted-foreground">Unassigned</span>
                     )}

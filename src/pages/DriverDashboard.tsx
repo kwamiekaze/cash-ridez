@@ -10,8 +10,7 @@ import StatusBadge from "@/components/StatusBadge";
 import AcceptRideDialog from "@/components/AcceptRideDialog";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { RatingDisplay } from "@/components/RatingDisplay";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserChip } from "@/components/UserChip";
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
@@ -175,29 +174,7 @@ const DriverDashboard = () => {
                       </span>
                     </div>
                     {/* Rider Info */}
-                    {trip.rider && (
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={trip.rider.photo_url || ""} alt={trip.rider.full_name || trip.rider.display_name || "Rider"} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {(trip.rider.full_name || trip.rider.display_name || trip.rider_id)[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <span className="block font-semibold text-sm">
-                            {trip.rider.full_name || `User ${trip.rider_id?.slice(0, 8)}`}
-                          </span>
-                          <span className="block text-xs text-muted-foreground">
-                            ID: {trip.rider_id?.slice(0, 8)}
-                          </span>
-                          <RatingDisplay 
-                            rating={trip.rider.rider_rating_avg || 0} 
-                            count={trip.rider.rider_rating_count || 0}
-                            size="sm"
-                          />
-                        </div>
-                      </div>
-                    )}
+                    {trip.rider && <UserChip userId={trip.rider_id} displayName={trip.rider.display_name} fullName={trip.rider.full_name} photoUrl={trip.rider.photo_url} role="rider" ratingAvg={trip.rider.rider_rating_avg} ratingCount={trip.rider.rider_rating_count} size="md" className="mb-3" />}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-start gap-2">
                         <MapPin className="w-4 h-4 mt-1 text-success" />
@@ -273,29 +250,7 @@ const DriverDashboard = () => {
                       </span>
                     </div>
                     {/* Rider Info */}
-                    {request.rider && (
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={request.rider.photo_url || ""} alt={request.rider.full_name || request.rider.display_name || "Rider"} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {(request.rider.full_name || request.rider.display_name || request.rider_id)[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <span className="block font-semibold text-sm">
-                            {request.rider.full_name || `User ${request.rider_id?.slice(0, 8)}`}
-                          </span>
-                          <span className="block text-xs text-muted-foreground">
-                            ID: {request.rider_id?.slice(0, 8)}
-                          </span>
-                          <RatingDisplay 
-                            rating={request.rider.rider_rating_avg || 0} 
-                            count={request.rider.rider_rating_count || 0}
-                            size="sm"
-                          />
-                        </div>
-                      </div>
-                    )}
+                    {request.rider && <UserChip userId={request.rider_id} displayName={request.rider.display_name} fullName={request.rider.full_name} photoUrl={request.rider.photo_url} role="rider" ratingAvg={request.rider.rider_rating_avg} ratingCount={request.rider.rider_rating_count} size="md" className="mb-3" />}
                     <div className="space-y-2 mb-4">
                       <div className="flex items-start gap-2">
                         <MapPin className="w-4 h-4 mt-1 text-success" />

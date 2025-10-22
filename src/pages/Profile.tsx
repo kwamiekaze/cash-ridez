@@ -12,9 +12,9 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { UserRatingsDisplay } from "@/components/UserRatingsDisplay";
-import { RatingDisplay } from "@/components/RatingDisplay";
 import AppHeader from "@/components/AppHeader";
 import { ImageCropDialog } from "@/components/ImageCropDialog";
+import { CancellationBadge } from "@/components/CancellationBadge";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -310,24 +310,39 @@ const Profile = () => {
 
             {/* Rating Display */}
             <div className="grid md:grid-cols-2 gap-4">
-              {profile.is_rider && (
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-2">Cancellation Rate</p>
+                <CancellationBadge userId={user.id} role="both" size="md" showIcon={true} />
+              </Card>
+              {(profile.is_rider || profile.is_driver) && (
                 <Card className="p-4">
-                  <p className="text-sm text-muted-foreground mb-2">Rider Rating</p>
-                  <RatingDisplay 
-                    rating={profile.rider_rating_avg || 0} 
-                    count={profile.rider_rating_count || 0}
-                    size="lg"
-                  />
-                </Card>
-              )}
-              {profile.is_driver && (
-                <Card className="p-4">
-                  <p className="text-sm text-muted-foreground mb-2">Driver Rating</p>
-                  <RatingDisplay 
-                    rating={profile.driver_rating_avg || 0} 
-                    count={profile.driver_rating_count || 0}
-                    size="lg"
-                  />
+                  <p className="text-sm text-muted-foreground mb-2">User Rating</p>
+                  {(profile.rider_rating_count > 0 || profile.driver_rating_count > 0) ? (
+                    <div className="space-y-2">
+                      {profile.is_rider && profile.rider_rating_count > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Rider:</span>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-medium">{profile.rider_rating_avg.toFixed(1)}</span>
+                            <span className="text-xs text-muted-foreground">({profile.rider_rating_count})</span>
+                          </div>
+                        </div>
+                      )}
+                      {profile.is_driver && profile.driver_rating_count > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Driver:</span>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                            <span className="font-medium">{profile.driver_rating_avg.toFixed(1)}</span>
+                            <span className="text-xs text-muted-foreground">({profile.driver_rating_count})</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No ratings yet</p>
+                  )}
                 </Card>
               )}
             </div>
