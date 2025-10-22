@@ -90,9 +90,10 @@ interface TripMapViewProps {
   trips: any[];
   onTripSelect: (trip: any) => void;
   userLocation?: { lat: number; lng: number } | null;
+  onRequestLocation?: () => void;
 }
 
-export default function TripMapView({ trips, onTripSelect, userLocation }: TripMapViewProps) {
+export default function TripMapView({ trips, onTripSelect, userLocation, onRequestLocation }: TripMapViewProps) {
   const [mapCenter, setMapCenter] = useState<[number, number]>([37.7749, -122.4194]); // Default to SF
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
   };
 
   return (
-    <div className="w-full h-[600px] rounded-lg overflow-hidden border-2 border-border">
+    <div className="relative w-full h-[600px] rounded-lg overflow-hidden border-2 border-border">
       <MapContainer
         key={`${mapCenter[0]}-${mapCenter[1]}`}
         center={mapCenter}
@@ -245,6 +246,11 @@ export default function TripMapView({ trips, onTripSelect, userLocation }: TripM
             }
           })}
       </MapContainer>
+      {!userLocation && onRequestLocation && (
+        <div className="absolute z-10 top-3 right-3">
+          <Button variant="outline" size="sm" onClick={onRequestLocation}>Enable location</Button>
+        </div>
+      )}
     </div>
   );
 }
