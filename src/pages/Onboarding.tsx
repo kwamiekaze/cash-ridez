@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RolePicker } from "@/components/RolePicker";
 
 const Onboarding = () => {
   const { user, signOut } = useAuth();
@@ -25,6 +26,7 @@ const Onboarding = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [selectedRole, setSelectedRole] = useState<'rider' | 'driver' | null>(null);
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -64,6 +66,11 @@ const Onboarding = () => {
   };
 
   const handleSubmit = async () => {
+    if (!selectedRole) {
+      toast.error("Please select your role");
+      return;
+    }
+
     if (!idFile) {
       toast.error("Please upload your ID photo");
       return;
@@ -92,15 +99,32 @@ const Onboarding = () => {
 
       if (urlError) throw urlError;
 
-      // Update profile with ID - store path, not URL (generate fresh signed URLs when needed)
+      // Update profile with ID and role
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
-          id_image_url: filePath, // Store path, not signed URL
+          id_image_url: filePath,
           verification_status: "pending",
           verification_submitted_at: new Date().toISOString(),
+          active_role: selectedRole,
+          role_set_at: new Date().toISOString(),
+          is_rider: selectedRole === 'rider',
+          is_driver: selectedRole === 'driver',
         })
         .eq("id", user?.id);
+
+      if (updateError) throw updateError;
+
+      // Create KYC submission record
+      await supabase
+        .from("kyc_submissions")
+        .insert({
+          user_id: user?.id,
+          user_email: user?.email || '',
+          role: selectedRole,
+          front_image_url: filePath,
+          status: 'pending',
+        });
 
       if (updateError) throw updateError;
 
@@ -374,6 +398,14 @@ const Onboarding = () => {
           ) : (
             <div>
               <h2 className="text-xl font-semibold mb-4">Account Verification Required</h2>
+              
+              {/* Role Selection */}
+              <Card className="p-6 mb-6">
+                <RolePicker
+                  onRoleSelect={setSelectedRole}
+                  selectedRole={selectedRole}
+                />
+              </Card>
               <Card className="p-6 bg-primary/5 border-primary mb-6">
                 <div className="space-y-3">
                   <p className="text-foreground/90 leading-relaxed">
@@ -433,14 +465,21 @@ const Onboarding = () => {
           )}
 
           {!isVerified && (
-            <Button
-              className="w-full bg-gradient-primary"
-              size="lg"
-              onClick={handleSubmit}
-              disabled={uploading || !idFile}
-            >
-              {uploading ? "Submitting..." : profile?.id_image_url ? "Resubmit for Verification" : "Submit for Verification"}
-            </Button>
+            <>
+              <Button
+                className="w-full bg-gradient-primary"
+                size="lg"
+                onClick={handleSubmit}
+                disabled={uploading || !idFile || !selectedRole}
+              >
+                {uploading ? "Submitting..." : profile?.id_image_url ? "Resubmit for Verification" : "Submit for Verification"}
+              </Button>
+              {!selectedRole && (
+                <p className="text-sm text-destructive text-center mt-2">
+                  Please select your role before submitting
+                </p>
+              )}
+            </>
           )}
         </div>
         </Card>

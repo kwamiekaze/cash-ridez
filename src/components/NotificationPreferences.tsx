@@ -13,6 +13,7 @@ interface NotificationPrefs {
   new_offers: boolean;
   messages: boolean;
   ride_updates: boolean;
+  notify_new_driver: boolean;
 }
 
 export function NotificationPreferences() {
@@ -23,6 +24,7 @@ export function NotificationPreferences() {
     new_offers: false,
     messages: true,
     ride_updates: true,
+    notify_new_driver: false,
   });
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,7 @@ export function NotificationPreferences() {
           new_offers: parsedPrefs.new_offers ?? false,
           messages: parsedPrefs.messages ?? true,
           ride_updates: parsedPrefs.ride_updates ?? true,
+          notify_new_driver: parsedPrefs.notify_new_driver ?? false,
         });
       }
     } catch (error) {
@@ -67,23 +70,24 @@ export function NotificationPreferences() {
       // If enabling "all notifications", enable all individual preferences
       if (key === 'all_notifications' && value) {
         newPrefs.new_trips = true;
-        newPrefs.new_offers = true;
-        newPrefs.messages = true;
-        newPrefs.ride_updates = true;
-      }
+      newPrefs.new_offers = true;
+      newPrefs.messages = true;
+      newPrefs.ride_updates = true;
+      newPrefs.notify_new_driver = true;
+    }
       
       // If disabling any individual pref, disable "all notifications"
       if (key !== 'all_notifications' && !value) {
         newPrefs.all_notifications = false;
       }
       
-      // If enabling all individual prefs, enable "all notifications"
-      if (key !== 'all_notifications' && value) {
-        const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates;
-        if (allEnabled) {
-          newPrefs.all_notifications = true;
-        }
+    // If enabling all individual prefs, enable "all notifications"
+    if (key !== 'all_notifications' && value) {
+      const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates && newPrefs.notify_new_driver;
+      if (allEnabled) {
+        newPrefs.all_notifications = true;
       }
+    }
 
       setPrefs(newPrefs);
 
@@ -220,6 +224,26 @@ export function NotificationPreferences() {
               id="ride_updates"
               checked={prefs.ride_updates}
               onCheckedChange={(checked) => updatePreference('ride_updates', checked)}
+            />
+          </div>
+
+          {/* New Driver Notifications */}
+          <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+            <div className="flex items-start gap-3 flex-1">
+              <Car className="h-5 w-5 mt-0.5 text-primary" />
+              <div>
+                <Label htmlFor="notify_new_driver" className="font-medium cursor-pointer">
+                  New Driver Alerts
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Get notified when a driver becomes available in your area
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="notify_new_driver"
+              checked={prefs.notify_new_driver}
+              onCheckedChange={(checked) => updatePreference('notify_new_driver', checked)}
             />
           </div>
         </div>

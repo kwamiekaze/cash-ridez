@@ -11,6 +11,7 @@ import AcceptRideDialog from "@/components/AcceptRideDialog";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { UserChip } from "@/components/UserChip";
+import { DriverAvailability } from "@/components/DriverAvailability";
 
 const DriverDashboard = () => {
   const { user, signOut } = useAuth();
@@ -124,7 +125,7 @@ const DriverDashboard = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Button
             size="lg"
             className="h-20 text-lg bg-gradient-primary"
@@ -136,15 +137,6 @@ const DriverDashboard = () => {
           </Button>
           <Button 
             size="lg" 
-            variant="secondary" 
-            className="h-20 text-lg"
-            onClick={() => navigate("/trips")}
-          >
-            <Car className="w-6 h-6 mr-2" />
-            Respond to Requests
-          </Button>
-          <Button 
-            size="lg" 
             variant="outline" 
             className="h-20 text-lg"
             onClick={() => navigate("/profile")}
@@ -152,6 +144,11 @@ const DriverDashboard = () => {
             <User className="w-6 h-6 mr-2" />
             View Profile
           </Button>
+        </div>
+
+        {/* Driver Availability */}
+        <div className="mb-8">
+          <DriverAvailability />
         </div>
 
         {/* My Active Trips (Connected) - Show prominently if any exist */}

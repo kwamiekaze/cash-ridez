@@ -13,6 +13,7 @@ import { UserChip } from "@/components/UserChip";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { useToast } from "@/hooks/use-toast";
 import TripActionDialog from "@/components/TripActionDialog";
+import { AvailableDriversList } from "@/components/AvailableDriversList";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -20,7 +21,7 @@ const RiderDashboard = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed">("open");
+  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "drivers">("open");
   const [requests, setRequests] = useState<any[]>([]);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -386,11 +387,12 @@ const RiderDashboard = () => {
         </div>
 
         {/* Trips Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed")} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "drivers")} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 gap-1">
             <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
             <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
+            <TabsTrigger value="drivers" className="text-xs sm:text-sm">Drivers</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6 space-y-4">
@@ -572,6 +574,10 @@ const RiderDashboard = () => {
                 </Card>
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="drivers" className="mt-6">
+            <AvailableDriversList />
           </TabsContent>
         </Tabs>
       </div>

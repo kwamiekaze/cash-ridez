@@ -50,7 +50,7 @@ const Dashboard = () => {
       } else if (profile.active_role === 'rider') {
         navigate("/rider");
       } else {
-        // No role set yet - check for any active trips to determine routing
+        // No role set yet - check if they have active trips or default to rider
         const { data: activeTrips } = await supabase
           .from("ride_requests")
           .select("*")
@@ -62,13 +62,23 @@ const Dashboard = () => {
           // Has active trips - route based on their role in the trip
           const trip = activeTrips[0];
           if (trip.assigned_driver_id === user.id) {
+            // Update their active_role to driver
+            await supabase
+              .from("profiles")
+              .update({ active_role: 'driver' })
+              .eq("id", user.id);
             navigate("/trips");
           } else {
+            // Update their active_role to rider
+            await supabase
+              .from("profiles")
+              .update({ active_role: 'rider' })
+              .eq("id", user.id);
             navigate("/rider");
           }
         } else {
-          // New user with no trips - default to rider dashboard
-          navigate("/rider");
+          // New user - send to onboarding to choose role
+          navigate("/onboarding");
         }
       }
 

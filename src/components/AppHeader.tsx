@@ -40,17 +40,37 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
     <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/dashboard')}>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+            // Route based on user role
+            if (profile?.active_role === 'rider') {
+              navigate('/rider');
+            } else if (profile?.active_role === 'driver') {
+              navigate('/trips');
+            } else {
+              navigate('/dashboard');
+            }
+          }}>
             <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
               <Car className="w-6 h-6 text-white" />
             </div>
             <div>
               <span className="text-xl font-bold">Cash Ridez</span>
-              <p className="text-xs text-muted-foreground">Member</p>
+              {profile?.active_role && (
+                <p className="text-xs text-muted-foreground capitalize">{profile.active_role}</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {showStatus && profile && <StatusBadge status={profile.verification_status} />}
+            {showStatus && profile && (
+              <div className="flex items-center gap-2">
+                <StatusBadge status={profile.verification_status} />
+                {profile.active_role && (
+                  <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
+                    {profile.active_role}
+                  </div>
+                )}
+              </div>
+            )}
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
