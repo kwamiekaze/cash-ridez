@@ -174,7 +174,7 @@ export function NotificationBell() {
     
     // For driver_available notifications, go to the drivers tab in rider dashboard
     if (notification.type === 'driver_available') {
-      navigate('/rider?tab=drivers');
+      navigate('/rider?tab=area');
     } else if (notification.link) {
       navigate(notification.link);
     }

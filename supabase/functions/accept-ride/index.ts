@@ -32,7 +32,7 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
-    const { rideId, etaMinutes, driverId, skipEtaCheck, skipActiveRideCheck } = await req.json();
+    const { rideId, etaMinutes, driverId, skipEtaCheck, skipActiveRideCheck, acceptedOfferId } = await req.json();
 
     // Validate inputs
     if (!rideId) {

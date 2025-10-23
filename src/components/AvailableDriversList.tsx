@@ -100,7 +100,7 @@ export const AvailableDriversList = () => {
         const [profilesResult, cancelStatsResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, full_name, display_name, driver_rating_avg, driver_rating_count, photo_url')
+            .select('id, full_name, display_name, driver_rating_avg, driver_rating_count, photo_url, is_member, is_verified')
             .in('id', driverIds),
           supabase
             .from('cancellation_stats')
@@ -277,10 +277,20 @@ export const AvailableDriversList = () => {
                           </AvatarFallback>
                         </Avatar>
                         
-                        <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
+                         <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
                           <div>
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold text-base sm:text-lg">{driver.full_name || "Driver"}</h3>
+                              {driver.is_verified && (
+                                <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 flex items-center gap-1">
+                                  ✓ Verified
+                                </div>
+                              )}
+                              {driver.is_member && (
+                                <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 flex items-center gap-1">
+                                  ⭐ Member
+                                </div>
+                              )}
                               <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
                                 🟢 {statusLabels[driver.state]}
                               </div>

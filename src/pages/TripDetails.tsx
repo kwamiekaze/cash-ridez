@@ -244,14 +244,15 @@ export default function TripDetails() {
 
       // If accepted, update ride request with assigned driver and send notification
       if (action === 'accepted') {
-        // Use atomic accept-ride function to prevent race conditions
+      // Use atomic accept-ride function to prevent race conditions
         const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-ride', {
           body: {
             rideId: id,
             driverId: offer.by_user_id,
             etaMinutes: 0, // Driver will provide ETA later
             skipEtaCheck: true,
-            skipActiveRideCheck: true // Allow accepting even if driver has another active ride
+            skipActiveRideCheck: true, // Allow accepting even if driver has another active ride
+            acceptedOfferId: offerId // Pass the accepted offer ID to exclude from rejection
           },
         });
 

@@ -25,7 +25,7 @@ const RiderDashboard = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "drivers">("open");
+  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "area">("open");
   const [requests, setRequests] = useState<any[]>([]);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -39,7 +39,7 @@ const RiderDashboard = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['open', 'assigned', 'completed', 'drivers'].includes(tabParam)) {
+    if (tabParam && ['open', 'assigned', 'completed', 'area'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [location.search]);
@@ -412,12 +412,12 @@ const RiderDashboard = () => {
         </div>
 
         {/* Trips Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "drivers")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "area")} className="w-full">
           <TabsList className="grid w-full grid-cols-4 gap-1">
             <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
             <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
-            <TabsTrigger value="drivers" className="text-xs sm:text-sm">Drivers</TabsTrigger>
+            <TabsTrigger value="area" className="text-xs sm:text-sm">Area</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6 space-y-4">
@@ -610,7 +610,7 @@ const RiderDashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="drivers" className="mt-6 space-y-6">
+          <TabsContent value="area" className="mt-6 space-y-6">
             {/* Map showing approximate locations */}
             {profile?.profile_zip && (
               <TripMap
