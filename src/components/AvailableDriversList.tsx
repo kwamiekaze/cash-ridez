@@ -19,7 +19,7 @@ const statusLabels = {
   unavailable: "Unavailable",
 };
 
-export const AvailableDriversList = () => {
+export const AvailableDriversList = ({ hideUpdateSection = false }: { hideUpdateSection?: boolean }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -210,6 +210,9 @@ export const AvailableDriversList = () => {
   }
 
   if (!userZip) {
+    if (hideUpdateSection) {
+      return null;
+    }
     return (
       <div className="space-y-4">
         <Card>
@@ -271,7 +274,7 @@ export const AvailableDriversList = () => {
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex items-start gap-3 sm:gap-4">
                         <Avatar className="h-14 w-14 sm:h-16 sm:w-16 ring-2 ring-primary/10 flex-shrink-0">
-                          <AvatarImage src={driver.photo_url || ""} />
+                          <AvatarImage src={driver.photo_url || ""} loading="lazy" />
                           <AvatarFallback className="text-base sm:text-lg">
                             {driver.full_name?.split(" ").map((n: string) => n[0]).join("").toUpperCase() || "D"}
                           </AvatarFallback>
@@ -326,15 +329,6 @@ export const AvailableDriversList = () => {
                             </span>
                           </div>
                           
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="w-full sm:w-auto mt-2"
-                            onClick={() => navigate(`/profile/${driver.id}`)}
-                          >
-                            <User className="h-4 w-4 mr-2" />
-                            View Profile
-                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -365,17 +359,19 @@ export const AvailableDriversList = () => {
       </Card>
       
       {/* ZIP Editor Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
-            Update Your Location
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
-        </CardContent>
-      </Card>
+      {!hideUpdateSection && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
+              Update Your Location
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
