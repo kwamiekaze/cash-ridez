@@ -45,7 +45,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
             if (profile?.active_role === 'rider') {
               navigate('/rider');
             } else if (profile?.active_role === 'driver') {
-              navigate('/trips');
+              navigate('/driver');
             } else {
               navigate('/dashboard');
             }

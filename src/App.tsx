@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,24 +10,33 @@ import { FloatingChat } from "@/components/FloatingChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import VerificationPending from "./pages/VerificationPending";
-import Dashboard from "./pages/Dashboard";
-import RiderDashboard from "./pages/RiderDashboard";
-import DriverDashboard from "./pages/DriverDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import CreateRideRequest from "./pages/CreateRideRequest";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
-import TripRequestsList from "./pages/TripRequestsList";
-import TripDetails from "./pages/TripDetails";
-import ChatPage from "./pages/ChatPage";
-import TripHistory from "./pages/TripHistory";
-import BillingSuccess from "./pages/BillingSuccess";
-import BillingCancelled from "./pages/BillingCancelled";
-import Subscription from "./pages/Subscription";
+import { Loader2 } from "lucide-react";
+
+// Lazy load pages for better performance
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const VerificationPending = lazy(() => import("./pages/VerificationPending"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const RiderDashboard = lazy(() => import("./pages/RiderDashboard"));
+const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const CreateRideRequest = lazy(() => import("./pages/CreateRideRequest"));
+const Profile = lazy(() => import("./pages/Profile"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const TripDetails = lazy(() => import("./pages/TripDetails"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
+const TripHistory = lazy(() => import("./pages/TripHistory"));
+const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
+const BillingCancelled = lazy(() => import("./pages/BillingCancelled"));
+const Subscription = lazy(() => import("./pages/Subscription"));
+
+// Loading fallback component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -35,14 +45,20 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <AuthProvider>
           <NotificationPermissionDialog />
           <FloatingChat />
           <FloatingSupport />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
             <Route
               path="/onboarding"
               element={
@@ -163,9 +179,10 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
