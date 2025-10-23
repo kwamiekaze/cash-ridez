@@ -63,13 +63,10 @@ export const EnhancedTripMap = ({ markers, centerZip, className }: EnhancedTripM
   const [error, setError] = useState<string | null>(null);
   const [zipData, setZipData] = useState<ZipCentroids | null>(null);
 
-  // Load Leaflet and initialize map
+  // Load Leaflet and initialize map - but don't load zip data yet
   useEffect(() => {
     const initMap = async () => {
       try {
-        const centroids = await loadZipCentroids();
-        setZipData(centroids);
-
         if (!L) {
           const leaflet = await import('leaflet');
           L = leaflet.default;
@@ -88,6 +85,10 @@ export const EnhancedTripMap = ({ markers, centerZip, className }: EnhancedTripM
         }
 
         if (!mapRef.current || mapInstanceRef.current) return;
+
+        // Load zip centroids only when map is initializing
+        const centroids = await loadZipCentroids();
+        setZipData(centroids);
 
         let centerLat = 33.7490;
         let centerLng = -84.3880;

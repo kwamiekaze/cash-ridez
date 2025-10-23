@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
-import { EnhancedTripMap } from "@/components/EnhancedTripMap";
 import { useDriverAvailabilitySync } from "@/hooks/useDriverAvailabilitySync";
+import { Loader2 } from "lucide-react";
+
+// Lazy load the heavy map component
+const EnhancedTripMap = lazy(() => import("@/components/EnhancedTripMap").then(module => ({ default: module.EnhancedTripMap })));
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -46,9 +49,9 @@ const RiderDashboard = () => {
     }
   }, [location.search]);
 
-  // Load available drivers for map
+  // Load available drivers for map - only when map tab is active
   useEffect(() => {
-    if (user && activeTab === 'map') {
+    if (user && activeTab === 'map' && availableDrivers.length === 0) {
       loadAvailableDriversForMap();
     }
   }, [user, activeTab]);
@@ -437,19 +440,27 @@ const RiderDashboard = () => {
           <TabsContent value="completed" className="mt-6 space-y-4">{requests.filter(r => r.status === "completed" || r.status === "cancelled").length === 0 ? (<Card className="p-12 text-center"><p className="text-muted-foreground">No completed trips</p></Card>) : requests.filter(r => r.status === "completed" || r.status === "cancelled").map((request) => (<Card key={request.id} className="p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}><div className="space-y-3"><div className="flex justify-between items-center"><StatusBadge status={request.status} /><span className="text-xs text-muted-foreground">{format(new Date(request.created_at), "MMM d, yyyy")}</span></div>{request.assigned_driver && (<UserChip userId={request.assigned_driver.id} fullName={request.assigned_driver.display_name} displayName={request.assigned_driver.display_name} photoUrl={request.assigned_driver.photo_url} role="driver" ratingAvg={request.assigned_driver.driver_rating_avg} ratingCount={request.assigned_driver.driver_rating_count} size="sm" className="mb-2" />)}<div className="space-y-2"><div className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-1 text-success" /><p className="text-sm">{request.pickup_address}</p></div><div className="flex items-start gap-2"><MapPin className="w-4 h-4 mt-1 text-destructive" /><p className="text-sm">{request.dropoff_address}</p></div></div>{request.rider_id === user?.id && request.driver_rating && (<div className="mt-2 text-sm"><span className="text-muted-foreground">Your rating: </span><RatingDisplay rating={request.driver_rating} count={0} size="sm" showCount={false} /></div>)}{request.assigned_driver_id === user?.id && request.rider_rating && (<div className="mt-2 text-sm"><span className="text-muted-foreground">Your rating: </span><RatingDisplay rating={request.rider_rating} count={0} size="sm" showCount={false} /></div>)}</div></Card>))}</TabsContent>
           <TabsContent value="map" className="mt-6 space-y-6">
             {profile?.profile_zip && (
-              <EnhancedTripMap
-                markers={[
-                  ...requests.filter(r => r.status === 'open').map(r => ({
-                    id: r.id, zip: r.pickup_zip, title: `Trip Request`, description: `${r.pickup_address} → ${r.dropoff_address}`, type: 'trip' as const,
-                  })),
-                  ...availableDrivers.map(d => ({
-                    id: d.user_id, zip: d.current_zip, title: d.full_name || 'Driver', description: '', type: 'driver' as const,
-                    photoUrl: d.photo_url, fullName: d.full_name, rating: d.driver_rating_avg, ratingCount: d.driver_rating_count,
-                    cancelRate: d.cancelRate, isVerified: d.is_verified, isMember: d.is_member, status: d.state, approxGeo: d.approx_geo
-                  }))
-                ]}
-                centerZip={profile.profile_zip}
-              />
+              <Suspense fallback={
+                <Card className="p-12">
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                </Card>
+              }>
+                <EnhancedTripMap
+                  markers={[
+                    ...requests.filter(r => r.status === 'open').map(r => ({
+                      id: r.id, zip: r.pickup_zip, title: `Trip Request`, description: `${r.pickup_address} → ${r.dropoff_address}`, type: 'trip' as const,
+                    })),
+                    ...availableDrivers.map(d => ({
+                      id: d.user_id, zip: d.current_zip, title: d.full_name || 'Driver', description: '', type: 'driver' as const,
+                      photoUrl: d.photo_url, fullName: d.full_name, rating: d.driver_rating_avg, ratingCount: d.driver_rating_count,
+                      cancelRate: d.cancelRate, isVerified: d.is_verified, isMember: d.is_member, status: d.state, approxGeo: d.approx_geo
+                    }))
+                  ]}
+                  centerZip={profile.profile_zip}
+                />
+              </Suspense>
             )}
             <AvailableDriversList />
           </TabsContent>
