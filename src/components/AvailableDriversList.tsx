@@ -111,23 +111,15 @@ export const AvailableDriversList = () => {
         const driverProfiles = profilesResult.data;
         const cancelStats = cancelStatsResult.data;
 
-        // Merge data, calculate distances, and filter by 25-mile radius
+        // Merge data and calculate distances for all drivers
         const enrichedDrivers = driverStatuses.map(status => {
           const driverProfile = driverProfiles?.find(p => p.id === status.user_id);
           const cancelData = cancelStats?.find(c => c.user_id === status.user_id);
           const distance = zipDistanceMiles(profile.profile_zip, status.current_zip);
           
-          // Compute proximity using 25-mile rule with SCF fallback
-          const isNearby = isWithin25Miles(profile.profile_zip, status.current_zip);
-          const isSameSCF = status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3);
-          const isWithinRadius = distance !== null && distance <= 25;
-          
           console.info(`🚗 Driver ${driverProfile?.full_name || status.user_id}:`, {
             current_zip: status.current_zip,
-            distance: distance ? `${distance.toFixed(1)} mi` : 'unknown',
-            isSameSCF,
-            isWithinRadius,
-            isNearby
+            distance: distance ? `${distance.toFixed(1)} mi` : 'unknown'
           });
           
           return {
@@ -136,17 +128,14 @@ export const AvailableDriversList = () => {
             distance,
             cancelRate: cancelData?.driver_rate_90d || 0,
             badgeTier: cancelData?.badge_tier || 'green',
-            isNearby: isSameSCF || isWithinRadius,
             lastUpdated: status.updated_at
           };
         })
         .filter(d => {
-          const included = d.full_name && d.isNearby;
+          // Only filter out drivers without names
+          const included = d.full_name;
           if (!included) {
-            console.log(`❌ Excluding driver:`, {
-              id: d.user_id,
-              reason: !d.full_name ? 'no name' : 'not nearby'
-            });
+            console.log(`❌ Excluding driver: no name`, { id: d.user_id });
           }
           return included;
         })
@@ -157,7 +146,7 @@ export const AvailableDriversList = () => {
           return a.distance - b.distance;
         });
 
-        console.log(`✅ ${enrichedDrivers.length} drivers within 25 miles`);
+        console.log(`✅ ${enrichedDrivers.length} available drivers`);
         setDrivers(enrichedDrivers);
         setFilteredDrivers(enrichedDrivers);
       } else {
@@ -287,7 +276,7 @@ export const AvailableDriversList = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
-                Available Drivers Within 25 Miles
+                Available Drivers Closeby
               </CardTitle>
               {drivers.length > 0 && (
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
@@ -308,7 +297,7 @@ export const AvailableDriversList = () => {
             {drivers.length === 0 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-center py-8">
-                No drivers are available within 25 miles of {userZip} yet.
+                No drivers are available near {userZip} yet.
               </p>
               
               <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
