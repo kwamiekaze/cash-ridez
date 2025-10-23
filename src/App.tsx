@@ -111,7 +111,7 @@ const App = () => (
               path="/trips"
               element={
                 <ProtectedRoute>
-                  <TripRequestsList />
+                  <DriverDashboard />
                 </ProtectedRoute>
               }
             />
