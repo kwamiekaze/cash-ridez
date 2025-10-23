@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { UserManagementTable } from "@/components/UserManagementTable";
 import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { AdminRidesManagement } from "@/components/AdminRidesManagement";
+import { SubscribedMembersTab } from "@/components/SubscribedMembersTab";
 import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
@@ -273,9 +274,10 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="verifications" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="verifications" className="text-xs md:text-sm">Verifications</TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm">Users</TabsTrigger>
+            <TabsTrigger value="subscribed" className="text-xs md:text-sm">Subscribed</TabsTrigger>
             <TabsTrigger value="rides" className="text-xs md:text-sm">Rides</TabsTrigger>
           </TabsList>
 
@@ -362,6 +364,13 @@ const AdminDashboard = () => {
                   onViewUser={handleViewUser}
                 />
               </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="subscribed" className="mt-6">
+            <div className="space-y-4">
+              <h2 className="text-xl md:text-2xl font-bold">Active Subscriptions</h2>
+              <SubscribedMembersTab />
             </div>
           </TabsContent>
 

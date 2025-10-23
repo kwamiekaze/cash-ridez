@@ -42,7 +42,8 @@ export const AvailableDriversList = () => {
             schema: 'public',
             table: 'driver_status',
           },
-          () => {
+          (payload) => {
+            console.log('🔄 Driver status changed:', payload);
             // Reload drivers when any status changes
             loadAvailableDrivers();
           }

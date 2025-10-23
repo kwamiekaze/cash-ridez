@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Camera } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserChip } from "@/components/UserChip";
@@ -268,18 +268,54 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className="border-t bg-background">
-        <div className="max-w-4xl mx-auto p-4">
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <Input
-              placeholder="Type a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              disabled={sending}
-            />
-            <Button type="submit" disabled={sending || !newMessage.trim()}>
-              <Send className="h-4 w-4" />
+      <div className="border-t bg-background sticky bottom-0">
+        <div className="max-w-4xl mx-auto">
+          {/* Action Buttons Toolbar - Top */}
+          <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center gap-2">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
+              className="h-8 px-2"
+              disabled
+            >
+              <Paperclip className="h-4 w-4" />
+              <span className="sr-only">Attach file</span>
             </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="sm"
+              className="h-8 px-2"
+              disabled
+            >
+              <Camera className="h-4 w-4" />
+              <span className="sr-only">Take photo</span>
+            </Button>
+            <div className="flex-1" />
+            <span className="text-xs text-muted-foreground">Message attachments coming soon</span>
+          </div>
+          
+          {/* Message Input - Bottom */}
+          <form onSubmit={handleSendMessage} className="p-4">
+            <div className="flex gap-2 items-end">
+              <Input
+                placeholder="Type a message..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                disabled={sending}
+                className="flex-1 min-h-[44px]"
+                aria-label="Message input"
+              />
+              <Button 
+                type="submit" 
+                disabled={sending || !newMessage.trim()}
+                className="min-h-[44px] px-4"
+                aria-label="Send message"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </form>
         </div>
       </div>
