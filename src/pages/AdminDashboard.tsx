@@ -43,12 +43,10 @@ const AdminDashboard = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("role", "admin")
-          .maybeSingle();
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
 
         if (error || !data) {
           console.error("Unauthorized access attempt to admin panel");
