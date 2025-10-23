@@ -96,9 +96,7 @@ serve(async (req) => {
       console.log('[CHECKOUT] Using existing customer:', customerId);
     }
 
-    // IMPORTANT: This price_id should be replaced with your actual Stripe price ID
-    // You can find this in your Stripe dashboard under Products
-    const priceId = "price_1SLGZJDEimdSeEFoTaFHrQei"; // TODO: Replace with actual price ID
+    const priceId = "price_1SLBB1DEimdSeEFoSH87GTKp";
 
     const origin = req.headers.get("origin") || "https://cashridez.com";
     
