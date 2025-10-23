@@ -127,6 +127,7 @@ export default function VerificationPending() {
           {/* Video Section */}
           <div className="relative rounded-lg overflow-hidden bg-muted">
             <video
+              autoPlay
               preload="metadata"
               muted
               playsInline

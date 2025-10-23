@@ -229,6 +229,7 @@ const Onboarding = () => {
           {/* Video Section */}
           <div className="relative rounded-lg overflow-hidden bg-muted mb-6">
             <video
+              autoPlay
               preload="metadata"
               muted
               playsInline
