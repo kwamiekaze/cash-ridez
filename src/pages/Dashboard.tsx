@@ -13,16 +13,11 @@ const Dashboard = () => {
     const checkProfile = async () => {
       if (!user) return;
 
-      // Batch all queries in parallel for faster loading
-      const [profileResult, rolesResult, tripsResult] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
-        supabase.from("user_roles").select("role").eq("user_id", user.id),
-        supabase.from("ride_requests").select("*").or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`).in("status", ["open", "assigned"]).limit(1)
-      ]);
-
-      const profile = profileResult.data;
-      const roles = rolesResult.data;
-      const activeTrips = tripsResult.data;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
       if (!profile) {
         navigate("/onboarding");
@@ -36,6 +31,11 @@ const Dashboard = () => {
       }
 
       // Check if user is admin
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
       const isAdmin = roles?.some((r) => r.role === "admin");
 
       if (isAdmin) {
@@ -51,6 +51,13 @@ const Dashboard = () => {
         navigate("/rider");
       } else {
         // No role set yet - check if they have active trips or default to rider
+        const { data: activeTrips } = await supabase
+          .from("ride_requests")
+          .select("*")
+          .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+          .in("status", ["open", "assigned"])
+          .limit(1);
+        
         if (activeTrips && activeTrips.length > 0) {
           // Has active trips - route based on their role in the trip
           const trip = activeTrips[0];

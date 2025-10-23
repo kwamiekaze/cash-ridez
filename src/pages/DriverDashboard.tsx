@@ -12,7 +12,6 @@ import { UserChip } from "@/components/UserChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
 import { DriverAvailability } from "@/components/DriverAvailability";
-import { UpdateLocationDrawer } from "@/components/UpdateLocationDrawer";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -291,9 +290,8 @@ const DriverDashboard = () => {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold">My Trips</h1>
-          <UpdateLocationDrawer />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

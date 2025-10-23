@@ -172,9 +172,9 @@ export function NotificationBell() {
     await markAsRead(notification.id);
     setOpen(false);
     
-    // For driver_available notifications, go to the map tab in rider dashboard
+    // For driver_available notifications, go to the drivers tab in rider dashboard
     if (notification.type === 'driver_available') {
-      navigate('/rider?tab=map');
+      navigate('/rider?tab=area');
     } else if (notification.link) {
       navigate(notification.link);
     }

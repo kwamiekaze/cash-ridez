@@ -1,33 +1,32 @@
-import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
-const NotificationPermissionDialog = lazy(() => import("@/components/NotificationPermissionDialog").then(m => ({ default: m.NotificationPermissionDialog })));
-const FloatingChat = lazy(() => import("@/components/FloatingChat").then(m => ({ default: m.FloatingChat })));
-const FloatingSupport = lazy(() => import("@/components/FloatingSupport"));
+import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
+import { FloatingChat } from "@/components/FloatingChat";
+import FloatingSupport from "@/components/FloatingSupport";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import Index from "./pages/Index";
-const Auth = lazy(() => import("./pages/Auth"));
-const Onboarding = lazy(() => import("./pages/Onboarding"));
-const VerificationPending = lazy(() => import("./pages/VerificationPending"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const RiderDashboard = lazy(() => import("./pages/RiderDashboard"));
-const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const CreateRideRequest = lazy(() => import("./pages/CreateRideRequest"));
-const Profile = lazy(() => import("./pages/Profile"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const TripRequestsList = lazy(() => import("./pages/TripRequestsList"));
-const TripDetails = lazy(() => import("./pages/TripDetails"));
-const ChatPage = lazy(() => import("./pages/ChatPage"));
-const TripHistory = lazy(() => import("./pages/TripHistory"));
-const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
-const BillingCancelled = lazy(() => import("./pages/BillingCancelled"));
-const Subscription = lazy(() => import("./pages/Subscription"));
+import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
+import VerificationPending from "./pages/VerificationPending";
+import Dashboard from "./pages/Dashboard";
+import RiderDashboard from "./pages/RiderDashboard";
+import DriverDashboard from "./pages/DriverDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import CreateRideRequest from "./pages/CreateRideRequest";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
+import TripRequestsList from "./pages/TripRequestsList";
+import TripDetails from "./pages/TripDetails";
+import ChatPage from "./pages/ChatPage";
+import TripHistory from "./pages/TripHistory";
+import BillingSuccess from "./pages/BillingSuccess";
+import BillingCancelled from "./pages/BillingCancelled";
+import Subscription from "./pages/Subscription";
 
 const queryClient = new QueryClient();
 
@@ -38,10 +37,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={<div className="p-8 text-center">Loading...</div>}>
-            <NotificationPermissionDialog />
-            <FloatingChat />
-            <FloatingSupport />
+          <NotificationPermissionDialog />
+          <FloatingChat />
+          <FloatingSupport />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -165,9 +163,9 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
