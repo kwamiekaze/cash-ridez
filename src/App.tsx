@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -30,6 +30,7 @@ const TripHistory = lazy(() => import("./pages/TripHistory"));
 const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
 const BillingCancelled = lazy(() => import("./pages/BillingCancelled"));
 const Subscription = lazy(() => import("./pages/Subscription"));
+const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -37,6 +38,22 @@ const LoadingFallback = () => (
     <Loader2 className="w-8 h-8 animate-spin text-primary" />
   </div>
 );
+
+// Defer non-critical UI until idle
+const DeferMount = ({ children }: { children: React.ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const onIdle = (cb: () => void) => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(cb);
+      } else {
+        setTimeout(cb, 250);
+      }
+    };
+    onIdle(() => setMounted(true));
+  }, []);
+  return mounted ? <>{children}</> : null;
+};
 
 const queryClient = new QueryClient();
 
@@ -53,8 +70,10 @@ const App = () => (
       >
         <AuthProvider>
           <NotificationPermissionDialog />
-          <FloatingChat />
-          <FloatingSupport />
+          <DeferMount>
+            <FloatingChat />
+            <FloatingSupport />
+          </DeferMount>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               <Route path="/" element={<Index />} />
@@ -79,7 +98,7 @@ const App = () => (
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <RoleRedirect />
                 </ProtectedRoute>
               }
             />

@@ -229,12 +229,12 @@ const Onboarding = () => {
           {/* Video Section */}
           <div className="relative rounded-lg overflow-hidden bg-muted mb-6">
             <video
-              autoPlay
-              loop
+              preload="metadata"
               muted
               playsInline
               className="w-full h-auto"
               src="/onboarding-intro.mov"
+              controls
             >
               Your browser does not support the video tag.
             </video>
