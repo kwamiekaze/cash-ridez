@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { TripMap } from "@/components/TripMap";
+import { useDriverAvailabilitySync } from "@/hooks/useDriverAvailabilitySync";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -29,6 +31,9 @@ const RiderDashboard = () => {
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [action, setAction] = useState<"complete" | "cancel">("complete");
+  
+  // Sync driver availability with notifications
+  useDriverAvailabilitySync();
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -592,7 +597,25 @@ const RiderDashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="drivers" className="mt-6">
+          <TabsContent value="drivers" className="mt-6 space-y-6">
+            {/* Map showing approximate locations */}
+            {profile?.profile_zip && (
+              <TripMap
+                markers={[
+                  // Open trips
+                  ...requests
+                    .filter(r => r.status === 'open')
+                    .map(r => ({
+                      id: r.id,
+                      zip: r.pickup_zip,
+                      title: `Trip Request`,
+                      description: `${r.pickup_address} → ${r.dropoff_address}`,
+                      type: 'trip' as const,
+                    })),
+                ]}
+                centerZip={profile.profile_zip}
+              />
+            )}
             <AvailableDriversList />
           </TabsContent>
         </Tabs>

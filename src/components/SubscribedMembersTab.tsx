@@ -96,7 +96,7 @@ export const SubscribedMembersTab = () => {
     if (daysUntilExpiry < 0) {
       return { label: 'Expired', variant: 'destructive' as const };
     } else if (daysUntilExpiry <= 7) {
-      return { label: 'Expires Soon', variant: 'warning' as const };
+      return { label: 'Expires Soon', variant: 'secondary' as const };
     }
     return { label: 'Active', variant: 'default' as const };
   };
