@@ -455,7 +455,32 @@ const RiderDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-      {selectedTrip && (<TripActionDialog request={selectedTrip} open={actionDialogOpen} onOpenChange={setActionDialogOpen} action={action} />)}
+      {selectedTrip && (
+        <TripActionDialog 
+          request={selectedTrip} 
+          open={actionDialogOpen} 
+          onOpenChange={setActionDialogOpen} 
+          action={action}
+          userRole="rider"
+          onSuccess={() => {
+            setActionDialogOpen(false);
+            // Refetch requests after successful action
+            if (user) {
+              supabase.from("ride_requests").select("*").eq("rider_id", user.id).then(({ data }) => {
+                if (data) {
+                  const sortedData = data.sort((a, b) => {
+                    const statusPriority: Record<string, number> = { assigned: 0, open: 1, completed: 2, cancelled: 3 };
+                    const priorityDiff = (statusPriority[a.status] || 999) - (statusPriority[b.status] || 999);
+                    if (priorityDiff !== 0) return priorityDiff;
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+                  });
+                  setRequests(sortedData);
+                }
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
