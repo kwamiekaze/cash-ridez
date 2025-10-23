@@ -105,10 +105,11 @@ Deno.serve(async (req) => {
 
     const { driver_id, current_zip, state } = await req.json();
 
-    console.log(`Processing driver availability: ${driver_id}, state: ${state}, zip: ${current_zip}`);
+    console.log(`🚗 Processing driver availability: driver_id=${driver_id}, state=${state}, zip=${current_zip}`);
 
     // Only send notifications when driver becomes available
     if (state !== 'available' || !current_zip) {
+      console.log(`⏩ Skipping notifications - state: ${state}, zip: ${current_zip}`);
       return new Response(
         JSON.stringify({ success: true, message: 'No notifications needed' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -146,11 +147,14 @@ Deno.serve(async (req) => {
     }
 
     if (!riders || riders.length === 0) {
+      console.log(`📭 No riders found with notify_new_driver=true and profile_zip set`);
       return new Response(
-        JSON.stringify({ success: true, message: 'No riders to notify' }),
+        JSON.stringify({ success: true, message: 'No riders to notify', debug: 'No riders with notify_new_driver enabled' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    console.log(`👥 Found ${riders.length} riders with notifications enabled`);
 
     // Filter riders within 25 miles or same SCF
     const nearbyRiders = riders.filter(rider => {
@@ -172,7 +176,7 @@ Deno.serve(async (req) => {
       return withinRadius || scfMatch;
     });
 
-    console.log(`Found ${nearbyRiders.length} nearby riders to potentially notify`);
+    console.log(`📍 Found ${nearbyRiders.length} nearby riders (within 25mi or same SCF) to potentially notify`);
 
     // Check for recent notifications to implement debouncing
     const debounceThreshold = new Date(Date.now() - DEBOUNCE_MINUTES * 60 * 1000).toISOString();
@@ -229,12 +233,15 @@ Deno.serve(async (req) => {
 
     const results = await Promise.all(notificationPromises);
     const successCount = results.filter(r => r !== null).length;
+    
+    console.log(`✅ Successfully sent ${successCount} notifications out of ${nearbyRiders.length} nearby riders`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         notifications_sent: successCount,
-        riders_checked: nearbyRiders.length
+        riders_checked: nearbyRiders.length,
+        total_riders_with_notifications: riders.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -38,22 +38,22 @@ export function NotificationPreferences() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('notification_preferences')
+        .select('notification_preferences, notify_new_driver')
         .eq('id', user?.id)
         .single();
 
       if (error) throw error;
 
-      if (data?.notification_preferences) {
+      if (data) {
         // Safely parse the notification preferences with type checking
         const parsedPrefs = data.notification_preferences as Record<string, any>;
         setPrefs({
-          all_notifications: parsedPrefs.all_notifications ?? false,
-          new_trips: parsedPrefs.new_trips ?? false,
-          new_offers: parsedPrefs.new_offers ?? false,
-          messages: parsedPrefs.messages ?? true,
-          ride_updates: parsedPrefs.ride_updates ?? true,
-          notify_new_driver: parsedPrefs.notify_new_driver ?? false,
+          all_notifications: parsedPrefs?.all_notifications ?? false,
+          new_trips: parsedPrefs?.new_trips ?? false,
+          new_offers: parsedPrefs?.new_offers ?? false,
+          messages: parsedPrefs?.messages ?? true,
+          ride_updates: parsedPrefs?.ride_updates ?? true,
+          notify_new_driver: data.notify_new_driver ?? false, // Read from direct column
         });
       }
     } catch (error) {
@@ -91,9 +91,19 @@ export function NotificationPreferences() {
 
       setPrefs(newPrefs);
 
+      // Update both the JSONB column and direct notify_new_driver column
+      const updates: any = {
+        notification_preferences: newPrefs
+      };
+      
+      // Also update the direct column for notify_new_driver for edge function access
+      if (key === 'notify_new_driver' || key === 'all_notifications') {
+        updates.notify_new_driver = newPrefs.notify_new_driver;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({ notification_preferences: newPrefs })
+        .update(updates)
         .eq('id', user?.id);
 
       if (error) throw error;

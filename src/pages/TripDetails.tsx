@@ -92,10 +92,10 @@ export default function TripDetails() {
       const { data: { user } } = await supabase.auth.getUser();
       setIsRider(tripData.rider_id === user?.id);
 
-      // Fetch rider profile - limited info if not assigned
+      // Fetch rider profile - always include full_name but only email/phone for assigned drivers
       const riderFields = tripData.status === 'assigned' && tripData.assigned_driver_id === user?.id
-        ? 'id, display_name, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url, is_member'
-        : 'id, display_name, rider_rating_avg, rider_rating_count, photo_url, is_member';
+        ? 'id, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url, is_member'
+        : 'id, full_name, rider_rating_avg, rider_rating_count, photo_url, is_member';
       
       const { data: riderData } = await supabase
         .from('profiles')
@@ -104,11 +104,11 @@ export default function TripDetails() {
         .single();
       setRiderProfile(riderData);
 
-      // Fetch driver profile if assigned
+      // Fetch driver profile if assigned - always include full_name but only email/phone for assigned riders
       if (tripData.assigned_driver_id) {
         const driverFields = tripData.status === 'assigned' && tripData.rider_id === user?.id
-          ? 'id, display_name, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url, is_member'
-          : 'id, display_name, driver_rating_avg, driver_rating_count, photo_url, is_member';
+          ? 'id, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url, is_member'
+          : 'id, full_name, driver_rating_avg, driver_rating_count, photo_url, is_member';
         
         const { data: driverData } = await supabase
           .from('profiles')
@@ -474,7 +474,6 @@ export default function TripDetails() {
               <div className="p-3 bg-muted/50 rounded-lg">
                 <UserChip
                   userId={riderProfile.id}
-                  displayName={riderProfile.display_name}
                   fullName={riderProfile.full_name}
                   photoUrl={riderProfile.photo_url}
                   role="rider"
@@ -496,7 +495,6 @@ export default function TripDetails() {
               <div className="p-3 bg-muted/50 rounded-lg">
                 <UserChip
                   userId={driverProfile.id}
-                  displayName={driverProfile.display_name}
                   fullName={driverProfile.full_name}
                   photoUrl={driverProfile.photo_url}
                   role="driver"

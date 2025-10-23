@@ -160,12 +160,12 @@ export default function TripRequestsList() {
           
           const { data: riderProfiles } = await supabase
             .from('profiles')
-            .select('id, display_name, full_name, photo_url, rider_rating_avg, rider_rating_count')
+            .select('id, full_name, photo_url, rider_rating_avg, rider_rating_count, is_member')
             .in('id', riderIds);
 
           const { data: driverProfiles } = await supabase
             .from('profiles')
-            .select('id, display_name, full_name, photo_url, driver_rating_avg, driver_rating_count')
+            .select('id, full_name, photo_url, driver_rating_avg, driver_rating_count, is_member')
             .in('id', driverIds);
 
           // Merge the data
@@ -327,7 +327,6 @@ export default function TripRequestsList() {
           <div className="p-3 bg-muted/30 rounded-lg mb-4">
             <UserChip
               userId={request.rider_id}
-              displayName={request.rider?.display_name}
               fullName={request.rider?.full_name}
               photoUrl={request.rider?.photo_url}
               role="rider"
@@ -340,7 +339,6 @@ export default function TripRequestsList() {
             <div className="p-3 bg-accent/20 rounded-lg mb-4">
               <UserChip
                 userId={request.assigned_driver_id}
-                displayName={request.driver?.display_name}
                 fullName={request.driver?.full_name}
                 photoUrl={request.driver?.photo_url}
                 role="driver"

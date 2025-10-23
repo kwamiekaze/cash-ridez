@@ -94,14 +94,25 @@ export const DriverAvailability = () => {
       
       // Trigger notification function when driver becomes available
       if (state === 'available' && normalizedZip) {
+        console.log('🚗 Triggering driver availability notifications:', {
+          driver_id: user.id,
+          current_zip: normalizedZip,
+          state: state
+        });
+        
         supabase.functions.invoke('send-driver-available-notification', {
           body: {
             driver_id: user.id,
             current_zip: normalizedZip,
             state: state
           }
+        }).then(result => {
+          console.log('✅ Driver availability notification response:', result);
+          if (result.data) {
+            console.log(`📊 Notifications sent to ${result.data.notifications_sent} riders (${result.data.riders_checked} checked)`);
+          }
         }).catch(err => {
-          console.error('Error sending driver availability notifications:', err);
+          console.error('❌ Error sending driver availability notifications:', err);
           // Don't show error to user - notifications are non-critical
         });
       }
