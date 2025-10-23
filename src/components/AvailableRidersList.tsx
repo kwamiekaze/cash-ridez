@@ -33,6 +33,8 @@ export const AvailableRidersList = () => {
           },
           (payload) => {
             console.log('🔄 Ride request changed:', payload);
+            // Always reload ALL open ride requests when any changes
+            // This ensures previously posted rides remain visible
             loadOnlineRiders();
           }
         )
@@ -69,16 +71,17 @@ export const AvailableRidersList = () => {
       // Ensure ZIP centroids are loaded
       await loadZipCentroids();
 
-      // Get all open ride requests (riders who are "online" looking for rides)
+      // Get ALL open ride requests (riders who are "online" looking for rides)
+      // This query fetches EVERY open ride request, not just recent ones
       const { data: openRequests, error } = await supabase
         .from('ride_requests')
         .select('id, rider_id, pickup_address, dropoff_address, pickup_zip, pickup_time, price_offer, created_at')
         .eq('status', 'open')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }); // Most recent posts first
 
       if (error) throw error;
 
-      console.log(`📍 Found ${openRequests?.length || 0} open ride requests total`);
+      console.log(`📍 Found ${openRequests?.length || 0} open ride requests total (all open)`);
 
       if (openRequests && openRequests.length > 0) {
         // Get rider profiles for all requests

@@ -44,7 +44,8 @@ export const AvailableDriversList = () => {
           },
           (payload) => {
             console.log('🔄 Driver status changed:', payload);
-            // Reload drivers when any status changes
+            // Always reload ALL drivers when any status changes
+            // This ensures previously available drivers remain visible
             loadAvailableDrivers();
           }
         )
@@ -83,14 +84,16 @@ export const AvailableDriversList = () => {
       await loadZipCentroids();
 
       // Get ALL available drivers with updated_at for timestamp display
+      // This query fetches EVERY driver with state='available', not just recent ones
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
         .select('user_id, state, current_zip, updated_at')
-        .eq('state', 'available');
+        .eq('state', 'available')
+        .order('updated_at', { ascending: false }); // Show most recently updated first
 
       if (error) throw error;
 
-      console.log(`📍 Found ${driverStatuses?.length || 0} available drivers total`);
+      console.log(`📍 Found ${driverStatuses?.length || 0} available drivers total (all time)`);
 
       if (driverStatuses && driverStatuses.length > 0) {
         // Get driver profiles with full details
