@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { Crown } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 
 interface MemberBadgeProps {
   isMember: boolean;
@@ -10,12 +9,6 @@ export const MemberBadge = ({ isMember, className }: MemberBadgeProps) => {
   if (!isMember) return null;
 
   return (
-    <Badge 
-      variant="default" 
-      className={`bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 ${className}`}
-    >
-      <Crown className="w-3 h-3" />
-      Member
-    </Badge>
+    <CheckCircle className={`w-4 h-4 text-primary fill-primary ${className}`} />
   );
 };

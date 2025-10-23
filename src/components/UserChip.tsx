@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { MemberBadge } from "@/components/MemberBadge";
+import { AdminBadge } from "@/components/AdminBadge";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserChipProps {
@@ -33,6 +34,7 @@ export function UserChip({
   const [ratingAvg, setRatingAvg] = useState(providedRatingAvg);
   const [ratingCount, setRatingCount] = useState(providedRatingCount);
   const [isMember, setIsMember] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Fetch ratings from public table if not provided
@@ -43,8 +45,9 @@ export function UserChip({
       setRatingCount(providedRatingCount);
     }
     
-    // Fetch member status
+    // Fetch member status and admin role
     fetchMemberStatus();
+    fetchAdminRole();
   }, [userId, role, providedRatingAvg, providedRatingCount]);
 
   const fetchMemberStatus = async () => {
@@ -60,6 +63,21 @@ export function UserChip({
       }
     } catch (error) {
       console.error('Error fetching member status:', error);
+    }
+  };
+
+  const fetchAdminRole = async () => {
+    try {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error('Error fetching admin role:', error);
     }
   };
 
@@ -108,6 +126,7 @@ export function UserChip({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className={`font-medium ${textSizes[size]} truncate`}>{name}</p>
+          <AdminBadge isAdmin={isAdmin} />
           <MemberBadge isMember={isMember} />
           {showCancellationBadge && (
             <CancellationBadge userId={userId} role={role} size="sm" />

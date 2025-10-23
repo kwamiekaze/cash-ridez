@@ -103,10 +103,12 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
                   <History className="mr-2 h-4 w-4" />
                   History
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/subscription")} className="cursor-pointer">
-                  <Crown className="mr-2 h-4 w-4" />
-                  Subscription
-                </DropdownMenuItem>
+                {!profile?.is_member && (
+                  <DropdownMenuItem onClick={() => navigate("/subscription")} className="cursor-pointer">
+                    <Crown className="mr-2 h-4 w-4" />
+                    Subscription
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
                   <HeadphonesIcon className="mr-2 h-4 w-4" />
