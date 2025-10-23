@@ -1,57 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Car, Shield, Users, MapPin, Star, CheckCircle2, Loader2 } from "lucide-react";
+import { Car, Shield, Users, MapPin, Star, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    const checkUserStatus = async () => {
-      if (authLoading) return;
-      
-      if (!user) {
-        setChecking(false);
-        return;
-      }
-
-      // User is logged in, check their profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_verified, verification_status, active_role")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.is_verified || profile?.verification_status === "approved") {
-        // User is verified, redirect to their dashboard
-        if (profile.active_role === "driver") {
-          navigate("/driver", { replace: true });
-        } else if (profile.active_role === "rider") {
-          navigate("/rider", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
-      } else {
-        // User is not verified yet
-        setChecking(false);
-      }
-    };
-
-    checkUserStatus();
+    if (authLoading) return;
+    if (user) {
+      // Let the dashboard handle role-based routing; this avoids an extra DB call here
+      navigate("/dashboard", { replace: true });
+    }
   }, [user, authLoading, navigate]);
 
-  if (authLoading || checking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
   const trustBadges = [{
     icon: Shield,
     label: "ID Verified"
