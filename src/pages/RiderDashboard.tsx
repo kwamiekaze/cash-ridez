@@ -35,6 +35,15 @@ const RiderDashboard = () => {
   // Sync driver availability with notifications
   useDriverAvailabilitySync();
 
+  // Check URL params for tab navigation
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['open', 'assigned', 'completed', 'drivers'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [location.search]);
+
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
@@ -430,8 +439,8 @@ const RiderDashboard = () => {
               </Card>
             ) : (
               requests.filter(r => r.status === "open").map(request => (
-                <Card key={request.id} className="p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 cursor-pointer bg-gradient-to-br from-card to-card/50">
-                  <div className="flex items-start justify-between">
+                <Card key={request.id} className="p-4 sm:p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 bg-gradient-to-br from-card to-card/50">
+                  <div className="flex flex-col gap-4">
                     <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
                       <div className="flex items-center gap-2 mb-2">
                         <StatusBadge status={request.status} />
@@ -441,17 +450,17 @@ const RiderDashboard = () => {
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-success" />
-                          <div>
+                          <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium">Pickup</p>
-                            <p className="text-sm text-muted-foreground">{request.pickup_address}</p>
+                            <p className="text-sm text-muted-foreground break-words">{request.pickup_address}</p>
                           </div>
                         </div>
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-destructive" />
-                          <div>
+                          <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium">Dropoff</p>
-                            <p className="text-sm text-muted-foreground">{request.dropoff_address}</p>
+                            <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
                           </div>
                         </div>
                       </div>
@@ -461,11 +470,12 @@ const RiderDashboard = () => {
                         </p>
                       )}
                     </div>
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex gap-2 w-full">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={(e) => handleCancelTrip(request, e)}
+                        className="flex-1"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Cancel
@@ -488,15 +498,16 @@ const RiderDashboard = () => {
               </Card>
             ) : (
               requests.filter(r => r.status === "assigned").map(request => (
-                <Card key={request.id} className="p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 bg-gradient-to-br from-card to-primary/5 border-2">
-                  <div className="flex items-start justify-between">
+                <Card key={request.id} className="p-4 sm:p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 bg-gradient-to-br from-card to-primary/5 border-2">
+                  <div className="flex flex-col gap-4">
                     <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
                         <StatusBadge status={request.status} />
                         {request.assigned_driver && (
                           <UserChip
                             userId={request.assigned_driver_id}
                             displayName={request.assigned_driver.display_name}
+                            fullName={request.assigned_driver.full_name}
                             photoUrl={request.assigned_driver.photo_url}
                             role="driver"
                             ratingAvg={request.assigned_driver.driver_rating_avg}
@@ -507,20 +518,21 @@ const RiderDashboard = () => {
                       </div>
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-success" />
-                          <p className="text-sm">{request.pickup_address}</p>
+                          <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
+                          <p className="text-sm break-words flex-1 min-w-0">{request.pickup_address}</p>
                         </div>
                         <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-destructive" />
-                          <p className="text-sm">{request.dropoff_address}</p>
+                          <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
+                          <p className="text-sm break-words flex-1 min-w-0">{request.dropoff_address}</p>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2 ml-4">
+                    <div className="flex gap-2 w-full">
                       <Button
                         variant="default"
                         size="sm"
                         onClick={(e) => handleCompleteTrip(request, e)}
+                        className="flex-1"
                       >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         Complete
@@ -529,6 +541,7 @@ const RiderDashboard = () => {
                         variant="outline"
                         size="sm"
                         onClick={(e) => handleCancelTrip(request, e)}
+                        className="flex-1"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Cancel

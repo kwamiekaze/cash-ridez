@@ -171,7 +171,11 @@ export function NotificationBell() {
   const handleNotificationClick = async (notification: Notification) => {
     await markAsRead(notification.id);
     setOpen(false);
-    if (notification.link) {
+    
+    // For driver_available notifications, go to the drivers tab in rider dashboard
+    if (notification.type === 'driver_available') {
+      navigate('/rider?tab=drivers');
+    } else if (notification.link) {
       navigate(notification.link);
     }
   };
