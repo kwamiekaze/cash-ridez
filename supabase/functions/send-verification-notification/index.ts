@@ -101,15 +101,15 @@ const handler = async (req: Request): Promise<Response> => {
     </ul>
     ${idSignedUrl ? `<p><a href="${idSignedUrl}" target="_blank">View submitted ID image</a> (link expires in 24 hours)</p>` : ''}
     <p>Please review this verification request in the admin dashboard.</p>
-    <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from Cash Ridez.</p>
+    <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from CashRidez.</p>
   `;
 
     // Send emails to all admins
     const emailPromises = adminEmails.map(email =>
       resend.emails.send({
-        from: "Cash Ridez <onboarding@resend.dev>",
+        from: "CashRidez <noreply@cashridez.com>",
         to: [email],
-        subject: "New ID Verification Submitted - Cash Ridez",
+        subject: "New ID Verification Submitted - CashRidez",
         html: emailHtml,
       })
     );
