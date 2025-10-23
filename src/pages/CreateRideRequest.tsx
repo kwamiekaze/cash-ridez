@@ -194,7 +194,7 @@ const CreateRideRequest = () => {
         ...(formData.contactInfo ? sanitizeForKeywords(formData.contactInfo) : []),
       ];
 
-      const { error } = await supabase.from("ride_requests").insert({
+      const { data: newTrip, error } = await supabase.from("ride_requests").insert({
         rider_id: user?.id,
         pickup_address: formData.pickupAddress.trim(),
         pickup_lat: pickupGeo.lat,
@@ -210,9 +210,34 @@ const CreateRideRequest = () => {
         price_offer: parseFloat(formData.priceOffer),
         search_keywords: keywords,
         status: "open",
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Notify nearby drivers about the new trip
+      if (newTrip) {
+        console.log('🚕 Triggering new trip notifications:', {
+          ride_request_id: newTrip.id,
+          rider_id: user?.id,
+          pickup_zip: pickupGeo.zip
+        });
+        
+        supabase.functions.invoke('send-new-trip-notification', {
+          body: {
+            ride_request_id: newTrip.id,
+            rider_id: user?.id,
+            pickup_zip: pickupGeo.zip
+          }
+        }).then(result => {
+          console.log('✅ New trip notification response:', result);
+          if (result.data) {
+            console.log(`📊 Notifications sent to ${result.data.notifications_sent} drivers (${result.data.drivers_checked} checked)`);
+          }
+        }).catch(err => {
+          console.error('❌ Error sending new trip notifications:', err);
+          // Don't show error to user - notifications are non-critical
+        });
+      }
 
       toast.success("Trip request created!");
       

@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MapPin, Star } from "lucide-react";
+import { Loader2, MapPin, Star, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { RiderZipEditor } from "./RiderZipEditor";
 import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
@@ -26,7 +26,7 @@ export const AvailableDriversList = () => {
   const [userZip, setUserZip] = useState<string | null>(null);
   const [notifyNewDriver, setNotifyNewDriver] = useState(false);
   const [updatingNotification, setUpdatingNotification] = useState(false);
-  const [sortBy, setSortBy] = useState<"distance" | "rating" | "cancellation">("distance");
+  const [sortBy, setSortBy] = useState<"distance" | "rating" | "cancellation" | "recent">("distance");
 
   useEffect(() => {
     if (user) {
@@ -82,10 +82,10 @@ export const AvailableDriversList = () => {
       // Ensure ZIP centroids are loaded before computing distances
       await loadZipCentroids();
 
-      // Get ALL available drivers (we'll filter by distance client-side)
+      // Get ALL available drivers with updated_at for timestamp display
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
-        .select('*')
+        .select('user_id, state, current_zip, updated_at')
         .eq('state', 'available');
 
       if (error) throw error;
@@ -136,7 +136,8 @@ export const AvailableDriversList = () => {
             distance,
             cancelRate: cancelData?.driver_rate_90d || 0,
             badgeTier: cancelData?.badge_tier || 'green',
-            isNearby: isSameSCF || isWithinRadius
+            isNearby: isSameSCF || isWithinRadius,
+            lastUpdated: status.updated_at
           };
         })
         .filter(d => {
@@ -189,6 +190,13 @@ export const AvailableDriversList = () => {
         case "cancellation":
           // Sort by cancellation rate (lowest first)
           return (a.cancelRate || 0) - (b.cancelRate || 0);
+        
+        case "recent":
+          // Sort by most recently updated (newest first)
+          if (!a.lastUpdated && !b.lastUpdated) return 0;
+          if (!a.lastUpdated) return 1;
+          if (!b.lastUpdated) return -1;
+          return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
         
         case "distance":
         default:
@@ -288,6 +296,7 @@ export const AvailableDriversList = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="distance">Closest to me</SelectItem>
+                    <SelectItem value="recent">Recently Available</SelectItem>
                     <SelectItem value="rating">Highest rated</SelectItem>
                     <SelectItem value="cancellation">Lowest cancellation rate</SelectItem>
                   </SelectContent>
@@ -374,12 +383,27 @@ export const AvailableDriversList = () => {
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-2 text-xs sm:text-sm">
-                            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="text-muted-foreground">
-                              Located in <span className="font-medium text-foreground">{driver.current_zip}</span>
-                              {driver.distance && <span> • {formatDistance(driver.distance)}</span>}
-                            </span>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 text-xs sm:text-sm">
+                              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="text-muted-foreground">
+                                Located in <span className="font-medium text-foreground">{driver.current_zip}</span>
+                                {driver.distance && <span> • {formatDistance(driver.distance)}</span>}
+                              </span>
+                            </div>
+                            {driver.lastUpdated && (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <Clock className="h-3 w-3 flex-shrink-0" />
+                                <span>
+                                  Updated {new Date(driver.lastUpdated).toLocaleString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
