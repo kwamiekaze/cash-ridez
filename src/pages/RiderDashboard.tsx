@@ -611,24 +611,6 @@ const RiderDashboard = () => {
           </TabsContent>
 
           <TabsContent value="area" className="mt-6 space-y-6">
-            {/* Map showing approximate locations */}
-            {profile?.profile_zip && (
-              <TripMap
-                markers={[
-                  // Open trips
-                  ...requests
-                    .filter(r => r.status === 'open')
-                    .map(r => ({
-                      id: r.id,
-                      zip: r.pickup_zip,
-                      title: `Trip Request`,
-                      description: `${r.pickup_address} → ${r.dropoff_address}`,
-                      type: 'trip' as const,
-                    })),
-                ]}
-                centerZip={profile.profile_zip}
-              />
-            )}
             <AvailableDriversList />
           </TabsContent>
         </Tabs>

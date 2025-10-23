@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, MapPin, Star, User } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, MapPin, Star } from "lucide-react";
 import { toast } from "sonner";
 import { RiderZipEditor } from "./RiderZipEditor";
 import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
-import { useNavigate } from "react-router-dom";
 
 const statusLabels = {
   available: "Available",
@@ -21,12 +20,13 @@ const statusLabels = {
 
 export const AvailableDriversList = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState<any[]>([]);
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
   const [userZip, setUserZip] = useState<string | null>(null);
   const [notifyNewDriver, setNotifyNewDriver] = useState(false);
   const [updatingNotification, setUpdatingNotification] = useState(false);
+  const [sortBy, setSortBy] = useState<"distance" | "rating" | "cancellation">("distance");
 
   useEffect(() => {
     if (user) {
@@ -158,8 +158,10 @@ export const AvailableDriversList = () => {
 
         console.log(`✅ ${enrichedDrivers.length} drivers within 25 miles`);
         setDrivers(enrichedDrivers);
+        setFilteredDrivers(enrichedDrivers);
       } else {
         setDrivers([]);
+        setFilteredDrivers([]);
       }
     } catch (error) {
       console.error('❌ Error loading drivers:', error);
@@ -167,6 +169,38 @@ export const AvailableDriversList = () => {
       setLoading(false);
     }
   };
+
+  // Apply sorting when sortBy or drivers change
+  useEffect(() => {
+    if (drivers.length === 0) {
+      setFilteredDrivers([]);
+      return;
+    }
+
+    const sorted = [...drivers].sort((a, b) => {
+      switch (sortBy) {
+        case "rating":
+          // Sort by rating (highest first), nulls last
+          if (!a.driver_rating_avg && !b.driver_rating_avg) return 0;
+          if (!a.driver_rating_avg) return 1;
+          if (!b.driver_rating_avg) return -1;
+          return b.driver_rating_avg - a.driver_rating_avg;
+        
+        case "cancellation":
+          // Sort by cancellation rate (lowest first)
+          return (a.cancelRate || 0) - (b.cancelRate || 0);
+        
+        case "distance":
+        default:
+          // Sort by distance (closest first), nulls last
+          if (a.distance === null) return 1;
+          if (b.distance === null) return -1;
+          return a.distance - b.distance;
+      }
+    });
+
+    setFilteredDrivers(sorted);
+  }, [drivers, sortBy]);
 
   const handleZipSaved = (zip: string) => {
     setUserZip(zip);
@@ -209,9 +243,23 @@ export const AvailableDriversList = () => {
     );
   }
 
-  if (!userZip) {
-    return (
-      <div className="space-y-4">
+  return (
+    <div className="space-y-6">
+      {/* Update Your Location - Always at top */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
+            Update Your Location
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
+        </CardContent>
+      </Card>
+
+      {/* Available Drivers Section */}
+      {!userZip ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -220,27 +268,35 @@ export const AvailableDriversList = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground mb-4">
-              Set your ZIP code to see available drivers in your area.
+            <p className="text-muted-foreground text-center py-4">
+              Set your ZIP code above to see available drivers in your area.
             </p>
-            <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
           </CardContent>
         </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Available Drivers Within 25 Miles of {userZip}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {drivers.length === 0 ? (
+      ) : (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Available Drivers Within 25 Miles
+              </CardTitle>
+              {drivers.length > 0 && (
+                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                  <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Sort by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="distance">Closest to me</SelectItem>
+                    <SelectItem value="rating">Highest rated</SelectItem>
+                    <SelectItem value="cancellation">Lowest cancellation rate</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {drivers.length === 0 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-center py-8">
                 No drivers are available within 25 miles of {userZip} yet.
@@ -263,10 +319,10 @@ export const AvailableDriversList = () => {
                 />
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid gap-4">
-                {drivers.map((driver) => (
+            ) : (
+              <div className="space-y-6">
+                <div className="grid gap-4">
+                  {filteredDrivers.map((driver) => (
                   <Card key={driver.id} className="overflow-hidden hover:shadow-md transition-shadow border-2">
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex items-start gap-3 sm:gap-4">
@@ -325,57 +381,35 @@ export const AvailableDriversList = () => {
                               {driver.distance && <span> • {formatDistance(driver.distance)}</span>}
                             </span>
                           </div>
-                          
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="w-full sm:w-auto mt-2"
-                            onClick={() => navigate(`/profile/${driver.id}`)}
-                          >
-                            <User className="h-4 w-4 mr-2" />
-                            View Profile
-                          </Button>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border border-border rounded-lg bg-muted/30">
-                <div className="space-y-1 flex-1">
-                  <Label htmlFor="notify-toggle" className="text-sm sm:text-base font-medium cursor-pointer">
-                    Notify me when a driver becomes available in my ZIP
-                  </Label>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Get notified when new drivers become available near you
-                  </p>
                 </div>
-                <Switch
-                  id="notify-toggle"
-                  checked={notifyNewDriver}
-                  onCheckedChange={handleNotificationToggle}
-                  disabled={updatingNotification}
-                  className="flex-shrink-0"
-                />
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border border-border rounded-lg bg-muted/30">
+                  <div className="space-y-1 flex-1">
+                    <Label htmlFor="notify-toggle" className="text-sm sm:text-base font-medium cursor-pointer">
+                      Notify me when a driver becomes available in my ZIP
+                    </Label>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Get notified when new drivers become available near you
+                    </p>
+                  </div>
+                  <Switch
+                    id="notify-toggle"
+                    checked={notifyNewDriver}
+                    onCheckedChange={handleNotificationToggle}
+                    disabled={updatingNotification}
+                    className="flex-shrink-0"
+                  />
+                </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* ZIP Editor Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
-            Update Your Location
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

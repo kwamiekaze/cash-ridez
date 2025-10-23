@@ -384,6 +384,16 @@ export default function TripDetails() {
       const ratingType = isRider ? 'driver' : 'rider';
       const ratedUserId = isRider ? request.assigned_driver_id : request.rider_id;
 
+      // Prevent duplicate ratings
+      if (request[updateField]) {
+        toast({
+          title: "Already Rated",
+          description: "You have already rated this trip.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Update the ride request with the rating AND mark as completed by this user
       // Also update status to completed if both users have now marked complete
       const otherCompletionField = isRider ? 'driver_completed' : 'rider_completed';
