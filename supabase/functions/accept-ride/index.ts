@@ -46,6 +46,17 @@ serve(async (req) => {
     // Use provided driverId or default to current user
     const finalDriverId = driverId || user.id;
 
+    // Check subscription status and completed trips
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_active, completed_trips_count')
+      .eq('id', finalDriverId)
+      .single();
+
+    if (!profile?.subscription_active && profile?.completed_trips_count >= 3) {
+      throw new Error('You have reached your free trip limit. Please subscribe to continue accepting rides.');
+    }
+
     console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}, skipActiveRideCheck: ${skipActiveRideCheck || false}`);
 
     // Use a transaction-like approach with RPC call

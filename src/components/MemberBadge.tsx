@@ -12,7 +12,7 @@ export const MemberBadge = ({ isMember, className }: MemberBadgeProps) => {
   return (
     <Badge 
       variant="default" 
-      className={`bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 ${className}`}
+      className={`bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 ${className}`}
     >
       <Crown className="w-3 h-3" />
       Member

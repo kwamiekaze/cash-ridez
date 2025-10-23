@@ -35,6 +35,15 @@ serve(async (req) => {
 
   try {
     console.log('[CHECKOUT] Function started');
+    
+    // Parse request body for return URL
+    let returnUrl = null;
+    try {
+      const body = await req.json();
+      returnUrl = body?.return_url;
+    } catch (e) {
+      // Body parsing failed, use default URLs
+    }
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
@@ -100,7 +109,11 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://cashridez.com";
     
-    console.log('[CHECKOUT] Creating checkout session');
+    // Use return URL from request body, or default to billing success
+    const successUrl = returnUrl || `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = returnUrl || `${origin}/billing/cancelled`;
+    
+    console.log('[CHECKOUT] Creating checkout session with success URL:', successUrl);
     
     try {
       const session = await stripe.checkout.sessions.create({
@@ -112,8 +125,8 @@ serve(async (req) => {
           },
         ],
         mode: "subscription",
-        success_url: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${origin}/billing/cancelled`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         metadata: {
           supabase_user_id: user.id,
         },

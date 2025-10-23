@@ -66,9 +66,12 @@ export const useSubscription = () => {
     }
   };
 
-  const startCheckout = async () => {
+  const startCheckout = async (returnUrl?: string) => {
     try {
+      const currentUrl = returnUrl || window.location.href;
+      
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { return_url: currentUrl },
         headers: {
           Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         },
@@ -77,7 +80,8 @@ export const useSubscription = () => {
       if (error) throw error;
       
       if (data?.url) {
-        window.open(data.url, '_blank');
+        // Navigate to checkout in same window
+        window.location.href = data.url;
       }
     } catch (error) {
       console.error('Error creating checkout:', error);

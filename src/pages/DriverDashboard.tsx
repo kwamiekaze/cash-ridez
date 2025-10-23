@@ -37,7 +37,7 @@ const DriverDashboard = () => {
       // Fetch trips where current user is the assigned driver
       const { data } = await supabase
         .from("ride_requests")
-        .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count)")
+        .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count, is_member)")
         .eq("assigned_driver_id", user?.id)
         .eq("status", "assigned")
         .order("updated_at", { ascending: false }); // Most recently updated first
@@ -48,7 +48,7 @@ const DriverDashboard = () => {
     const fetchRequests = async () => {
       let query = supabase
         .from("ride_requests")
-        .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count)")
+        .select("*, rider:profiles!rider_id(display_name, full_name, photo_url, rider_rating_avg, rider_rating_count, is_member)")
         .eq("status", "open")
         .order("created_at", { ascending: false }); // Most recent first
 

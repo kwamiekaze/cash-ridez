@@ -26,6 +26,7 @@ import ChatPage from "./pages/ChatPage";
 import TripHistory from "./pages/TripHistory";
 import BillingSuccess from "./pages/BillingSuccess";
 import BillingCancelled from "./pages/BillingCancelled";
+import Subscription from "./pages/Subscription";
 
 const queryClient = new QueryClient();
 
@@ -151,6 +152,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <BillingCancelled />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subscription"
+              element={
+                <ProtectedRoute>
+                  <Subscription />
                 </ProtectedRoute>
               }
             />

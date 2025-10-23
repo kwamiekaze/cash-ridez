@@ -94,8 +94,8 @@ export default function TripDetails() {
 
       // Fetch rider profile - limited info if not assigned
       const riderFields = tripData.status === 'assigned' && tripData.assigned_driver_id === user?.id
-        ? 'id, display_name, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url'
-        : 'id, display_name, rider_rating_avg, rider_rating_count, photo_url';
+        ? 'id, display_name, full_name, email, rider_rating_avg, rider_rating_count, phone_number, photo_url, is_member'
+        : 'id, display_name, rider_rating_avg, rider_rating_count, photo_url, is_member';
       
       const { data: riderData } = await supabase
         .from('profiles')
@@ -107,8 +107,8 @@ export default function TripDetails() {
       // Fetch driver profile if assigned
       if (tripData.assigned_driver_id) {
         const driverFields = tripData.status === 'assigned' && tripData.rider_id === user?.id
-          ? 'id, display_name, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url'
-          : 'id, display_name, driver_rating_avg, driver_rating_count, photo_url';
+          ? 'id, display_name, full_name, email, driver_rating_avg, driver_rating_count, phone_number, photo_url, is_member'
+          : 'id, display_name, driver_rating_avg, driver_rating_count, photo_url, is_member';
         
         const { data: driverData } = await supabase
           .from('profiles')
@@ -149,7 +149,7 @@ export default function TripDetails() {
       if (userIds.length > 0) {
       const { data: profilesData } = await supabase
           .from('profiles')
-          .select('id, display_name, photo_url, driver_rating_avg, driver_rating_count')
+          .select('id, display_name, photo_url, driver_rating_avg, driver_rating_count, is_member')
           .in('id', userIds);
         (profilesData || []).forEach((p: any) => { profilesMap[p.id] = p; });
       }

@@ -69,7 +69,7 @@ const RiderDashboard = () => {
         if (driverIds.length > 0) {
           const { data: driverProfiles } = await supabase
             .from("profiles")
-            .select("id, display_name, driver_rating_avg, driver_rating_count, photo_url")
+            .select("id, display_name, driver_rating_avg, driver_rating_count, photo_url, is_member")
             .in("id", driverIds);
 
           // Merge driver data into requests
@@ -414,9 +414,14 @@ const RiderDashboard = () => {
                 </div>
                 <h3 className="text-lg font-semibold mb-2">No Open Trips</h3>
                 <p className="text-muted-foreground mb-6">Start your journey by creating a trip request</p>
-                <Button className="bg-gradient-primary hover:opacity-90" onClick={() => navigate("/rider/create-request")}>
-                  {requests.length > 0 ? "Create New Trip Request" : "Create Your First Trip Request"}
-                </Button>
+                <TripLimitGate
+                  action="create trip request"
+                  onProceed={() => navigate("/rider/create-request")}
+                >
+                  <Button className="bg-gradient-primary hover:opacity-90">
+                    {requests.length > 0 ? "Create New Trip Request" : "Create Your First Trip Request"}
+                  </Button>
+                </TripLimitGate>
               </Card>
             ) : (
               requests.filter(r => r.status === "open").map(request => (

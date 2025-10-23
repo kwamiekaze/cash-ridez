@@ -133,7 +133,7 @@ const CreateRideRequest = () => {
       // Check if account is paused
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("paused")
+        .select("paused, subscription_active, completed_trips_count")
         .eq("id", user?.id)
         .single();
 
@@ -142,6 +142,14 @@ const CreateRideRequest = () => {
       if (profile?.paused) {
         toast.error("Your account is currently paused. Please contact support to reactivate it.");
         setIsSubmitting(false);
+        return;
+      }
+
+      // Check subscription status and trip limit
+      if (!profile?.subscription_active && profile?.completed_trips_count >= 3) {
+        toast.error("You have reached your free trip limit. Please subscribe to continue creating trip requests.");
+        setIsSubmitting(false);
+        navigate("/subscription");
         return;
       }
 

@@ -33,7 +33,9 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
 
   const handleSubscribe = async () => {
     try {
-      await startCheckout();
+      // Pass current URL so user returns here after checkout
+      await startCheckout(window.location.href);
+      setShowDialog(false);
     } catch (error) {
       toast.error("Failed to start checkout. Please try again.");
     }
