@@ -78,13 +78,15 @@ export const AvailableRidersList = () => {
       // Ensure ZIP centroids are loaded
       await loadZipCentroids();
 
-      // Get ALL open ride requests (riders who are "online" looking for rides)
-      // This query fetches EVERY open ride request, not just recent ones
+      // Get a recent slice of open ride requests (last 48h) with a hard cap  
+      const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
       const { data: openRequests, error } = await supabase
         .from('ride_requests')
         .select('id, rider_id, pickup_address, dropoff_address, pickup_zip, pickup_time, price_offer, created_at')
         .eq('status', 'open')
-        .order('created_at', { ascending: false }); // Most recent posts first
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+        .limit(pageSize);
 
       if (error) throw error;
 
