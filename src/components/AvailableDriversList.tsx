@@ -121,26 +121,34 @@ export const AvailableDriversList = () => {
           const driverProfile = driverProfiles?.find(p => p.id === status.user_id);
           const cancelData = cancelStats?.find(c => c.user_id === status.user_id);
           const distance = zipDistanceMiles(profile.profile_zip, status.current_zip);
+          const isWithinRadius = distance !== null && distance <= 25;
+          const isSameSCF = (status.current_zip && profile.profile_zip)
+            ? status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3)
+            : false;
+          const isNearby = isSameSCF || isWithinRadius;
           
           console.info(`🚗 Driver ${driverProfile?.full_name || status.user_id}:`, {
             current_zip: status.current_zip,
-            distance: distance ? `${distance.toFixed(1)} mi` : 'unknown'
+            distance: distance ? `${distance.toFixed(1)} mi` : 'unknown',
+            isSameSCF,
+            isWithinRadius
           });
           
           return {
             ...status,
             ...driverProfile,
             distance,
+            isNearby,
             cancelRate: cancelData?.driver_rate_90d || 0,
             badgeTier: cancelData?.badge_tier || 'green',
             lastUpdated: status.updated_at
           };
         })
         .filter(d => {
-          // Only filter out drivers without names
-          const included = d.full_name;
+          // Only show named drivers in the rider's area
+          const included = !!d.full_name && d.isNearby;
           if (!included) {
-            console.log(`❌ Excluding driver: no name`, { id: d.user_id });
+            console.log(`❌ Excluding driver`, { id: d.user_id, reason: !d.full_name ? 'no name' : 'not nearby' });
           }
           return included;
         })
