@@ -91,8 +91,6 @@ export const AvailableRidersList = () => {
       console.log(`📍 Found ${openRequests?.length || 0} open ride requests (first page)`);
 
       if (openRequests && openRequests.length > 0) {
-        // Lazy load ZIP centroids only when needed
-        await loadZipCentroids();
         // Get rider profiles for all requests
         const riderIds = openRequests.map(r => r.rider_id);
         

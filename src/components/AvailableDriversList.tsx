@@ -94,7 +94,8 @@ export const AvailableDriversList = () => {
         .from('driver_status')
         .select('user_id, state, current_zip, updated_at')
         .gte('updated_at', twentyFourHoursAgo)
-        .order('updated_at', { ascending: false }); // Show most recently updated first
+        .order('updated_at', { ascending: false }) // Show most recently updated first
+        .limit(200);
 
       if (error) throw error;
 
