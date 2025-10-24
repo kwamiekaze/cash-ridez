@@ -4,31 +4,39 @@
 export type ZipCentroids = Record<string, { lat: number; lng: number }>;
 
 let zipDataPromise: Promise<ZipCentroids> | null = null;
+let cachedZipData: ZipCentroids | null = null;
 let memoDistances: Record<string, number> = {};
 
 export const RADIUS_MILES = 25;
 
 export async function loadZipCentroids(): Promise<ZipCentroids> {
-  if (!zipDataPromise) {
-    zipDataPromise = fetch('/data/zip_centroids.json')
-      .then((r) => r.json())
-      .then((data: ZipCentroids) => {
-        // Dev assertions for diagnostics
-        try {
-          const within = isWithin25Miles('30135', '30117', data);
-          // 30518 (Buford) is far from 30135 (Douglasville)
-          const far = isWithin25Miles('30135', '30518', data);
-          console.info('[ZIP Centroids] Loaded. Sample checks:', { within30135_30117: within, far30135_30518: far });
-        } catch (e) {
-          console.warn('[ZIP Centroids] Assertion checks failed to run:', e);
-        }
-        return data;
-      })
-      .catch((e) => {
-        console.error('Failed to load zip_centroids.json', e);
-        return {} as ZipCentroids;
-      });
-  }
+  // Return cached data if available
+  if (cachedZipData) return cachedZipData;
+  
+  // Return in-flight promise if loading
+  if (zipDataPromise) return zipDataPromise;
+  
+  // Start loading
+  zipDataPromise = fetch('/data/zip_centroids.json')
+    .then((r) => r.json())
+    .then((data: ZipCentroids) => {
+      cachedZipData = data;
+      // Dev assertions for diagnostics
+      try {
+        const within = isWithin25Miles('30135', '30117', data);
+        const far = isWithin25Miles('30135', '30518', data);
+        console.info('[ZIP Centroids] Loaded. Sample checks:', { within30135_30117: within, far30135_30518: far });
+      } catch (e) {
+        console.warn('[ZIP Centroids] Assertion checks failed to run:', e);
+      }
+      return data;
+    })
+    .catch((e) => {
+      console.error('Failed to load zip_centroids.json', e);
+      zipDataPromise = null; // Reset on error to allow retry
+      return {} as ZipCentroids;
+    });
+    
   return zipDataPromise;
 }
 
