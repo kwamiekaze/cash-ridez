@@ -114,7 +114,15 @@ export function UserChip({
     lg: "text-base",
   };
 
-  const name = fullName || displayName || `User ${userId.slice(0, 8)}`;
+  // Helper to detect if a string is an email
+  const isEmail = (str?: string) => {
+    if (!str) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
+  };
+
+  // For privacy: never show emails, use full name or user ID instead
+  const safeName = fullName || (isEmail(displayName) ? undefined : displayName);
+  const name = safeName || `User ${userId.slice(0, 8)}`;
   const initials = name[0].toUpperCase();
 
   return (
