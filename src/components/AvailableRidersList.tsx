@@ -25,8 +25,8 @@ export const AvailableRidersList = () => {
     if (user) {
       loadOnlineRiders();
       
-      // Subscribe to ride_requests changes for realtime updates (throttled)
-      let refreshTimer: any = null;
+      // Subscribe to ride_requests changes for realtime updates (debounced to 3s)
+      let refreshTimer: NodeJS.Timeout | null = null;
       const channel = supabase
         .channel('ride_requests_changes')
         .on(
@@ -37,11 +37,11 @@ export const AvailableRidersList = () => {
             table: 'ride_requests',
           },
           () => {
-            if (refreshTimer) return;
+            if (refreshTimer) clearTimeout(refreshTimer);
             refreshTimer = setTimeout(() => {
               loadOnlineRiders();
               refreshTimer = null;
-            }, 1500);
+            }, 3000); // 3 second debounce to reduce load
           }
         )
         .subscribe();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
@@ -19,7 +19,11 @@ interface UserChipProps {
   className?: string;
 }
 
-export function UserChip({
+// Cache for user data to avoid repeated fetches
+const userDataCache = new Map<string, { timestamp: number; data: any }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export const UserChip = memo(function UserChip({
   userId,
   displayName,
   fullName,
@@ -37,71 +41,61 @@ export function UserChip({
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Fetch ratings from public table if not provided
-    if ((providedRatingAvg === undefined || providedRatingCount === undefined) && role) {
-      fetchPublicStats();
-    } else {
-      setRatingAvg(providedRatingAvg);
-      setRatingCount(providedRatingCount);
-    }
+    // Check cache first
+    const cached = userDataCache.get(userId);
+    const now = Date.now();
     
-    // Fetch member status and admin role
-    fetchMemberStatus();
-    fetchAdminRole();
-  }, [userId, role, providedRatingAvg, providedRatingCount]);
-
-  const fetchMemberStatus = async () => {
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_member')
-        .eq('id', userId)
-        .single();
-      
-      if (data) {
-        setIsMember(data.is_member || false);
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      // Use cached data
+      const { isMember: cachedMember, isAdmin: cachedAdmin, stats } = cached.data;
+      setIsMember(cachedMember || false);
+      setIsAdmin(cachedAdmin || false);
+      if (stats && role) {
+        setRatingAvg(role === "rider" ? stats.rider_rating_avg : stats.driver_rating_avg);
+        setRatingCount(role === "rider" ? stats.rider_rating_count : stats.driver_rating_count);
       }
-    } catch (error) {
-      console.error('Error fetching member status:', error);
+      return;
     }
-  };
 
-  const fetchAdminRole = async () => {
-    try {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .maybeSingle();
-      
-      setIsAdmin(!!data);
-    } catch (error) {
-      console.error('Error fetching admin role:', error);
-    }
-  };
+    // Combine all fetches into one
+    const fetchUserData = async () => {
+      try {
+        // Single combined query
+        const [profileRes, roleRes, statsRes] = await Promise.all([
+          supabase.from('profiles').select('is_member').eq('id', userId).single(),
+          supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
+          role && (providedRatingAvg === undefined || providedRatingCount === undefined)
+            ? supabase.from('user_public_stats').select('*').eq('user_id', userId).maybeSingle()
+            : Promise.resolve({ data: null })
+        ]);
 
-  const fetchPublicStats = async () => {
-    try {
-      const { data } = await supabase
-        .from('user_public_stats')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+        const isMember = profileRes.data?.is_member || false;
+        const isAdmin = !!roleRes.data;
+        const stats = statsRes.data;
 
-      if (data && role) {
-        if (role === "rider") {
-          setRatingAvg(data.rider_rating_avg);
-          setRatingCount(data.rider_rating_count);
-        } else if (role === "driver") {
-          setRatingAvg(data.driver_rating_avg);
-          setRatingCount(data.driver_rating_count);
+        // Cache the results
+        userDataCache.set(userId, {
+          timestamp: now,
+          data: { isMember, isAdmin, stats }
+        });
+
+        setIsMember(isMember);
+        setIsAdmin(isAdmin);
+
+        if (stats && role) {
+          setRatingAvg(role === "rider" ? stats.rider_rating_avg : stats.driver_rating_avg);
+          setRatingCount(role === "rider" ? stats.rider_rating_count : stats.driver_rating_count);
+        } else {
+          setRatingAvg(providedRatingAvg);
+          setRatingCount(providedRatingCount);
         }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
       }
-    } catch (error) {
-      console.error('Error fetching public stats:', error);
-    }
-  };
+    };
+
+    fetchUserData();
+  }, [userId, role, providedRatingAvg, providedRatingCount]);
   const avatarSizes = {
     sm: "h-8 w-8",
     md: "h-10 w-10",
@@ -151,4 +145,4 @@ export function UserChip({
       </div>
     </div>
   );
-}
+});
