@@ -24,7 +24,6 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
-    minify: 'terser',
     chunkSizeWarningLimit: 1000,
   },
   optimizeDeps: {
