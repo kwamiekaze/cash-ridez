@@ -145,10 +145,10 @@ export const AvailableDriversList = () => {
           };
         })
         .filter(d => {
-          // Only show named drivers in the rider's area
-          const included = !!d.full_name && d.isNearby;
+          // Only show drivers with names (no distance filtering)
+          const included = !!d.full_name;
           if (!included) {
-            console.log(`❌ Excluding driver`, { id: d.user_id, reason: !d.full_name ? 'no name' : 'not nearby' });
+            console.log(`❌ Excluding driver: no name`, { id: d.user_id });
           }
           return included;
         })
@@ -289,7 +289,7 @@ export const AvailableDriversList = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
-                Drivers in Your Area (Past 24 Hours)
+                All Drivers (Past 24 Hours)
               </CardTitle>
               {drivers.length > 0 && (
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
@@ -310,7 +310,7 @@ export const AvailableDriversList = () => {
             {drivers.length === 0 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-center py-8">
-                No drivers have updated their status in the past 24 hours near {userZip}.
+                No drivers have updated their status in the past 24 hours.
               </p>
               
               <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">

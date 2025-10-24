@@ -131,17 +131,15 @@ export const AvailableRidersList = () => {
           };
         })
         .filter(r => {
-          const included = r.rider?.full_name && r.isNearby;
+          // Only show riders with names (no distance filtering)
+          const included = !!r.rider?.full_name;
           if (!included) {
-            console.log(`❌ Excluding rider:`, {
-              id: r.rider_id,
-              reason: !r.rider?.full_name ? 'no name' : 'not nearby'
-            });
+            console.log(`❌ Excluding rider: no name`, { id: r.rider_id });
           }
           return included;
         });
 
-        console.log(`✅ ${enrichedRiders.length} riders within 25 miles`);
+        console.log(`✅ ${enrichedRiders.length} riders with open requests`);
         setRiders(enrichedRiders);
         setFilteredRiders(enrichedRiders);
       } else {
@@ -224,7 +222,7 @@ export const AvailableRidersList = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Riders Looking for Lifts Within 25 Miles
+            All Riders Looking for Lifts
           </CardTitle>
           {riders.length > 0 && (
             <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
@@ -244,7 +242,7 @@ export const AvailableRidersList = () => {
       <CardContent>
         {riders.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            No riders are currently looking for lifts within 25 miles of {driverZip}.
+            No riders are currently looking for lifts.
           </p>
         ) : (
           <div className="grid gap-4">
