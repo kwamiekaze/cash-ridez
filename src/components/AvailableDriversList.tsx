@@ -11,11 +11,11 @@ import { toast } from "sonner";
 import { RiderZipEditor } from "./RiderZipEditor";
 import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
 
-const statusLabels = {
-  available: "Available",
-  on_trip: "On Trip",
-  busy: "Busy",
-  unavailable: "Unavailable",
+const statusLabels: Record<string, { label: string; color: string }> = {
+  available: { label: "Available Now", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" },
+  on_trip: { label: "On Trip", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" },
+  busy: { label: "Busy", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" },
+  unavailable: { label: "Offline", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100" },
 };
 
 export const AvailableDriversList = () => {
@@ -83,17 +83,19 @@ export const AvailableDriversList = () => {
       // Ensure ZIP centroids are loaded before computing distances
       await loadZipCentroids();
 
-      // Get ALL available drivers with updated_at for timestamp display
-      // This query fetches EVERY driver with state='available', not just recent ones
+      // Get ALL drivers who updated their status in the past 24 hours
+      // This includes available, on_trip, busy, and unavailable states
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
         .select('user_id, state, current_zip, updated_at')
-        .eq('state', 'available')
+        .gte('updated_at', twentyFourHoursAgo)
         .order('updated_at', { ascending: false }); // Show most recently updated first
 
       if (error) throw error;
 
-      console.log(`📍 Found ${driverStatuses?.length || 0} available drivers total (all time)`);
+      console.log(`📍 Found ${driverStatuses?.length || 0} drivers who updated in past 24 hours`);
 
       if (driverStatuses && driverStatuses.length > 0) {
         // Get driver profiles with full details
@@ -279,7 +281,7 @@ export const AvailableDriversList = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
-                Available Drivers Closeby
+                Drivers in Your Area (Past 24 Hours)
               </CardTitle>
               {drivers.length > 0 && (
                 <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
@@ -300,7 +302,7 @@ export const AvailableDriversList = () => {
             {drivers.length === 0 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-center py-8">
-                No drivers are available near {userZip} yet.
+                No drivers have updated their status in the past 24 hours near {userZip}.
               </p>
               
               <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
@@ -338,6 +340,11 @@ export const AvailableDriversList = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold text-base sm:text-lg">{driver.full_name || "Driver"}</h3>
+                              {driver.state && (
+                                <div className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${statusLabels[driver.state]?.color || statusLabels.unavailable.color}`}>
+                                  {statusLabels[driver.state]?.label || "Unknown"}
+                                </div>
+                              )}
                               {driver.is_verified && (
                                 <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 flex items-center gap-1">
                                   ✓ Verified
@@ -348,9 +355,6 @@ export const AvailableDriversList = () => {
                                   ⭐ Member
                                 </div>
                               )}
-                              <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                                🟢 {statusLabels[driver.state]}
-                              </div>
                             </div>
                             
                             <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
