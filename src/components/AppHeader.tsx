@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,9 +65,9 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {showStatus && profile && (
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <StatusBadge status={profile.verification_status} />
                 {profile.active_role && (
                   <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
@@ -75,6 +76,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
                 )}
               </div>
             )}
+            <ThemeToggle />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
