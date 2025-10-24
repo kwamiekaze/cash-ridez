@@ -297,7 +297,7 @@ export const AvailableRidersList = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            All Riders Looking for Lifts
+            Riders Looking for Lifts
           </CardTitle>
           {riders.length > 0 && (
             <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
