@@ -90,16 +90,18 @@ export const AvailableDriversList = () => {
       // This includes available, on_trip, busy, and unavailable states
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       
+      // Fetch drivers who updated in last 48h OR are currently available
+      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
         .select('user_id, state, current_zip, updated_at')
-        .gte('updated_at', twentyFourHoursAgo)
-        .order('updated_at', { ascending: false }) // Show most recently updated first
+        .or(`updated_at.gte.${fortyEightHoursAgo},state.eq.available`)
+        .order('updated_at', { ascending: false })
         .limit(200);
 
       if (error) throw error;
 
-      console.log(`📍 Found ${driverStatuses?.length || 0} drivers who updated in past 24 hours`);
+      console.log(`📍 Found ${driverStatuses?.length || 0} drivers (48h updates or available)`);
 
       if (driverStatuses && driverStatuses.length > 0) {
         // Get driver profiles with full details

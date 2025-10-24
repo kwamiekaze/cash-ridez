@@ -78,19 +78,17 @@ export const AvailableRidersList = () => {
       // Ensure ZIP centroids are loaded
       await loadZipCentroids();
 
-      // Get a recent slice of open ride requests (last 48h) with a hard cap  
-      const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      // Get open ride requests (no time limit - show all open rides)
       const { data: openRequests, error } = await supabase
         .from('ride_requests')
         .select('id, rider_id, pickup_address, dropoff_address, pickup_zip, pickup_time, price_offer, created_at')
         .eq('status', 'open')
-        .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(pageSize);
 
       if (error) throw error;
 
-      console.log(`📍 Found ${openRequests?.length || 0} open ride requests (first page)`);
+      console.log(`📍 Found ${openRequests?.length || 0} open ride requests`);
 
       if (openRequests && openRequests.length > 0) {
         // Get rider profiles for all requests
