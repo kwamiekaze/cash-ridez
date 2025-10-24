@@ -21,7 +21,8 @@ export const AvailableRidersList = () => {
     if (user) {
       loadOnlineRiders();
       
-      // Subscribe to ride_requests changes for realtime updates
+      // Subscribe to ride_requests changes for realtime updates (throttled)
+      let refreshTimer: any = null;
       const channel = supabase
         .channel('ride_requests_changes')
         .on(
@@ -31,16 +32,18 @@ export const AvailableRidersList = () => {
             schema: 'public',
             table: 'ride_requests',
           },
-          (payload) => {
-            console.log('🔄 Ride request changed:', payload);
-            // Always reload ALL open ride requests when any changes
-            // This ensures previously posted rides remain visible
-            loadOnlineRiders();
+          () => {
+            if (refreshTimer) return;
+            refreshTimer = setTimeout(() => {
+              loadOnlineRiders();
+              refreshTimer = null;
+            }, 1500);
           }
         )
         .subscribe();
 
       return () => {
+        if (refreshTimer) clearTimeout(refreshTimer);
         supabase.removeChannel(channel);
       };
     }

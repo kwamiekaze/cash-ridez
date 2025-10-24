@@ -32,7 +32,8 @@ export const AvailableDriversList = () => {
     if (user) {
       loadAvailableDrivers();
       
-      // Subscribe to driver_status changes for realtime updates
+      // Subscribe to driver_status changes for realtime updates (throttled)
+      let refreshTimer: any = null;
       const channel = supabase
         .channel('driver_status_changes')
         .on(
@@ -42,16 +43,18 @@ export const AvailableDriversList = () => {
             schema: 'public',
             table: 'driver_status',
           },
-          (payload) => {
-            console.log('🔄 Driver status changed:', payload);
-            // Always reload ALL drivers when any status changes
-            // This ensures previously available drivers remain visible
-            loadAvailableDrivers();
+          () => {
+            if (refreshTimer) return;
+            refreshTimer = setTimeout(() => {
+              loadAvailableDrivers();
+              refreshTimer = null;
+            }, 1500);
           }
         )
         .subscribe();
 
       return () => {
+        if (refreshTimer) clearTimeout(refreshTimer);
         supabase.removeChannel(channel);
       };
     }

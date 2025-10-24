@@ -48,11 +48,14 @@ const DriverDashboard = () => {
 
       if (!profile?.profile_zip) return;
 
-      // Get nearby available drivers
+      // Get nearby available drivers (last 24 hours)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: driverStatuses } = await supabase
         .from('driver_status')
         .select('user_id, current_zip, state, updated_at')
-        .eq('state', 'available');
+        .eq('state', 'available')
+        .gte('updated_at', twentyFourHoursAgo)
+        .limit(200);
 
       if (!driverStatuses || driverStatuses.length === 0) {
         setNearbyDriverMarkers([]);
@@ -99,7 +102,8 @@ const DriverDashboard = () => {
         .from("ride_requests")
         .select("*")
         .eq("status", "open")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (openData) {
         const riderIds = openData.map(r => r.rider_id);

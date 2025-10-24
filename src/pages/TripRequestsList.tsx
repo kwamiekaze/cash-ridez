@@ -38,7 +38,8 @@ export default function TripRequestsList() {
     fetchUserProfile();
     fetchTripRequests();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates with throttling
+    let refreshTimer: any = null;
     const channel = supabase
       .channel('trip-requests-changes')
       .on(
@@ -49,12 +50,17 @@ export default function TripRequestsList() {
           table: 'ride_requests'
         },
         () => {
-          fetchTripRequests();
+          if (refreshTimer) return;
+          refreshTimer = setTimeout(() => {
+            fetchTripRequests();
+            refreshTimer = null;
+          }, 1500);
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -149,7 +155,8 @@ export default function TripRequestsList() {
       }
       
       const { data: rideData, error: rideError } = await query
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (rideError) throw rideError;
 

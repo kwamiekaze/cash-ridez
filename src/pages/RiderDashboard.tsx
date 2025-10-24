@@ -66,7 +66,9 @@ const RiderDashboard = () => {
       const { data, error } = await supabase
         .from("ride_requests")
         .select("*")
-        .eq("rider_id", user.id);
+        .eq("rider_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
       
       if (error) {
         console.error("Error fetching requests:", error);
@@ -197,7 +199,9 @@ const RiderDashboard = () => {
     const { data, error } = await supabase
       .from("ride_requests")
       .select("*")
-      .eq("rider_id", user.id);
+      .eq("rider_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
     
     if (error) {
       console.error("Error fetching requests:", error);
@@ -273,7 +277,9 @@ const RiderDashboard = () => {
         const { data, error } = await supabase
           .from("ride_requests")
           .select("*")
-          .eq("rider_id", user.id);
+          .eq("rider_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
         
         if (error) {
           console.error("Error fetching requests:", error);
