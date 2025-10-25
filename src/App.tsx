@@ -80,8 +80,8 @@ const App = () => (
           }}
         >
           <AuthProvider>
-          <NotificationPermissionDialog />
           <DeferMount>
+            <NotificationPermissionDialog />
             <FloatingChat />
             <FloatingSupport />
           </DeferMount>
