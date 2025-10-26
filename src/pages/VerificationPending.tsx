@@ -128,12 +128,11 @@ export default function VerificationPending() {
           <div className="relative rounded-lg overflow-hidden bg-muted">
             <video
               autoPlay
-              preload="metadata"
+              loop
               muted
               playsInline
               className="w-full h-auto"
               src="/verification-intro.mp4"
-              controls
             >
               Your browser does not support the video tag.
             </video>

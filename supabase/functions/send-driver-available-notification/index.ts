@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
             type: 'driver_available',
             title: 'Driver Available Near You',
             message: `${driverProfile.full_name} is now available near you (ZIP ${current_zip}, ${distanceText}).`,
-            link: `/rider?tab=area`,
+            link: `/profile/${driver_id}`,
           });
         if (!error) {
           console.log(`Sent notification to rider ${rider.id} (attempt ${attempt})`);

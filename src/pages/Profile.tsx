@@ -43,8 +43,6 @@ const Profile = () => {
     verification_status: "pending",
     created_at: "",
   });
-  const [adminLockedFields, setAdminLockedFields] = useState<string[]>([]);
-  const [originalName, setOriginalName] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -83,8 +81,6 @@ const Profile = () => {
           verification_status: data.verification_status || "pending",
           created_at: data.created_at || "",
         });
-        setAdminLockedFields(data.admin_locked_fields || []);
-        setOriginalName(data.full_name || "");
       }
     };
 
@@ -177,43 +173,25 @@ const Profile = () => {
     e.preventDefault();
     if (!user) return;
 
-    // Prepare update object with only non-locked fields
-    const updates: any = {};
-    
-    // Check if full_name is admin-locked
-    if (adminLockedFields.includes('full_name')) {
-      // Use original admin-set name
-      updates.full_name = originalName;
-      if (profile.full_name !== originalName) {
-        toast({
-          title: "Name Protected",
-          description: "Your name has been set by an admin and cannot be changed. Other changes have been saved.",
-          variant: "default",
-        });
-      }
-    } else {
-      // Validate full name - only allow letters, spaces, hyphens, apostrophes, and periods
-      if (profile.full_name && !/^[a-zA-Z\s'\-\.]+$/.test(profile.full_name)) {
-        toast({
-          title: "Invalid Name",
-          description: "Full name can only contain letters, spaces, hyphens, apostrophes, and periods",
-          variant: "destructive",
-        });
-        return;
-      }
-      updates.full_name = profile.full_name;
-      updates.display_name = profile.full_name;
+    // Validate full name - only allow letters, spaces, hyphens, apostrophes, and periods
+    if (profile.full_name && !/^[a-zA-Z\s'\-\.]+$/.test(profile.full_name)) {
+      toast({
+        title: "Invalid Name",
+        description: "Full name can only contain letters, spaces, hyphens, apostrophes, and periods",
+        variant: "destructive",
+      });
+      return;
     }
-
-    // Add other fields (these can always be updated by the user)
-    updates.phone_number = profile.phone_number;
-    updates.bio = profile.bio;
 
     setLoading(true);
     try {
       const { error } = await supabase
         .from("profiles")
-        .update(updates)
+        .update({
+          full_name: profile.full_name,
+          phone_number: profile.phone_number,
+          bio: profile.bio,
+        })
         .eq("id", user.id);
 
       if (error) throw error;
@@ -374,12 +352,7 @@ const Profile = () => {
 
             {/* Full Name */}
             <div className="space-y-2">
-              <Label htmlFor="full_name">
-                Full Name (Legal Full Name)
-                {adminLockedFields.includes('full_name') && (
-                  <span className="ml-2 text-xs text-warning">(Admin Protected)</span>
-                )}
-              </Label>
+              <Label htmlFor="full_name">Full Name (Legal Full Name)</Label>
               <Input
                 id="full_name"
                 value={profile.full_name}
@@ -391,16 +364,8 @@ const Profile = () => {
                   }
                 }}
                 placeholder="Enter your full name"
-                disabled={adminLockedFields.includes('full_name')}
-                className={adminLockedFields.includes('full_name') ? 'bg-muted cursor-not-allowed' : ''}
               />
-              {adminLockedFields.includes('full_name') ? (
-                <p className="text-xs text-muted-foreground bg-warning/10 p-2 rounded border border-warning/20">
-                  This field has been set by an admin and cannot be modified.
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">Letters, spaces, hyphens, apostrophes, and periods only</p>
-              )}
+              <p className="text-xs text-muted-foreground">Letters, spaces, hyphens, apostrophes, and periods only</p>
             </div>
 
             {/* Email (read-only) */}

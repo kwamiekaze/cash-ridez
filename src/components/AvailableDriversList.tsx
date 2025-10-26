@@ -2,38 +2,37 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, MapPin, Star, Clock } from "lucide-react";
+import { Loader2, MapPin, Star, User } from "lucide-react";
 import { toast } from "sonner";
 import { RiderZipEditor } from "./RiderZipEditor";
 import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
+import { useNavigate } from "react-router-dom";
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  available: { label: "Available Now", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" },
-  on_trip: { label: "On Trip", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100" },
-  busy: { label: "Busy", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100" },
-  unavailable: { label: "Offline", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100" },
+const statusLabels = {
+  available: "Available",
+  on_trip: "On Trip",
+  busy: "Busy",
+  unavailable: "Unavailable",
 };
 
 export const AvailableDriversList = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState<any[]>([]);
-  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
   const [userZip, setUserZip] = useState<string | null>(null);
   const [notifyNewDriver, setNotifyNewDriver] = useState(false);
   const [updatingNotification, setUpdatingNotification] = useState(false);
-  const [sortBy, setSortBy] = useState<"distance" | "rating" | "cancellation" | "recent">("distance");
 
   useEffect(() => {
     if (user) {
       loadAvailableDrivers();
       
-      // Subscribe to driver_status changes for realtime updates (debounced to 5s)
-      let refreshTimer: NodeJS.Timeout | null = null;
+      // Subscribe to driver_status changes for realtime updates
       const channel = supabase
         .channel('driver_status_changes')
         .on(
@@ -43,18 +42,15 @@ export const AvailableDriversList = () => {
             schema: 'public',
             table: 'driver_status',
           },
-          () => {
-            if (refreshTimer) clearTimeout(refreshTimer);
-            refreshTimer = setTimeout(() => {
-              loadAvailableDrivers();
-              refreshTimer = null;
-            }, 5000); // 5 second debounce - driver status changes less frequently
+          (payload) => {
+            console.log('🔄 Driver status changed:', payload);
+            // Reload drivers when any status changes
+            loadAvailableDrivers();
           }
         )
         .subscribe();
 
       return () => {
-        if (refreshTimer) clearTimeout(refreshTimer);
         supabase.removeChannel(channel);
       };
     }
@@ -86,22 +82,15 @@ export const AvailableDriversList = () => {
       // Ensure ZIP centroids are loaded before computing distances
       await loadZipCentroids();
 
-      // Get ALL drivers who updated their status in the past 24 hours
-      // This includes available, on_trip, busy, and unavailable states
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      
-      // Fetch drivers who updated in last 48h OR are currently available
-      const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+      // Get ALL available drivers (we'll filter by distance client-side)
       const { data: driverStatuses, error } = await supabase
         .from('driver_status')
-        .select('user_id, state, current_zip, updated_at')
-        .or(`updated_at.gte.${fortyEightHoursAgo},state.eq.available`)
-        .order('updated_at', { ascending: false })
-        .limit(200);
+        .select('*')
+        .eq('state', 'available');
 
       if (error) throw error;
 
-      console.log(`📍 Found ${driverStatuses?.length || 0} drivers (48h updates or available)`);
+      console.log(`📍 Found ${driverStatuses?.length || 0} available drivers total`);
 
       if (driverStatuses && driverStatuses.length > 0) {
         // Get driver profiles with full details
@@ -122,39 +111,41 @@ export const AvailableDriversList = () => {
         const driverProfiles = profilesResult.data;
         const cancelStats = cancelStatsResult.data;
 
-        // Merge data and calculate distances for all drivers
+        // Merge data, calculate distances, and filter by 25-mile radius
         const enrichedDrivers = driverStatuses.map(status => {
           const driverProfile = driverProfiles?.find(p => p.id === status.user_id);
           const cancelData = cancelStats?.find(c => c.user_id === status.user_id);
           const distance = zipDistanceMiles(profile.profile_zip, status.current_zip);
+          
+          // Compute proximity using 25-mile rule with SCF fallback
+          const isNearby = isWithin25Miles(profile.profile_zip, status.current_zip);
+          const isSameSCF = status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3);
           const isWithinRadius = distance !== null && distance <= 25;
-          const isSameSCF = (status.current_zip && profile.profile_zip)
-            ? status.current_zip.slice(0, 3) === profile.profile_zip.slice(0, 3)
-            : false;
-          const isNearby = isSameSCF || isWithinRadius;
           
           console.info(`🚗 Driver ${driverProfile?.full_name || status.user_id}:`, {
             current_zip: status.current_zip,
             distance: distance ? `${distance.toFixed(1)} mi` : 'unknown',
             isSameSCF,
-            isWithinRadius
+            isWithinRadius,
+            isNearby
           });
           
           return {
             ...status,
             ...driverProfile,
             distance,
-            isNearby,
             cancelRate: cancelData?.driver_rate_90d || 0,
             badgeTier: cancelData?.badge_tier || 'green',
-            lastUpdated: status.updated_at
+            isNearby: isSameSCF || isWithinRadius
           };
         })
         .filter(d => {
-          // Only show drivers with names (no distance filtering)
-          const included = !!d.full_name;
+          const included = d.full_name && d.isNearby;
           if (!included) {
-            console.log(`❌ Excluding driver: no name`, { id: d.user_id });
+            console.log(`❌ Excluding driver:`, {
+              id: d.user_id,
+              reason: !d.full_name ? 'no name' : 'not nearby'
+            });
           }
           return included;
         })
@@ -165,12 +156,10 @@ export const AvailableDriversList = () => {
           return a.distance - b.distance;
         });
 
-        console.log(`✅ ${enrichedDrivers.length} available drivers`);
+        console.log(`✅ ${enrichedDrivers.length} drivers within 25 miles`);
         setDrivers(enrichedDrivers);
-        setFilteredDrivers(enrichedDrivers);
       } else {
         setDrivers([]);
-        setFilteredDrivers([]);
       }
     } catch (error) {
       console.error('❌ Error loading drivers:', error);
@@ -178,45 +167,6 @@ export const AvailableDriversList = () => {
       setLoading(false);
     }
   };
-
-  // Apply sorting when sortBy or drivers change
-  useEffect(() => {
-    if (drivers.length === 0) {
-      setFilteredDrivers([]);
-      return;
-    }
-
-    const sorted = [...drivers].sort((a, b) => {
-      switch (sortBy) {
-        case "rating":
-          // Sort by rating (highest first), nulls last
-          if (!a.driver_rating_avg && !b.driver_rating_avg) return 0;
-          if (!a.driver_rating_avg) return 1;
-          if (!b.driver_rating_avg) return -1;
-          return b.driver_rating_avg - a.driver_rating_avg;
-        
-        case "cancellation":
-          // Sort by cancellation rate (lowest first)
-          return (a.cancelRate || 0) - (b.cancelRate || 0);
-        
-        case "recent":
-          // Sort by most recently updated (newest first)
-          if (!a.lastUpdated && !b.lastUpdated) return 0;
-          if (!a.lastUpdated) return 1;
-          if (!b.lastUpdated) return -1;
-          return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
-        
-        case "distance":
-        default:
-          // Sort by distance (closest first), nulls last
-          if (a.distance === null) return 1;
-          if (b.distance === null) return -1;
-          return a.distance - b.distance;
-      }
-    });
-
-    setFilteredDrivers(sorted);
-  }, [drivers, sortBy]);
 
   const handleZipSaved = (zip: string) => {
     setUserZip(zip);
@@ -259,23 +209,9 @@ export const AvailableDriversList = () => {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Update Your Location - Always at top */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
-            Update Your Location
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
-        </CardContent>
-      </Card>
-
-      {/* Available Drivers Section */}
-      {!userZip ? (
+  if (!userZip) {
+    return (
+      <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -284,39 +220,30 @@ export const AvailableDriversList = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground text-center py-4">
-              Set your ZIP code above to see available drivers in your area.
+            <p className="text-muted-foreground mb-4">
+              Set your ZIP code to see available drivers in your area.
             </p>
+            <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                All Drivers (Past 24 Hours)
-              </CardTitle>
-              {drivers.length > 0 && (
-                <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
-                  <SelectTrigger className="w-full sm:w-[200px]">
-                    <SelectValue placeholder="Sort by..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="distance">Closest to me</SelectItem>
-                    <SelectItem value="recent">Recently Available</SelectItem>
-                    <SelectItem value="rating">Highest rated</SelectItem>
-                    <SelectItem value="cancellation">Lowest cancellation rate</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {drivers.length === 0 ? (
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5" />
+            Available Drivers Within 25 Miles of {userZip}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {drivers.length === 0 ? (
             <div className="space-y-6">
               <p className="text-muted-foreground text-center py-8">
-                No drivers have updated their status in the past 24 hours.
+                No drivers are available within 25 miles of {userZip} yet.
               </p>
               
               <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
@@ -336,10 +263,10 @@ export const AvailableDriversList = () => {
                 />
               </div>
             </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="grid gap-4">
-                  {filteredDrivers.map((driver) => (
+          ) : (
+            <div className="space-y-6">
+              <div className="grid gap-4">
+                {drivers.map((driver) => (
                   <Card key={driver.id} className="overflow-hidden hover:shadow-md transition-shadow border-2">
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex items-start gap-3 sm:gap-4">
@@ -354,11 +281,6 @@ export const AvailableDriversList = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="font-semibold text-base sm:text-lg">{driver.full_name || "Driver"}</h3>
-                              {driver.state && (
-                                <div className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${statusLabels[driver.state]?.color || statusLabels.unavailable.color}`}>
-                                  {statusLabels[driver.state]?.label || "Unknown"}
-                                </div>
-                              )}
                               {driver.is_verified && (
                                 <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 flex items-center gap-1">
                                   ✓ Verified
@@ -369,6 +291,9 @@ export const AvailableDriversList = () => {
                                   ⭐ Member
                                 </div>
                               )}
+                              <div className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                                🟢 {statusLabels[driver.state]}
+                              </div>
                             </div>
                             
                             <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
@@ -393,57 +318,64 @@ export const AvailableDriversList = () => {
                             </div>
                           </div>
                           
-                          <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-xs sm:text-sm">
-                              <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="text-muted-foreground">
-                                Located in <span className="font-medium text-foreground">{driver.current_zip}</span>
-                                {driver.distance && <span> • {formatDistance(driver.distance)}</span>}
-                              </span>
-                            </div>
-                            {driver.lastUpdated && (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3 flex-shrink-0" />
-                                <span>
-                                  Updated {new Date(driver.lastUpdated).toLocaleString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: 'numeric',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
-                              </div>
-                            )}
+                          <div className="flex items-center gap-2 text-xs sm:text-sm">
+                            <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="text-muted-foreground">
+                              Located in <span className="font-medium text-foreground">{driver.current_zip}</span>
+                              {driver.distance && <span> • {formatDistance(driver.distance)}</span>}
+                            </span>
                           </div>
+                          
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="w-full sm:w-auto mt-2"
+                            onClick={() => navigate(`/profile/${driver.id}`)}
+                          >
+                            <User className="h-4 w-4 mr-2" />
+                            View Profile
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border border-border rounded-lg bg-muted/30">
-                  <div className="space-y-1 flex-1">
-                    <Label htmlFor="notify-toggle" className="text-sm sm:text-base font-medium cursor-pointer">
-                      Notify me when a driver becomes available in my ZIP
-                    </Label>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Get notified when new drivers become available near you
-                    </p>
-                  </div>
-                  <Switch
-                    id="notify-toggle"
-                    checked={notifyNewDriver}
-                    onCheckedChange={handleNotificationToggle}
-                    disabled={updatingNotification}
-                    className="flex-shrink-0"
-                  />
-                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border border-border rounded-lg bg-muted/30">
+                <div className="space-y-1 flex-1">
+                  <Label htmlFor="notify-toggle" className="text-sm sm:text-base font-medium cursor-pointer">
+                    Notify me when a driver becomes available in my ZIP
+                  </Label>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Get notified when new drivers become available near you
+                  </p>
+                </div>
+                <Switch
+                  id="notify-toggle"
+                  checked={notifyNewDriver}
+                  onCheckedChange={handleNotificationToggle}
+                  disabled={updatingNotification}
+                  className="flex-shrink-0"
+                />
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* ZIP Editor Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
+            Update Your Location
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RiderZipEditor onZipSaved={handleZipSaved} variant="inline" />
+        </CardContent>
+      </Card>
     </div>
   );
 };

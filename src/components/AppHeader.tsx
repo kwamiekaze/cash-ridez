@@ -1,12 +1,11 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Car, LogOut, User, History, HeadphonesIcon, Crown, Shield } from "lucide-react";
+import { Car, LogOut, User, History, HeadphonesIcon, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
-import { ThemeToggle } from "./ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,16 +26,12 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
       setProfile(data);
-      // Check admin role via security-definer RPC to avoid RLS issues
-      const { data: hasAdmin } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
-      setIsAdmin(Boolean(hasAdmin));
     };
     fetchProfile();
   }, [user]);
@@ -50,7 +45,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
             if (profile?.active_role === 'rider') {
               navigate('/rider');
             } else if (profile?.active_role === 'driver') {
-              navigate('/driver');
+              navigate('/trips');
             } else {
               navigate('/dashboard');
             }
@@ -65,9 +60,9 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-4">
             {showStatus && profile && (
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <StatusBadge status={profile.verification_status} />
                 {profile.active_role && (
                   <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
@@ -76,7 +71,6 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
                 )}
               </div>
             )}
-            <ThemeToggle />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -109,12 +103,6 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
                   <History className="mr-2 h-4 w-4" />
                   History
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Admin
-                  </DropdownMenuItem>
-                )}
                 {!profile?.is_member && (
                   <DropdownMenuItem onClick={() => navigate("/subscription")} className="cursor-pointer">
                     <Crown className="mr-2 h-4 w-4" />

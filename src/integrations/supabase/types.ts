@@ -268,21 +268,18 @@ export type Database = {
       }
       driver_status: {
         Row: {
-          approx_geo: Json | null
           current_zip: string | null
           state: string
           updated_at: string
           user_id: string
         }
         Insert: {
-          approx_geo?: Json | null
           current_zip?: string | null
           state?: string
           updated_at?: string
           user_id: string
         }
         Update: {
-          approx_geo?: Json | null
           current_zip?: string | null
           state?: string
           updated_at?: string

@@ -32,25 +32,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Set up auth state listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
       
       // Handle navigation after auth state changes
       if (event === 'SIGNED_IN' && session) {
-        // Fetch user profile to determine redirect
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("active_role, is_verified")
-          .eq("id", session.user.id)
-          .single();
-        
-        if (profile?.is_verified && profile?.active_role) {
-          navigate(profile.active_role === 'driver' ? '/driver' : '/rider');
-        } else {
-          navigate('/dashboard');
-        }
+        navigate('/dashboard');
       }
     });
 

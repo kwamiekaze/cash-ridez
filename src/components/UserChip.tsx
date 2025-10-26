@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
@@ -19,11 +19,7 @@ interface UserChipProps {
   className?: string;
 }
 
-// Cache for user data to avoid repeated fetches
-const userDataCache = new Map<string, { timestamp: number; data: any }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-export const UserChip = memo(function UserChip({
+export function UserChip({
   userId,
   displayName,
   fullName,
@@ -41,61 +37,71 @@ export const UserChip = memo(function UserChip({
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check cache first
-    const cached = userDataCache.get(userId);
-    const now = Date.now();
-    
-    if (cached && now - cached.timestamp < CACHE_DURATION) {
-      // Use cached data
-      const { isMember: cachedMember, isAdmin: cachedAdmin, stats } = cached.data;
-      setIsMember(cachedMember || false);
-      setIsAdmin(cachedAdmin || false);
-      if (stats && role) {
-        setRatingAvg(role === "rider" ? stats.rider_rating_avg : stats.driver_rating_avg);
-        setRatingCount(role === "rider" ? stats.rider_rating_count : stats.driver_rating_count);
-      }
-      return;
+    // Fetch ratings from public table if not provided
+    if ((providedRatingAvg === undefined || providedRatingCount === undefined) && role) {
+      fetchPublicStats();
+    } else {
+      setRatingAvg(providedRatingAvg);
+      setRatingCount(providedRatingCount);
     }
-
-    // Combine all fetches into one
-    const fetchUserData = async () => {
-      try {
-        // Single combined query
-        const [profileRes, roleRes, statsRes] = await Promise.all([
-          supabase.from('profiles').select('is_member').eq('id', userId).single(),
-          supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
-          role && (providedRatingAvg === undefined || providedRatingCount === undefined)
-            ? supabase.from('user_public_stats').select('*').eq('user_id', userId).maybeSingle()
-            : Promise.resolve({ data: null })
-        ]);
-
-        const isMember = profileRes.data?.is_member || false;
-        const isAdmin = !!roleRes.data;
-        const stats = statsRes.data;
-
-        // Cache the results
-        userDataCache.set(userId, {
-          timestamp: now,
-          data: { isMember, isAdmin, stats }
-        });
-
-        setIsMember(isMember);
-        setIsAdmin(isAdmin);
-
-        if (stats && role) {
-          setRatingAvg(role === "rider" ? stats.rider_rating_avg : stats.driver_rating_avg);
-          setRatingCount(role === "rider" ? stats.rider_rating_count : stats.driver_rating_count);
-        } else {
-          setRatingAvg(providedRatingAvg);
-          setRatingCount(providedRatingCount);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
-    fetchUserData();
+    
+    // Fetch member status and admin role
+    fetchMemberStatus();
+    fetchAdminRole();
   }, [userId, role, providedRatingAvg, providedRatingCount]);
+
+  const fetchMemberStatus = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_member')
+        .eq('id', userId)
+        .single();
+      
+      if (data) {
+        setIsMember(data.is_member || false);
+      }
+    } catch (error) {
+      console.error('Error fetching member status:', error);
+    }
+  };
+
+  const fetchAdminRole = async () => {
+    try {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+      
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error('Error fetching admin role:', error);
+    }
+  };
+
+  const fetchPublicStats = async () => {
+    try {
+      const { data } = await supabase
+        .from('user_public_stats')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (data && role) {
+        if (role === "rider") {
+          setRatingAvg(data.rider_rating_avg);
+          setRatingCount(data.rider_rating_count);
+        } else if (role === "driver") {
+          setRatingAvg(data.driver_rating_avg);
+          setRatingCount(data.driver_rating_count);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching public stats:', error);
+    }
+  };
   const avatarSizes = {
     sm: "h-8 w-8",
     md: "h-10 w-10",
@@ -108,15 +114,7 @@ export const UserChip = memo(function UserChip({
     lg: "text-base",
   };
 
-  // Helper to detect if a string is an email
-  const isEmail = (str?: string) => {
-    if (!str) return false;
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
-  };
-
-  // For privacy: never show emails, use full name or user ID instead
-  const safeName = fullName || (isEmail(displayName) ? undefined : displayName);
-  const name = safeName || `User ${userId.slice(0, 8)}`;
+  const name = fullName || displayName || `User ${userId.slice(0, 8)}`;
   const initials = name[0].toUpperCase();
 
   return (
@@ -145,4 +143,4 @@ export const UserChip = memo(function UserChip({
       </div>
     </div>
   );
-});
+}

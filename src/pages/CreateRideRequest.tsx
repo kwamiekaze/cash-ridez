@@ -98,11 +98,62 @@ const CreateRideRequest = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return; // Guard against double submit
     setIsSubmitting(true);
 
     try {
-      // 1) Validate form first to avoid unnecessary network calls
+      // Check for active trips - allow max 2 open trips and 1 connected trip
+      const { data: openTrips, error: openError } = await supabase
+        .from("ride_requests")
+        .select("id")
+        .eq("rider_id", user?.id)
+        .eq("status", "open");
+
+      if (openError) throw openError;
+
+      if (openTrips && openTrips.length >= 2) {
+        toast.error("You can have a maximum of 2 open trip requests at a time.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: assignedTrips, error: assignedError } = await supabase
+        .from("ride_requests")
+        .select("id")
+        .or(`rider_id.eq.${user?.id},assigned_driver_id.eq.${user?.id}`)
+        .eq("status", "assigned");
+
+      if (assignedError) throw assignedError;
+
+      if (assignedTrips && assignedTrips.length >= 1) {
+        toast.error("You already have a connected trip. Please complete or cancel it before creating a new one.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check if account is paused
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("paused, subscription_active, completed_trips_count")
+        .eq("id", user?.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      if (profile?.paused) {
+        toast.error("Your account is currently paused. Please contact support to reactivate it.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check subscription status and trip limit
+      if (!profile?.subscription_active && profile?.completed_trips_count >= 3) {
+        toast.error("You have reached your free trip limit. Please subscribe to continue creating trip requests.");
+        setIsSubmitting(false);
+        navigate("/subscription");
+        return;
+      }
+
+      // Validate form data
       const validationResult = rideRequestSchema.safeParse(formData);
       if (!validationResult.success) {
         const firstError = validationResult.error.errors[0];
@@ -111,15 +162,17 @@ const CreateRideRequest = () => {
         return;
       }
 
-      // 2) Validate pickup time if provided
+      // Validate pickup time if provided
       if (formData.pickupTime) {
         const pickupDate = new Date(formData.pickupTime);
         const now = new Date();
+        
         if (isNaN(pickupDate.getTime())) {
           toast.error("Invalid pickup time format");
           setIsSubmitting(false);
           return;
         }
+        
         if (pickupDate < now) {
           toast.error("Pickup time cannot be in the past");
           setIsSubmitting(false);
@@ -127,125 +180,52 @@ const CreateRideRequest = () => {
         }
       }
 
-      // 3) Run trip-limit queries in parallel and use COUNT for speed
-      const userId = user?.id as string;
-      const openPromise = supabase
-        .from("ride_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("rider_id", userId)
-        .eq("status", "open");
-      const assignedPromise = supabase
-        .from("ride_requests")
-        .select("id", { count: "exact", head: true })
-        .or(`rider_id.eq.${userId},assigned_driver_id.eq.${userId}`)
-        .eq("status", "assigned");
-
-      const [openRes, assignedRes] = await Promise.all([openPromise, assignedPromise]);
-      if (openRes.error) throw openRes.error;
-      if (assignedRes.error) throw assignedRes.error;
-
-      const openCount = openRes.count ?? 0;
-      const assignedCount = assignedRes.count ?? 0;
-
-      if (openCount >= 2) {
-        toast.error("You can have a maximum of 2 open trip requests at a time.");
-        setIsSubmitting(false);
-        return;
-      }
-      if (assignedCount >= 1) {
-        toast.error("You already have a connected trip. Please complete or cancel it before creating a new one.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      // 4) Check account status using already-fetched profile where possible
-      let currentProfile = profile as any;
-      if (!currentProfile) {
-        const { data: profData, error: profileError } = await supabase
-          .from("profiles")
-          .select("paused, subscription_active, completed_trips_count")
-          .eq("id", userId)
-          .maybeSingle();
-        if (profileError) throw profileError;
-        currentProfile = profData;
-      }
-
-      if (currentProfile?.paused) {
-        toast.error("Your account is currently paused. Please contact support to reactivate it.");
-        setIsSubmitting(false);
-        return;
-      }
-      if (!currentProfile?.subscription_active && (currentProfile?.completed_trips_count ?? 0) >= 3) {
-        toast.error("You have reached your free trip limit. Please subscribe to continue creating trip requests.");
-        setIsSubmitting(false);
-        navigate("/subscription");
-        return;
-      }
-
-      // 5) Geocode addresses (stubbed) and build keywords
+      // Geocode addresses
       const pickupGeo = await geocodeAddress(formData.pickupAddress.trim());
       const dropoffGeo = await geocodeAddress(formData.dropoffAddress.trim());
 
-      const sanitizeForKeywords = (text: string) =>
+      // Create search keywords - sanitize and filter
+      const sanitizeForKeywords = (text: string) => 
         text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((k) => k.length > 2);
+      
       const keywords = [
         ...sanitizeForKeywords(formData.pickupAddress),
         ...sanitizeForKeywords(formData.dropoffAddress),
         ...(formData.contactInfo ? sanitizeForKeywords(formData.contactInfo) : []),
       ];
 
-      // 6) Create the trip
-      const { data: newTrip, error } = await supabase
-        .from("ride_requests")
-        .insert({
-          rider_id: userId,
-          pickup_address: formData.pickupAddress.trim(),
-          pickup_lat: pickupGeo.lat,
-          pickup_lng: pickupGeo.lng,
-          pickup_zip: pickupGeo.zip,
-          dropoff_address: formData.dropoffAddress.trim(),
-          dropoff_lat: dropoffGeo.lat,
-          dropoff_lng: dropoffGeo.lng,
-          dropoff_zip: dropoffGeo.zip,
-          pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
-          rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
-          rider_note_image_url: null,
-          price_offer: parseFloat(formData.priceOffer),
-          search_keywords: keywords,
-          status: "open",
-        })
-        .select()
-        .single();
+      const { error } = await supabase.from("ride_requests").insert({
+        rider_id: user?.id,
+        pickup_address: formData.pickupAddress.trim(),
+        pickup_lat: pickupGeo.lat,
+        pickup_lng: pickupGeo.lng,
+        pickup_zip: pickupGeo.zip,
+        dropoff_address: formData.dropoffAddress.trim(),
+        dropoff_lat: dropoffGeo.lat,
+        dropoff_lng: dropoffGeo.lng,
+        dropoff_zip: dropoffGeo.zip,
+        pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
+        rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
+        rider_note_image_url: null,
+        price_offer: parseFloat(formData.priceOffer),
+        search_keywords: keywords,
+        status: "open",
+      });
+
       if (error) throw error;
 
-      // 7) Fire-and-forget notifications (non-blocking)
-      if (newTrip) {
-        supabase.functions
-          .invoke('send-new-trip-notification', {
-            body: { ride_request_id: newTrip.id, rider_id: userId, pickup_zip: pickupGeo.zip },
-          })
-          .then((result) => {
-            console.log('✅ New trip notification response:', result);
-          })
-          .catch((err) => {
-            console.error('❌ Error sending new trip notifications:', err);
-          });
-      }
-
       toast.success("Trip request created!");
-      // Navigate immediately for snappier UX; the Rider page can refresh on mount
-      navigate("/rider", { state: { refreshRequests: true, newRequestId: newTrip?.id, timestamp: Date.now() } });
+      
+      // Longer delay to ensure database commit and replication completes
+      await new Promise(resolve => setTimeout(resolve, 800));
+      navigate("/rider", { state: { refreshRequests: true, timestamp: Date.now() } });
     } catch (error: any) {
-      const raw = typeof error?.message === 'string' ? error.message : String(error);
-      if (/load failed|failed to fetch|network/i.test(raw)) {
-        toast.error("Network issue while creating your trip. Please try again.");
-      } else {
-        toast.error(raw || "Failed to create trip request");
-      }
+      toast.error(error.message || "Failed to create trip request");
     } finally {
       setIsSubmitting(false);
     }
   };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

@@ -66,19 +66,19 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="margin: 8px 0;"><strong>Email:</strong> ${driverEmail}</p>
         </div>
 
-        <p>You can now message your driver directly through the CashRidez app to coordinate pickup details.</p>
+        <p>You can now message your driver directly through the Cash Ridez app to coordinate pickup details.</p>
         
         <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0;">
           <h3 style="margin-top: 0; color: #991b1b;">⚠️ Safety Reminder</h3>
           <ul style="color: #991b1b; margin: 8px 0;">
-            <li>Only communicate through the CashRidez platform initially</li>
+            <li>Only communicate through the Cash Ridez platform initially</li>
             <li>Verify the driver's identity before getting in the vehicle</li>
             <li>Never send money in advance - payments should be made in person after the trip</li>
             <li>Share your trip details with a friend or family member</li>
           </ul>
         </div>
 
-        <p style="margin-top: 32px; color: #6b7280;">Safe travels!<br>The CashRidez Team</p>
+        <p style="margin-top: 32px; color: #6b7280;">Safe travels!<br>The Cash Ridez Team</p>
       </div>
     `;
 
@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p style="margin: 8px 0;"><strong>Email:</strong> ${riderEmail}</p>
         </div>
 
-        <p>You can now message the rider directly through the CashRidez app to coordinate pickup details.</p>
+        <p>You can now message the rider directly through the Cash Ridez app to coordinate pickup details.</p>
         
         <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0;">
           <h3 style="margin-top: 0; color: #92400e;">💡 Driver Tips</h3>
@@ -116,20 +116,20 @@ const handler = async (req: Request): Promise<Response> => {
           </ul>
         </div>
 
-        <p style="margin-top: 32px; color: #6b7280;">Safe travels!<br>The CashRidez Team</p>
+        <p style="margin-top: 32px; color: #6b7280;">Safe travels!<br>The Cash Ridez Team</p>
       </div>
     `;
 
     // Send both emails
     const [riderEmailResponse, driverEmailResponse] = await Promise.all([
       resend.emails.send({
-        from: "CashRidez <noreply@cashridez.com>",
+        from: "Cash Ridez <onboarding@resend.dev>",
         to: [riderEmail],
         subject: "🚗 Your Ride Has Been Accepted!",
         html: riderHtml,
       }),
       resend.emails.send({
-        from: "CashRidez <noreply@cashridez.com>",
+        from: "Cash Ridez <onboarding@resend.dev>",
         to: [driverEmail],
         subject: "🚗 Ride Confirmation - Contact Information Shared",
         html: driverHtml,
