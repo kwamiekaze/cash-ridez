@@ -6,7 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Car, LogOut, Users, CheckCircle, XCircle, Shield, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Car, LogOut, Users, CheckCircle, XCircle, Shield, Loader2, ChevronDown, User2 } from "lucide-react";
 import StatusBadge from "@/components/StatusBadge";
 import { toast } from "sonner";
 import { UserManagementTable } from "@/components/UserManagementTable";
@@ -43,12 +49,10 @@ const AdminDashboard = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .eq("role", "admin")
-          .maybeSingle();
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: user.id,
+          _role: 'admin'
+        });
 
         if (error || !data) {
           console.error("Unauthorized access attempt to admin panel");
@@ -212,10 +216,31 @@ const AdminDashboard = () => {
                 <p className="text-xs text-muted-foreground">Admin Panel</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => signOut()}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Admin
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40 bg-card border-border">
+                  <DropdownMenuItem className="cursor-pointer">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="cursor-pointer">
+                    <User2 className="mr-2 h-4 w-4" />
+                    User
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" onClick={() => signOut()}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </header>

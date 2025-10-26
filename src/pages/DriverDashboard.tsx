@@ -12,6 +12,7 @@ import { UserChip } from "@/components/UserChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
 import { DriverAvailability } from "@/components/DriverAvailability";
+import { AvailableRidersList } from "@/components/AvailableRidersList";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -47,11 +48,14 @@ const DriverDashboard = () => {
 
       if (!profile?.profile_zip) return;
 
-      // Get nearby available drivers
+      // Get nearby available drivers (last 24 hours)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: driverStatuses } = await supabase
         .from('driver_status')
         .select('user_id, current_zip, state, updated_at')
-        .eq('state', 'available');
+        .eq('state', 'available')
+        .gte('updated_at', twentyFourHoursAgo)
+        .limit(200);
 
       if (!driverStatuses || driverStatuses.length === 0) {
         setNearbyDriverMarkers([]);
@@ -98,7 +102,8 @@ const DriverDashboard = () => {
         .from("ride_requests")
         .select("*")
         .eq("status", "open")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (openData) {
         const riderIds = openData.map(r => r.rider_id);
@@ -341,24 +346,8 @@ const DriverDashboard = () => {
           <TabsContent value="availability" className="space-y-4">
             <DriverAvailability />
             
-            {/* Map showing nearby available drivers */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Nearby Drivers Map
-                </CardTitle>
-                <CardDescription>
-                  Approximate locations of available drivers in your area
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TripMap
-                  markers={nearbyDriverMarkers}
-                  className="h-[400px] sm:h-[500px]"
-                />
-              </CardContent>
-            </Card>
+            {/* Available Riders Section */}
+            <AvailableRidersList />
           </TabsContent>
         </Tabs>
       </div>

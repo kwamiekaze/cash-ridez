@@ -103,70 +103,68 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { driver_id, current_zip, state } = await req.json();
+    const { ride_request_id, rider_id, pickup_zip } = await req.json();
 
-    console.log(`🚗 Processing driver availability: driver_id=${driver_id}, state=${state}, zip=${current_zip}`);
+    console.log(`🚕 Processing new trip notification: ride_request_id=${ride_request_id}, rider_id=${rider_id}, pickup_zip=${pickup_zip}`);
 
-    // Only send notifications when driver becomes available
-    if (state !== 'available' || !current_zip) {
-      console.log(`⏩ Skipping notifications - state: ${state}, zip: ${current_zip}`);
+    if (!ride_request_id || !rider_id || !pickup_zip) {
       return new Response(
-        JSON.stringify({ success: true, message: 'No notifications needed' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Missing required parameters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get driver profile with photo and name
-    const { data: driverProfile, error: driverError } = await supabaseClient
+    // Get rider profile
+    const { data: riderProfile, error: riderError } = await supabaseClient
       .from('profiles')
       .select('full_name, photo_url')
-      .eq('id', driver_id)
+      .eq('id', rider_id)
       .single();
 
-    if (driverError || !driverProfile) {
-      console.error('Error fetching driver profile:', driverError);
+    if (riderError || !riderProfile) {
+      console.error('Error fetching rider profile:', riderError);
       return new Response(
-        JSON.stringify({ error: 'Driver profile not found' }),
+        JSON.stringify({ error: 'Rider profile not found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get riders who want notifications and have a profile_zip
-    const { data: riders, error: ridersError } = await supabaseClient
-      .from('profiles')
-      .select('id, profile_zip, full_name')
-      .eq('notify_new_driver', true)
-      .not('profile_zip', 'is', null);
+    // Get available drivers with their current ZIP
+    const { data: driverStatuses, error: driversError } = await supabaseClient
+      .from('driver_status')
+      .select('user_id, current_zip, state')
+      .eq('state', 'available')
+      .not('current_zip', 'is', null);
 
-    if (ridersError) {
-      console.error('Error fetching riders:', ridersError);
+    if (driversError) {
+      console.error('Error fetching drivers:', driversError);
       return new Response(
-        JSON.stringify({ error: ridersError.message }),
+        JSON.stringify({ error: driversError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!riders || riders.length === 0) {
-      console.log(`📭 No riders found with notify_new_driver=true and profile_zip set`);
+    if (!driverStatuses || driverStatuses.length === 0) {
+      console.log(`📭 No available drivers found`);
       return new Response(
-        JSON.stringify({ success: true, message: 'No riders to notify', debug: 'No riders with notify_new_driver enabled' }),
+        JSON.stringify({ success: true, message: 'No drivers to notify' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     
-    console.log(`👥 Found ${riders.length} riders with notifications enabled`);
+    console.log(`👥 Found ${driverStatuses.length} available drivers`);
 
-    // Filter riders within 25 miles or same SCF
-    const nearbyRiders = riders.filter(rider => {
-      if (!rider.profile_zip) return false;
+    // Filter drivers within 25 miles or same SCF
+    const nearbyDrivers = driverStatuses.filter(driver => {
+      if (!driver.current_zip) return false;
 
-      const distance = getZipDistance(rider.profile_zip, current_zip);
+      const distance = getZipDistance(driver.current_zip, pickup_zip);
       const withinRadius = distance !== null && distance <= NEARBY_RADIUS_MI;
-      const scfMatch = isSameScf(rider.profile_zip, current_zip);
+      const scfMatch = isSameScf(driver.current_zip, pickup_zip);
 
-      console.info('Notif check:', {
-        riderZip: rider.profile_zip,
-        driverZip: current_zip,
+      console.info('Driver check:', {
+        driverZip: driver.current_zip,
+        pickupZip: pickup_zip,
         distance,
         within25Miles: withinRadius,
         scfMatch,
@@ -176,79 +174,80 @@ Deno.serve(async (req) => {
       return withinRadius || scfMatch;
     });
 
-    console.log(`📍 Found ${nearbyRiders.length} nearby riders (within 25mi or same SCF) to potentially notify`);
+    console.log(`📍 Found ${nearbyDrivers.length} nearby drivers (within 25mi or same SCF)`);
 
     // Check for recent notifications to implement debouncing
     const debounceThreshold = new Date(Date.now() - DEBOUNCE_MINUTES * 60 * 1000).toISOString();
     
-    const notificationPromises = nearbyRiders.map(async (rider) => {
-      // Check if we've sent a notification to this rider about this driver recently
+    const notificationPromises = nearbyDrivers.map(async (driver) => {
+      // Check if we've sent a notification to this driver about this trip recently
       const { data: recentNotifications } = await supabaseClient
         .from('notifications')
         .select('id')
-        .eq('user_id', rider.id)
-        .eq('related_user_id', driver_id)
-        .eq('type', 'driver_available')
+        .eq('user_id', driver.user_id)
+        .eq('related_ride_id', ride_request_id)
+        .eq('type', 'new_trip')
         .gte('created_at', debounceThreshold)
         .limit(1);
 
       if (recentNotifications && recentNotifications.length > 0) {
-        console.log(`Skipping notification for rider ${rider.id} - already notified within ${DEBOUNCE_MINUTES} minutes`);
+        console.log(`Skipping notification for driver ${driver.user_id} - already notified within ${DEBOUNCE_MINUTES} minutes`);
         return null;
       }
 
       // Calculate distance for notification
-      const distance = getZipDistance(rider.profile_zip, current_zip);
+      const distance = getZipDistance(driver.current_zip, pickup_zip);
       const distanceText = distance ? `~${Math.round(distance)} mi away` : 'nearby';
 
-      // Create notification with simple retry
+      // Create notification
       let notifError: any = null;
       for (let attempt = 1; attempt <= 2; attempt++) {
         const { error } = await supabaseClient
           .from('notifications')
           .insert({
-            user_id: rider.id,
-            related_user_id: driver_id,
-            type: 'driver_available',
-            title: 'Driver Available Near You',
-            message: `${driverProfile.full_name} is now available near you (ZIP ${current_zip}, ${distanceText}).`,
-            link: `/rider?tab=area`,
+            user_id: driver.user_id,
+            related_user_id: rider_id,
+            related_ride_id: ride_request_id,
+            type: 'new_trip',
+            title: 'New Trip Request Near You',
+            message: `${riderProfile.full_name} posted a trip request ${distanceText} from you.`,
+            link: `/trip/${ride_request_id}`,
           });
         if (!error) {
-          console.log(`Sent notification to rider ${rider.id} (attempt ${attempt})`);
+          console.log(`Sent notification to driver ${driver.user_id} (attempt ${attempt})`);
           notifError = null;
           break;
         }
         notifError = error;
-        console.warn(`Retrying notification for rider ${rider.id} after error:`, error);
+        console.warn(`Retrying notification for driver ${driver.user_id} after error:`, error);
       }
 
       if (notifError) {
-        console.error(`Error creating notification for rider ${rider.id}:`, notifError);
+        console.error(`Error creating notification for driver ${driver.user_id}:`, notifError);
         return null;
       }
 
-      return rider.id;
+      return driver.user_id;
     });
 
     const results = await Promise.all(notificationPromises);
     const successCount = results.filter(r => r !== null).length;
     
-    console.log(`✅ Successfully sent ${successCount} notifications out of ${nearbyRiders.length} nearby riders`);
+    console.log(`✅ Successfully sent ${successCount} notifications out of ${nearbyDrivers.length} nearby drivers`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         notifications_sent: successCount,
-        riders_checked: nearbyRiders.length,
-        total_riders_with_notifications: riders.length
+        drivers_checked: nearbyDrivers.length,
+        total_available_drivers: driverStatuses.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Error in send-driver-available-notification:', error);
+    console.error('Error in send-new-trip-notification:', error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

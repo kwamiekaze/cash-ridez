@@ -27,8 +27,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Sending status notification to:", userEmail, "Status:", status);
 
     const subject = status === "approved" 
-      ? "✅ Your Cash Ridez Account Has Been Verified!" 
-      : "⚠️ Cash Ridez Verification Update";
+      ? "✅ Your CashRidez Account Has Been Verified!" 
+      : "⚠️ CashRidez Verification Update";
 
     const adminInfo = adminDisplayName ? `<p style="margin: 8px 0 0 0; color: #374151;">Reviewed by: <strong>${adminDisplayName}</strong></p>` : "";
     const reasonBlock = status === "rejected" && reason
@@ -41,8 +41,8 @@ const handler = async (req: Request): Promise<Response> => {
     const html = status === "approved"
       ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #10b981;">Welcome to Cash Ridez, ${displayName}!</h1>
-          <p>Great news! Your account has been verified and you now have full access to all Cash Ridez features.</p>
+          <h1 style="color: #10b981;">Welcome to CashRidez, ${displayName}!</h1>
+          <p>Great news! Your account has been verified and you now have full access to all CashRidez features.</p>
           ${adminInfo}
           <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 24px 0;">
             <h3 style="margin-top: 0; color: #065f46;">What's Next?</h3>
@@ -52,8 +52,8 @@ const handler = async (req: Request): Promise<Response> => {
               <li>Build your community reputation through ratings</li>
             </ul>
           </div>
-          <p>Ready to get started? Log in to your account and begin connecting with the Cash Ridez community!</p>
-          <p style="margin-top: 32px; color: #6b7280;">Best regards,<br>The Cash Ridez Team</p>
+          <p>Ready to get started? Log in to your account and begin connecting with the CashRidez community!</p>
+          <p style="margin-top: 32px; color: #6b7280;">Best regards,<br>The CashRidez Team</p>
         </div>
       `
       : `
@@ -65,12 +65,12 @@ const handler = async (req: Request): Promise<Response> => {
           ${reasonBlock}
           <p><strong>You can resubmit your verification</strong> by logging into your account and uploading a new ID image.</p>
           <p style="color: #6b7280;">Please ensure your ID photo is clear, well-lit, and shows all required information.</p>
-          <p style="margin-top: 32px; color: #6b7280;">If you have questions, please contact our support team.<br><br>Best regards,<br>The Cash Ridez Team</p>
+          <p style="margin-top: 32px; color: #6b7280;">If you have questions, please contact our support team.<br><br>Best regards,<br>The CashRidez Team</p>
         </div>
       `;
 
     const emailResponse = await resend.emails.send({
-      from: "Cash Ridez <onboarding@resend.dev>",
+      from: "CashRidez <noreply@cashridez.com>",
       to: [userEmail],
       subject,
       html,

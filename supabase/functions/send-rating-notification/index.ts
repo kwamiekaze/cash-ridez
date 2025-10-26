@@ -42,6 +42,24 @@ const handler = async (req: Request): Promise<Response> => {
       throw profileError;
     }
 
+    // Check if the rated user has already rated the rater
+    const { data: rideData } = await supabase
+      .from("ride_requests")
+      .select("rider_id, assigned_driver_id, rider_rating, driver_rating")
+      .eq("id", rideId)
+      .single();
+
+    let hasRatedBack = false;
+    if (rideData) {
+      if (ratingType === 'rider' && ratedUserId === rideData.rider_id) {
+        // User was rated as rider, check if they rated the driver back
+        hasRatedBack = !!rideData.driver_rating;
+      } else if (ratingType === 'driver' && ratedUserId === rideData.assigned_driver_id) {
+        // User was rated as driver, check if they rated the rider back
+        hasRatedBack = !!rideData.rider_rating;
+      }
+    }
+
     // Create notification
     await supabase.from('notifications').insert({
       user_id: ratedUserId,
@@ -54,18 +72,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const starIcons = "⭐".repeat(rating);
+    const ratingPrompt = hasRatedBack 
+      ? `<p>Thank you for rating ${raterName}!</p>`
+      : `<p style="background-color: #fef3c7; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;"><strong>Haven't rated ${raterName} yet?</strong> Please take a moment to rate your experience with them!</p>`;
+    
     const emailHtml = `
       <h1>You Received a Rating</h1>
       <p><strong>${raterName}</strong> has rated you as a ${ratingType}:</p>
       <p style="font-size: 24px; color: #f59e0b;">${starIcons} (${rating}/5)</p>
-      <p>View the trip details and consider rating ${raterName} back!</p>
-      <p><a href="${Deno.env.get("SUPABASE_URL")?.replace("https://", "https://app.")}/trip/${rideId}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">View Trip</a></p>
-      <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from Cash Ridez.</p>
+      ${ratingPrompt}
+      <p><a href="https://cashridez.com/trip/${rideId}" style="background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 16px;">${hasRatedBack ? 'View Trip Details' : 'View Trip & Rate'}</a></p>
+      <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from CashRidez.</p>
     `;
 
     if (ratedUser.email) {
       await resend.emails.send({
-        from: "Cash Ridez <onboarding@resend.dev>",
+        from: "CashRidez <noreply@cashridez.com>",
         to: [ratedUser.email],
         subject: `You received a ${rating}-star rating from ${raterName}`,
         html: emailHtml,

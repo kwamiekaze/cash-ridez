@@ -46,7 +46,7 @@ const Dashboard = () => {
 
       // Route based on active_role - if set, send them to their role's dashboard
       if (profile.active_role === 'driver') {
-        navigate("/trips");
+        navigate("/driver");
       } else if (profile.active_role === 'rider') {
         navigate("/rider");
       } else {
@@ -67,7 +67,7 @@ const Dashboard = () => {
               .from("profiles")
               .update({ active_role: 'driver' })
               .eq("id", user.id);
-            navigate("/trips");
+            navigate("/driver");
           } else {
             // Update their active_role to rider
             await supabase

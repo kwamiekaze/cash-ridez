@@ -109,12 +109,29 @@ export const useSubscription = () => {
   };
 
   useEffect(() => {
-    checkStatus();
-    
-    // Auto-refresh every minute
-    const interval = setInterval(checkStatus, 60000);
-    
-    return () => clearInterval(interval);
+    // Defer initial check to requestIdleCallback for non-blocking after paint
+    if ('requestIdleCallback' in window) {
+      const idleId = requestIdleCallback(() => {
+        checkStatus();
+      }, { timeout: 2000 });
+      
+      // Auto-refresh every minute
+      const interval = setInterval(checkStatus, 60000);
+      
+      return () => {
+        cancelIdleCallback(idleId);
+        clearInterval(interval);
+      };
+    } else {
+      // Fallback for browsers without requestIdleCallback
+      const timeout = setTimeout(checkStatus, 100);
+      const interval = setInterval(checkStatus, 60000);
+      
+      return () => {
+        clearTimeout(timeout);
+        clearInterval(interval);
+      };
+    }
   }, [user]);
 
   return {

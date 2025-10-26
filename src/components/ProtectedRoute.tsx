@@ -46,8 +46,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/auth" replace />;
   }
 
-  // Don't redirect verified users back to onboarding
-  if (location.pathname === "/onboarding" && profile?.is_verified) {
+  // Don't redirect verified users back to onboarding - always send them to their dashboard
+  if (location.pathname === "/onboarding" && (profile?.is_verified || profile?.verification_status === 'approved')) {
     // Redirect verified users to appropriate dashboard based on active_role
     if (profile.active_role === 'driver') {
       return <Navigate to="/driver" replace />;

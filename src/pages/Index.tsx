@@ -1,19 +1,32 @@
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Car, Shield, Users, MapPin, Star, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+
+const trustBadges = [{
+  icon: Shield,
+  label: "ID Verified"
+}, {
+  icon: CheckCircle2,
+  label: "Safe Connections"
+}, {
+  icon: Users,
+  label: "Community-Driven"
+}];
+
 const Index = () => {
   const navigate = useNavigate();
-  const trustBadges = [{
-    icon: Shield,
-    label: "ID Verified"
-  }, {
-    icon: CheckCircle2,
-    label: "Safe Connections"
-  }, {
-    icon: Users,
-    label: "Community-Driven"
-  }];
+  const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (user) {
+      // Let the dashboard handle role-based routing; this avoids an extra DB call here
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
   return <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">

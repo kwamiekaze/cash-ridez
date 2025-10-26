@@ -25,6 +25,9 @@ export default function TripRequestsList() {
   const [requests, setRequests] = useState<any[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [pageSize] = useState(30);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "recently_updated" | "highest_paying" | "highest_rated" | "shortest_distance" | "closest">("newest");
   const [activeTab, setActiveTab] = useState("open");
@@ -38,7 +41,8 @@ export default function TripRequestsList() {
     fetchUserProfile();
     fetchTripRequests();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates with throttling
+    let refreshTimer: any = null;
     const channel = supabase
       .channel('trip-requests-changes')
       .on(
@@ -49,12 +53,17 @@ export default function TripRequestsList() {
           table: 'ride_requests'
         },
         () => {
-          fetchTripRequests();
+          if (refreshTimer) return;
+          refreshTimer = setTimeout(() => {
+            fetchTripRequests();
+            refreshTimer = null;
+          }, 1500);
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -149,7 +158,8 @@ export default function TripRequestsList() {
       }
       
       const { data: rideData, error: rideError } = await query
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(pageSize);
 
       if (rideError) throw rideError;
 
@@ -177,8 +187,10 @@ export default function TripRequestsList() {
 
           // Show all trips including completed ones
           setRequests(enrichedData);
+          setHasMore(enrichedData.length === pageSize);
         } else {
           setRequests([]);
+          setHasMore(false);
         }
     } catch (error: any) {
       toast({
@@ -188,6 +200,85 @@ export default function TripRequestsList() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreRequests = async () => {
+    if (!user || isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_verified, verification_status')
+        .eq('id', user.id)
+        .single();
+      
+      const isVerified = profile?.is_verified || profile?.verification_status === 'approved';
+      
+      const { data: offerData } = await supabase
+        .from('counter_offers')
+        .select('ride_request_id')
+        .eq('by_user_id', user.id);
+      
+      const offerRideIds = offerData?.map(o => o.ride_request_id) || [];
+      
+      let query = supabase
+        .from('ride_requests')
+        .select('*');
+      
+      if (isVerified) {
+        if (offerRideIds.length > 0) {
+          query = query.or(`status.eq.open,rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
+        } else {
+          query = query.or(`status.eq.open,rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
+        }
+      } else {
+        if (offerRideIds.length > 0) {
+          query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id},id.in.(${offerRideIds.join(',')})`);
+        } else {
+          query = query.or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`);
+        }
+      }
+      
+      const oldestCreatedAt = requests[requests.length - 1]?.created_at;
+      
+      const { data: rideData, error: rideError } = await query
+        .order('created_at', { ascending: false })
+        .lt('created_at', oldestCreatedAt)
+        .limit(pageSize);
+
+      if (rideError) throw rideError;
+
+      if (rideData && rideData.length > 0) {
+        const riderIds = [...new Set(rideData.map(r => r.rider_id))];
+        const driverIds = [...new Set(rideData.map(r => r.assigned_driver_id).filter(Boolean))];
+        
+        const { data: riderProfiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, photo_url, rider_rating_avg, rider_rating_count, is_member')
+          .in('id', riderIds);
+
+        const { data: driverProfiles } = await supabase
+          .from('profiles')
+          .select('id, full_name, photo_url, driver_rating_avg, driver_rating_count, is_member')
+          .in('id', driverIds);
+
+        const enrichedData = rideData.map(request => ({
+          ...request,
+          rider: riderProfiles?.find(p => p.id === request.rider_id),
+          driver: driverProfiles?.find(p => p.id === request.assigned_driver_id)
+        }));
+
+        setRequests(prev => [...prev, ...enrichedData]);
+        setHasMore(enrichedData.length === pageSize);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error: any) {
+      console.error('Error loading more:', error);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -234,16 +325,17 @@ export default function TripRequestsList() {
       filtered = filtered.filter(req => (req.rider?.rider_rating_avg || 0) >= 4.0);
     }
 
-    // Calculate distances for each trip if user has location
+    // Calculate distances only for visible trips (performance optimization)
     if (userProfile?.current_lat && userProfile?.current_lng) {
-      filtered = filtered.map(req => ({
+      const visibleCount = Math.min(filtered.length, 50); // Only calc first 50
+      filtered = filtered.map((req, idx) => ({
         ...req,
-        distance: calculateDistance(
+        distance: idx < visibleCount ? calculateDistance(
           userProfile.current_lat,
           userProfile.current_lng,
           parseFloat(req.pickup_lat),
           parseFloat(req.pickup_lng)
-        )
+        ) : null
       }));
     }
 
@@ -527,7 +619,22 @@ export default function TripRequestsList() {
                   <p className="text-muted-foreground">Available trips will appear here</p>
                 </Card>
               ) : (
-                filteredRequests.map(request => renderTripCard(request))
+                <>
+                  {filteredRequests.map(request => renderTripCard(request))}
+                  {hasMore && !loading && (
+                    <Card className="p-6 text-center">
+                      <Button 
+                        onClick={loadMoreRequests} 
+                        disabled={isLoadingMore}
+                        variant="outline"
+                        size="lg"
+                        className="w-full sm:w-auto"
+                      >
+                        {isLoadingMore ? 'Loading...' : `Load More (${pageSize} at a time)`}
+                      </Button>
+                    </Card>
+                  )}
+                </>
               )}
             </TabsContent>
 
@@ -537,7 +644,22 @@ export default function TripRequestsList() {
                   <p className="text-muted-foreground">No connected trips</p>
                 </Card>
               ) : (
-                filteredRequests.map(request => renderTripCard(request))
+                <>
+                  {filteredRequests.map(request => renderTripCard(request))}
+                  {hasMore && !loading && (
+                    <Card className="p-6 text-center">
+                      <Button 
+                        onClick={loadMoreRequests} 
+                        disabled={isLoadingMore}
+                        variant="outline"
+                        size="lg"
+                        className="w-full sm:w-auto"
+                      >
+                        {isLoadingMore ? 'Loading...' : `Load More (${pageSize} at a time)`}
+                      </Button>
+                    </Card>
+                  )}
+                </>
               )}
             </TabsContent>
 
@@ -547,7 +669,22 @@ export default function TripRequestsList() {
                   <p className="text-muted-foreground">No completed trips yet</p>
                 </Card>
               ) : (
-                filteredRequests.map(request => renderTripCard(request))
+                <>
+                  {filteredRequests.map(request => renderTripCard(request))}
+                  {hasMore && !loading && (
+                    <Card className="p-6 text-center">
+                      <Button 
+                        onClick={loadMoreRequests} 
+                        disabled={isLoadingMore}
+                        variant="outline"
+                        size="lg"
+                        className="w-full sm:w-auto"
+                      >
+                        {isLoadingMore ? 'Loading...' : `Load More (${pageSize} at a time)`}
+                      </Button>
+                    </Card>
+                  )}
+                </>
               )}
             </TabsContent>
           </Tabs>
