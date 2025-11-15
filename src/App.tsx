@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
+const LandingNew = lazy(() => import("./pages/LandingNew"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const VerificationPending = lazy(() => import("./pages/VerificationPending"));
@@ -87,7 +88,7 @@ const App = () => (
           </DeferMount>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<LandingNew />} />
               <Route path="/auth" element={<Auth />} />
             <Route
               path="/onboarding"
