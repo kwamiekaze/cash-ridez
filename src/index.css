@@ -17,23 +17,23 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 20%;
 
-    --primary: 51 100% 50%;
+    --primary: 100 85% 55%;
     --primary-foreground: 0 0% 10%;
-    --primary-glow: 51 100% 70%;
+    --primary-glow: 95 90% 65%;
 
-    --secondary: 158 64% 52%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 100 85% 55%;
 
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 40%;
 
-    --accent: 158 64% 52%;
+    --accent: 100 85% 55%;
     --accent-foreground: 0 0% 10%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 158 64% 52%;
+    --success: 100 85% 55%;
     --success-foreground: 0 0% 10%;
 
     --warning: 45 93% 47%;
@@ -42,68 +42,61 @@ All colors MUST be HSL.
     --pending: 45 93% 47%;
     --pending-foreground: 0 0% 100%;
 
-    --verified: 158 64% 52%;
+    --verified: 100 85% 55%;
     --verified-foreground: 0 0% 10%;
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 51 100% 50%;
+    --ring: 100 85% 55%;
 
     --radius: 0.75rem;
 
-    --gold: 51 100% 50%;
-    --gold-light: 51 100% 70%;
-    --gold-dark: 45 100% 45%;
-    --emerald: 158 64% 52%;
-    --emerald-light: 158 64% 62%;
-    --emerald-dark: 158 64% 42%;
+    --silver: 0 0% 75%;
+    --gold: 45 100% 51%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-button: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 5%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(51 100% 70%) 100%);
-    --gradient-emerald: linear-gradient(135deg, hsl(158 64% 52%) 0%, hsl(158 64% 62%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(100 85% 55%), hsl(95 90% 65%));
+    --gradient-button: linear-gradient(135deg, hsl(100 85% 55%), hsl(95 90% 65%));
+    --gradient-hero: linear-gradient(135deg, hsl(100 85% 55% / 0.05) 0%, hsl(95 90% 65% / 0.05) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(45 100% 51%), hsl(45 100% 60%));
     
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
-    --shadow-glow: 0 0 60px hsl(51 100% 50% / 0.3);
-    --shadow-gold: 0 10px 40px -10px hsl(51 100% 50% / 0.4);
-    --shadow-emerald: 0 10px 40px -10px hsl(158 64% 52% / 0.4);
-    --shadow-elegant: 0 10px 40px -10px hsl(51 100% 50% / 0.15);
+    --shadow-glow: 0 0 40px hsl(100 85% 55% / 0.4);
+    --shadow-elegant: 0 10px 40px -10px hsl(100 85% 55% / 0.15);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.08);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 0 0% 0%;
+    --background: 0 0% 10%;
     --foreground: 0 0% 95%;
 
-    --card: 0 0% 5%;
+    --card: 0 0% 12%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 5%;
+    --popover: 0 0% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 51 100% 50%;
+    --primary: 100 85% 60%;
     --primary-foreground: 0 0% 10%;
-    --primary-glow: 51 100% 70%;
+    --primary-glow: 95 90% 70%;
 
-    --secondary: 158 64% 52%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 0 0% 15%;
+    --muted: 0 0% 18%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 158 64% 52%;
+    --accent: 100 85% 60%;
     --accent-foreground: 0 0% 10%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 158 64% 52%;
+    --success: 100 85% 60%;
     --success-foreground: 0 0% 10%;
 
     --warning: 45 93% 47%;
@@ -112,27 +105,24 @@ All colors MUST be HSL.
     --pending: 45 93% 47%;
     --pending-foreground: 0 0% 100%;
 
-    --verified: 158 64% 52%;
+    --verified: 100 85% 60%;
     --verified-foreground: 0 0% 10%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 51 100% 50%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 100 85% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-button: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(158 64% 52%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 5%) 100%);
-    --gradient-gold: linear-gradient(135deg, hsl(51 100% 50%) 0%, hsl(51 100% 70%) 100%);
-    --gradient-emerald: linear-gradient(135deg, hsl(158 64% 52%) 0%, hsl(158 64% 62%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(100 85% 60%), hsl(95 90% 70%));
+    --gradient-button: linear-gradient(135deg, hsl(100 85% 60%), hsl(95 90% 70%));
+    --gradient-hero: linear-gradient(135deg, hsl(100 85% 60% / 0.1) 0%, hsl(95 90% 70% / 0.1) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(45 100% 51%), hsl(45 100% 60%));
     
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.3), 0 8px 10px -6px hsl(0 0% 0% / 0.3);
-    --shadow-glow: 0 0 60px hsl(51 100% 50% / 0.3);
-    --shadow-gold: 0 10px 40px -10px hsl(51 100% 50% / 0.4);
-    --shadow-emerald: 0 10px 40px -10px hsl(158 64% 52% / 0.4);
-    --shadow-elegant: 0 10px 40px -10px hsl(51 100% 50% / 0.2);
+    --shadow-glow: 0 0 40px hsl(100 85% 60% / 0.4);
+    --shadow-elegant: 0 10px 40px -10px hsl(100 85% 60% / 0.2);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.2);
   }
 }
@@ -148,113 +138,7 @@ All colors MUST be HSL.
   }
   
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Montserrat', 'Poppins', sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
-  }
-}
-
-@layer utilities {
-  /* Gold shimmer animation */
-  @keyframes gold-shimmer {
-    0% {
-      background-position: -200% center;
-    }
-    100% {
-      background-position: 200% center;
-    }
-  }
-
-  .animate-gold-shimmer {
-    background: linear-gradient(
-      90deg,
-      hsl(var(--gold)) 0%,
-      hsl(var(--gold-light)) 25%,
-      hsl(var(--gold)) 50%,
-      hsl(var(--gold-light)) 75%,
-      hsl(var(--gold)) 100%
-    );
-    background-size: 200% auto;
-    animation: gold-shimmer 3s linear infinite;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  /* Floating animation */
-  @keyframes floating {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  .animate-floating {
-    animation: floating 2s ease-in-out infinite;
-  }
-
-  /* Pulse glow animation */
-  @keyframes pulse-glow {
-    0%, 100% {
-      opacity: 1;
-      filter: brightness(1);
-    }
-    50% {
-      opacity: 0.8;
-      filter: brightness(1.3);
-    }
-  }
-
-  .animate-pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-
-  /* Sports car drive animation */
-  @keyframes drive-across {
-    0% {
-      transform: translateX(-15%);
-    }
-    100% {
-      transform: translateX(115%);
-    }
-  }
-
-  .animate-drive-across {
-    animation: drive-across 40s linear infinite;
-  }
-
-  /* Gradient orb animations */
-  @keyframes float-1 {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    33% {
-      transform: translate(30px, -50px) scale(1.1);
-    }
-    66% {
-      transform: translate(-20px, 20px) scale(0.9);
-    }
-  }
-
-  @keyframes float-2 {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    33% {
-      transform: translate(-30px, 40px) scale(0.9);
-    }
-    66% {
-      transform: translate(20px, -30px) scale(1.1);
-    }
-  }
-
-  .animate-float-1 {
-    animation: float-1 20s ease-in-out infinite;
-  }
-
-  .animate-float-2 {
-    animation: float-2 25s ease-in-out infinite;
   }
 }

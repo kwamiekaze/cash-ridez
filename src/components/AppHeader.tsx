@@ -42,7 +42,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
   }, [user]);
 
   return (
-    <header className="border-b border-border bg-black/50 backdrop-blur-md sticky top-0 z-50">
+    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
@@ -55,11 +55,11 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
               navigate('/dashboard');
             }
           }}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-gold">
-              <Car className="w-6 h-6 text-black" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+              <Car className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="text-xl font-serif lowercase bg-gradient-primary bg-clip-text text-transparent">cashridez</span>
+              <span className="text-xl font-bold">Cash Ridez</span>
               {profile?.active_role && (
                 <p className="text-xs text-muted-foreground capitalize">{profile.active_role}</p>
               )}
