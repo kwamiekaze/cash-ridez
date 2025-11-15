@@ -32,7 +32,7 @@ export function Navigation() {
       y: -100
     }} animate={{
       y: 0
-    }} className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-xl border-b border-yellow-500/20">
+    }} className="fixed top-0 left-0 right-0 z-50 bg-black/90 dark:bg-black/90 backdrop-blur-xl border-b border-yellow-500/20">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
