@@ -77,7 +77,7 @@ const AppHeader = ({
                   scaleX: [1, 1, -1, -1, 1]
                 }}
                 transition={{
-                  duration: 12,
+                  duration: 15,
                   repeat: Infinity,
                   ease: "linear",
                   times: [0, 0.48, 0.5, 0.98, 1]
@@ -86,7 +86,7 @@ const AppHeader = ({
                 <CashCarIcon 
                   width={70} 
                   height={35} 
-                  glowIntensity="medium" 
+                  glowIntensity="high" 
                   letter={carLetter}
                   className="md:w-[90px] md:h-[45px]" 
                 />
