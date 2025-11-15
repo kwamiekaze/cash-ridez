@@ -45,7 +45,15 @@ export function Navigation() {
             <motion.div className="flex items-center gap-3 cursor-pointer" whileHover={{
             scale: 1.05
           }} onClick={() => navigate('/')}>
-              <span className="font-bold bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent text-6xl drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] hover:drop-shadow-[0_0_25px_rgba(250,204,21,1)]" style={{ fontFamily: "'Playfair Display', serif" }}>cashridez</span>
+              <span 
+                className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-6xl animate-shimmer bg-[length:200%_auto]" 
+                style={{ 
+                  fontFamily: "'Playfair Display', serif",
+                  filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6)) drop-shadow(0 0 60px rgba(250,204,21,0.4))'
+                }}
+              >
+                cashridez
+              </span>
             </motion.div>
 
           {/* Desktop Menu */}
@@ -148,10 +156,10 @@ export function Navigation() {
           </motion.div>}
       </motion.nav>
 
-    {/* Animated Header Section */}
-    <div className="fixed top-16 left-0 right-0 h-32 z-50 pointer-events-none overflow-hidden">
+    {/* Animated Header Section - Sticky */}
+    <div className="fixed top-16 left-0 right-0 h-32 z-[60] pointer-events-none overflow-hidden">
       {/* Driving Car Animation */}
-      <motion.div className="absolute top-8 z-50" animate={{
+      <motion.div className="absolute top-8 z-[60]" animate={{
         x: ['-15%', '115%']
       }} transition={{
         duration: 40,
