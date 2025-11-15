@@ -141,9 +141,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.4
-                }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">
-                    Keep 100% of your cash rides.
-                  </motion.h1>
+                }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">Keep 100% of your earnings💰</motion.h1>
 
                   {/* Subtext */}
                   <motion.p initial={{
