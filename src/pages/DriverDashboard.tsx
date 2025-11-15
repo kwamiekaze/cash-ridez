@@ -11,8 +11,6 @@ import AppHeader from "@/components/AppHeader";
 import { UserChip } from "@/components/UserChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
-import { DriverAvailability } from "@/components/DriverAvailability";
-import { AvailableRidersList } from "@/components/AvailableRidersList";
 import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
@@ -27,12 +25,10 @@ const DriverDashboard = () => {
   const [connectedRequests, setConnectedRequests] = useState<any[]>([]);
   const [completedRequests, setCompletedRequests] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("open");
-  const [nearbyDriverMarkers, setNearbyDriverMarkers] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchRequests();
-      fetchNearbyDrivers();
     }
 
     // Set tab from URL parameter
@@ -41,64 +37,6 @@ const DriverDashboard = () => {
       setActiveTab(tabParam);
     }
   }, [user, searchParams]);
-
-  const fetchNearbyDrivers = async () => {
-    try {
-      // Get driver's own ZIP
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('profile_zip')
-        .eq('id', user?.id)
-        .single();
-
-      if (!profile?.profile_zip) return;
-
-      // Get nearby available drivers (last 24 hours)
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: driverStatuses } = await supabase
-        .from('driver_status')
-        .select('user_id, current_zip, state, updated_at')
-        .eq('state', 'available')
-        .gte('updated_at', twentyFourHoursAgo)
-        .limit(200);
-
-      if (!driverStatuses || driverStatuses.length === 0) {
-        setNearbyDriverMarkers([]);
-        return;
-      }
-
-      // Get driver profiles
-      const driverIds = driverStatuses.map(d => d.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, display_name, driver_rating_avg, driver_rating_count, photo_url, is_verified, is_member')
-        .in('id', driverIds);
-
-      // Get cancellation stats
-      const { data: cancelStats } = await supabase
-        .from('cancellation_stats')
-        .select('user_id, driver_rate_90d')
-        .in('user_id', driverIds);
-
-      // Create markers
-      const markers = driverStatuses.map(status => {
-        const driverProfile = profiles?.find(p => p.id === status.user_id);
-        const cancelData = cancelStats?.find(c => c.user_id === status.user_id);
-        
-        return {
-          id: status.user_id,
-          zip: status.current_zip,
-          title: driverProfile?.full_name || driverProfile?.display_name || 'Driver',
-          description: `Rating: ${driverProfile?.driver_rating_avg?.toFixed(1) || 'N/A'} ⭐ | Cancel: ${cancelData?.driver_rate_90d?.toFixed(1) || 0}%${driverProfile?.is_verified ? ' | ✓ Verified' : ''}${driverProfile?.is_member ? ' | ⭐ Member' : ''}`,
-          type: 'driver' as const,
-        };
-      });
-
-      setNearbyDriverMarkers(markers);
-    } catch (error) {
-      console.error('Error fetching nearby drivers:', error);
-    }
-  };
 
   const fetchRequests = async () => {
     try {
@@ -310,11 +248,10 @@ const DriverDashboard = () => {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6">
+            <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="open">Open</TabsTrigger>
               <TabsTrigger value="connected">Connected</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
-              <TabsTrigger value="availability">Availability</TabsTrigger>
               <TabsTrigger value="chat">💬 Chat</TabsTrigger>
             </TabsList>
 
@@ -352,13 +289,6 @@ const DriverDashboard = () => {
             ) : (
               completedRequests.map((request) => renderTripCard(request))
             )}
-          </TabsContent>
-
-          <TabsContent value="availability" className="space-y-4">
-            <DriverAvailability />
-            
-            {/* Available Riders Section */}
-            <AvailableRidersList />
           </TabsContent>
 
           <TabsContent value="chat" className="space-y-4">
