@@ -68,7 +68,7 @@ export default function LandingNew() {
           <Navigation />
           
           {/* Hero Section with Animated Map */}
-          <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+          <section className="relative min-h-screen flex flex-col overflow-hidden">
             {/* Animated Map Background for Hero */}
             <MapBackground 
               showAnimatedCar 
@@ -77,44 +77,15 @@ export default function LandingNew() {
               className="absolute inset-0"
             />
             
-            {/* Hero Content Overlay */}
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-              <div className="text-center space-y-8">
-                {/* Main Heading */}
-                <motion.h1
-                  initial={{ opacity: 0, y: 30 }}
+            {/* Top Section with Buttons and Car */}
+            <div className="relative z-10 pt-32 pb-8">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                {/* CTA Buttons at Top */}
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
-                  className="text-5xl md:text-7xl lg:text-8xl font-bold"
-                  style={{
-                    background: 'linear-gradient(90deg, #F9E27D 0%, #FFD700 50%, #F9E27D 100%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    textShadow: '0 0 40px rgba(249, 226, 125, 0.3)'
-                  }}
-                >
-                  Keep 100% of your cash rides.
-                </motion.h1>
-
-                {/* Subtext */}
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="text-xl md:text-2xl max-w-3xl mx-auto"
-                  style={{ color: 'rgba(249, 226, 125, 0.8)' }}
-                >
-                  CashRidez connects riders and drivers directly for cash-only rides. 
-                  No commissions. No fees. Just community-powered transportation.
-                </motion.p>
-
-                {/* CTA Buttons */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
-                  className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+                  className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8"
                 >
                   <button
                     onClick={() => navigate("/auth")}
@@ -142,6 +113,42 @@ export default function LandingNew() {
                     Respond to Trips
                   </button>
                 </motion.div>
+              </div>
+            </div>
+            
+            {/* Hero Content Below */}
+            <div className="relative z-10 flex-1 flex items-center justify-center">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+                <div className="text-center space-y-8">
+                  {/* Main Heading */}
+                  <motion.h1
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="text-5xl md:text-7xl lg:text-8xl font-bold"
+                    style={{
+                      background: 'linear-gradient(90deg, #F9E27D 0%, #FFD700 50%, #F9E27D 100%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      textShadow: '0 0 40px rgba(249, 226, 125, 0.3)'
+                    }}
+                  >
+                    Keep 100% of your cash rides.
+                  </motion.h1>
+
+                  {/* Subtext */}
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.6 }}
+                    className="text-xl md:text-2xl max-w-3xl mx-auto"
+                    style={{ color: 'rgba(249, 226, 125, 0.8)' }}
+                  >
+                    CashRidez connects riders and drivers directly for cash-only rides. 
+                    No commissions. No fees. Just community-powered transportation.
+                  </motion.p>
+                </div>
               </div>
             </div>
           </section>

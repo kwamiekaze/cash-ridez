@@ -39,31 +39,48 @@ export function CashCarIcon({
         </linearGradient>
       </defs>
       
-      {/* Car Outline - Exact Match to Reference */}
+      {/* Sports Car Outline - Sleek & Desirable */}
       <g stroke="url(#cashCarGold)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-        {/* Main Body - Rectangular with rounded wheel wells */}
-        <path d="M 20 40 L 20 32 L 35 32 L 35 25 L 70 25 L 70 32 L 100 32 L 100 40" />
+        {/* Lower Body - Aerodynamic */}
+        <path d="M 15 35 L 18 33 L 102 33 L 105 35 L 105 42 L 15 42 Z" />
         
-        {/* Curved wheel wells */}
-        <path d="M 20 40 Q 25 45 30 40" />
-        <path d="M 90 40 Q 95 45 100 40" />
+        {/* Upper Body/Cabin - Low, Sleek Profile */}
+        <path d="M 30 33 L 38 20 L 65 18 L 82 20 L 90 33" />
         
-        {/* Front and rear sections */}
-        <line x1="35" y1="32" x2="35" y2="25" />
-        <line x1="70" y1="32" x2="70" y2="25" />
+        {/* Windshield - Angled */}
+        <path d="M 40 23 L 48 25 L 50 32 L 42 32 Z" />
         
-        {/* Roof line */}
-        <line x1="35" y1="25" x2="70" y2="25" />
+        {/* Side Window */}
+        <path d="M 52 24 L 63 22 L 68 32 L 54 32 Z" />
+        
+        {/* Rear Window - Sport */}
+        <path d="M 70 24 L 78 22 L 84 32 L 72 32 Z" />
+        
+        {/* Front Spoiler */}
+        <path d="M 102 34 L 108 34 L 110 37 L 105 37 Z" />
+        
+        {/* Rear Spoiler */}
+        <path d="M 12 25 L 18 25 L 20 28 L 15 28 Z" />
         
         {/* Front Wheel */}
-        <circle cx="25" cy="40" r="6" />
+        <circle cx="88" cy="42" r="8" />
+        <circle cx="88" cy="42" r="5" fill="url(#cashCarGold)" fillOpacity="0.3" />
         
         {/* Rear Wheel */}
-        <circle cx="95" cy="40" r="6" />
+        <circle cx="32" cy="42" r="8" />
+        <circle cx="32" cy="42" r="5" fill="url(#cashCarGold)" fillOpacity="0.3" />
+        
+        {/* Headlights */}
+        <circle cx="104" cy="36" r="1.5" fill="#F9E27D" opacity="0.9" />
+        
+        {/* Side Vents */}
+        <line x1="72" y1="33" x2="72" y2="38" strokeWidth="1" />
+        <line x1="76" y1="33" x2="76" y2="38" strokeWidth="1" />
+        <line x1="80" y1="33" x2="80" y2="38" strokeWidth="1" />
       </g>
       
       {/* Dollar Badge on Roof */}
-      <g transform="translate(52.5, 15)">
+      <g transform="translate(60, 15)">
         <circle 
           cx="0" 
           cy="0" 
