@@ -52,7 +52,7 @@ const AppHeader = ({
   return <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 relative overflow-hidden">
       <div className="container mx-auto px-4 py-3 md:py-4 relative z-10">
         <div className="flex items-center justify-between">
-          <div className="flex flex-col items-start cursor-pointer" onClick={() => {
+          <div className="flex flex-col items-start cursor-pointer relative" onClick={() => {
           // Route based on user role
           if (profile?.active_role === 'rider') {
             navigate('/rider');
@@ -68,26 +68,28 @@ const AppHeader = ({
           }} className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto] md:text-4xl lg:text-5xl leading-tight">
               CashRidez
             </span>
-            {/* Animated Car with Role Letter */}
-            <motion.div 
-              className="mt-1 md:mt-2"
-              animate={{
-                x: [0, 15, 0]
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              <CashCarIcon 
-                width={70} 
-                height={35} 
-                glowIntensity="medium" 
-                letter={carLetter}
-                className="md:w-[90px] md:h-[45px]" 
-              />
-            </motion.div>
+            {/* Animated Car with Role Letter - Full Width Animation */}
+            <div className="w-[300px] md:w-[500px] overflow-visible relative mt-1 md:mt-2">
+              <motion.div 
+                className="absolute left-0"
+                animate={{
+                  x: [-100, 300, -100]
+                }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+              >
+                <CashCarIcon 
+                  width={70} 
+                  height={35} 
+                  glowIntensity="medium" 
+                  letter={carLetter}
+                  className="md:w-[90px] md:h-[45px]" 
+                />
+              </motion.div>
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {showStatus && profile && <div className="hidden sm:flex items-center gap-2">
