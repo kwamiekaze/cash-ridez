@@ -8,7 +8,7 @@ import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
 import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
-import verifiedBadge from '@/assets/verified-badge.png';
+import verifiedBadge from '@/assets/verified-badge-custom.png';
 export default function LandingNew() {
   const [showSplash, setShowSplash] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
