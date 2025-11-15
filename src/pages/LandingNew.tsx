@@ -153,7 +153,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.6
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto py-[65px] text-stone-400">CashRidez connects riders and drivers directly for cash-based rides with zero commissions. Join our ID-verified, community-powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
+                }} className="text-xl md:text-2xl max-w-3xl mx-auto py-[65px] text-stone-400">CashRidez connects riders and drivers directly for cash-based rides with zero commissions. Join our ID-verified community-powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
                 </div>
               </div>
             </div>
