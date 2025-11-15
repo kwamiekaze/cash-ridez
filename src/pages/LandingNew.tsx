@@ -36,7 +36,7 @@ export default function LandingNew() {
     description: 'Drivers can view and accept available trip requests at no charge.'
   }, {
     title: 'Set Your Price',
-    description: 'Riders set the price on their trip postings, drivers can accept any posted trip or counter offer'
+    description: 'Riders set the price on their trip postings, drivers can accept any posted trip or counter offer.'
   }, {
     title: 'Safe & Trusted Community',
     description: 'Every member is part of a verified network built on safety and respect.'
