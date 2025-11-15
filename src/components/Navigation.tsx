@@ -10,13 +10,16 @@ export function Navigation() {
   const navigate = useNavigate();
   const menuItems = [{
     label: 'How It Works',
-    href: '#how-it-works'
+    href: '#how-it-works',
+    color: 'text-white'
   }, {
     label: 'Community',
-    href: '#community'
+    href: '#community',
+    color: 'text-emerald-400'
   }, {
     label: 'Support',
-    href: '#support'
+    href: '#support',
+    color: 'text-yellow-400'
   }];
   const scrollToSection = (href: string) => {
     const element = document.querySelector(href);
@@ -44,7 +47,7 @@ export function Navigation() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
-            {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className="text-gray-700 dark:text-gray-300 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">
+            {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className={`${item.color} hover:scale-110 transition-all duration-300 hover:drop-shadow-lg font-medium`}>
                 {item.label}
               </button>)}
           </div>
@@ -52,10 +55,10 @@ export function Navigation() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400 transition-all hover:scale-105">
+            <Button variant="ghost" onClick={() => navigate('/auth')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
               Sign In
             </Button>
-            <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold shadow-lg shadow-yellow-500/50 transition-all hover:scale-105">
+            <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold shadow-lg shadow-yellow-500/50 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-yellow-500/70">
               Get Started
             </Button>
           </div>
@@ -82,14 +85,14 @@ export function Navigation() {
         y: -20
       }} className="md:hidden mt-4 pb-4 border-t border-yellow-500/20 pt-4">
             <div className="flex flex-col gap-4">
-              {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className="text-gray-700 dark:text-gray-300 hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors text-left">
+              {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className={`${item.color} hover:scale-105 transition-all duration-300 text-left font-medium`}>
                   {item.label}
                 </button>)}
               <div className="flex flex-col gap-2 mt-4">
-                <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400 transition-all hover:scale-105">
+                <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
                   Sign In
                 </Button>
-                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold transition-all hover:scale-105">
+                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold transition-all duration-300 hover:scale-105 shadow-lg shadow-yellow-500/50">
                   Get Started
                 </Button>
               </div>
