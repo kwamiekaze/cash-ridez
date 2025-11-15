@@ -4,11 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Car, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { SportsCar } from "@/components/SportsCar";
+import { motion } from "motion/react";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -71,22 +73,39 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-black dark:bg-black flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated Car at Top */}
+      <div className="fixed top-16 left-0 right-0 h-32 z-50 pointer-events-none overflow-hidden">
+        <motion.div 
+          className="absolute top-8 z-50" 
+          animate={{ x: ['-15%', '115%'] }} 
+          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+        >
+          <SportsCar width={100} height={50} />
+        </motion.div>
+      </div>
+
+      {/* Background Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black via-emerald-950/20 to-black" />
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
-              <Car className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-3xl font-bold text-white">
-              Cash Ridez
+          <div className="inline-flex flex-col items-center gap-3 mb-4">
+            <span 
+              className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-5xl animate-shimmer bg-[length:200%_auto]" 
+              style={{ 
+                fontFamily: "'Playfair Display', serif",
+                filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6)) drop-shadow(0 0 60px rgba(250,204,21,0.4))'
+              }}
+            >
+              cashridez
             </span>
           </div>
-          <p className="text-white/80 text-lg">Welcome back to the community</p>
+          <p className="text-yellow-400/80 text-lg font-medium">Welcome back to the community</p>
         </div>
 
-        <Card className="p-8 backdrop-blur-sm bg-card/95">
+        <Card className="p-8 backdrop-blur-xl bg-black/80 border-yellow-500/20">
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
@@ -125,7 +144,7 @@ const Auth = () => {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full bg-gradient-primary"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold"
                   disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
@@ -176,7 +195,7 @@ const Auth = () => {
                 </div>
                 <Button 
                   type="submit" 
-                  className="w-full bg-gradient-primary"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold"
                   disabled={isLoading}
                 >
                   {isLoading ? "Creating account..." : "Create Account"}

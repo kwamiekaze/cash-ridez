@@ -108,10 +108,28 @@ export default {
             height: "0",
           },
         },
+        shimmer: {
+          "0%": {
+            backgroundPosition: "-200% center",
+          },
+          "100%": {
+            backgroundPosition: "200% center",
+          },
+        },
+        sparkle: {
+          "0%, 100%": {
+            filter: "drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6)) drop-shadow(0 0 60px rgba(250,204,21,0.4))",
+          },
+          "50%": {
+            filter: "drop-shadow(0 0 30px rgba(250,204,21,1)) drop-shadow(0 0 60px rgba(250,204,21,0.8)) drop-shadow(0 0 90px rgba(250,204,21,0.6))",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        shimmer: "shimmer 3s linear infinite",
+        sparkle: "sparkle 2s ease-in-out infinite",
       },
     },
   },
