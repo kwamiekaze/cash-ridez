@@ -74,7 +74,7 @@ const AppHeader = ({
                 className="absolute left-0"
                 animate={{
                   x: [0, 210, 0],
-                  scaleX: [-1, -1, 1, 1, -1]
+                  scaleX: [1, 1, -1, -1, 1]
                 }}
                 transition={{
                   duration: 12,
