@@ -290,10 +290,8 @@ export default function LandingNew() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center border-2 border-yellow-300">
-                <DollarSign className="w-5 h-5 text-black" />
-              </div>
-              <span className="text-lg font-semibold text-gray-700 dark:text-gray-400">CashRidez</span>
+              
+              
             </div>
             <div className="flex gap-6 text-gray-700 dark:text-gray-400 text-sm">
               <button className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Terms</button>
