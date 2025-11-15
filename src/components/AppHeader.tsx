@@ -7,6 +7,8 @@ import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { motion } from "motion/react";
+import { CashCarIcon } from "./CashCarIcon";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,8 +44,23 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
   }, [user]);
 
   return (
-    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="container mx-auto px-4 py-4">
+    <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 relative overflow-hidden">
+      {/* Animated Car across header */}
+      <motion.div 
+        className="absolute top-2 z-50 pointer-events-none"
+        animate={{
+          x: ['-10%', '110%']
+        }}
+        transition={{
+          duration: 30,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+      >
+        <CashCarIcon width={60} height={30} glowIntensity="low" />
+      </motion.div>
+
+      <div className="container mx-auto px-4 py-4 relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
             // Route based on user role
@@ -59,7 +76,7 @@ const AppHeader = ({ showStatus = true }: AppHeaderProps) => {
               <Car className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="text-xl font-bold">Cash Ridez</span>
+              <span className="text-xl font-bold gold-shimmer">CashRidez</span>
               {profile?.active_role && (
                 <p className="text-xs text-muted-foreground capitalize">{profile.active_role}</p>
               )}

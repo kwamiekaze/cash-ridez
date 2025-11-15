@@ -18,6 +18,8 @@ import TripActionDialog from "@/components/TripActionDialog";
 import { AvailableDriversList } from "@/components/AvailableDriversList";
 import { SubscriptionPanel } from "@/components/SubscriptionPanel";
 import { TripLimitGate } from "@/components/TripLimitGate";
+import { MapBackground } from "@/components/MapBackground";
+import { CommunityChat } from "@/components/CommunityChat";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -25,7 +27,7 @@ const RiderDashboard = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "area">("open");
+  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "chat">("open");
   const [requests, setRequests] = useState<any[]>([]);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -39,7 +41,7 @@ const RiderDashboard = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['open', 'assigned', 'completed', 'area'].includes(tabParam)) {
+    if (tabParam && ['open', 'assigned', 'completed', 'chat'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [location.search]);
@@ -352,8 +354,12 @@ const RiderDashboard = () => {
   }, [location.state?.timestamp, user]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
+      
+      <div className="relative z-10">
+        <AppHeader />
 
       <div className="container mx-auto px-4 py-8">
         {/* Verification Notice */}
@@ -418,12 +424,12 @@ const RiderDashboard = () => {
         </div>
 
         {/* Trips Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "area")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "chat")} className="w-full">
           <TabsList className="grid w-full grid-cols-4 gap-1">
             <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
             <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
-            <TabsTrigger value="area" className="text-xs sm:text-sm">Area</TabsTrigger>
+            <TabsTrigger value="chat" className="text-xs sm:text-sm">💬 Chat</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6 space-y-4">
@@ -616,8 +622,8 @@ const RiderDashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="area" className="mt-6 space-y-6">
-            <AvailableDriversList />
+          <TabsContent value="chat" className="mt-6 space-y-6">
+            <CommunityChat />
           </TabsContent>
         </Tabs>
       </div>
@@ -632,6 +638,7 @@ const RiderDashboard = () => {
           onSuccess={handleSuccess}
         />
       )}
+      </div>
     </div>
   );
 };

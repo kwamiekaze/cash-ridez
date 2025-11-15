@@ -11,6 +11,7 @@ import { ArrowLeft, MapPin, Clock, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
+import { MapBackground } from "@/components/MapBackground";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -255,10 +256,14 @@ const CreateRideRequest = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="relative z-10">
+        <AppHeader />
+        
+        <div className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
           <p className="text-sm text-muted-foreground mb-6">
