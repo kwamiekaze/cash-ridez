@@ -380,6 +380,7 @@ const CreateRideRequest = () => {
           </form>
         </Card>
       </div>
+      </div>
     </div>
   );
 };

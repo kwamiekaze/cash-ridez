@@ -14,6 +14,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import AppHeader from "@/components/AppHeader";
+import { MapBackground } from "@/components/MapBackground";
 
 export default function TripHistory() {
   const navigate = useNavigate();
@@ -208,9 +209,13 @@ export default function TripHistory() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <div className="max-w-5xl mx-auto p-4">
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
+      
+      <div className="relative z-10">
+        <AppHeader />
+        <div className="max-w-5xl mx-auto p-4">
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
@@ -301,6 +306,7 @@ export default function TripHistory() {
             </TabsContent>
           </Tabs>
         )}
+      </div>
       </div>
     </div>
   );
