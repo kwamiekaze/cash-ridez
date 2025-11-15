@@ -16,20 +16,20 @@ interface RiderMarker {
 }
 
 const riderMarkers: RiderMarker[] = [
-  { id: 1, x: 15, y: 15 },
-  { id: 2, x: 85, y: 20 },
-  { id: 3, x: 12, y: 85 },
-  { id: 4, x: 88, y: 80 },
-  { id: 5, x: 25, y: 60 },
+  { id: 1, x: 20, y: 30 },
+  { id: 2, x: 45, y: 50 },
+  { id: 3, x: 70, y: 35 },
+  { id: 4, x: 85, y: 65 },
+  { id: 5, x: 55, y: 75 },
 ];
 
 const carWaypoints = [
-  { x: 15, y: 15 },
-  { x: 85, y: 20 },
-  { x: 88, y: 80 },
-  { x: 12, y: 85 },
-  { x: 25, y: 60 },
-  { x: 15, y: 15 }, // Loop back
+  { x: 20, y: 30 },
+  { x: 45, y: 50 },
+  { x: 70, y: 35 },
+  { x: 85, y: 65 },
+  { x: 55, y: 75 },
+  { x: 20, y: 30 }, // Loop back
 ];
 
 export function MapBackground({ 
@@ -78,11 +78,11 @@ export function MapBackground({
         {/* Bright Intersection Nodes */}
         {showRiders && (
           <g>
-            <circle cx="15%" cy="15%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="85%" cy="20%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="12%" cy="85%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="88%" cy="80%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="25%" cy="60%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="20%" cy="30%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="45%" cy="50%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="70%" cy="35%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="85%" cy="65%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="55%" cy="75%" r="4" fill="url(#nodeGlow)" />
           </g>
         )}
       </svg>
