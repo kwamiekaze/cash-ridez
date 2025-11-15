@@ -79,40 +79,63 @@ export default function LandingNew() {
             />
             
             {/* Top Section with Buttons and Car */}
-            <div className="relative z-10 pt-32 pb-8">
+            <div className="relative z-50 pt-32 pb-8">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* CTA Buttons at Top */}
                 <motion.div
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.2 }}
-                  className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8"
+                  className="flex flex-col items-center gap-6"
                 >
-                  <button
-                    onClick={() => navigate("/auth")}
-                    className="w-full sm:w-auto px-12 py-5 text-xl font-semibold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 shadow-2xl"
-                    style={{
-                      background: '#F9E27D',
-                      color: '#000000',
-                      boxShadow: '0 8px 32px rgba(249, 226, 125, 0.6)',
-                    }}
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <button
+                      onClick={() => navigate("/auth")}
+                      className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 shadow-2xl"
+                      style={{
+                        background: '#F9E27D',
+                        color: '#000000',
+                        boxShadow: '0 8px 32px rgba(249, 226, 125, 0.6)',
+                      }}
+                    >
+                      <span>📍</span>
+                      Post a Trip
+                    </button>
+                    <button
+                      onClick={() => navigate("/auth")}
+                      className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-3 transition-all hover:scale-105 flex items-center justify-center gap-3"
+                      style={{
+                        borderColor: '#F9E27D',
+                        borderWidth: '3px',
+                        color: '#F9E27D',
+                        backgroundColor: 'transparent',
+                      }}
+                    >
+                      <CashCarIcon width={32} height={16} glowIntensity="none" />
+                      Respond to Trips
+                    </button>
+                  </div>
+                  
+                  {/* Trust Badges */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="flex flex-wrap justify-center gap-6 text-sm sm:text-base"
                   >
-                    <span>📍</span>
-                    Post a Trip
-                  </button>
-                  <button
-                    onClick={() => navigate("/auth")}
-                    className="w-full sm:w-auto px-12 py-5 text-xl font-semibold rounded-2xl border-3 transition-all hover:scale-105 flex items-center justify-center gap-3"
-                    style={{
-                      borderColor: '#F9E27D',
-                      borderWidth: '3px',
-                      color: '#F9E27D',
-                      backgroundColor: 'transparent',
-                    }}
-                  >
-                    <CashCarIcon width={32} height={16} glowIntensity="none" />
-                    Respond to Trips
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <span className="text-gray-300 font-medium">ID Verified</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <span className="text-gray-300 font-medium">Safe Connections</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      <span className="text-gray-300 font-medium">Community-Driven</span>
+                    </div>
+                  </motion.div>
                 </motion.div>
               </div>
             </div>
