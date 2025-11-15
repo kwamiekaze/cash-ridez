@@ -1,23 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle2, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { LoadingScreen } from '@/components/LoadingScreen';
+import { SplashScreen } from '@/components/SplashScreen';
+import { MapBackground } from '@/components/MapBackground';
 import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
 import SupportDialog from '@/components/SupportDialog';
 
 export default function LandingNew() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
 
   const steps = [
     {
@@ -60,17 +54,100 @@ export default function LandingNew() {
     },
   ];
 
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden">
-      <Navigation />
-      <HeroSection />
+    <>
+      {showSplash && (
+        <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />
+      )}
+      
+      <div className="min-h-screen relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #020610 0%, #071214 40%, #0a1a1f 100%)' }}>
+        {/* Global Map Background */}
+        <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
+        
+        <div className="relative z-10">
+          <Navigation />
+          
+          {/* Hero Section with Animated Map */}
+          <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+            {/* Animated Map Background for Hero */}
+            <MapBackground 
+              showAnimatedCar 
+              showRiders 
+              intensity="prominent" 
+              className="absolute inset-0"
+            />
+            
+            {/* Hero Content Overlay */}
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+              <div className="text-center space-y-8">
+                {/* Main Heading */}
+                <motion.h1
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="text-5xl md:text-7xl lg:text-8xl font-bold"
+                  style={{
+                    background: 'linear-gradient(90deg, #F9E27D 0%, #FFD700 50%, #F9E27D 100%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    textShadow: '0 0 40px rgba(249, 226, 125, 0.3)'
+                  }}
+                >
+                  Keep 100% of your cash rides.
+                </motion.h1>
 
-      {/* How It Works */}
-      <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-black to-gray-950">
+                {/* Subtext */}
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  className="text-xl md:text-2xl max-w-3xl mx-auto"
+                  style={{ color: 'rgba(249, 226, 125, 0.8)' }}
+                >
+                  CashRidez connects riders and drivers directly for cash-only rides. 
+                  No commissions. No fees. Just community-powered transportation.
+                </motion.p>
+
+                {/* CTA Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.6 }}
+                  className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+                >
+                  <button
+                    onClick={() => navigate("/auth")}
+                    className="px-8 py-4 text-lg font-semibold rounded-lg transition-all hover:scale-105"
+                    style={{
+                      background: 'linear-gradient(135deg, #F9E27D 0%, #FFD700 100%)',
+                      color: '#020610',
+                      boxShadow: '0 0 20px rgba(249, 226, 125, 0.5)',
+                    }}
+                  >
+                    Get Started
+                  </button>
+                  <button
+                    onClick={() => navigate("/auth")}
+                    className="px-8 py-4 text-lg font-semibold rounded-lg border-2 transition-all hover:scale-105"
+                    style={{
+                      borderColor: '#F9E27D',
+                      color: '#F9E27D',
+                      backgroundColor: 'rgba(2, 6, 16, 0.8)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    Find a Ride
+                  </button>
+                </motion.div>
+              </div>
+            </div>
+          </section>
+          
+          <HeroSection />
+
+          {/* How It Works */}
+          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-black to-gray-950">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -149,12 +226,12 @@ export default function LandingNew() {
             <p className="text-gray-400 text-sm">
               CashRidez never books or manages trips, we simply help people connect and communicate.
             </p>
-          </motion.div>
-        </div>
-      </section>
+            </motion.div>
+          </div>
+        </section>
 
-      {/* Support Section */}
-      <section id="support" className="relative py-24 bg-gradient-to-b from-gray-950 to-black">
+        {/* Support Section */}
+        <section id="support" className="relative py-24 bg-gradient-to-b from-gray-950 to-black">
         <div className="container mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -199,6 +276,8 @@ export default function LandingNew() {
       </footer>
 
       <SupportDialog open={isSupportOpen} onOpenChange={setIsSupportOpen} />
-    </div>
+        </div>
+      </div>
+    </>
   );
 }
