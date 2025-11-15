@@ -19,6 +19,7 @@ import { UserManagementTable } from "@/components/UserManagementTable";
 import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { AdminRidesManagement } from "@/components/AdminRidesManagement";
 import { SubscribedMembersTab } from "@/components/SubscribedMembersTab";
+import { CommunityChat } from "@/components/CommunityChat";
 import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
@@ -299,11 +300,12 @@ const AdminDashboard = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="verifications" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="verifications" className="text-xs md:text-sm">Verifications</TabsTrigger>
             <TabsTrigger value="users" className="text-xs md:text-sm">Users</TabsTrigger>
             <TabsTrigger value="subscribed" className="text-xs md:text-sm">Subscribed</TabsTrigger>
             <TabsTrigger value="rides" className="text-xs md:text-sm">Rides</TabsTrigger>
+            <TabsTrigger value="chat" className="text-xs md:text-sm">Community</TabsTrigger>
           </TabsList>
 
           <TabsContent value="verifications" className="mt-6">
@@ -403,6 +405,13 @@ const AdminDashboard = () => {
             <div className="space-y-4">
               <h2 className="text-xl md:text-2xl font-bold">All Rides</h2>
               <AdminRidesManagement />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="chat" className="mt-6">
+            <div className="space-y-4">
+              <h2 className="text-xl md:text-2xl font-bold">Community Chat</h2>
+              <CommunityChat />
             </div>
           </TabsContent>
         </Tabs>

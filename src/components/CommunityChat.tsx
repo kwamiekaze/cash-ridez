@@ -28,19 +28,40 @@ export function CommunityChat() {
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [canSendMessage, setCanSendMessage] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Check if user is admin
+  // Check user status
   useEffect(() => {
-    const checkAdmin = async () => {
+    const checkUserStatus = async () => {
       if (!user) return;
-      const { data } = await supabase.rpc('has_role', { 
+      
+      // Check admin
+      const { data: adminData } = await supabase.rpc('has_role', { 
         _user_id: user.id, 
         _role: 'admin' 
       });
-      setIsAdmin(Boolean(data));
+      setIsAdmin(Boolean(adminData));
+
+      // Check message count and subscription
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("chat_message_count, subscription_active, chat_blocked")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setMessageCount(profile.chat_message_count || 0);
+        setIsSubscribed(profile.subscription_active || false);
+        setCanSendMessage(
+          !profile.chat_blocked && 
+          (profile.subscription_active || profile.chat_message_count < 10)
+        );
+      }
     };
-    checkAdmin();
+    checkUserStatus();
   }, [user]);
 
   // Fetch messages
@@ -163,6 +184,31 @@ export function CommunityChat() {
     }
   };
 
+  const handleModerateUser = async (userId: string, action: 'mute' | 'block') => {
+    if (!isAdmin) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        chat_muted: action === 'mute',
+        chat_blocked: action === 'block'
+      })
+      .eq("id", userId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: `User ${action}ed from chat`
+      });
+    }
+  };
+
   return (
     <Card className="flex flex-col h-[600px] bg-card/80 backdrop-blur-sm">
       <div className="p-4 border-b border-border">
@@ -209,18 +255,38 @@ export function CommunityChat() {
                         {format(new Date(msg.created_at), "h:mm a")}
                       </span>
                       {(isOwnMessage || isAdmin) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => handleDelete(msg.id)}
-                        >
-                          {isAdmin && !isOwnMessage ? (
-                            <Shield className="h-3 w-3 text-destructive" />
-                          ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => handleDelete(msg.id)}
+                          >
                             <Trash2 className="h-3 w-3" />
+                          </Button>
+                          {isAdmin && !isOwnMessage && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => handleModerateUser(msg.user_id, 'mute')}
+                                title="Mute user"
+                              >
+                                <Shield className="h-3 w-3 text-yellow-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => handleModerateUser(msg.user_id, 'block')}
+                                title="Block user"
+                              >
+                                <Shield className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </>
                           )}
-                        </Button>
+                        </>
                       )}
                     </div>
                     <div
@@ -241,20 +307,27 @@ export function CommunityChat() {
       </ScrollArea>
 
       <form onSubmit={handleSend} className="p-4 border-t border-border">
+        {!canSendMessage && !isSubscribed && (
+          <div className="mb-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <p className="text-sm text-yellow-600 dark:text-yellow-400">
+              You've reached your free message limit ({messageCount}/10). Subscribe to continue chatting!
+            </p>
+          </div>
+        )}
         <div className="flex gap-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            disabled={sending}
+            placeholder={canSendMessage ? "Type a message..." : "Subscribe to send messages"}
+            disabled={sending || !canSendMessage}
             maxLength={500}
           />
-          <Button type="submit" disabled={!newMessage.trim() || sending}>
+          <Button type="submit" disabled={!newMessage.trim() || sending || !canSendMessage}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Only verified users can send messages
+          {!isSubscribed && `${messageCount}/10 free messages used`}
         </p>
       </form>
     </Card>

@@ -87,7 +87,7 @@ export function CashCarIcon({
           cx="0" 
           cy="0" 
           r="8" 
-          fill="rgba(2, 6, 16, 0.9)" 
+          fill="none"
           stroke="url(#cashCarGold)" 
           strokeWidth="2"
         />

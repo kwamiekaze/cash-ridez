@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Camera, Star, CheckCircle, Clock, XCircle } from "lucide-react";
+import { ArrowLeft, Camera, Star, CheckCircle, Clock, XCircle, Car } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -43,6 +43,9 @@ const Profile = () => {
     is_verified: false,
     verification_status: "pending",
     created_at: "",
+    car_year: "",
+    car_make: "",
+    car_model: "",
   });
   const [adminLockedFields, setAdminLockedFields] = useState<string[]>([]);
   const [originalName, setOriginalName] = useState("");
@@ -83,6 +86,9 @@ const Profile = () => {
           is_verified: data.is_verified || false,
           verification_status: data.verification_status || "pending",
           created_at: data.created_at || "",
+          car_year: data.car_year || "",
+          car_make: data.car_make || "",
+          car_model: data.car_model || "",
         });
         setAdminLockedFields(data.admin_locked_fields || []);
         setOriginalName(data.full_name || "");
@@ -209,6 +215,13 @@ const Profile = () => {
     // Add other fields (these can always be updated by the user)
     updates.phone_number = profile.phone_number;
     updates.bio = profile.bio;
+    
+    // Add vehicle information if user is a driver
+    if (profile.is_driver) {
+      updates.car_year = profile.car_year;
+      updates.car_make = profile.car_make;
+      updates.car_model = profile.car_model;
+    }
 
     setLoading(true);
     try {
@@ -445,6 +458,49 @@ const Profile = () => {
                 <strong className="text-destructive">Warning:</strong> Do not include contact information (phone numbers, email, social media handles, etc.) in your bio. Sharing contact information may result in account suspension. Multiple violations may result in account termination.
               </p>
             </div>
+
+            {/* Driver Vehicle Information */}
+            {profile.is_driver && (
+              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Car className="h-5 w-5" />
+                  <h3 className="font-semibold">Vehicle Information</h3>
+                </div>
+                <div className="grid md:grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="car_year">Year</Label>
+                    <Input
+                      id="car_year"
+                      value={profile.car_year || ''}
+                      onChange={(e) => setProfile({ ...profile, car_year: e.target.value })}
+                      placeholder="2020"
+                      maxLength={4}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="car_make">Make</Label>
+                    <Input
+                      id="car_make"
+                      value={profile.car_make || ''}
+                      onChange={(e) => setProfile({ ...profile, car_make: e.target.value })}
+                      placeholder="Toyota"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="car_model">Model</Label>
+                    <Input
+                      id="car_model"
+                      value={profile.car_model || ''}
+                      onChange={(e) => setProfile({ ...profile, car_model: e.target.value })}
+                      placeholder="Camry"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Vehicle information will be visible to riders for transparency and safety.
+                </p>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Saving..." : "Save Changes"}

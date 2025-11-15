@@ -4,6 +4,8 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { MemberBadge } from "@/components/MemberBadge";
 import { AdminBadge } from "@/components/AdminBadge";
+import { UserProfileModal } from "@/components/UserProfileModal";
+import { VehicleInfo } from "@/components/VehicleInfo";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserChipProps {
@@ -39,6 +41,8 @@ export const UserChip = memo(function UserChip({
   const [ratingCount, setRatingCount] = useState(providedRatingCount);
   const [isMember, setIsMember] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [vehicleInfo, setVehicleInfo] = useState<{ year?: string; make?: string; model?: string }>({});
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     // Check cache first
@@ -62,7 +66,7 @@ export const UserChip = memo(function UserChip({
       try {
         // Single combined query
         const [profileRes, roleRes, statsRes] = await Promise.all([
-          supabase.from('profiles').select('is_member').eq('id', userId).single(),
+          supabase.from('profiles').select('is_member, car_year, car_make, car_model').eq('id', userId).single(),
           supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
           role && (providedRatingAvg === undefined || providedRatingCount === undefined)
             ? supabase.from('user_public_stats').select('*').eq('user_id', userId).maybeSingle()
@@ -72,11 +76,20 @@ export const UserChip = memo(function UserChip({
         const isMember = profileRes.data?.is_member || false;
         const isAdmin = !!roleRes.data;
         const stats = statsRes.data;
+        
+        // Set vehicle info if driver
+        if (role === "driver" && profileRes.data) {
+          setVehicleInfo({
+            year: profileRes.data.car_year || undefined,
+            make: profileRes.data.car_make || undefined,
+            model: profileRes.data.car_model || undefined,
+          });
+        }
 
         // Cache the results
         userDataCache.set(userId, {
           timestamp: now,
-          data: { isMember, isAdmin, stats }
+          data: { isMember, isAdmin, stats, vehicleInfo: profileRes.data }
         });
 
         setIsMember(isMember);
@@ -120,29 +133,41 @@ export const UserChip = memo(function UserChip({
   const initials = name[0].toUpperCase();
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <Avatar className={avatarSizes[size]}>
-        <AvatarImage src={photoUrl} alt={name} />
-        <AvatarFallback>{initials}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className={`font-medium ${textSizes[size]} truncate`}>{name}</p>
-          <AdminBadge isAdmin={isAdmin} />
-          <MemberBadge isMember={isMember} />
-          {showCancellationBadge && (
-            <CancellationBadge userId={userId} role={role} size="sm" />
+    <>
+      <div 
+        className={`flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-lg p-2 transition-colors ${className}`}
+        onClick={() => setModalOpen(true)}
+      >
+        <Avatar className={avatarSizes[size]}>
+          <AvatarImage src={photoUrl} alt={name} />
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={`font-medium ${textSizes[size]} truncate`}>{name}</p>
+            <AdminBadge isAdmin={isAdmin} />
+            <MemberBadge isMember={isMember} />
+            {showCancellationBadge && (
+              <CancellationBadge userId={userId} role={role} size="sm" />
+            )}
+          </div>
+          {role === "driver" && <VehicleInfo {...vehicleInfo} />}
+          {ratingCount && ratingCount > 0 && (
+            <RatingDisplay
+              rating={ratingAvg || 0}
+              count={ratingCount}
+              size={size === "lg" ? "md" : "sm"}
+              className="mt-0.5"
+            />
           )}
         </div>
-        {ratingCount && ratingCount > 0 && (
-          <RatingDisplay
-            rating={ratingAvg || 0}
-            count={ratingCount}
-            size={size === "lg" ? "md" : "sm"}
-            className="mt-0.5"
-          />
-        )}
       </div>
-    </div>
+      
+      <UserProfileModal 
+        userId={userId}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+      />
+    </>
   );
 });

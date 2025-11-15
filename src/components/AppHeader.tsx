@@ -70,24 +70,23 @@ const AppHeader = ({
             </span>
             {/* Animated Car with Role Letter - Full Width Animation */}
             <div className="w-[280px] sm:w-[350px] md:w-[500px] lg:w-[600px] overflow-visible relative mt-1 md:mt-2 h-[40px] md:h-[50px]">
-              <motion.div 
-                className="absolute left-0"
+              <motion.div
                 animate={{
-                  x: [0, 210, 0],
-                  scaleX: [1, 1, -1, -1, 1]
+                  x: ['0%', '100%']
                 }}
                 transition={{
-                  duration: 15,
+                  duration: 30,
                   repeat: Infinity,
-                  ease: "linear",
-                  times: [0, 0.48, 0.5, 0.98, 1]
+                  ease: "linear"
                 }}
+                className="absolute top-2"
+                style={{ filter: 'drop-shadow(0 0 12px rgba(249, 226, 125, 0.7)) drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))' }}
               >
                 <CashCarIcon 
                   width={70} 
                   height={35} 
-                  glowIntensity="high" 
-                  letter={carLetter}
+                  glowIntensity="none"
+                  letter="$"
                   className="md:w-[90px] md:h-[45px]" 
                 />
               </motion.div>

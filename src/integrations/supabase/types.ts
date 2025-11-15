@@ -421,6 +421,12 @@ export type Database = {
           bio: string | null
           blocked: boolean | null
           blocked_until: string | null
+          car_make: string | null
+          car_model: string | null
+          car_year: string | null
+          chat_blocked: boolean | null
+          chat_message_count: number | null
+          chat_muted: boolean | null
           completed_trips_count: number | null
           consecutive_cancellations: number | null
           created_at: string | null
@@ -474,6 +480,12 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          car_make?: string | null
+          car_model?: string | null
+          car_year?: string | null
+          chat_blocked?: boolean | null
+          chat_message_count?: number | null
+          chat_muted?: boolean | null
           completed_trips_count?: number | null
           consecutive_cancellations?: number | null
           created_at?: string | null
@@ -527,6 +539,12 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          car_make?: string | null
+          car_model?: string | null
+          car_year?: string | null
+          chat_blocked?: boolean | null
+          chat_message_count?: number | null
+          chat_muted?: boolean | null
           completed_trips_count?: number | null
           consecutive_cancellations?: number | null
           created_at?: string | null
