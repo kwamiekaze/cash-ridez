@@ -9,23 +9,23 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Luxury Gold/Emerald Color Scheme - Light Mode */
-    --background: 0 0% 98%; /* Light gray background */
-    --foreground: 0 0% 10%; /* Dark text for readability */
+    --background: 0 0% 100%; /* Pure white background */
+    --foreground: 0 0% 5%; /* Very dark text for readability */
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 0 0% 5%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 0 0% 5%;
     
     --primary: 51 100% 50%; /* #FFD700 Metallic Gold */
     --primary-foreground: 0 0% 0%;
     
-    --secondary: 0 0% 96%;
+    --secondary: 0 0% 95%;
     --secondary-foreground: 0 0% 5%;
     
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 0 0% 92%;
+    --muted-foreground: 0 0% 35%;
     
     --accent: 158 100% 35%; /* #00B26F Emerald Green */
     --accent-foreground: 0 0% 100%;
