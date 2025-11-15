@@ -36,7 +36,7 @@ const riderMarkersMobile: RiderMarker[] = [
 // Car travels around the perimeter, never through the center
 const carWaypointsDesktop = [
   { x: 10, y: 20 },   // Top-left corner
-  { x: 50, y: 15 },   // Top-center
+  { x: 50, y: 10 },   // Top-center (moved higher)
   { x: 90, y: 20 },   // Top-right corner
   { x: 92, y: 50 },   // Right-center
   { x: 90, y: 80 },   // Bottom-right corner

@@ -136,6 +136,47 @@ export default function LandingNew() {
                       <span className="text-gray-300 font-medium">Community-Driven</span>
                     </div>
                   </motion.div>
+                  
+                  {/* People Icons with $ */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.8, delay: 0.6 }}
+                    className="flex justify-center gap-8 mt-6"
+                  >
+                    <div className="relative">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="7" r="3" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
+                        <path d="M12 11C8.5 11 6 13 6 16V20H18V16C18 13 15.5 11 12 11Z" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
+                      </svg>
+                      <div 
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{
+                          backgroundColor: '#F9E27D',
+                          color: '#000000',
+                          boxShadow: '0 0 10px rgba(249, 226, 125, 0.8)'
+                        }}
+                      >
+                        $
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="7" r="3" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
+                        <path d="M12 11C8.5 11 6 13 6 16V20H18V16C18 13 15.5 11 12 11Z" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
+                      </svg>
+                      <div 
+                        className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                        style={{
+                          backgroundColor: '#F9E27D',
+                          color: '#000000',
+                          boxShadow: '0 0 10px rgba(249, 226, 125, 0.8)'
+                        }}
+                      >
+                        $
+                      </div>
+                    </div>
+                  </motion.div>
                 </motion.div>
               </div>
             </div>
