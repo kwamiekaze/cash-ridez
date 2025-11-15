@@ -33,17 +33,17 @@ const riderMarkersMobile: RiderMarker[] = [
   { id: 4, x: 90, y: 85 },  // Bottom-right
 ];
 
-// Car travels around the perimeter, never through the center
+// Car travels around the perimeter, avoiding the top animated car area
 const carWaypointsDesktop = [
-  { x: 10, y: 20 },   // Top-left corner
-  { x: 50, y: 7 },    // Top-center (moved higher)
-  { x: 90, y: 20 },   // Top-right corner
+  { x: 10, y: 30 },   // Top-left corner (lower to avoid top car)
+  { x: 25, y: 25 },   // Mid-left
+  { x: 90, y: 30 },   // Top-right corner (lower to avoid top car)
   { x: 92, y: 50 },   // Right-center
-  { x: 90, y: 80 },   // Bottom-right corner
+  { x: 90, y: 75 },   // Bottom-right corner
   { x: 50, y: 85 },   // Bottom-center
-  { x: 10, y: 80 },   // Bottom-left corner
+  { x: 10, y: 75 },   // Bottom-left corner
   { x: 8, y: 50 },    // Left-center
-  { x: 10, y: 20 },   // Loop back to start
+  { x: 10, y: 30 },   // Loop back to start
 ];
 
 const carWaypointsMobile = [
@@ -200,7 +200,7 @@ export function MapBackground({
             top: carWaypoints.map(wp => `${wp.y}%`)
           }}
           transition={{
-            duration: isMobile ? 20 : 35,
+            duration: isMobile ? 40 : 70,
             repeat: Infinity,
             ease: "linear"
           }}
