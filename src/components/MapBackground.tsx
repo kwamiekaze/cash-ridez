@@ -164,7 +164,7 @@ export function MapBackground({
                 ease: "easeInOut"
               }}
             />
-            {/* Person Icon */}
+            {/* Person with Dollar Icon */}
             <div className="relative flex flex-col items-center">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 {/* Person head */}
@@ -172,6 +172,17 @@ export function MapBackground({
                 {/* Person body */}
                 <path d="M12 11C8.5 11 6 13 6 16V20H18V16C18 13 15.5 11 12 11Z" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
               </svg>
+              {/* Dollar sign badge */}
+              <div 
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{
+                  backgroundColor: '#F9E27D',
+                  color: '#000000',
+                  boxShadow: '0 0 6px rgba(249, 226, 125, 0.6)'
+                }}
+              >
+                $
+              </div>
             </div>
           </div>
         </motion.div>
