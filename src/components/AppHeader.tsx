@@ -73,12 +73,14 @@ const AppHeader = ({
               <motion.div 
                 className="absolute left-0"
                 animate={{
-                  x: [0, 210, 0]
+                  x: [0, 210, 0],
+                  scaleX: [1, 1, -1, -1, 1]
                 }}
                 transition={{
                   duration: 12,
                   repeat: Infinity,
-                  ease: "linear"
+                  ease: "linear",
+                  times: [0, 0.48, 0.5, 0.98, 1]
                 }}
               >
                 <CashCarIcon 
