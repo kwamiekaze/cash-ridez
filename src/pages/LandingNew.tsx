@@ -118,26 +118,28 @@ export default function LandingNew() {
                 >
                   <button
                     onClick={() => navigate("/auth")}
-                    className="px-8 py-4 text-lg font-semibold rounded-lg transition-all hover:scale-105"
+                    className="w-full sm:w-auto px-12 py-5 text-xl font-semibold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 shadow-2xl"
                     style={{
-                      background: 'linear-gradient(135deg, #F9E27D 0%, #FFD700 100%)',
-                      color: '#020610',
-                      boxShadow: '0 0 20px rgba(249, 226, 125, 0.5)',
+                      background: '#F9E27D',
+                      color: '#000000',
+                      boxShadow: '0 8px 32px rgba(249, 226, 125, 0.6)',
                     }}
                   >
-                    Get Started
+                    <span>📍</span>
+                    Post a Trip
                   </button>
                   <button
                     onClick={() => navigate("/auth")}
-                    className="px-8 py-4 text-lg font-semibold rounded-lg border-2 transition-all hover:scale-105"
+                    className="w-full sm:w-auto px-12 py-5 text-xl font-semibold rounded-2xl border-3 transition-all hover:scale-105 flex items-center justify-center gap-3"
                     style={{
                       borderColor: '#F9E27D',
+                      borderWidth: '3px',
                       color: '#F9E27D',
-                      backgroundColor: 'rgba(2, 6, 16, 0.8)',
-                      backdropFilter: 'blur(10px)'
+                      backgroundColor: 'transparent',
                     }}
                   >
-                    Find a Ride
+                    <span>🚗</span>
+                    Respond to Trips
                   </button>
                 </motion.div>
               </div>
