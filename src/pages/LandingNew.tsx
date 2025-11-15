@@ -128,7 +128,10 @@ export default function LandingNew() {
                       <CashCarIcon width={60} height={30} glowIntensity="none" />
                       Respond to Trips
                     </button>
-                    
+                    {/* Dollar Sign Below Button */}
+                    <div className="mt-6">
+                      <DollarSign className="w-10 h-10 text-[#E8C368]" />
+                    </div>
                   </div>
                 </motion.div>
               </div>
