@@ -7,8 +7,6 @@ import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
-import { motion } from "motion/react";
-import { CashCarIcon } from "./CashCarIcon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StatusBadge from "@/components/StatusBadge";
@@ -45,31 +43,9 @@ const AppHeader = ({
     fetchProfile();
   }, [user]);
   return <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 relative overflow-hidden">
-      {/* Animated Car with Role Label across header */}
-      <motion.div className="absolute top-2 md:top-3 z-50 pointer-events-none flex items-center gap-2" animate={{
-      x: ['-15%', '115%']
-    }} transition={{
-      duration: 28,
-      repeat: Infinity,
-      ease: "linear"
-    }}>
-        <CashCarIcon width={50} height={25} glowIntensity="low" className="md:w-[60px] md:h-[30px]" />
-        {profile?.active_role && <motion.span className="text-yellow-400 font-bold text-sm md:text-base capitalize" style={{
-        filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))'
-      }} animate={{
-        opacity: [0.7, 1, 0.7]
-      }} transition={{
-        duration: 2,
-        repeat: Infinity,
-        ease: "easeInOut"
-      }}>
-            {profile.active_role}
-          </motion.span>}
-      </motion.div>
-
-      <div className="container mx-auto px-4 py-4 relative z-10">
+      <div className="container mx-auto px-4 py-3 md:py-4 relative z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => {
+          <div className="flex flex-col cursor-pointer" onClick={() => {
           // Route based on user role
           if (profile?.active_role === 'rider') {
             navigate('/rider');
@@ -82,9 +58,17 @@ const AppHeader = ({
             <span style={{
             fontFamily: "'Playfair Display', serif",
             filter: 'drop-shadow(0 0 15px rgba(250,204,21,0.8)) drop-shadow(0 0 30px rgba(250,204,21,0.5))'
-          }} className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto] py-[20px] mx-0 px-0 md:text-5xl">
+          }} className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto] md:text-4xl lg:text-5xl leading-tight">
               CashRidez
             </span>
+            {profile?.active_role && (
+              <span className="text-yellow-400 font-bold text-xs md:text-sm capitalize mt-0.5 md:mt-1" style={{
+                filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))',
+                fontFamily: "'Playfair Display', serif"
+              }}>
+                {profile.active_role}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {showStatus && profile && <div className="hidden sm:flex items-center gap-2">
