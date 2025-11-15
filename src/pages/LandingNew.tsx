@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, DollarSign } from 'lucide-react';
+import { CheckCircle2, DollarSign, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SplashScreen } from '@/components/SplashScreen';
 import { MapBackground } from '@/components/MapBackground';
@@ -8,7 +8,6 @@ import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
 import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
-import verifiedBadge from '@/assets/verified-badge-transparent.png';
 export default function LandingNew() {
   const [showSplash, setShowSplash] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -94,21 +93,15 @@ export default function LandingNew() {
                   delay: 0.4
                 }} className="flex flex-wrap justify-center gap-6 text-sm sm:text-base">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-black/40 flex items-center justify-center backdrop-blur-sm">
-                        <img src={verifiedBadge} alt="Verified" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" />
-                      </div>
+                      <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
                       <span className="font-medium text-neutral-50">ID Verified</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-black/40 flex items-center justify-center backdrop-blur-sm">
-                        <img src={verifiedBadge} alt="Verified" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" />
-                      </div>
+                      <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
                       <span className="font-medium text-green-700">Safe Connections</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-black/40 flex items-center justify-center backdrop-blur-sm">
-                        <img src={verifiedBadge} alt="Verified" className="w-5 h-5 drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" />
-                      </div>
+                      <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
                       <span className="font-medium text-amber-400">Community-Driven</span>
                     </div>
                   </motion.div>
