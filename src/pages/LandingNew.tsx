@@ -128,18 +128,15 @@ export default function LandingNew() {
                       <CashCarIcon width={60} height={30} glowIntensity="none" />
                       Respond to Trips
                     </button>
-                    <motion.div
-                      animate={{
-                        scale: [1, 1.1, 1],
-                        opacity: [0.6, 1, 0.6]
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      <DollarSign className="w-8 h-8" style={{ color: '#E8C368' }} />
+                    <motion.div animate={{
+                    scale: [1, 1.1, 1],
+                    opacity: [0.6, 1, 0.6]
+                  }} transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}>
+                      
                     </motion.div>
                   </div>
                 </motion.div>
