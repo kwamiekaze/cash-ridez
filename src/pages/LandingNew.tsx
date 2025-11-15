@@ -44,9 +44,7 @@ export default function LandingNew() {
   return <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
       
-      <div className="min-h-screen relative overflow-hidden" style={{
-      background: 'linear-gradient(180deg, #020610 0%, #071214 40%, #0a1a1f 100%)'
-    }}>
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
         {/* Global Map Background */}
         <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
         
@@ -59,7 +57,7 @@ export default function LandingNew() {
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0" />
             
             {/* Top Section with Buttons and Car */}
-            <div className="relative z-50 pt-36 pb-8">
+            <div className="relative z-50 pt-36 pb-4">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* CTA Buttons at Top */}
                 <motion.div initial={{
@@ -73,20 +71,11 @@ export default function LandingNew() {
                 delay: 0.2
               }} className="flex flex-col items-center gap-6">
                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 shadow-2xl" style={{
-                    background: '#F9E27D',
-                    color: '#000000',
-                    boxShadow: '0 8px 32px rgba(249, 226, 125, 0.6)'
-                  }}>
+                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 text-black shadow-lg shadow-yellow-500/50 hover:shadow-yellow-500/70">
                       <span>📍</span>
                       Post a Trip
                     </button>
-                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-3 transition-all hover:scale-105 flex items-center justify-center gap-3" style={{
-                    borderColor: '#F9E27D',
-                    borderWidth: '3px',
-                    color: '#F9E27D',
-                    backgroundColor: 'transparent'
-                  }}>
+                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-yellow-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-yellow-600 dark:text-yellow-400 hover:bg-yellow-400/20">
                       <CashCarIcon width={32} height={16} glowIntensity="none" />
                       Respond to Trips
                     </button>
@@ -104,47 +93,44 @@ export default function LandingNew() {
                   delay: 0.4
                 }} className="flex flex-wrap justify-center gap-6 text-sm sm:text-base">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                      <span className="text-gray-300 font-medium">ID Verified</span>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                      <span className="text-gray-900 dark:text-white font-medium">ID Verified</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                      <span className="text-gray-300 font-medium">Safe Connections</span>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                      <span className="text-gray-900 dark:text-white font-medium">Safe Connections</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                      <span className="text-gray-300 font-medium">Community-Driven</span>
-                    </div>
-                  </motion.div>
-                  
-                  {/* People Icons with $ */}
-                  <motion.div initial={{
-                  opacity: 0,
-                  scale: 0.9
-                }} animate={{
-                  opacity: 1,
-                  scale: 1
-                }} transition={{
-                  duration: 0.8,
-                  delay: 0.6
-                }} className="flex justify-center gap-8 mt-6">
-                    <div className="relative">
-                      
-                      
-                    </div>
-                    <div className="relative">
-                      
-                      
+                      <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                      <span className="text-gray-900 dark:text-white font-medium">Community-Driven</span>
                     </div>
                   </motion.div>
                 </motion.div>
               </div>
             </div>
             
+            {/* Slogan Section */}
+            <div className="relative z-10 pt-8">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <motion.p initial={{
+                  opacity: 0,
+                  y: 10
+                }} animate={{
+                  opacity: 1,
+                  y: 0
+                }} transition={{
+                  duration: 0.8,
+                  delay: 0.6
+                }} className="text-center text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                  Powered by People, driven by cash. Earn more, save more.
+                </motion.p>
+              </div>
+            </div>
+
             {/* Hero Content Below */}
-            <div className="relative z-10 flex-1 flex items-center justify-center">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-                <div className="text-center space-y-8">
+            <div className="relative z-10 flex-1 flex items-center justify-center pt-4">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div className="text-center space-y-6">
                   {/* Main Heading */}
                   <motion.h1 initial={{
                   opacity: 0,
@@ -155,13 +141,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.4
-                }} className="text-5xl md:text-7xl lg:text-8xl font-bold" style={{
-                  background: 'linear-gradient(90deg, #F9E27D 0%, #FFD700 50%, #F9E27D 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  textShadow: '0 0 40px rgba(249, 226, 125, 0.3)'
-                }}>
+                }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">
                     Keep 100% of your cash rides.
                   </motion.h1>
 
@@ -175,9 +155,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.6
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto" style={{
-                  color: 'rgba(249, 226, 125, 0.8)'
-                }}>
+                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-gray-700 dark:text-gray-300">
                     CashRidez connects riders and drivers directly for cash-only rides. 
                     No commissions. No fees. Just community-powered transportation.
                   </motion.p>
@@ -189,7 +167,7 @@ export default function LandingNew() {
           <HeroSection />
 
           {/* How It Works */}
-          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-black to-gray-950">
+          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black">
         <div className="container mx-auto px-4">
           <motion.div initial={{
               opacity: 0,
@@ -200,10 +178,10 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }} className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
               How It Works
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-gray-700 dark:text-gray-400 text-lg">
               Simple, Safe, and Social - Getting started takes just a few minutes
             </p>
           </motion.div>
@@ -219,14 +197,14 @@ export default function LandingNew() {
                 once: true
               }} transition={{
                 delay: i * 0.2
-              }} className="relative bg-gradient-to-br from-gray-900/80 to-black/80 border border-white/10 rounded-2xl p-8 hover:border-gold/30 transition-all">
-                <div className="w-16 h-16 bg-gradient-to-br from-gold to-emerald rounded-full flex items-center justify-center text-2xl font-bold text-black mb-6">
+              }} className="relative bg-white/70 dark:bg-gray-900/80 border border-yellow-500/20 rounded-2xl p-8 hover:border-yellow-500/50 transition-all backdrop-blur-sm">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold text-black mb-6 border-2 border-yellow-300">
                   {step.number}
                 </div>
-                <h3 className="text-2xl font-bold mb-4">{step.title}</h3>
-                <p className="text-gray-400">{step.description}</p>
+                <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{step.title}</h3>
+                <p className="text-gray-700 dark:text-gray-400">{step.description}</p>
                 <div className="absolute top-4 right-4">
-                  <CheckCircle2 className="w-6 h-6 text-emerald/30" />
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500/50 dark:text-emerald-400/30" />
                 </div>
               </motion.div>)}
           </div>
@@ -245,7 +223,7 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }} className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
               Why Join CashRidez?
             </h2>
           </motion.div>
@@ -261,9 +239,9 @@ export default function LandingNew() {
                 once: true
               }} transition={{
                 delay: i * 0.1
-              }} className="bg-gradient-to-br from-gray-900/80 to-black/80 border border-white/5 rounded-xl p-6 hover:border-emerald/30 transition-all text-center">
-                <h3 className="text-xl font-bold mb-3 text-gold">{benefit.title}</h3>
-                <p className="text-gray-400 text-sm">{benefit.description}</p>
+              }} className="bg-white/70 dark:bg-gray-900/80 border border-yellow-500/20 rounded-xl p-6 hover:border-emerald-500/50 transition-all text-center backdrop-blur-sm">
+                <h3 className="text-xl font-bold mb-3 text-yellow-600 dark:text-yellow-400">{benefit.title}</h3>
+                <p className="text-gray-700 dark:text-gray-400 text-sm">{benefit.description}</p>
               </motion.div>)}
           </div>
 
@@ -276,7 +254,7 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }} className="text-center mt-16">
-            <p className="text-gray-400 text-sm max-w-3xl mx-auto">
+            <p className="text-gray-700 dark:text-gray-400 text-sm max-w-3xl mx-auto">
               CashRidez never books or manages trips, we simply help people connect and communicate.
             </p>
             </motion.div>
@@ -284,7 +262,7 @@ export default function LandingNew() {
         </section>
 
         {/* Support Section */}
-        <section id="support" className="relative py-24 bg-gradient-to-b from-gray-950 to-black">
+        <section id="support" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-black dark:to-gray-950">
         <div className="container mx-auto px-4 text-center">
           <motion.div initial={{
               opacity: 0,
@@ -295,13 +273,13 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }}>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
               Need Help? We're Here! 👋
             </h2>
-            <p className="text-gray-400 text-lg mb-8">
+            <p className="text-gray-700 dark:text-gray-400 text-lg mb-8">
               Have questions? Our support team is ready to assist you
             </p>
-            <button onClick={() => setIsSupportOpen(true)} className="bg-gradient-to-r from-gold to-emerald text-black font-bold text-lg px-12 py-4 rounded-lg hover:shadow-2xl hover:shadow-gold/50 transition-all">
+            <button onClick={() => setIsSupportOpen(true)} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-bold text-lg px-12 py-4 rounded-lg shadow-lg shadow-yellow-500/50 hover:shadow-2xl transition-all">
               Contact Support
             </button>
           </motion.div>
@@ -309,19 +287,19 @@ export default function LandingNew() {
       </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-white/5 py-12">
+      <footer className="relative border-t border-yellow-500/20 py-12 bg-white dark:bg-black">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-gold to-emerald rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center border-2 border-yellow-300">
                 <DollarSign className="w-5 h-5 text-black" />
               </div>
-              <span className="text-lg font-semibold text-gray-400">© 2025 CashRidez</span>
+              <span className="text-lg font-semibold text-gray-700 dark:text-gray-400">© 2025 CashRidez</span>
             </div>
-            <div className="flex gap-6 text-gray-400 text-sm">
-              <button className="hover:text-gold transition-colors">Terms</button>
-              <button className="hover:text-gold transition-colors">Privacy</button>
-              <button onClick={() => setIsSupportOpen(true)} className="hover:text-gold transition-colors">
+            <div className="flex gap-6 text-gray-700 dark:text-gray-400 text-sm">
+              <button className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Terms</button>
+              <button className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Privacy</button>
+              <button onClick={() => setIsSupportOpen(true)} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">
                 Contact
               </button>
             </div>
