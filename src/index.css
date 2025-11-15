@@ -8,44 +8,45 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* CashRidez Core Brand Colors */
+    --background: 210 50% 3%; /* #020610 deep black */
+    --foreground: 48 87% 74%; /* #F9E27D neon gold */
     
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card: 210 45% 8%;
+    --card-foreground: 48 87% 74%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover: 210 50% 5%;
+    --popover-foreground: 48 87% 74%;
     
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 48 87% 74%; /* #F9E27D neon gold */
+    --primary-foreground: 210 50% 3%;
     
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 210 45% 12%;
+    --secondary-foreground: 48 87% 74%;
     
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 210 40% 15%;
+    --muted-foreground: 48 50% 60%;
     
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --accent: 158 100% 35%; /* #00B26F emerald */
+    --accent-foreground: 48 87% 74%;
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --border: 210 30% 20%;
+    --input: 210 30% 18%;
+    --ring: 48 87% 74%;
     
     --radius: 0.75rem;
     
     /* CashRidez Brand Colors */
-    --gold: 51 100% 50%;
-    --gold-light: 51 100% 70%;
-    --gold-dark: 45 100% 45%;
-    --emerald: 158 64% 52%;
-    --emerald-light: 158 64% 62%;
-    --emerald-dark: 158 64% 42%;
-    --deep-black: 0 0% 0%;
+    --gold: 48 87% 74%; /* #F9E27D neon gold */
+    --gold-light: 48 90% 85%;
+    --gold-dark: 48 80% 50%;
+    --emerald: 158 100% 35%; /* #00B26F */
+    --emerald-light: 158 100% 45%;
+    --emerald-dark: 158 100% 25%;
+    --deep-black: 210 50% 3%; /* #020610 */
     
     /* Gradients */
     --gradient-gold-emerald: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--emerald)) 100%);
@@ -68,41 +69,43 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Dark mode keeps the same CashRidez dark theme */
+    --background: 210 50% 3%;
+    --foreground: 48 87% 74%;
     
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 98%;
+    --card: 210 45% 8%;
+    --card-foreground: 48 87% 74%;
     
-    --popover: 0 0% 5%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 210 50% 5%;
+    --popover-foreground: 48 87% 74%;
     
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 48 87% 74%;
+    --primary-foreground: 210 50% 3%;
     
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 210 45% 12%;
+    --secondary-foreground: 48 87% 74%;
     
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 210 40% 15%;
+    --muted-foreground: 48 50% 60%;
     
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 158 100% 35%;
+    --accent-foreground: 48 87% 74%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 210 30% 20%;
+    --input: 210 30% 18%;
+    --ring: 48 87% 74%;
+    
+    --sidebar-background: 210 50% 5%;
+    --sidebar-foreground: 48 87% 74%;
+    --sidebar-primary: 48 87% 74%;
+    --sidebar-primary-foreground: 210 50% 3%;
+    --sidebar-accent: 210 45% 12%;
+    --sidebar-accent-foreground: 48 87% 74%;
+    --sidebar-border: 210 30% 20%;
+    --sidebar-ring: 48 87% 74%;
   }
 }
 
