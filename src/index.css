@@ -9,7 +9,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Luxury Gold/Emerald Color Scheme - Light Mode */
-    --background: 0 0% 98%; /* Light gray background */
+    --background: 0 0% 100%; /* Pure white background */
     --foreground: 0 0% 10%; /* Dark text for readability */
     
     --card: 0 0% 100%;
@@ -21,20 +21,20 @@ All colors MUST be HSL.
     --primary: 51 100% 50%; /* #FFD700 Metallic Gold */
     --primary-foreground: 0 0% 0%;
     
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 5%;
+    --secondary: 0 0% 98%;
+    --secondary-foreground: 0 0% 10%;
     
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 35%;
     
     --accent: 158 100% 35%; /* #00B26F Emerald Green */
     --accent-foreground: 0 0% 100%;
     
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
     
-    --border: 51 100% 50% / 0.2;
-    --input: 0 0% 90%;
+    --border: 0 0% 88%;
+    --input: 0 0% 95%;
     --ring: 51 100% 50%;
     
     --radius: 0.75rem;
@@ -52,21 +52,21 @@ All colors MUST be HSL.
     --gradient-gold-shimmer: linear-gradient(90deg, #FFD700 0%, #FFF4A3 25%, #FFD700 50%, #B8860B 75%, #FFD700 100%);
     --gradient-gold-emerald: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--emerald)) 100%);
     --gradient-gold-glow: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 100%);
-    --gradient-hero-light: linear-gradient(180deg, hsl(270 50% 90% / 0.2) 0%, hsl(0 0% 100%) 50%, hsl(0 0% 100%) 100%);
+    --gradient-hero-light: linear-gradient(180deg, hsl(270 50% 95% / 0.3) 0%, hsl(0 0% 100%) 40%, hsl(0 0% 100%) 100%);
     
     /* Shadows */
-    --shadow-gold: 0 8px 32px hsl(var(--gold) / 0.5);
-    --shadow-emerald: 0 8px 32px hsl(var(--emerald) / 0.5);
-    --shadow-glow: 0 0 40px hsl(var(--gold) / 0.5);
+    --shadow-gold: 0 8px 32px hsl(var(--gold) / 0.4);
+    --shadow-emerald: 0 8px 32px hsl(var(--emerald) / 0.4);
+    --shadow-glow: 0 0 40px hsl(var(--gold) / 0.4);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 51 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 98%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-ring: 51 100% 50%;
   }
 
   .dark {
