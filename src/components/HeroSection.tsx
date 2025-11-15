@@ -64,7 +64,7 @@ export function HeroSection() {
         }} transition={{
           delay: 0.3
         }} className="text-gold font-medium text-lg rounded-xl">
-            Powered by People - Driven by Cash 💵
+            Join for free, save and get paid with us !!                                                                                             
           </motion.div>
 
           {/* Main Heading with Gold Shimmer */}
