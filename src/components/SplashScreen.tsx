@@ -29,7 +29,7 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
       style={{
-        background: 'linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)'
+        background: 'linear-gradient(180deg, #020610 0%, #071214 50%, #0a1a1f 100%)'
       }}
     >
       {/* Faint City Grid Background */}
@@ -47,7 +47,7 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
       {/* Glowing Orbs */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl"
-        style={{ background: 'radial-gradient(circle, rgba(232, 195, 104, 0.2) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, rgba(249, 226, 125, 0.15) 0%, transparent 70%)' }}
         animate={{
           scale: [1, 1.2, 1],
           opacity: [0.3, 0.5, 0.3]
@@ -60,7 +60,7 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
       />
       <motion.div
         className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl"
-        style={{ background: 'radial-gradient(circle, rgba(152, 195, 121, 0.15) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(circle, rgba(0, 178, 111, 0.15) 0%, transparent 70%)' }}
         animate={{
           scale: [1.2, 1, 1.2],
           opacity: [0.5, 0.3, 0.5]
@@ -110,11 +110,11 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
           transition={{ duration: 0.6, delay: 0.6 }}
           className="text-5xl md:text-7xl font-bold mb-4"
           style={{
-            background: 'linear-gradient(90deg, #E8C368 0%, #F5D98B 50%, #E8C368 100%)',
+            background: 'linear-gradient(90deg, #F9E27D 0%, #FFD700 50%, #F9E27D 100%)',
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
-            textShadow: '0 0 40px rgba(232, 195, 104, 0.4)'
+            textShadow: '0 0 40px rgba(249, 226, 125, 0.3)'
           }}
         >
           CashRidez
@@ -127,10 +127,10 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
           transition={{ duration: 0.6, delay: 0.9 }}
           className="space-y-2 mb-4"
         >
-          <p className="text-xl md:text-2xl font-semibold text-[#E8C368]">
+          <p className="text-xl md:text-2xl font-semibold text-[#F9E27D]">
             Powered by people, driven by cash.
           </p>
-          <p className="text-lg md:text-xl font-medium text-[#E8C368]/80">
+          <p className="text-lg md:text-xl font-medium text-[#F9E27D]/80">
             Earn more, save more.
           </p>
         </motion.div>
@@ -161,7 +161,7 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
           <div 
             className="w-40 h-40 rounded-full"
             style={{
-              background: 'radial-gradient(circle, rgba(232, 195, 104, 0.25) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(249, 226, 125, 0.2) 0%, transparent 70%)',
               filter: 'blur(20px)'
             }}
           />
