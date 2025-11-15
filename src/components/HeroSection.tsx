@@ -49,23 +49,13 @@ export function HeroSection() {
       }} />
       </div>
 
-      <div className="container mx-auto px-4 relative z-20">
+      <div className="container px-4 relative z-20 mx-0">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           {/* Location Badge */}
           
 
           {/* Tagline */}
-          <motion.div initial={{
-          opacity: 0,
-          y: 20
-        }} animate={{
-          opacity: 1,
-          y: 0
-        }} transition={{
-          delay: 0.3
-        }} className="text-gold font-medium text-lg rounded-xl">
-            Join for free, save and get paid with us !!                                                                                             
-          </motion.div>
+          
 
           {/* Main Heading with Gold Shimmer */}
           <motion.h1 initial={{
