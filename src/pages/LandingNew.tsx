@@ -128,9 +128,9 @@ export default function LandingNew() {
             </div>
 
             {/* Hero Content Below */}
-            <div className="relative z-10 flex-1 flex items-center justify-center pt-4">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="text-center space-y-6">
+            <div className="relative z-10 flex-1 flex items-center justify-center pt-4 pb-8">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+                <div className="text-center space-y-4 md:space-y-6">
                   {/* Main Heading */}
                   <motion.h1 initial={{
                   opacity: 0,
@@ -141,7 +141,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.4
-                }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">
+                }} className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl xl:text-8xl font-bold gold-shimmer px-2">
                     Keep 100% of your cash rides.
                   </motion.h1>
 
@@ -155,7 +155,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.6
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto py-[65px] text-stone-400">
+                }} className="text-base sm:text-lg md:text-xl lg:text-2xl max-w-3xl mx-auto py-8 md:py-12 lg:py-16 text-stone-400 px-4">
                     CashRidez connects riders and drivers directly for cash rides. No commissions. No fees. Just community-powered transportation.
                   </motion.p>
                 </div>
