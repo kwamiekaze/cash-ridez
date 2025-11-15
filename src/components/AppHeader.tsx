@@ -69,14 +69,14 @@ const AppHeader = ({
               CashRidez
             </span>
             {/* Animated Car with Role Letter - Full Width Animation */}
-            <div className="w-[300px] md:w-[500px] overflow-visible relative mt-1 md:mt-2">
+            <div className="w-[280px] sm:w-[350px] md:w-[500px] lg:w-[600px] overflow-visible relative mt-1 md:mt-2 h-[40px] md:h-[50px]">
               <motion.div 
                 className="absolute left-0"
                 animate={{
-                  x: [-100, 300, -100]
+                  x: [0, 210, 0]
                 }}
                 transition={{
-                  duration: 6,
+                  duration: 12,
                   repeat: Infinity,
                   ease: "linear"
                 }}
