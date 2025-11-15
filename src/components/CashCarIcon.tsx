@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { DollarSign } from 'lucide-react';
+
 
 interface CashCarIconProps {
   width?: number;
@@ -79,29 +79,6 @@ export function CashCarIcon({
         <line x1="80" y1="33" x2="80" y2="38" strokeWidth="1" />
       </g>
       
-      {/* Dollar Badge on Roof */}
-      <g transform="translate(60, 15)">
-        <circle 
-          cx="0" 
-          cy="0" 
-          r="8" 
-          fill="rgba(2, 6, 16, 0.9)" 
-          stroke="url(#cashCarGold)" 
-          strokeWidth="2"
-        />
-        <text 
-          x="0" 
-          y="0" 
-          textAnchor="middle" 
-          dominantBaseline="central" 
-          fill="#F9E27D" 
-          fontSize="12" 
-          fontWeight="bold"
-          fontFamily="Arial, sans-serif"
-        >
-          $
-        </text>
-      </g>
     </svg>
   );
 
