@@ -16,20 +16,21 @@ interface RiderMarker {
 }
 
 const riderMarkers: RiderMarker[] = [
-  { id: 1, x: 15, y: 50 },
-  { id: 2, x: 35, y: 65 },
-  { id: 3, x: 60, y: 55 },
-  { id: 4, x: 80, y: 70 },
-  { id: 5, x: 50, y: 80 },
+  { id: 1, x: 20, y: 45 },
+  { id: 2, x: 45, y: 55 },
+  { id: 3, x: 70, y: 50 },
+  { id: 4, x: 55, y: 65 },
+  { id: 5, x: 30, y: 60 },
 ];
 
 const carWaypoints = [
-  { x: 15, y: 50 },
-  { x: 35, y: 65 },
-  { x: 60, y: 55 },
-  { x: 80, y: 70 },
-  { x: 50, y: 80 },
-  { x: 15, y: 50 }, // Loop back
+  { x: 50, y: 15 }, // Start higher near header
+  { x: 20, y: 45 },
+  { x: 45, y: 55 },
+  { x: 70, y: 50 },
+  { x: 55, y: 65 },
+  { x: 30, y: 60 },
+  { x: 50, y: 15 }, // Loop back to start
 ];
 
 export function MapBackground({ 
@@ -78,11 +79,11 @@ export function MapBackground({
         {/* Bright Intersection Nodes */}
         {showRiders && (
           <g>
-            <circle cx="15%" cy="50%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="35%" cy="65%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="60%" cy="55%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="80%" cy="70%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="50%" cy="80%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="20%" cy="45%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="45%" cy="55%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="70%" cy="50%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="55%" cy="65%" r="4" fill="url(#nodeGlow)" />
+            <circle cx="30%" cy="60%" r="4" fill="url(#nodeGlow)" />
           </g>
         )}
       </svg>
@@ -131,16 +132,25 @@ export function MapBackground({
                 ease: "easeInOut"
               }}
             />
-            {/* Pin Icon */}
-            <div 
-              className="relative w-6 h-6 rounded-full border-2 flex items-center justify-center"
-              style={{
-                borderColor: '#F9E27D',
-                backgroundColor: 'rgba(2, 6, 16, 0.9)',
-                boxShadow: '0 0 12px rgba(249, 226, 125, 0.6)'
-              }}
-            >
-              <span className="text-[#F9E27D] text-xs font-bold">$</span>
+            {/* Person with Dollar Icon */}
+            <div className="relative flex flex-col items-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Person head */}
+                <circle cx="12" cy="7" r="3" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
+                {/* Person body */}
+                <path d="M12 11C8.5 11 6 13 6 16V20H18V16C18 13 15.5 11 12 11Z" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
+              </svg>
+              {/* Dollar sign badge */}
+              <div 
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{
+                  backgroundColor: '#F9E27D',
+                  color: '#000000',
+                  boxShadow: '0 0 8px rgba(249, 226, 125, 0.8)'
+                }}
+              >
+                $
+              </div>
             </div>
           </div>
         </motion.div>
