@@ -1,15 +1,15 @@
 import { motion } from "motion/react";
-import { CashCarIcon } from "./CashCarIcon";
+import { SportsCar } from "./SportsCar";
 
 export const DashboardCar = () => {
   return (
-    <div className="relative w-full h-[60px] overflow-hidden mb-4">
+    <div className="relative w-full h-[90px] overflow-hidden mb-4">
       <motion.div
         animate={{
           x: ['-100%', '100%']
         }}
         transition={{
-          duration: 15,
+          duration: 20,
           repeat: Infinity,
           ease: "linear"
         }}
@@ -18,11 +18,10 @@ export const DashboardCar = () => {
           filter: 'drop-shadow(0 0 12px rgba(249, 226, 125, 0.7)) drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))'
         }}
       >
-        <CashCarIcon 
-          width={100} 
-          height={50} 
-          glowIntensity="none"
-          letter="$"
+        <SportsCar 
+          width={180} 
+          height={90}
+          showDollarSign={true}
         />
       </motion.div>
     </div>
