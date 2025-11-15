@@ -13,6 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
 import { DriverAvailability } from "@/components/DriverAvailability";
 import { AvailableRidersList } from "@/components/AvailableRidersList";
+import { MapBackground } from "@/components/MapBackground";
+import { CommunityChat } from "@/components/CommunityChat";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -292,20 +294,25 @@ const DriverDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">My Trips</h1>
-        </div>
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
+      
+      <div className="relative z-10">
+        <AppHeader />
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">My Trips</h1>
+          </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="connected">Connected</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="availability">Availability</TabsTrigger>
-          </TabsList>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
+              <TabsTrigger value="open">Open</TabsTrigger>
+              <TabsTrigger value="connected">Connected</TabsTrigger>
+              <TabsTrigger value="completed">Completed</TabsTrigger>
+              <TabsTrigger value="availability">Availability</TabsTrigger>
+              <TabsTrigger value="chat">💬 Chat</TabsTrigger>
+            </TabsList>
 
           <TabsContent value="open" className="space-y-4">
             {openRequests.length === 0 ? (
@@ -349,7 +356,12 @@ const DriverDashboard = () => {
             {/* Available Riders Section */}
             <AvailableRidersList />
           </TabsContent>
+
+          <TabsContent value="chat" className="space-y-4">
+            <CommunityChat />
+          </TabsContent>
         </Tabs>
+        </div>
       </div>
     </div>
   );

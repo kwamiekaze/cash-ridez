@@ -225,6 +225,30 @@ export type Database = {
           },
         ]
       }
+      community_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       counter_offers: {
         Row: {
           amount: number

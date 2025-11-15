@@ -18,6 +18,7 @@ import { CancellationBadge } from "@/components/CancellationBadge";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { RiderZipEditor } from "@/components/RiderZipEditor";
 import { DriverAvailability } from "@/components/DriverAvailability";
+import { MapBackground } from "@/components/MapBackground";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -246,9 +247,13 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppHeader />
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
+      
+      <div className="relative z-10">
+        <AppHeader />
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Button
           variant="ghost"
           className="mb-6"
@@ -479,6 +484,7 @@ const Profile = () => {
           onCropComplete={handleCropComplete}
         />
       )}
+      </div>
     </div>
   );
 };
