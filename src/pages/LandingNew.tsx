@@ -6,6 +6,7 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { MapBackground } from '@/components/MapBackground';
 import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
+import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
 
 export default function LandingNew() {
@@ -128,20 +129,23 @@ export default function LandingNew() {
                     <span className="text-2xl">📍</span>
                     Post a Trip
                   </button>
-                  <button
-                    onClick={() => navigate("/auth")}
-                    className="w-full sm:w-auto px-16 py-6 text-xl font-bold rounded-3xl transition-all hover:scale-105 flex items-center justify-center gap-3"
-                    style={{
-                      borderColor: '#E8C368',
-                      borderWidth: '3px',
-                      borderStyle: 'solid',
-                      color: '#E8C368',
-                      backgroundColor: 'transparent',
-                    }}
-                  >
-                    <span className="text-2xl">🚗</span>
-                    Respond to Trips
-                  </button>
+                  <div className="flex flex-col items-center gap-2">
+                    <button
+                      onClick={() => navigate("/auth")}
+                      className="w-full sm:w-auto px-16 py-6 text-xl font-bold rounded-3xl transition-all hover:scale-105 flex items-center justify-center gap-3"
+                      style={{
+                        borderColor: '#E8C368',
+                        borderWidth: '3px',
+                        borderStyle: 'solid',
+                        color: '#E8C368',
+                        backgroundColor: 'transparent',
+                      }}
+                    >
+                      <CashCarIcon width={60} height={30} glowIntensity="none" />
+                      Respond to Trips
+                    </button>
+                    <DollarSign className="w-6 h-6" style={{ color: '#E8C368' }} />
+                  </div>
                 </motion.div>
               </div>
             </div>
