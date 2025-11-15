@@ -14,9 +14,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StatusBadge from "@/components/StatusBadge";
 interface AppHeaderProps {
   showStatus?: boolean;
+  showCar?: boolean;
 }
 const AppHeader = ({
-  showStatus = true
+  showStatus = true,
+  showCar = true
 }: AppHeaderProps) => {
   const {
     user,
@@ -65,50 +67,52 @@ const AppHeader = ({
             <span style={{
             fontFamily: "'Playfair Display', serif",
             filter: 'drop-shadow(0 0 15px rgba(250,204,21,0.8)) drop-shadow(0 0 30px rgba(250,204,21,0.5))'
-          }} className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto] md:text-4xl lg:text-5xl leading-tight">
+          }} className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto] md:text-4xl lg:text-5xl leading-tight">
               CashRidez
             </span>
-            {/* Animated Car with Role Letter - Full Width Animation */}
-            <div className="w-[280px] sm:w-[350px] md:w-[500px] lg:w-[600px] overflow-visible relative mt-1 md:mt-2 h-[40px] md:h-[50px]">
-              <motion.div
-                animate={{
-                  x: ['0%', '100%']
-                }}
-                transition={{
-                  duration: 30,
-                  repeat: Infinity,
-                  ease: "linear"
-                }}
-                className="absolute top-2"
-                style={{ filter: 'drop-shadow(0 0 12px rgba(249, 226, 125, 0.7)) drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))' }}
-              >
-                <CashCarIcon 
-                  width={70} 
-                  height={35} 
-                  glowIntensity="none"
-                  letter="$"
-                  className="md:w-[90px] md:h-[45px]" 
-                />
-              </motion.div>
-            </div>
+            {/* Animated Car - Only show when showCar is true */}
+            {showCar && (
+              <div className="w-[200px] sm:w-[280px] md:w-[500px] lg:w-[600px] overflow-visible relative mt-1 md:mt-2 h-[35px] sm:h-[40px] md:h-[50px]">
+                <motion.div
+                  animate={{
+                    x: ['0%', '100%']
+                  }}
+                  transition={{
+                    duration: 30,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                  className="absolute top-0 sm:top-2"
+                  style={{ filter: 'drop-shadow(0 0 12px rgba(249, 226, 125, 0.7)) drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))' }}
+                >
+                  <CashCarIcon 
+                    width={60} 
+                    height={30} 
+                    glowIntensity="none"
+                    letter="$"
+                    className="sm:w-[70px] sm:h-[35px] md:w-[90px] md:h-[45px]" 
+                  />
+                </motion.div>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
-            {showStatus && profile && <div className="hidden sm:flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+            {showStatus && profile && <div className="hidden sm:flex items-center gap-1 sm:gap-2">
                 <StatusBadge status={profile.verification_status} />
-                {profile.active_role && <div className="px-2 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
+                {profile.active_role && <div className="px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] sm:text-xs font-medium capitalize">
                     {profile.active_role}
                   </div>}
               </div>}
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1">
               <ThemeToggle />
               <NotificationBell />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0">
-                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                <Button variant="ghost" className="relative h-7 w-7 sm:h-9 sm:w-9 rounded-full p-0">
+                  <Avatar className="h-7 w-7 sm:h-9 sm:w-9">
                     <AvatarImage src={profile?.photo_url} alt={profile?.display_name || user?.email} />
-                    <AvatarFallback className="text-xs sm:text-sm">
+                    <AvatarFallback className="text-[10px] sm:text-xs">
                       {profile?.display_name?.[0] || user?.email?.[0] || "U"}
                     </AvatarFallback>
                   </Avatar>
