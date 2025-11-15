@@ -94,15 +94,15 @@ export default function LandingNew() {
                 }} className="flex flex-wrap justify-center gap-6 text-sm sm:text-base">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
-                      <span className="text-gray-900 dark:text-white font-medium">ID Verified</span>
+                      <span className="font-medium text-neutral-50">ID Verified</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
-                      <span className="text-gray-900 dark:text-white font-medium">Safe Connections</span>
+                      <span className="font-medium text-green-700">Safe Connections</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
-                      <span className="text-gray-900 dark:text-white font-medium">Community-Driven</span>
+                      <span className="font-medium text-amber-400">Community-Driven</span>
                     </div>
                   </motion.div>
                 </motion.div>
@@ -113,15 +113,15 @@ export default function LandingNew() {
             <div className="relative z-10 pt-8">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <motion.p initial={{
-                  opacity: 0,
-                  y: 10
-                }} animate={{
-                  opacity: 1,
-                  y: 0
-                }} transition={{
-                  duration: 0.8,
-                  delay: 0.6
-                }} className="text-center text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                opacity: 0,
+                y: 10
+              }} animate={{
+                opacity: 1,
+                y: 0
+              }} transition={{
+                duration: 0.8,
+                delay: 0.6
+              }} className="text-center text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400">
                   Powered by People, driven by cash. Earn more, save more.
                 </motion.p>
               </div>
@@ -155,9 +155,8 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.6
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-gray-700 dark:text-gray-300">
-                    CashRidez connects riders and drivers directly for cash-only rides. 
-                    No commissions. No fees. Just community-powered transportation.
+                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-gray-700 dark:text-gray-300 py-[65px]">
+                    CashRidez connects riders and drivers directly for cash rides. No commissions. No fees. Just community-powered transportation.
                   </motion.p>
                 </div>
               </div>
