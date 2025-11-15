@@ -8,50 +8,50 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* CashRidez Core Brand Colors */
-    --background: 210 50% 3%; /* #020610 deep black */
-    --foreground: 48 87% 74%; /* #F9E27D neon gold */
+    /* CashRidez Core Brand Colors - Updated to match reference */
+    --background: 0 0% 18%; /* #2d2d2d dark gray */
+    --foreground: 41 64% 65%; /* #E8C368 warm gold */
     
-    --card: 210 45% 8%;
-    --card-foreground: 48 87% 74%;
+    --card: 0 0% 20%;
+    --card-foreground: 41 64% 65%;
     
-    --popover: 210 50% 5%;
-    --popover-foreground: 48 87% 74%;
+    --popover: 0 0% 18%;
+    --popover-foreground: 41 64% 65%;
     
-    --primary: 48 87% 74%; /* #F9E27D neon gold */
-    --primary-foreground: 210 50% 3%;
+    --primary: 41 64% 65%; /* #E8C368 warm gold */
+    --primary-foreground: 0 0% 0%;
     
-    --secondary: 210 45% 12%;
-    --secondary-foreground: 48 87% 74%;
+    --secondary: 153 60% 45%; /* Muted emerald */
+    --secondary-foreground: 0 0% 0%;
     
-    --muted: 210 40% 15%;
-    --muted-foreground: 48 50% 60%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 41 40% 55%;
     
-    --accent: 158 100% 35%; /* #00B26F emerald */
-    --accent-foreground: 48 87% 74%;
+    --accent: 153 60% 45%; /* Muted emerald */
+    --accent-foreground: 0 0% 0%;
     
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 210 30% 20%;
-    --input: 210 30% 18%;
-    --ring: 48 87% 74%;
+    --border: 0 0% 30%;
+    --input: 0 0% 30%;
+    --ring: 41 64% 65%;
     
     --radius: 0.75rem;
     
     /* CashRidez Brand Colors */
-    --gold: 48 87% 74%; /* #F9E27D neon gold */
-    --gold-light: 48 90% 85%;
-    --gold-dark: 48 80% 50%;
-    --emerald: 158 100% 35%; /* #00B26F */
-    --emerald-light: 158 100% 45%;
-    --emerald-dark: 158 100% 25%;
-    --deep-black: 210 50% 3%; /* #020610 */
+    --gold: 41 64% 65%; /* #E8C368 warm gold */
+    --gold-light: 41 70% 75%;
+    --gold-dark: 41 60% 45%;
+    --emerald: 153 60% 45%; /* Muted emerald */
+    --emerald-light: 153 60% 55%;
+    --emerald-dark: 153 60% 35%;
+    --deep-black: 0 0% 18%; /* #2d2d2d */
     
     /* Gradients */
     --gradient-gold-emerald: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--emerald)) 100%);
     --gradient-gold-glow: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 5%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 10%) 0%, hsl(0 0% 18%) 100%);
     
     /* Shadows */
     --shadow-gold: 0 10px 40px -10px hsl(var(--gold) / 0.4);
@@ -70,42 +70,42 @@ All colors MUST be HSL.
 
   .dark {
     /* Dark mode keeps the same CashRidez dark theme */
-    --background: 210 50% 3%;
-    --foreground: 48 87% 74%;
+    --background: 0 0% 18%;
+    --foreground: 41 64% 65%;
     
-    --card: 210 45% 8%;
-    --card-foreground: 48 87% 74%;
+    --card: 0 0% 20%;
+    --card-foreground: 41 64% 65%;
     
-    --popover: 210 50% 5%;
-    --popover-foreground: 48 87% 74%;
+    --popover: 0 0% 18%;
+    --popover-foreground: 41 64% 65%;
     
-    --primary: 48 87% 74%;
-    --primary-foreground: 210 50% 3%;
+    --primary: 41 64% 65%;
+    --primary-foreground: 0 0% 0%;
     
-    --secondary: 210 45% 12%;
-    --secondary-foreground: 48 87% 74%;
+    --secondary: 153 60% 45%;
+    --secondary-foreground: 0 0% 0%;
     
-    --muted: 210 40% 15%;
-    --muted-foreground: 48 50% 60%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 41 40% 55%;
     
-    --accent: 158 100% 35%;
-    --accent-foreground: 48 87% 74%;
+    --accent: 153 60% 45%;
+    --accent-foreground: 0 0% 0%;
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 210 30% 20%;
-    --input: 210 30% 18%;
-    --ring: 48 87% 74%;
+    --border: 0 0% 30%;
+    --input: 0 0% 30%;
+    --ring: 41 64% 65%;
     
-    --sidebar-background: 210 50% 5%;
-    --sidebar-foreground: 48 87% 74%;
-    --sidebar-primary: 48 87% 74%;
-    --sidebar-primary-foreground: 210 50% 3%;
-    --sidebar-accent: 210 45% 12%;
-    --sidebar-accent-foreground: 48 87% 74%;
-    --sidebar-border: 210 30% 20%;
-    --sidebar-ring: 48 87% 74%;
+    --sidebar-background: 0 0% 18%;
+    --sidebar-foreground: 41 64% 65%;
+    --sidebar-primary: 41 64% 65%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 25%;
+    --sidebar-accent-foreground: 41 64% 65%;
+    --sidebar-border: 0 0% 30%;
+    --sidebar-ring: 41 64% 65%;
   }
 }
 
@@ -137,11 +137,11 @@ All colors MUST be HSL.
 .gold-shimmer {
   background: linear-gradient(
     90deg,
-    hsl(var(--gold)) 0%,
-    #FFF4A3 25%,
-    hsl(var(--gold)) 50%,
-    #B8860B 75%,
-    hsl(var(--gold)) 100%
+    #E8C368 0%,
+    #F5D98B 25%,
+    #E8C368 50%,
+    #D4A853 75%,
+    #E8C368 100%
   );
   background-size: 2000px 100%;
   animation: shimmer 3s linear infinite;

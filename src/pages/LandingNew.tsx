@@ -60,7 +60,7 @@ export default function LandingNew() {
         <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />
       )}
       
-      <div className="min-h-screen relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #020610 0%, #071214 40%, #0a1a1f 100%)' }}>
+      <div className="min-h-screen relative overflow-hidden" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 40%, #1a1a1a 100%)' }}>
         {/* Global Map Background */}
         <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
         
@@ -87,11 +87,11 @@ export default function LandingNew() {
                   transition={{ duration: 0.8, delay: 0.2 }}
                   className="text-5xl md:text-7xl lg:text-8xl font-bold"
                   style={{
-                    background: 'linear-gradient(90deg, #F9E27D 0%, #FFD700 50%, #F9E27D 100%)',
+                    background: 'linear-gradient(90deg, #E8C368 0%, #F5D98B 50%, #E8C368 100%)',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    textShadow: '0 0 40px rgba(249, 226, 125, 0.3)'
+                    textShadow: '0 0 40px rgba(232, 195, 104, 0.4)'
                   }}
                 >
                   Keep 100% of your cash rides.
@@ -103,7 +103,7 @@ export default function LandingNew() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                   className="text-xl md:text-2xl max-w-3xl mx-auto"
-                  style={{ color: 'rgba(249, 226, 125, 0.8)' }}
+                  style={{ color: 'rgba(232, 195, 104, 0.9)' }}
                 >
                   CashRidez connects riders and drivers directly for cash-only rides. 
                   No commissions. No fees. Just community-powered transportation.
@@ -114,31 +114,32 @@ export default function LandingNew() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.6 }}
-                  className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+                  className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-4xl"
                 >
                   <button
                     onClick={() => navigate("/auth")}
-                    className="w-full sm:w-auto px-12 py-5 text-xl font-semibold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 shadow-2xl"
+                    className="w-full sm:w-auto px-16 py-6 text-xl font-bold rounded-3xl transition-all hover:scale-105 flex items-center justify-center gap-3"
                     style={{
-                      background: '#F9E27D',
+                      background: '#E8C368',
                       color: '#000000',
-                      boxShadow: '0 8px 32px rgba(249, 226, 125, 0.6)',
+                      boxShadow: '0 12px 40px rgba(232, 195, 104, 0.5)',
                     }}
                   >
-                    <span>📍</span>
+                    <span className="text-2xl">📍</span>
                     Post a Trip
                   </button>
                   <button
                     onClick={() => navigate("/auth")}
-                    className="w-full sm:w-auto px-12 py-5 text-xl font-semibold rounded-2xl border-3 transition-all hover:scale-105 flex items-center justify-center gap-3"
+                    className="w-full sm:w-auto px-16 py-6 text-xl font-bold rounded-3xl transition-all hover:scale-105 flex items-center justify-center gap-3"
                     style={{
-                      borderColor: '#F9E27D',
+                      borderColor: '#E8C368',
                       borderWidth: '3px',
-                      color: '#F9E27D',
+                      borderStyle: 'solid',
+                      color: '#E8C368',
                       backgroundColor: 'transparent',
                     }}
                   >
-                    <span>🚗</span>
+                    <span className="text-2xl">🚗</span>
                     Respond to Trips
                   </button>
                 </motion.div>
