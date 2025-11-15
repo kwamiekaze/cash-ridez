@@ -32,6 +32,8 @@ const TripHistory = lazy(() => import("./pages/TripHistory"));
 const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
 const BillingCancelled = lazy(() => import("./pages/BillingCancelled"));
 const Subscription = lazy(() => import("./pages/Subscription"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
 
 // Loading fallback component
@@ -90,6 +92,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LandingNew />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
             <Route
               path="/onboarding"
               element={
