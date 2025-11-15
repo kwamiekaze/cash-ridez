@@ -288,12 +288,12 @@ export default function LandingNew() {
       {/* Footer */}
       <footer className="relative border-t border-yellow-500/20 py-12 bg-white dark:bg-black">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center border-2 border-yellow-300">
                 <DollarSign className="w-5 h-5 text-black" />
               </div>
-              <span className="text-lg font-semibold text-gray-700 dark:text-gray-400">© 2025 CashRidez</span>
+              <span className="text-lg font-semibold text-gray-700 dark:text-gray-400">CashRidez</span>
             </div>
             <div className="flex gap-6 text-gray-700 dark:text-gray-400 text-sm">
               <button className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Terms</button>
@@ -302,6 +302,16 @@ export default function LandingNew() {
                 Contact
               </button>
             </div>
+          </div>
+          
+          {/* Disclaimer */}
+          <div className="border-t border-yellow-500/10 pt-8 text-center">
+            <p className="text-xs text-gray-600 dark:text-gray-500 max-w-4xl mx-auto mb-4">
+              CashRidez is a communication and networking platform designed to connect individuals for travel coordination. CashRidez does not arrange, control, or provide transportation services and is not responsible for user transactions or travel outcomes.
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-500">
+              © 2025 CashRidez. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
