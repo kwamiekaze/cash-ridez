@@ -47,7 +47,7 @@ export default function LandingNew() {
   return <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
       
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-background via-background to-background">
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
         {/* Global Map Background */}
         <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
         
@@ -144,10 +144,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.4
-                }} className="text-5xl md:text-7xl lg:text-8xl font-bold">
-                    <span className="gold-shimmer">Keep 100% of your earnings</span>
-                    <span className="text-yellow-400 ml-2 inline-block drop-shadow-[0_0_30px_rgba(250,204,21,1)] drop-shadow-[0_0_60px_rgba(250,204,21,0.8)] font-black" style={{ textShadow: '0 0 20px rgba(250,204,21,1), 0 0 40px rgba(250,204,21,0.8), 0 0 60px rgba(250,204,21,0.6)' }}>$</span>
-                  </motion.h1>
+                }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">Keep 100% of your earnings💰</motion.h1>
 
                   {/* Subtext */}
                   <motion.p initial={{
@@ -168,7 +165,7 @@ export default function LandingNew() {
           <HeroSection />
 
           {/* How It Works */}
-          <section id="how-it-works" className="relative py-24 bg-background overflow-hidden">
+          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
             <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
             <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{
@@ -197,14 +194,14 @@ export default function LandingNew() {
                 y: 0
               }} viewport={{
                 once: true
-               }} transition={{
+              }} transition={{
                 delay: i * 0.2
-              }} className="relative bg-card border border-yellow-500/30 rounded-2xl p-8 hover:border-yellow-500/50 transition-all shadow-lg">
+              }} className="relative bg-white dark:bg-gray-900 border border-yellow-500/30 dark:border-yellow-500/20 rounded-2xl p-8 hover:border-yellow-500/50 dark:hover:border-yellow-500/40 transition-all shadow-lg dark:shadow-none">
                 <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold text-black mb-6 border-2 border-yellow-300 shadow-md">
                   {step.number}
                 </div>
-                <h3 className="text-2xl font-bold mb-4 text-foreground">{step.title}</h3>
-                <p className="text-muted-foreground">{step.description}</p>
+                <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{step.title}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
                 <div className="absolute top-4 right-4">
                   <CheckCircle2 className="w-6 h-6 text-emerald-500 dark:text-emerald-400" />
                 </div>
@@ -240,11 +237,11 @@ export default function LandingNew() {
                 scale: 1
               }} viewport={{
                 once: true
-               }} transition={{
+              }} transition={{
                 delay: i * 0.1
-              }} className="bg-card border border-yellow-500/30 rounded-xl p-6 hover:border-emerald-500/50 transition-all text-center shadow-lg">
+              }} className="bg-white dark:bg-gray-900 border border-yellow-500/30 dark:border-yellow-500/20 rounded-xl p-6 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 transition-all text-center shadow-lg dark:shadow-none">
                 <h3 className="text-xl font-bold mb-3 text-yellow-600 dark:text-yellow-400">{benefit.title}</h3>
-                <p className="text-muted-foreground text-sm">{benefit.description}</p>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">{benefit.description}</p>
               </motion.div>)}
           </div>
 
@@ -257,7 +254,7 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }} className="text-center mt-16">
-            <p className="text-muted-foreground text-sm max-w-3xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-300 text-sm max-w-3xl mx-auto">
               CashRidez never books or manages trips, we simply help people connect and communicate.
             </p>
             </motion.div>
@@ -265,7 +262,7 @@ export default function LandingNew() {
         </section>
 
         {/* Support Section */}
-        <section id="support" className="relative py-24 bg-background overflow-hidden">
+        <section id="support" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
           <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
           <div className="container mx-auto px-4 text-center relative z-10">
           <motion.div initial={{
@@ -277,10 +274,10 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }}>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
               Need Help? We're Here! 👋
             </h2>
-            <p className="text-muted-foreground text-lg mb-8">
+            <p className="text-gray-600 dark:text-gray-300 text-lg mb-8">
               Have questions? Our support team is ready to assist you
             </p>
             <button onClick={() => setIsSupportOpen(true)} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-bold text-lg px-12 py-4 rounded-lg shadow-lg shadow-yellow-500/50 hover:shadow-2xl transition-all hover:scale-105">
@@ -291,7 +288,7 @@ export default function LandingNew() {
       </section>
 
       {/* Footer */}
-      <footer className="relative border-t border-yellow-500/20 py-12 bg-background">
+      <footer className="relative border-t border-yellow-500/20 py-12 bg-white dark:bg-black">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
             <div className="flex items-center gap-2">
@@ -305,7 +302,7 @@ export default function LandingNew() {
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
               </a>
             </div>
-            <div className="flex gap-6 text-muted-foreground text-sm">
+            <div className="flex gap-6 text-gray-700 dark:text-gray-400 text-sm">
               <button onClick={() => navigate("/terms")} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Terms</button>
               <button onClick={() => navigate("/privacy")} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Privacy</button>
               <button onClick={() => setIsSupportOpen(true)} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">
@@ -316,10 +313,10 @@ export default function LandingNew() {
           
           {/* Disclaimer */}
           <div className="border-t border-yellow-500/10 pt-8 text-center">
-            <p className="text-xs text-muted-foreground max-w-4xl mx-auto mb-4">
+            <p className="text-xs text-gray-600 dark:text-gray-500 max-w-4xl mx-auto mb-4">
               CashRidez is a communication and networking platform designed to connect individuals for travel coordination. CashRidez does not arrange, control, or provide transportation services and is not responsible for user transactions or travel outcomes.
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-600 dark:text-gray-500">
               © 2025 CashRidez. All rights reserved.
             </p>
           </div>

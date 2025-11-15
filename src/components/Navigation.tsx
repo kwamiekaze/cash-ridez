@@ -51,8 +51,7 @@ export function Navigation() {
                 className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-6xl animate-shimmer bg-[length:200%_auto]" 
                 style={{ 
                   fontFamily: "'Playfair Display', serif",
-                  filter: 'drop-shadow(0 0 40px rgba(250,204,21,1)) drop-shadow(0 0 80px rgba(250,204,21,0.9)) drop-shadow(0 0 120px rgba(250,204,21,0.7))',
-                  textShadow: '0 0 30px rgba(250,204,21,1), 0 0 60px rgba(250,204,21,0.9), 0 0 90px rgba(250,204,21,0.7)'
+                  filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6)) drop-shadow(0 0 60px rgba(250,204,21,0.4))'
                 }}
               >
                 cashridez
