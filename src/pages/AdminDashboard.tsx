@@ -1,457 +1,241 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Car, LogOut, Users, CheckCircle, XCircle, Shield, Loader2, ChevronDown, User2 } from "lucide-react";
-import StatusBadge from "@/components/StatusBadge";
-import { toast } from "sonner";
+import AppHeader from "@/components/AppHeader";
+import AdminRoute from "@/components/AdminRoute";
 import { UserManagementTable } from "@/components/UserManagementTable";
-import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { AdminRidesManagement } from "@/components/AdminRidesManagement";
 import { SubscribedMembersTab } from "@/components/SubscribedMembersTab";
+import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
-import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Menu, Shield, Users, Crown, Car, MessageSquare } from "lucide-react";
+import { motion } from "motion/react";
+import FloatingSupport from "@/components/FloatingSupport";
+import { FloatingChat } from "@/components/FloatingChat";
+import { UserDetailDialog } from "@/components/UserDetailDialog";
 
 const AdminDashboard = () => {
-  const { signOut, user } = useAuth();
-  const navigate = useNavigate();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    verifiedUsers: 0,
-    pendingVerifications: 0,
-    openRequests: 0,
-  });
-  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState("verifications");
+  const [profile, setProfile] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [rejectUserId, setRejectUserId] = useState<string | null>(null);
-  const [adminProfile, setAdminProfile] = useState<{ display_name?: string } | null>(null);
-
-  // Check admin role on component mount
-  useEffect(() => {
-    const checkAdminRole = async () => {
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-
-        if (error || !data) {
-          console.error("Unauthorized access attempt to admin panel");
-          toast.error("Access denied. Admin privileges required.");
-          navigate("/dashboard");
-          return;
-        }
-
-        setIsAdmin(true);
-      } catch (error) {
-        console.error("Error checking admin role:", error);
-        toast.error("Access denied.");
-        navigate("/dashboard");
-      }
-    };
-
-    checkAdminRole();
-  }, [user, navigate]);
 
   useEffect(() => {
-    if (isAdmin === null) return; // Wait for admin check to complete
-    const fetchStats = async () => {
-      const { count: totalUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true });
-      const { count: verifiedUsers } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("is_verified", true);
-      const { count: pendingVerifications } = await supabase.from("profiles").select("*", { count: "exact", head: true }).eq("verification_status", "pending");
-      const { count: openRequests } = await supabase.from("ride_requests").select("*", { count: "exact", head: true }).eq("status", "open");
-
-      setStats({
-        totalUsers: totalUsers || 0,
-        verifiedUsers: verifiedUsers || 0,
-        pendingVerifications: pendingVerifications || 0,
-        openRequests: openRequests || 0,
-      });
-    };
-
-    const fetchPendingUsers = async () => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      
       const { data } = await supabase
         .from("profiles")
         .select("*")
-        .eq("verification_status", "pending")
-        .order("verification_submitted_at", { ascending: false });
-
-      setPendingUsers(data || []);
-    };
-
-    const fetchAllUsers = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      setAllUsers(data || []);
-    };
-
-    const fetchAdmin = async () => {
-      if (!user?.id) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("display_name")
         .eq("id", user.id)
         .single();
-      setAdminProfile(data || null);
+      
+      setProfile(data);
+
+      // Check admin role
+      const { data: hasAdmin } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+      setIsAdmin(Boolean(hasAdmin));
     };
 
-    fetchStats();
-    fetchPendingUsers();
-    fetchAllUsers();
-    fetchAdmin();
-  }, [user, isAdmin]);
+    fetchProfile();
+  }, [user]);
 
-  // Show loading while checking admin status
-  if (isAdmin === null) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetchUsers();
+  }, [isAdmin]);
 
-  // This should never render if not admin, but just in case
-  if (!isAdmin) {
-    return null;
-  }
+  const fetchUsers = async () => {
+    // Fetch all users
+    const { data: allData } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    setAllUsers(allData || []);
+
+    // Fetch pending verification users
+    const { data: pendingData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("verification_status", "pending")
+      .order("verification_submitted_at", { ascending: false });
+    
+    setPendingUsers(pendingData || []);
+  };
+
+  const menuItems = [
+    { id: "verifications", label: "Verifications", icon: Shield },
+    { id: "users", label: "Users", icon: Users },
+    { id: "subscribed", label: "Subscribed", icon: Crown },
+    { id: "rides", label: "Rides", icon: Car },
+    { id: "community", label: "Chat/Community", icon: MessageSquare },
+  ];
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setMobileMenuOpen(false);
+  };
 
   const handleViewUser = (userId: string) => {
     setSelectedUserId(userId);
     setUserDialogOpen(true);
   };
 
-  const handleUserUpdate = () => {
-    // Refresh all user data
-    const fetchAllUsers = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      setAllUsers(data || []);
-    };
-    fetchAllUsers();
-  };
-
-  const handleVerification = async (userId: string, approved: boolean, reason?: string) => {
-    const userToUpdate = pendingUsers.find((u) => u.id === userId) || allUsers.find((u) => u.id === userId);
-    if (!userToUpdate) return;
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        verification_status: approved ? "approved" : "rejected",
-        is_verified: approved,
-        verification_reviewed_at: new Date().toISOString(),
-        verification_reviewer_id: user?.id || null,
-        verification_notes: approved ? null : (reason || null),
-      })
-      .eq("id", userId);
-
-    if (error) {
-      toast.error("Failed to update verification");
-      return;
-    }
-
-    // Send email notification
-    try {
-      await supabase.functions.invoke("send-status-notification", {
-        body: {
-          userEmail: userToUpdate.email,
-          displayName: userToUpdate.display_name || userToUpdate.email,
-          status: approved ? "approved" : "rejected",
-          adminDisplayName: adminProfile?.display_name,
-          reason: approved ? undefined : reason,
-        },
-      });
-    } catch (emailError) {
-      console.error("Error sending notification email:", emailError);
-      // Don't fail the whole process if email fails
-    }
-
-    toast.success(`User ${approved ? "approved" : "rejected"}`);
-    setPendingUsers(pendingUsers.filter((u) => u.id !== userId));
-    // Refresh all users
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-    setAllUsers(data || []);
-  };
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
+    <AdminRoute>
+      <div className="min-h-screen bg-background relative">
+        <MapBackground />
+        
+        <AppHeader showStatus={false} />
+
+        <div className="container mx-auto px-4 py-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <span className="text-xl font-bold">Cash Ridez</span>
-                <p className="text-xs text-muted-foreground">Admin Panel</p>
+                <h1 className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                  Admin Dashboard
+                </h1>
+                <p className="text-muted-foreground">
+                  Manage users, verifications, and system operations
+                </p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Shield className="w-4 h-4 mr-2" />
-                    Admin
-                    <ChevronDown className="w-4 h-4 ml-2" />
+
+              {/* Mobile Menu Button */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild className="lg:hidden">
+                  <Button variant="outline" size="icon">
+                    <Menu className="h-5 w-5" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40 bg-card border-border">
-                  <DropdownMenuItem className="cursor-pointer">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Admin
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="cursor-pointer">
-                    <User2 className="mr-2 h-4 w-4" />
-                    User
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button variant="outline" size="sm" onClick={() => signOut()}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
-          <Card className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                <Users className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-              </div>
-              <div className="text-center md:text-left">
-                <p className="text-xl md:text-2xl font-bold">{stats.totalUsers}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Total Users</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-verified/20 flex items-center justify-center flex-shrink-0">
-                <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-verified" />
-              </div>
-              <div className="text-center md:text-left">
-                <p className="text-xl md:text-2xl font-bold">{stats.verifiedUsers}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Verified</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
-                <Shield className="w-5 h-5 md:w-6 md:h-6 text-warning" />
-              </div>
-              <div className="text-center md:text-left">
-                <p className="text-xl md:text-2xl font-bold">{stats.pendingVerifications}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Pending</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-                <Car className="w-5 h-5 md:w-6 md:h-6 text-accent" />
-              </div>
-              <div className="text-center md:text-left">
-                <p className="text-xl md:text-2xl font-bold">{stats.openRequests}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Open Rides</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="verifications" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="verifications" className="text-xs md:text-sm">Verifications</TabsTrigger>
-            <TabsTrigger value="users" className="text-xs md:text-sm">Users</TabsTrigger>
-            <TabsTrigger value="subscribed" className="text-xs md:text-sm">Subscribed</TabsTrigger>
-            <TabsTrigger value="rides" className="text-xs md:text-sm">Rides</TabsTrigger>
-            <TabsTrigger value="chat" className="text-xs md:text-sm">Community</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="verifications" className="mt-6">
-            <div className="space-y-4">
-              <h2 className="text-xl md:text-2xl font-bold">Pending Verifications</h2>
-              {pendingUsers.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <p className="text-muted-foreground">No pending verifications</p>
-                </Card>
-              ) : (
-                pendingUsers.map((user) => (
-                  <Card key={user.id} className="p-4 md:p-6">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-sm md:text-base break-words">{user.display_name || user.email}</h3>
-                          <StatusBadge status={user.verification_status} />
-                        </div>
-                        <p className="text-xs md:text-sm text-muted-foreground mb-2 break-all">{user.email}</p>
-                        <div className="flex gap-2 mb-4 flex-wrap">
-                          {user.is_rider && <StatusBadge status="open" className="text-xs" />}
-                          {user.is_driver && <StatusBadge status="assigned" className="text-xs" />}
-                        </div>
-                        {user.id_image_url && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-xs md:text-sm"
-                            onClick={async () => {
-                              try {
-                                // id_image_url now stores the file path directly
-                                const { data, error } = await supabase.storage
-                                  .from('id-verifications')
-                                  .createSignedUrl(user.id_image_url, 3600); // 1 hour expiry
-                                
-                                if (error) throw error;
-                                if (data?.signedUrl) {
-                                  window.open(data.signedUrl, '_blank');
-                                }
-                              } catch (error) {
-                                console.error('Error opening ID image:', error);
-                                toast.error('Failed to open ID image');
-                              }
-                            }}
-                          >
-                            View ID Image
-                          </Button>
-                        )}
-                      </div>
-                      <div className="flex gap-2 flex-col sm:flex-row w-full md:w-auto">
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 bg-card">
+                  <div className="flex flex-col gap-2 mt-8">
+                    {menuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
                         <Button
-                          size="sm"
-                          className="bg-verified text-xs md:text-sm flex-1 md:flex-initial"
-                          onClick={() => handleVerification(user.id, true)}
+                          key={item.id}
+                          variant={activeTab === item.id ? "default" : "ghost"}
+                          className="w-full justify-start gap-2"
+                          onClick={() => handleTabChange(item.id)}
                         >
-                          <CheckCircle className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                          Approve
+                          <Icon className="h-4 w-4" />
+                          {item.label}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="text-xs md:text-sm flex-1 md:flex-initial"
-                          onClick={() => handleVerification(user.id, false)}
-                        >
-                          <XCircle className="w-3 h-3 md:w-4 md:h-4 mr-1" />
-                          Reject
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
+                      );
+                    })}
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
-          </TabsContent>
+          </motion.div>
 
-          <TabsContent value="users" className="mt-6">
-            <div className="space-y-4">
-              <h2 className="text-xl md:text-2xl font-bold">All Users</h2>
-              <div className="overflow-x-auto">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            {/* Desktop Navigation */}
+            <TabsList className="hidden lg:grid w-full grid-cols-5 bg-card/50 backdrop-blur-sm border border-border/50">
+              {menuItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <TabsTrigger
+                    key={item.id}
+                    value={item.id}
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
+            <TabsContent value="verifications" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
                 <UserManagementTable 
-                  users={allUsers} 
-                  onUpdate={handleUserUpdate}
+                  users={pendingUsers} 
+                  onUpdate={fetchUsers}
                   onViewUser={handleViewUser}
                 />
-              </div>
-            </div>
-          </TabsContent>
+              </motion.div>
+            </TabsContent>
 
-          <TabsContent value="subscribed" className="mt-6">
-            <div className="space-y-4">
-              <h2 className="text-xl md:text-2xl font-bold">Active Subscriptions</h2>
-              <SubscribedMembersTab />
-            </div>
-          </TabsContent>
+            <TabsContent value="users" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <UserManagementTable 
+                  users={allUsers} 
+                  onUpdate={fetchUsers}
+                  onViewUser={handleViewUser}
+                />
+              </motion.div>
+            </TabsContent>
 
-          <TabsContent value="rides" className="mt-6">
-            <div className="space-y-4">
-              <h2 className="text-xl md:text-2xl font-bold">All Rides</h2>
-              <AdminRidesManagement />
-            </div>
-          </TabsContent>
+            <TabsContent value="subscribed" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <SubscribedMembersTab />
+              </motion.div>
+            </TabsContent>
 
-          <TabsContent value="chat" className="mt-6">
-            <div className="space-y-4">
-              <h2 className="text-xl md:text-2xl font-bold">Community Chat</h2>
-              <CommunityChat />
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+            <TabsContent value="rides" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <AdminRidesManagement />
+              </motion.div>
+            </TabsContent>
 
-      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reject Verification</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            placeholder="Add a reason for rejection (optional)"
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
+            <TabsContent value="community" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <CommunityChat />
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <FloatingSupport inChatTab={activeTab === "community"} />
+        <FloatingChat inChatTab={activeTab === "community"} />
+
+        {selectedUserId && (
+          <UserDetailDialog
+            userId={selectedUserId}
+            open={userDialogOpen}
+            onOpenChange={setUserDialogOpen}
+            onUpdate={fetchUsers}
           />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (!rejectUserId) return;
-                handleVerification(rejectUserId, false, rejectReason);
-                setRejectDialogOpen(false);
-                setRejectUserId(null);
-                setRejectReason("");
-              }}
-            >
-              Reject
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <UserDetailDialog
-        userId={selectedUserId}
-        open={userDialogOpen}
-        onOpenChange={setUserDialogOpen}
-        onUpdate={handleUserUpdate}
-      />
-    </div>
+        )}
+      </div>
+    </AdminRoute>
   );
 };
 

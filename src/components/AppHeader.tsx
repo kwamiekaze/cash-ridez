@@ -92,21 +92,23 @@ const AppHeader = ({
               </motion.div>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2 md:gap-4">
             {showStatus && profile && <div className="hidden sm:flex items-center gap-2">
                 <StatusBadge status={profile.verification_status} />
-                {profile.active_role && <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
+                {profile.active_role && <div className="px-2 sm:px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium capitalize">
                     {profile.active_role}
                   </div>}
               </div>}
-            <ThemeToggle />
-            <NotificationBell />
+            <div className="flex items-center gap-1 sm:gap-2">
+              <ThemeToggle />
+              <NotificationBell />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar>
+                <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0">
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                     <AvatarImage src={profile?.photo_url} alt={profile?.display_name || user?.email} />
-                    <AvatarFallback>
+                    <AvatarFallback className="text-xs sm:text-sm">
                       {profile?.display_name?.[0] || user?.email?.[0] || "U"}
                     </AvatarFallback>
                   </Avatar>

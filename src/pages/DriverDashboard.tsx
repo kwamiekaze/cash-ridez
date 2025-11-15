@@ -15,6 +15,8 @@ import { DriverAvailability } from "@/components/DriverAvailability";
 import { AvailableRidersList } from "@/components/AvailableRidersList";
 import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
+import FloatingSupport from "@/components/FloatingSupport";
+import { FloatingChat } from "@/components/FloatingChat";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -362,6 +364,9 @@ const DriverDashboard = () => {
           </TabsContent>
         </Tabs>
         </div>
+        
+        <FloatingSupport inChatTab={activeTab === "chat"} />
+        <FloatingChat inChatTab={activeTab === "chat"} />
       </div>
     </div>
   );

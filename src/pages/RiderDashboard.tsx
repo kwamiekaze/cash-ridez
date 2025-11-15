@@ -20,6 +20,8 @@ import { SubscriptionPanel } from "@/components/SubscriptionPanel";
 import { TripLimitGate } from "@/components/TripLimitGate";
 import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
+import FloatingSupport from "@/components/FloatingSupport";
+import { FloatingChat } from "@/components/FloatingChat";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -638,6 +640,9 @@ const RiderDashboard = () => {
           onSuccess={handleSuccess}
         />
       )}
+      
+      <FloatingSupport inChatTab={activeTab === "chat"} />
+      <FloatingChat inChatTab={activeTab === "chat"} />
       </div>
     </div>
   );
