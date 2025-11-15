@@ -67,25 +67,25 @@ const Auth = () => {
     }
   };
   return <div className="min-h-screen bg-black dark:bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Car at Top */}
-      <div className="fixed top-16 left-0 right-0 h-32 z-50 pointer-events-none overflow-hidden">
-        <motion.div className="absolute top-8 z-50" animate={{
-        x: ['-15%', '115%']
-      }} transition={{
-        duration: 40,
-        repeat: Infinity,
-        ease: "linear"
-      }}>
-          <SportsCar width={100} height={50} />
-        </motion.div>
-      </div>
-
       {/* Background Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-emerald-950/20 to-black" />
       
       <div className="w-full max-w-md relative z-10">
+        {/* Animated Car at Very Top */}
+        <div className="absolute -top-16 left-0 right-0 h-20 z-50 pointer-events-none overflow-hidden">
+          <motion.div className="absolute top-0 z-50" animate={{
+          x: ['-15%', '115%']
+        }} transition={{
+          duration: 40,
+          repeat: Infinity,
+          ease: "linear"
+        }}>
+            <SportsCar width={100} height={50} />
+          </motion.div>
+        </div>
+
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 mt-8">
           <div className="inline-flex flex-col items-center gap-3 mb-4">
             <span className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-5xl animate-shimmer bg-[length:200%_auto]" style={{
             fontFamily: "'Playfair Display', serif",

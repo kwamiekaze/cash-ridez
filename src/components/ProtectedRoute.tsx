@@ -49,13 +49,20 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Don't redirect verified users back to onboarding - always send them to their dashboard
   if (location.pathname === "/onboarding" && (profile?.is_verified || profile?.verification_status === 'approved')) {
     // Redirect verified users to appropriate dashboard based on active_role
-    if (profile.active_role === 'driver') {
+    if (profile.active_role === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (profile.active_role === 'driver') {
       return <Navigate to="/driver" replace />;
     } else if (profile.active_role === 'rider') {
       return <Navigate to="/rider" replace />;
     } else {
       return <Navigate to="/dashboard" replace />;
     }
+  }
+
+  // Redirect pending verification users to verification pending page
+  if (location.pathname === "/onboarding" && profile?.verification_status === 'pending') {
+    return <Navigate to="/verification-pending" replace />;
   }
 
   return <>{children}</>;

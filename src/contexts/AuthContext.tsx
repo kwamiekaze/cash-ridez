@@ -39,18 +39,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Handle navigation after auth state changes
       if (event === 'SIGNED_IN' && session) {
-        // Fetch user profile to determine redirect
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("active_role, is_verified")
-          .eq("id", session.user.id)
-          .single();
-        
-        if (profile?.is_verified && profile?.active_role) {
-          navigate(profile.active_role === 'driver' ? '/driver' : '/rider');
-        } else {
-          navigate('/dashboard');
-        }
+        // Small delay to ensure profile is created
+        setTimeout(async () => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("active_role, is_verified, verification_status")
+            .eq("id", session.user.id)
+            .single();
+          
+          if (profile?.is_verified || profile?.verification_status === 'approved') {
+            // Verified users go to their role-specific dashboard
+            if (profile?.active_role === 'driver') {
+              navigate('/driver');
+            } else if (profile?.active_role === 'rider') {
+              navigate('/rider');
+            } else if (profile?.active_role === 'admin') {
+              navigate('/admin');
+            } else {
+              navigate('/dashboard');
+            }
+          } else if (profile?.verification_status === 'pending') {
+            // Pending verification goes to verification pending page
+            navigate('/verification-pending');
+          } else {
+            // New users go to onboarding
+            navigate('/onboarding');
+          }
+        }, 100);
       }
     });
 

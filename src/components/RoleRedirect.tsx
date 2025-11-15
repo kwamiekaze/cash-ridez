@@ -23,9 +23,12 @@ export default function RoleRedirect() {
           .single();
 
         if (profile?.is_verified || profile?.verification_status === "approved") {
-          if (profile?.active_role === "driver") setTarget("/driver");
+          if (profile?.active_role === "admin") setTarget("/admin");
+          else if (profile?.active_role === "driver") setTarget("/driver");
           else if (profile?.active_role === "rider") setTarget("/rider");
-          else setTarget("/rider"); // default to rider if role not set
+          else setTarget("/dashboard"); // default to dashboard if role not set
+        } else if (profile?.verification_status === "pending") {
+          setTarget("/verification-pending");
         } else {
           setTarget("/onboarding");
         }

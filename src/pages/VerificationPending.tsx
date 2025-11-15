@@ -122,6 +122,14 @@ export default function VerificationPending() {
           <CardDescription className="text-base">
             Thank you for submitting your ID for verification
           </CardDescription>
+          <div className="mt-4 flex justify-center gap-2">
+            <button
+              onClick={() => navigate('/profile')}
+              className="text-primary hover:underline text-sm font-medium"
+            >
+              View Profile
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Video Section */}
