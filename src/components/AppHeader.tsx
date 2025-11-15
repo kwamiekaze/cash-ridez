@@ -54,24 +54,17 @@ const AppHeader = ({
       ease: "linear"
     }}>
         <CashCarIcon width={50} height={25} glowIntensity="low" className="md:w-[60px] md:h-[30px]" />
-        {profile?.active_role && (
-          <motion.span 
-            className="text-yellow-400 font-bold text-sm md:text-base capitalize"
-            style={{
-              filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))'
-            }}
-            animate={{
-              opacity: [0.7, 1, 0.7]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          >
+        {profile?.active_role && <motion.span className="text-yellow-400 font-bold text-sm md:text-base capitalize" style={{
+        filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))'
+      }} animate={{
+        opacity: [0.7, 1, 0.7]
+      }} transition={{
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}>
             {profile.active_role}
-          </motion.span>
-        )}
+          </motion.span>}
       </motion.div>
 
       <div className="container mx-auto px-4 py-4 relative z-10">
@@ -86,10 +79,10 @@ const AppHeader = ({
             navigate('/dashboard');
           }
         }}>
-            <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto]" style={{
-              fontFamily: "'Playfair Display', serif",
-              filter: 'drop-shadow(0 0 15px rgba(250,204,21,0.8)) drop-shadow(0 0 30px rgba(250,204,21,0.5))'
-            }}>
+            <span style={{
+            fontFamily: "'Playfair Display', serif",
+            filter: 'drop-shadow(0 0 15px rgba(250,204,21,0.8)) drop-shadow(0 0 30px rgba(250,204,21,0.5))'
+          }} className="text-3xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto] py-[20px] mx-0 px-0 md:text-5xl">
               CashRidez
             </span>
           </div>
