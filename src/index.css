@@ -17,23 +17,23 @@ All colors MUST be HSL.
     --popover: 220 26% 8%;
     --popover-foreground: 60 100% 90%;
 
-    --primary: 60 100% 60%;
+    --primary: 63 100% 60%;
     --primary-foreground: 220 26% 8%;
     --primary-glow: 65 100% 70%;
 
-    --secondary: 180 60% 45%;
+    --secondary: 180 60% 50%;
     --secondary-foreground: 220 26% 8%;
 
     --muted: 220 20% 15%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 180 60% 45%;
+    --accent: 180 60% 50%;
     --accent-foreground: 220 26% 8%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 60 100% 60%;
+    --success: 63 100% 60%;
     --success-foreground: 220 26% 8%;
 
     --warning: 45 93% 47%;
@@ -42,20 +42,20 @@ All colors MUST be HSL.
     --pending: 45 93% 47%;
     --pending-foreground: 0 0% 100%;
 
-    --verified: 60 100% 60%;
+    --verified: 63 100% 60%;
     --verified-foreground: 220 26% 8%;
 
     --border: 220 20% 20%;
     --input: 220 20% 20%;
-    --ring: 60 100% 60%;
+    --ring: 63 100% 60%;
 
     --radius: 0.75rem;
 
     --silver: 0 0% 75%;
     --gold: 45 100% 51%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(60 100% 60%), hsl(65 100% 70%));
-    --gradient-button: linear-gradient(135deg, hsl(60 100% 60%), hsl(65 100% 70%));
+    --gradient-primary: linear-gradient(135deg, hsl(63 100% 60%), hsl(65 100% 70%));
+    --gradient-button: linear-gradient(135deg, hsl(63 100% 60%), hsl(65 100% 70%));
     --gradient-hero: linear-gradient(180deg, hsl(220 26% 8%) 0%, hsl(220 30% 12%) 100%);
     --gradient-gold: linear-gradient(135deg, hsl(45 100% 51%), hsl(45 100% 60%));
     
@@ -63,8 +63,8 @@ All colors MUST be HSL.
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.3), 0 8px 10px -6px hsl(0 0% 0% / 0.3);
-    --shadow-glow: 0 0 40px hsl(60 100% 60% / 0.3);
-    --shadow-elegant: 0 10px 40px -10px hsl(60 100% 60% / 0.2);
+    --shadow-glow: 0 0 40px hsl(63 100% 60% / 0.3);
+    --shadow-elegant: 0 10px 40px -10px hsl(63 100% 60% / 0.2);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.2);
 
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -80,23 +80,23 @@ All colors MUST be HSL.
     --popover: 220 26% 8%;
     --popover-foreground: 60 100% 90%;
 
-    --primary: 60 100% 60%;
+    --primary: 63 100% 60%;
     --primary-foreground: 220 26% 8%;
     --primary-glow: 65 100% 70%;
 
-    --secondary: 180 60% 45%;
+    --secondary: 180 60% 50%;
     --secondary-foreground: 220 26% 8%;
 
     --muted: 220 20% 15%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 180 60% 45%;
+    --accent: 180 60% 50%;
     --accent-foreground: 220 26% 8%;
 
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 60 100% 60%;
+    --success: 63 100% 60%;
     --success-foreground: 220 26% 8%;
 
     --warning: 45 93% 47%;
@@ -105,15 +105,15 @@ All colors MUST be HSL.
     --pending: 45 93% 47%;
     --pending-foreground: 0 0% 100%;
 
-    --verified: 60 100% 60%;
+    --verified: 63 100% 60%;
     --verified-foreground: 220 26% 8%;
 
     --border: 220 20% 20%;
     --input: 220 20% 20%;
-    --ring: 60 100% 60%;
+    --ring: 63 100% 60%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(60 100% 60%), hsl(65 100% 70%));
-    --gradient-button: linear-gradient(135deg, hsl(60 100% 60%), hsl(65 100% 70%));
+    --gradient-primary: linear-gradient(135deg, hsl(63 100% 60%), hsl(65 100% 70%));
+    --gradient-button: linear-gradient(135deg, hsl(63 100% 60%), hsl(65 100% 70%));
     --gradient-hero: linear-gradient(180deg, hsl(220 26% 8%) 0%, hsl(220 30% 12%) 100%);
     --gradient-gold: linear-gradient(135deg, hsl(45 100% 51%), hsl(45 100% 60%));
     
@@ -121,8 +121,8 @@ All colors MUST be HSL.
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.3), 0 8px 10px -6px hsl(0 0% 0% / 0.3);
-    --shadow-glow: 0 0 40px hsl(60 100% 60% / 0.3);
-    --shadow-elegant: 0 10px 40px -10px hsl(60 100% 60% / 0.2);
+    --shadow-glow: 0 0 40px hsl(63 100% 60% / 0.3);
+    --shadow-elegant: 0 10px 40px -10px hsl(63 100% 60% / 0.2);
     --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.2);
   }
 }
