@@ -39,39 +39,35 @@ export function CashCarIcon({
         </linearGradient>
       </defs>
       
-      {/* Car Outline - Side View */}
-      <g stroke="url(#cashCarGold)" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-        {/* Main Body */}
-        <path d="M 15 42 L 20 42 L 25 38 L 35 36 L 55 36 L 65 38 L 95 38 L 100 42 L 105 42" />
+      {/* Car Outline - Exact Match to Reference */}
+      <g stroke="url(#cashCarGold)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {/* Main Body - Rectangular with rounded wheel wells */}
+        <path d="M 20 40 L 20 32 L 35 32 L 35 25 L 70 25 L 70 32 L 100 32 L 100 40" />
         
-        {/* Roof/Cabin */}
-        <path d="M 35 36 L 40 28 L 70 28 L 75 36" />
+        {/* Curved wheel wells */}
+        <path d="M 20 40 Q 25 45 30 40" />
+        <path d="M 90 40 Q 95 45 100 40" />
         
-        {/* Windshield */}
-        <line x1="40" y1="28" x2="44" y2="36" />
+        {/* Front and rear sections */}
+        <line x1="35" y1="32" x2="35" y2="25" />
+        <line x1="70" y1="32" x2="70" y2="25" />
         
-        {/* Rear Window */}
-        <line x1="70" y1="28" x2="66" y2="36" />
+        {/* Roof line */}
+        <line x1="35" y1="25" x2="70" y2="25" />
         
         {/* Front Wheel */}
-        <circle cx="30" cy="42" r="7" />
-        <circle cx="30" cy="42" r="4" />
+        <circle cx="25" cy="40" r="6" />
         
         {/* Rear Wheel */}
-        <circle cx="85" cy="42" r="7" />
-        <circle cx="85" cy="42" r="4" />
-        
-        {/* Undercarriage */}
-        <path d="M 20 42 L 23 45 L 37 45 L 40 42" />
-        <path d="M 75 42 L 78 45 L 92 45 L 95 42" />
+        <circle cx="95" cy="40" r="6" />
       </g>
       
       {/* Dollar Badge on Roof */}
-      <g transform="translate(55, 28)">
+      <g transform="translate(52.5, 15)">
         <circle 
           cx="0" 
           cy="0" 
-          r="10" 
+          r="8" 
           fill="rgba(2, 6, 16, 0.9)" 
           stroke="url(#cashCarGold)" 
           strokeWidth="2"
@@ -82,7 +78,7 @@ export function CashCarIcon({
           textAnchor="middle" 
           dominantBaseline="central" 
           fill="#F9E27D" 
-          fontSize="14" 
+          fontSize="12" 
           fontWeight="bold"
           fontFamily="Arial, sans-serif"
         >
