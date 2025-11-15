@@ -6,6 +6,7 @@ import { SportsCar } from './SportsCar';
 import { Button } from './ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
+import { ThemeToggle } from './ThemeToggle';
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -65,6 +66,7 @@ export function Navigation() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
+            <ThemeToggle />
             <Button variant="ghost" onClick={() => navigate('/auth')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
               Sign In
             </Button>

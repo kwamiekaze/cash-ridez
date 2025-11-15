@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, DollarSign, Check } from 'lucide-react';
+import { CheckCircle2, DollarSign, Check, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SplashScreen } from '@/components/SplashScreen';
 import { MapBackground } from '@/components/MapBackground';
@@ -72,11 +72,11 @@ export default function LandingNew() {
               }} className="flex flex-col items-center gap-6">
                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                     <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 text-black shadow-lg shadow-yellow-500/50 hover:shadow-yellow-500/70">
-                      <span>📍</span>
+                      <MapPin className="w-8 h-8" />
                       Post a Trip
                     </button>
                     <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-gray-900 dark:text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
-                      <CashCarIcon width={48} height={24} glowIntensity="low" />
+                      <CashCarIcon width={64} height={32} glowIntensity="low" />
                       Respond to Trips
                     </button>
                   </div>
