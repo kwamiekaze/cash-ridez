@@ -71,16 +71,16 @@ const Auth = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-black via-emerald-950/20 to-black" />
       
       <div className="w-full max-w-md relative z-10">
-        {/* Animated Car at Very Top */}
-        <div className="absolute -top-16 left-0 right-0 h-20 z-50 pointer-events-none overflow-hidden">
+        {/* Animated Car at Top */}
+        <div className="absolute -top-4 md:-top-16 left-0 right-0 h-16 md:h-20 z-50 pointer-events-none overflow-visible">
           <motion.div className="absolute top-0 z-50" animate={{
-          x: ['-15%', '115%']
+          x: ['-20%', '120%']
         }} transition={{
           duration: 40,
           repeat: Infinity,
           ease: "linear"
         }}>
-            <SportsCar width={100} height={50} />
+            <SportsCar width={80} height={40} className="md:w-[100px] md:h-[50px]" />
           </motion.div>
         </div>
 
