@@ -35,6 +35,9 @@ export default function LandingNew() {
     title: 'Accept a Trip for Free',
     description: 'Drivers can view and accept available trip requests at no charge.'
   }, {
+    title: 'Set Your Price',
+    description: 'Riders set the price on their trip postings, drivers can accept any posted trip or counter offer'
+  }, {
     title: 'Safe & Trusted Community',
     description: 'Every member is part of a verified network built on safety and respect.'
   }, {
@@ -54,7 +57,7 @@ export default function LandingNew() {
           {/* Hero Section with Animated Map */}
           <section className="relative min-h-screen flex flex-col overflow-hidden">
             {/* Animated Map Background for Hero */}
-            <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0" />
+            <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0" />
             
             {/* Top Section with Buttons and Car */}
             <div className="relative z-50 pt-36 pb-4">
@@ -162,8 +165,9 @@ export default function LandingNew() {
           <HeroSection />
 
           {/* How It Works */}
-          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-black dark:via-gray-900 dark:to-black">
-        <div className="container mx-auto px-4">
+          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
+            <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0" />
+            <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{
               opacity: 0,
               y: 20
@@ -207,8 +211,9 @@ export default function LandingNew() {
       </section>
 
       {/* Why Join CashRidez */}
-      <section id="community" className="relative py-24">
-        <div className="container mx-auto px-4">
+      <section id="community" className="relative py-24 overflow-hidden">
+        <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0" />
+        <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{
               opacity: 0,
               y: 20
@@ -257,8 +262,9 @@ export default function LandingNew() {
         </section>
 
         {/* Support Section */}
-        <section id="support" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black">
-        <div className="container mx-auto px-4 text-center">
+        <section id="support" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
+          <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0" />
+          <div className="container mx-auto px-4 text-center relative z-10">
           <motion.div initial={{
               opacity: 0,
               y: 20
@@ -290,8 +296,8 @@ export default function LandingNew() {
               
             </div>
             <div className="flex gap-6 text-gray-700 dark:text-gray-400 text-sm">
-              <button className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Terms</button>
-              <button className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Privacy</button>
+              <button onClick={() => navigate("/terms")} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Terms</button>
+              <button onClick={() => navigate("/privacy")} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">Privacy</button>
               <button onClick={() => setIsSupportOpen(true)} className="hover:text-yellow-600 dark:hover:text-yellow-400 transition-colors">
                 Contact
               </button>
