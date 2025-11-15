@@ -102,6 +102,14 @@ export function Navigation() {
                   <>
                     <Button 
                       variant="ghost" 
+                      onClick={() => { navigate('/dashboard'); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Button>
+                    <Button 
+                      variant="ghost" 
                       onClick={() => { navigate('/profile'); setIsMenuOpen(false); }} 
                       className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
                     >
