@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { SportsCar } from "@/components/SportsCar";
+import { CashCarIcon } from "@/components/CashCarIcon";
 import { motion } from "motion/react";
 const Auth = () => {
   const navigate = useNavigate();
@@ -72,15 +72,15 @@ const Auth = () => {
       
       <div className="w-full max-w-md relative z-10">
         {/* Animated Car at Top */}
-        <div className="absolute -top-4 md:-top-16 left-0 right-0 h-16 md:h-20 z-50 pointer-events-none overflow-visible">
+        <div className="absolute -top-8 md:-top-16 left-0 right-0 h-20 md:h-24 z-50 pointer-events-none overflow-visible">
           <motion.div className="absolute top-0 z-50" animate={{
           x: ['-20%', '120%']
         }} transition={{
-          duration: 40,
+          duration: 35,
           repeat: Infinity,
           ease: "linear"
         }}>
-            <SportsCar width={80} height={40} className="md:w-[100px] md:h-[50px]" />
+            <CashCarIcon width={80} height={40} glowIntensity="medium" />
           </motion.div>
         </div>
 
