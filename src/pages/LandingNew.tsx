@@ -261,7 +261,7 @@ export default function LandingNew() {
                 once: true
               }} transition={{
                 delay: i * 0.1
-              }} className="bg-gradient-to-br from-gray-900/80 to-black/80 border border-white/5 rounded-xl p-6 hover:border-emerald/30 transition-all">
+              }} className="bg-gradient-to-br from-gray-900/80 to-black/80 border border-white/5 rounded-xl p-6 hover:border-emerald/30 transition-all text-center">
                 <h3 className="text-xl font-bold mb-3 text-gold">{benefit.title}</h3>
                 <p className="text-gray-400 text-sm">{benefit.description}</p>
               </motion.div>)}
@@ -276,7 +276,7 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }} className="text-center mt-16">
-            <p className="text-gray-400 text-sm">
+            <p className="text-gray-400 text-sm max-w-3xl mx-auto">
               CashRidez never books or manages trips, we simply help people connect and communicate.
             </p>
             </motion.div>
