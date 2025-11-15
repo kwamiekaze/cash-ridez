@@ -29,31 +29,26 @@ const Index = () => {
   }, [user, authLoading, navigate]);
   return <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+      <header className="border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant">
-                <Car className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                CashRidez
-              </span>
-            </div>
+            <span className="text-2xl font-bold text-primary lowercase">
+              cashridez
+            </span>
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#how-it-works" className="text-foreground/70 hover:text-primary font-medium transition-colors">
+              <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 How It Works
               </a>
-              <a href="#features" className="text-foreground/70 hover:text-primary font-medium transition-colors">
+              <a href="#features" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 Community
               </a>
-              <a href="#" className="text-foreground/70 hover:text-primary font-medium transition-colors">
+              <a href="#" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 Support
               </a>
-              <Button variant="outline" onClick={() => navigate("/auth")} className="rounded-full">
+              <Button variant="ghost" onClick={() => navigate("/auth")} className="text-foreground hover:text-primary">
                 Sign In
               </Button>
-              <Button onClick={() => navigate("/auth")} className="rounded-full">
+              <Button onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6">
                 Get Started
               </Button>
             </nav>
@@ -63,132 +58,114 @@ const Index = () => {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 md:py-32 bg-gradient-hero">
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,hsl(160_84%_39%/0.1),transparent_50%)]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,hsl(145_85%_23%/0.1),transparent_50%)]"></div>
-        </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-5xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border-2 border-primary/20 mb-6 shadow-elegant">
-              <CheckCircle2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary">Powered by People</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/20 border border-accent/40 mb-6">
+              <MapPin className="w-4 h-4 text-accent" />
+              <span className="text-sm font-semibold text-accent">Atlanta</span>
             </div>
+
+            <p className="text-primary text-lg mb-6 font-medium">
+              Powered by People - Driven by Cash 💵
+            </p>
             
-            <h1 className="text-5xl md:text-7xl font-bold mb-4 leading-tight">
-              Your Community Travel Network
+            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+              <span className="text-primary">Your Community</span>
+              <br />
+              <span className="text-primary">Travel </span>
+              <span className="text-accent">Network</span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-foreground/70 mb-4 max-w-3xl mx-auto font-medium">
+            <div className="border-l-4 border-primary pl-6 py-4 mb-8 max-w-3xl mx-auto">
+              <p className="text-foreground/90 text-lg italic">
+                "Powered by people, Driven by Cash. Earn More, Save More with Cash Ridez. Your Community Travel Network."
+              </p>
+            </div>
+
+            <p className="text-lg text-foreground/80 mb-12 max-w-2xl mx-auto">
               Connect with locals. Coordinate travel. Move together.
             </p>
             
-            <p className="text-lg text-foreground/60 mb-12 max-w-2xl mx-auto">
-              A people-powered platform where verified community members share travel plans, 
-              coordinate trips, and build trusted connections, safely and independently.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Button size="lg" className="text-lg px-10 py-7 rounded-full shadow-glow" onClick={() => navigate("/rider/create-request")}>
-                <MapPin className="w-5 h-5 mr-2" />
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-10 py-7 rounded-full" onClick={() => navigate("/rider/create-request")}>
                 Post a Trip
               </Button>
-              <Button size="lg" variant="secondary" className="text-lg px-10 py-7 rounded-full" onClick={() => navigate("/trips")}>
-                <Car className="w-5 h-5 mr-2" />
+              <Button size="lg" variant="outline" className="border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground text-lg px-10 py-7 rounded-full" onClick={() => navigate("/trips")}>
                 Respond to Trips
               </Button>
             </div>
 
             {/* Trust Badges */}
-            <div className="flex flex-wrap items-center justify-center gap-6 mb-8">
-              {trustBadges.map(badge => <div key={badge.label} className="flex items-center gap-2 text-sm text-foreground/70">
-                  <badge.icon className="w-4 h-4 text-primary" />
-                  <span className="font-medium">{badge.label}</span>
+            <div className="flex flex-wrap items-center justify-center gap-8 mb-8">
+              {trustBadges.map(badge => <div key={badge.label} className="flex items-center gap-3 text-sm">
+                  <div className="w-10 h-10 rounded-full border-2 border-primary/40 flex items-center justify-center">
+                    <badge.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="font-medium text-foreground">{badge.label}</span>
                 </div>)}
             </div>
-
-            <p className="text-sm text-foreground/50 max-w-2xl mx-auto">
-              CashRidez is a communication tool for travel coordination. Users arrange all details 
-              and payments independently through our secure messaging platform.
-            </p>
           </div>
         </div>
       </section>
 
       {/* Why Join CashRidez */}
-      <section className="py-20 bg-white border-y border-border shadow-sm">
+      <section className="py-20 bg-background border-y border-border/30">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 bg-gradient-primary bg-clip-text text-transparent">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-16 text-primary">
               Why Join CashRidez?
             </h2>
             
             <div className="grid md:grid-cols-2 gap-8 mb-12">
-              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <CheckCircle2 className="w-7 h-7 text-white" />
+              <Card className="p-8 border border-border/50 hover:border-primary/40 transition-all rounded-2xl bg-card">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                  <CheckCircle2 className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">No Upfront Cost</h3>
+                <h3 className="text-2xl font-bold mb-4 text-foreground">No Upfront Cost</h3>
                 <p className="text-foreground/70 leading-relaxed">
-                  Join the CashRidez community for free — no hidden fees or upfront payments. Get started instantly and explore real trip opportunities near you.
+                  Join the CashRidez community for free - no hidden fees or upfront payments.
                 </p>
               </Card>
 
-              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <MapPin className="w-7 h-7 text-white" />
+              <Card className="p-8 border border-border/50 hover:border-primary/40 transition-all rounded-2xl bg-card">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                  <MapPin className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Request a Trip for Free</h3>
+                <h3 className="text-2xl font-bold mb-4 text-foreground">Request a Trip for Free</h3>
                 <p className="text-foreground/70 leading-relaxed">
-                  Post your pickup and drop-off locations in seconds. It's fast, convenient, and completely free to request a trip.
+                  Post your pickup and drop-off locations in seconds. Fast, convenient, and completely free.
                 </p>
               </Card>
 
-              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <Car className="w-7 h-7 text-white" />
+              <Card className="p-8 border border-border/50 hover:border-primary/40 transition-all rounded-2xl bg-card">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                  <Car className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Accept a Trip for Free</h3>
+                <h3 className="text-2xl font-bold mb-4 text-foreground">Accept a Trip for Free</h3>
                 <p className="text-foreground/70 leading-relaxed">
-                  Drivers can view and accept available trip requests at no charge. There's no commission or middleman — just direct, people-powered connections.
+                  Drivers can view and accept available trip requests at no charge.
                 </p>
               </Card>
 
-              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <Shield className="w-7 h-7 text-white" />
+              <Card className="p-8 border border-border/50 hover:border-primary/40 transition-all rounded-2xl bg-card">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                  <Shield className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Safe & Trusted Community</h3>
+                <h3 className="text-2xl font-bold mb-4 text-foreground">Safe & Trusted Community</h3>
                 <p className="text-foreground/70 leading-relaxed">
-                  Every member is part of a verified network built on safety, respect, and accountability. Your security and trust are our top priorities.
+                  Every member is part of a verified network built on safety and respect.
                 </p>
               </Card>
 
-              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <Users className="w-7 h-7 text-white" />
+              <Card className="p-8 border border-border/50 hover:border-primary/40 transition-all rounded-2xl bg-card">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                  <Users className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">Verified Members Only</h3>
+                <h3 className="text-2xl font-bold mb-4 text-foreground">Verified Members Only</h3>
                 <p className="text-foreground/70 leading-relaxed">
-                  All users are verified through our secure system to maintain a reliable and transparent experience for everyone.
+                  All users are verified through our secure system to maintain reliability.
                 </p>
               </Card>
-
-              <Card className="p-8 border-2 border-primary/20 hover:border-primary/40 transition-all hover:shadow-elegant rounded-2xl bg-white">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-elegant">
-                  <Star className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">Join the Movement</h3>
-                <p className="text-foreground/70 leading-relaxed">
-                  Experience a smarter, community-driven way to travel. CashRidez — Powered by People.
-                </p>
-              </Card>
-            </div>
-
-            <div className="bg-gradient-hero border-2 border-primary/20 rounded-2xl p-8 text-center shadow-elegant">
-              <p className="text-lg font-semibold mb-2 text-foreground">Note:</p>
-              <p className="text-foreground/70 leading-relaxed">
-                Requesting and accepting trips have limited actions for non-subscribed members. After subscribing, all users can make and accept unlimited trips with full access to the CashRidez network.
-              </p>
             </div>
           </div>
         </div>
@@ -196,40 +173,40 @@ const Index = () => {
 
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-24 bg-white">
+      <section id="how-it-works" className="py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">
-              How It Works — Simple, Safe, and Social
+            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-primary">
+              How It Works
             </h2>
             <p className="text-xl text-foreground/70 max-w-2xl mx-auto font-medium">
-              Getting started takes just a few minutes
+              Simple, Safe, and Social - Getting started takes just a few minutes
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-12 max-w-6xl mx-auto">
             <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-primary text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-glow">
-                1
+              <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center mx-auto mb-6 border-2 border-primary/40">
+                01
               </div>
-              <h3 className="text-2xl font-bold mb-4">Join & Verify</h3>
+              <h3 className="text-2xl font-bold mb-4 text-foreground">Join & Verify</h3>
               <p className="text-foreground/70 text-lg leading-relaxed">
                 Create your profile and verify your ID to join our trusted community network
               </p>
             </div>
             <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-primary text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-glow">
-                2
+              <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center mx-auto mb-6 border-2 border-primary/40">
+                02
               </div>
-              <h3 className="text-2xl font-bold mb-4">Post or Explore Trips</h3>
+              <h3 className="text-2xl font-bold mb-4 text-foreground">Post or Explore Trips</h3>
               <p className="text-foreground/70 text-lg leading-relaxed">
                 Share your travel plans or browse trip requests in your area
               </p>
             </div>
             <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-primary text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 shadow-glow">
-                3
+              <div className="w-20 h-20 rounded-full bg-primary/20 text-primary text-3xl font-bold flex items-center justify-center mx-auto mb-6 border-2 border-primary/40">
+                03
               </div>
-              <h3 className="text-2xl font-bold mb-4">Chat & Coordinate</h3>
+              <h3 className="text-2xl font-bold mb-4 text-foreground">Chat & Coordinate</h3>
               <p className="text-foreground/70 text-lg leading-relaxed">
                 Message others, plan travel details, and arrange everything privately
               </p>
@@ -242,71 +219,24 @@ const Index = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-24 bg-gradient-hero">
+      <section className="py-24 bg-background border-t border-border/30">
         <div className="container mx-auto px-4">
-          <Card className="p-16 bg-gradient-primary text-white text-center max-w-4xl mx-auto rounded-3xl shadow-glow">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Connect? 👋</h2>
-            <p className="text-xl mb-10 opacity-95 font-medium">
-              Join thousands of travelers coordinating trips across Georgia and beyond
+          <Card className="p-16 bg-card border border-border/50 text-center max-w-4xl mx-auto rounded-3xl">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-primary">Need Help? We're Here! 👋</h2>
+            <p className="text-xl mb-10 text-foreground/80 font-medium">
+              Have questions? Our support team is ready to assist you
             </p>
-            <Button size="lg" variant="secondary" className="text-lg px-12 py-7 rounded-full shadow-elegant hover:scale-105 transition-transform" onClick={() => navigate("/auth")}>
-              Sign Up Free
+            <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-12 py-7 rounded-full" onClick={() => navigate("/auth")}>
+              Contact Support
             </Button>
           </Card>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-16 bg-white">
+      <footer className="border-t border-border/30 py-16 bg-background">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <p className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">
-              Powered by People
-            </p>
-            <p className="text-foreground/60">Your Community Travel Network</p>
-          </div>
-          
-          <div className="grid md:grid-cols-4 gap-8 mb-12">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-elegant">
-                  <Car className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">CashRidez</span>
-              </div>
-              <p className="text-foreground/60 text-sm leading-relaxed">People powered travel coordination platform</p>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Platform</h4>
-              <ul className="space-y-3 text-sm text-foreground/70">
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Post Trip</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Offer Lift</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Community</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Resources</h4>
-              <ul className="space-y-3 text-sm text-foreground/70">
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Community Guidelines</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Support</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Terms</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4">Connect</h4>
-              <ul className="space-y-3 text-sm text-foreground/70">
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Facebook</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">Instagram</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors font-medium">YouTube</a></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="pt-8 border-t border-border">
-            <p className="text-xs text-foreground/50 text-center max-w-4xl mx-auto mb-4 leading-relaxed">
-              CashRidez is a communication and networking platform designed to connect individuals for travel coordination. 
-              CashRidez does not arrange, control, or provide transportation services and is not responsible for user transactions or travel outcomes.
-            </p>
+          <div className="pt-8">
             <p className="text-center text-sm text-foreground/60 font-medium">
               © 2025 CashRidez. All rights reserved.
             </p>
