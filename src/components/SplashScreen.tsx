@@ -74,7 +74,7 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
 
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center justify-center text-center px-4">
-        {/* Cash Car Icon */}
+        {/* Cash Car Icon with Drawing Animation */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -85,64 +85,90 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
           }}
           className="mb-8"
         >
-          <motion.div
-            animate={{
-              filter: [
-                'drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))',
-                'drop-shadow(0 0 40px rgba(249, 226, 125, 0.8))',
-                'drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))'
-              ]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          >
-            <CashCarIcon width={200} height={100} glowIntensity="high" />
-          </motion.div>
+          <svg width="200" height="100" viewBox="0 0 140 70">
+            <defs>
+              <linearGradient id="cashCarGold" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#E8C368" stopOpacity="1" />
+                <stop offset="50%" stopColor="#F5D98B" stopOpacity="1" />
+                <stop offset="100%" stopColor="#E8C368" stopOpacity="1" />
+              </linearGradient>
+            </defs>
+            
+            {/* Car with draw animation */}
+            <motion.g 
+              stroke="#E8C368" 
+              strokeWidth="2.5" 
+              fill="none" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 2, ease: "easeInOut", delay: 0.5 }}
+              style={{ 
+                filter: 'drop-shadow(0 0 8px rgba(232, 195, 104, 0.5)) drop-shadow(0 0 12px rgba(232, 195, 104, 0.3))'
+              }}
+            >
+              <motion.path d="M 25 42 L 115 42" />
+              <motion.path d="M 25 42 Q 20 42 20 38 Q 20 34 25 34 L 40 34" />
+              <motion.path d="M 100 34 L 115 34 Q 120 34 120 38 Q 120 42 115 42" />
+              <motion.path d="M 40 34 L 45 24 L 55 24" />
+              <motion.path d="M 55 24 L 85 24" />
+              <motion.path d="M 85 24 L 95 24 L 100 34" />
+              <motion.path d="M 25 42 L 25 48" />
+              <motion.path d="M 40 48 L 100 48" />
+              <motion.path d="M 115 42 L 115 48" />
+              <motion.path d="M 25 48 Q 30 50 35 50 Q 40 50 40 48" />
+              <motion.path d="M 100 48 Q 105 50 110 50 Q 115 50 115 48" />
+              <motion.circle cx="35" cy="50" r="8" strokeWidth="3" />
+              <motion.circle cx="35" cy="50" r="4" strokeWidth="2" />
+              <motion.circle cx="35" cy="50" r="2" fill="#E8C368" />
+              <motion.circle cx="105" cy="50" r="8" strokeWidth="3" />
+              <motion.circle cx="105" cy="50" r="4" strokeWidth="2" />
+              <motion.circle cx="105" cy="50" r="2" fill="#E8C368" />
+              <motion.line x1="60" y1="24" x2="60" y2="28" strokeWidth="1.5" />
+              <motion.line x1="80" y1="24" x2="80" y2="28" strokeWidth="1.5" />
+            </motion.g>
+            
+            {/* Dollar Badge with draw animation */}
+            <g transform="translate(67.5, 12)">
+              <motion.circle 
+                cx="0" 
+                cy="0" 
+                r="10" 
+                fill="#2d2d2d" 
+                stroke="#E8C368" 
+                strokeWidth="2.5"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 2 }}
+              />
+              <motion.text 
+                x="0" 
+                y="0" 
+                textAnchor="middle" 
+                dominantBaseline="central" 
+                fill="#E8C368" 
+                fontSize="16" 
+                fontWeight="bold"
+                fontFamily="Arial, sans-serif"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 2.3 }}
+              >
+                $
+              </motion.text>
+            </g>
+          </svg>
         </motion.div>
-
-        {/* Brand Name */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="text-5xl md:text-7xl font-bold mb-4"
-          style={{
-            background: 'linear-gradient(90deg, #E8C368 0%, #F5D98B 50%, #E8C368 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textShadow: '0 0 40px rgba(232, 195, 104, 0.4)'
-          }}
-        >
-          CashRidez
-        </motion.h1>
 
         {/* Tagline */}
-        <motion.div
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="space-y-2 mb-4"
+          transition={{ duration: 0.6, delay: 2.5 }}
+          className="text-xl md:text-2xl font-semibold text-[#E8C368]"
         >
-          <p className="text-xl md:text-2xl font-semibold text-[#E8C368]">
-            Powered by people, driven by cash.
-          </p>
-          <p className="text-lg md:text-xl font-medium text-[#E8C368]/80">
-            Earn more, save more.
-          </p>
-        </motion.div>
-
-        {/* Subtext */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
-          className="text-sm md:text-base text-gray-400 max-w-md"
-        >
-          Connecting riders and drivers for cash rides, no commissions.
+          Powered by people, driven by cash.
         </motion.p>
 
         {/* Pulsing Dollar Badge Animation */}
