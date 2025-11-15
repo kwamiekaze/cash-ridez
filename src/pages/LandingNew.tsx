@@ -8,6 +8,7 @@ import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
 import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
+import verifiedBadge from '@/assets/verified-badge.png';
 export default function LandingNew() {
   const [showSplash, setShowSplash] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
@@ -93,21 +94,15 @@ export default function LandingNew() {
                   delay: 0.4
                 }} className="flex flex-wrap justify-center gap-6 text-sm sm:text-base">
                     <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <CheckCircle2 className="w-6 h-6 text-[#1DA1F2] drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" fill="#1DA1F2" strokeWidth={2.5} />
-                      </div>
+                      <img src={verifiedBadge} alt="Verified" className="w-6 h-6 drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" />
                       <span className="font-medium text-neutral-50">ID Verified</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <CheckCircle2 className="w-6 h-6 text-[#1DA1F2] drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" fill="#1DA1F2" strokeWidth={2.5} />
-                      </div>
+                      <img src={verifiedBadge} alt="Verified" className="w-6 h-6 drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" />
                       <span className="font-medium text-green-700">Safe Connections</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <CheckCircle2 className="w-6 h-6 text-[#1DA1F2] drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" fill="#1DA1F2" strokeWidth={2.5} />
-                      </div>
+                      <img src={verifiedBadge} alt="Verified" className="w-6 h-6 drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" />
                       <span className="font-medium text-amber-400">Community-Driven</span>
                     </div>
                   </motion.div>
