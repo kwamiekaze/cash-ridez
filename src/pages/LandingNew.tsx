@@ -166,7 +166,7 @@ export default function LandingNew() {
           <HeroSection />
 
           {/* How It Works */}
-          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black">
+          <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-black dark:via-gray-900 dark:to-black">
         <div className="container mx-auto px-4">
           <motion.div initial={{
               opacity: 0,
@@ -180,7 +180,7 @@ export default function LandingNew() {
             <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
               How It Works
             </h2>
-            <p className="text-gray-700 dark:text-gray-400 text-lg">
+            <p className="text-gray-600 dark:text-gray-300 text-lg">
               Simple, Safe, and Social - Getting started takes just a few minutes
             </p>
           </motion.div>
@@ -196,14 +196,14 @@ export default function LandingNew() {
                 once: true
               }} transition={{
                 delay: i * 0.2
-              }} className="relative bg-white/70 dark:bg-gray-900/80 border border-yellow-500/20 rounded-2xl p-8 hover:border-yellow-500/50 transition-all backdrop-blur-sm">
-                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold text-black mb-6 border-2 border-yellow-300">
+              }} className="relative bg-white dark:bg-gray-900 border border-yellow-500/30 dark:border-yellow-500/20 rounded-2xl p-8 hover:border-yellow-500/50 dark:hover:border-yellow-500/40 transition-all shadow-lg dark:shadow-none">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold text-black mb-6 border-2 border-yellow-300 shadow-md">
                   {step.number}
                 </div>
                 <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{step.title}</h3>
-                <p className="text-gray-700 dark:text-gray-400">{step.description}</p>
+                <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
                 <div className="absolute top-4 right-4">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-500/50 dark:text-emerald-400/30" />
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 dark:text-emerald-400" />
                 </div>
               </motion.div>)}
           </div>
@@ -238,9 +238,9 @@ export default function LandingNew() {
                 once: true
               }} transition={{
                 delay: i * 0.1
-              }} className="bg-white/70 dark:bg-gray-900/80 border border-yellow-500/20 rounded-xl p-6 hover:border-emerald-500/50 transition-all text-center backdrop-blur-sm">
+              }} className="bg-white dark:bg-gray-900 border border-yellow-500/30 dark:border-yellow-500/20 rounded-xl p-6 hover:border-emerald-500/50 dark:hover:border-emerald-500/40 transition-all text-center shadow-lg dark:shadow-none">
                 <h3 className="text-xl font-bold mb-3 text-yellow-600 dark:text-yellow-400">{benefit.title}</h3>
-                <p className="text-gray-700 dark:text-gray-400 text-sm">{benefit.description}</p>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">{benefit.description}</p>
               </motion.div>)}
           </div>
 
@@ -253,7 +253,7 @@ export default function LandingNew() {
             }} viewport={{
               once: true
             }} className="text-center mt-16">
-            <p className="text-gray-700 dark:text-gray-400 text-sm max-w-3xl mx-auto">
+            <p className="text-gray-600 dark:text-gray-300 text-sm max-w-3xl mx-auto">
               CashRidez never books or manages trips, we simply help people connect and communicate.
             </p>
             </motion.div>
@@ -261,7 +261,7 @@ export default function LandingNew() {
         </section>
 
         {/* Support Section */}
-        <section id="support" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-gray-950 dark:via-black dark:to-gray-950">
+        <section id="support" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black">
         <div className="container mx-auto px-4 text-center">
           <motion.div initial={{
               opacity: 0,
@@ -275,10 +275,10 @@ export default function LandingNew() {
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
               Need Help? We're Here! 👋
             </h2>
-            <p className="text-gray-700 dark:text-gray-400 text-lg mb-8">
+            <p className="text-gray-600 dark:text-gray-300 text-lg mb-8">
               Have questions? Our support team is ready to assist you
             </p>
-            <button onClick={() => setIsSupportOpen(true)} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-bold text-lg px-12 py-4 rounded-lg shadow-lg shadow-yellow-500/50 hover:shadow-2xl transition-all">
+            <button onClick={() => setIsSupportOpen(true)} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-bold text-lg px-12 py-4 rounded-lg shadow-lg shadow-yellow-500/50 hover:shadow-2xl transition-all hover:scale-105">
               Contact Support
             </button>
           </motion.div>
