@@ -45,20 +45,38 @@ const AppHeader = ({
     fetchProfile();
   }, [user]);
   return <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 relative overflow-hidden">
-      {/* Animated Car across header */}
-      <motion.div className="absolute top-2 z-50 pointer-events-none" animate={{
-      x: ['-10%', '110%']
+      {/* Animated Car with Role Label across header */}
+      <motion.div className="absolute top-2 md:top-3 z-50 pointer-events-none flex items-center gap-2" animate={{
+      x: ['-15%', '115%']
     }} transition={{
-      duration: 30,
+      duration: 28,
       repeat: Infinity,
       ease: "linear"
     }}>
-        <CashCarIcon width={60} height={30} glowIntensity="low" />
+        <CashCarIcon width={50} height={25} glowIntensity="low" className="md:w-[60px] md:h-[30px]" />
+        {profile?.active_role && (
+          <motion.span 
+            className="text-yellow-400 font-bold text-sm md:text-base capitalize"
+            style={{
+              filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.6))'
+            }}
+            animate={{
+              opacity: [0.7, 1, 0.7]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          >
+            {profile.active_role}
+          </motion.span>
+        )}
       </motion.div>
 
       <div className="container mx-auto px-4 py-4 relative z-10">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => {
           // Route based on user role
           if (profile?.active_role === 'rider') {
             navigate('/rider');
@@ -68,13 +86,12 @@ const AppHeader = ({
             navigate('/dashboard');
           }
         }}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-              
-            </div>
-            <div>
-              <span className="text-xl font-bold gold-shimmer">CashRidez</span>
-              {profile?.active_role && <p className="text-xs text-muted-foreground capitalize">{profile.active_role}</p>}
-            </div>
+            <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent animate-shimmer bg-[length:200%_auto]" style={{
+              fontFamily: "'Playfair Display', serif",
+              filter: 'drop-shadow(0 0 15px rgba(250,204,21,0.8)) drop-shadow(0 0 30px rgba(250,204,21,0.5))'
+            }}>
+              CashRidez
+            </span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             {showStatus && profile && <div className="hidden sm:flex items-center gap-2">
