@@ -39,7 +39,7 @@ export function Navigation() {
             <motion.div className="flex items-center gap-3 cursor-pointer" whileHover={{
             scale: 1.05
           }} onClick={() => navigate('/')}>
-              <span className="font-bold bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent font-serif text-6xl">cashridez</span>
+              <span className="font-bold bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent text-6xl" style={{ fontFamily: "'Playfair Display', serif" }}>cashridez</span>
             </motion.div>
 
           {/* Desktop Menu */}
@@ -52,10 +52,10 @@ export function Navigation() {
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400">
+            <Button variant="ghost" onClick={() => navigate('/auth')} className="text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400 transition-all hover:scale-105">
               Sign In
             </Button>
-            <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold shadow-lg shadow-yellow-500/50">
+            <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold shadow-lg shadow-yellow-500/50 transition-all hover:scale-105">
               Get Started
             </Button>
           </div>
@@ -86,10 +86,10 @@ export function Navigation() {
                   {item.label}
                 </button>)}
               <div className="flex flex-col gap-2 mt-4">
-                <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400">
+                <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full text-gray-900 dark:text-white hover:text-yellow-600 dark:hover:text-yellow-400 transition-all hover:scale-105">
                   Sign In
                 </Button>
-                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold">
+                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold transition-all hover:scale-105">
                   Get Started
                 </Button>
               </div>

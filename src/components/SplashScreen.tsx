@@ -135,15 +135,6 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
           </p>
         </motion.div>
 
-        {/* Subtext */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.2 }}
-          className="text-sm md:text-base text-gray-400 max-w-md"
-        >
-          Connecting riders and drivers for cash rides, no commissions.
-        </motion.p>
 
         {/* Pulsing Dollar Badge Animation */}
         <motion.div
