@@ -6,6 +6,7 @@ import { SplashScreen } from '@/components/SplashScreen';
 import { MapBackground } from '@/components/MapBackground';
 import { Navigation } from '@/components/Navigation';
 import { HeroSection } from '@/components/HeroSection';
+import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
 
 export default function LandingNew() {
@@ -109,7 +110,7 @@ export default function LandingNew() {
                       backgroundColor: 'transparent',
                     }}
                   >
-                    <span>🚗</span>
+                    <CashCarIcon width={32} height={16} glowIntensity="none" />
                     Respond to Trips
                   </button>
                 </motion.div>
