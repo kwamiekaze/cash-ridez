@@ -155,7 +155,7 @@ export default function LandingNew() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.6
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-gray-700 dark:text-gray-300 py-[65px]">
+                }} className="text-xl md:text-2xl max-w-3xl mx-auto py-[65px] text-stone-400">
                     CashRidez connects riders and drivers directly for cash rides. No commissions. No fees. Just community-powered transportation.
                   </motion.p>
                 </div>
