@@ -21,7 +21,11 @@ interface ActiveRide {
   unread_count?: number;
 }
 
-export function FloatingChat() {
+interface FloatingChatProps {
+  inChatTab?: boolean;
+}
+
+export function FloatingChat({ inChatTab = false }: FloatingChatProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -114,8 +118,8 @@ export function FloatingChat() {
       <Button
         onClick={() => setOpen(!open)}
         className={cn(
-          "fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 p-0",
-          "hover:scale-110 transition-transform duration-200"
+          `fixed ${inChatTab ? 'bottom-[calc(100vh-5rem)]' : 'bottom-6'} right-6 h-14 w-14 rounded-full shadow-lg z-50 p-0`,
+          "hover:scale-110 transition-all duration-300"
         )}
         size="icon"
       >
