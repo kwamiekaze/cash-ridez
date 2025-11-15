@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { CashCarIcon } from './CashCarIcon';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MapBackgroundProps {
   showAnimatedCar?: boolean;
@@ -15,22 +16,42 @@ interface RiderMarker {
   active?: boolean;
 }
 
-const riderMarkers: RiderMarker[] = [
-  { id: 1, x: 20, y: 45 },
-  { id: 2, x: 45, y: 55 },
-  { id: 3, x: 70, y: 50 },
-  { id: 4, x: 55, y: 65 },
-  { id: 5, x: 30, y: 60 },
+// Desktop: Icons positioned around the perimeter (safe zone in center)
+const riderMarkersDesktop: RiderMarker[] = [
+  { id: 1, x: 12, y: 25 },  // Top-left
+  { id: 2, x: 88, y: 25 },  // Top-right
+  { id: 3, x: 12, y: 75 },  // Bottom-left
+  { id: 4, x: 88, y: 75 },  // Bottom-right
+  { id: 5, x: 50, y: 88 },  // Bottom-center
 ];
 
-const carWaypoints = [
-  { x: 50, y: 15 }, // Start higher near header
-  { x: 20, y: 45 },
-  { x: 45, y: 55 },
-  { x: 70, y: 50 },
-  { x: 55, y: 65 },
-  { x: 30, y: 60 },
-  { x: 50, y: 15 }, // Loop back to start
+// Mobile: Fewer icons, positioned at corners only
+const riderMarkersMobile: RiderMarker[] = [
+  { id: 1, x: 10, y: 20 },  // Top-left
+  { id: 2, x: 90, y: 20 },  // Top-right
+  { id: 3, x: 10, y: 85 },  // Bottom-left
+  { id: 4, x: 90, y: 85 },  // Bottom-right
+];
+
+// Car travels around the perimeter, never through the center
+const carWaypointsDesktop = [
+  { x: 10, y: 20 },   // Top-left corner
+  { x: 50, y: 15 },   // Top-center
+  { x: 90, y: 20 },   // Top-right corner
+  { x: 92, y: 50 },   // Right-center
+  { x: 90, y: 80 },   // Bottom-right corner
+  { x: 50, y: 85 },   // Bottom-center
+  { x: 10, y: 80 },   // Bottom-left corner
+  { x: 8, y: 50 },    // Left-center
+  { x: 10, y: 20 },   // Loop back to start
+];
+
+const carWaypointsMobile = [
+  { x: 10, y: 18 },   // Top-left
+  { x: 90, y: 18 },   // Top-right
+  { x: 90, y: 85 },   // Bottom-right
+  { x: 10, y: 85 },   // Bottom-left
+  { x: 10, y: 18 },   // Loop back
 ];
 
 export function MapBackground({ 
@@ -39,13 +60,19 @@ export function MapBackground({
   intensity = 'normal',
   className = ''
 }: MapBackgroundProps) {
+  const isMobile = useIsMobile();
+  
   const opacityMap = {
-    subtle: 0.15,
-    normal: 0.3,
-    prominent: 0.5
+    subtle: 0.1,
+    normal: 0.15,
+    prominent: 0.25
   };
 
   const gridOpacity = opacityMap[intensity];
+  
+  // Use mobile or desktop markers/waypoints based on screen size
+  const riderMarkers = isMobile ? riderMarkersMobile : riderMarkersDesktop;
+  const carWaypoints = isMobile ? carWaypointsMobile : carWaypointsDesktop;
 
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`}>
@@ -76,19 +103,23 @@ export function MapBackground({
         </defs>
         <rect width="100%" height="100%" fill="url(#cityGrid)" />
         
-        {/* Bright Intersection Nodes */}
+        {/* Bright Intersection Nodes - positioned at perimeter */}
         {showRiders && (
           <g>
-            <circle cx="20%" cy="45%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="45%" cy="55%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="70%" cy="50%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="55%" cy="65%" r="4" fill="url(#nodeGlow)" />
-            <circle cx="30%" cy="60%" r="4" fill="url(#nodeGlow)" />
+            {riderMarkers.map(marker => (
+              <circle 
+                key={marker.id} 
+                cx={`${marker.x}%`} 
+                cy={`${marker.y}%`} 
+                r="4" 
+                fill="url(#nodeGlow)" 
+              />
+            ))}
           </g>
         )}
       </svg>
 
-      {/* Rider Markers */}
+      {/* Rider Markers - positioned around perimeter with reduced opacity */}
       {showRiders && riderMarkers.map((marker) => (
         <motion.div
           key={marker.id}
@@ -96,45 +127,46 @@ export function MapBackground({
           style={{
             left: `${marker.x}%`,
             top: `${marker.y}%`,
-            transform: 'translate(-50%, -50%)'
+            transform: 'translate(-50%, -50%)',
+            opacity: 0.4
           }}
           animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.6, 1, 0.6]
+            scale: [1, 1.15, 1],
+            y: [0, -5, 0]
           }}
           transition={{
-            duration: 2,
+            duration: 3,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: marker.id * 0.3
+            delay: marker.id * 0.4
           }}
         >
           <div className="relative">
-            {/* Glow Ring */}
+            {/* Subtle Glow Ring */}
             <motion.div
               className="absolute inset-0 rounded-full"
               style={{
-                width: '40px',
-                height: '40px',
-                background: 'radial-gradient(circle, rgba(249, 226, 125, 0.4) 0%, transparent 70%)',
-                filter: 'blur(8px)',
+                width: '35px',
+                height: '35px',
+                background: 'radial-gradient(circle, rgba(249, 226, 125, 0.25) 0%, transparent 70%)',
+                filter: 'blur(6px)',
                 transform: 'translate(-50%, -50%)',
                 left: '50%',
                 top: '50%'
               }}
               animate={{
-                scale: [1, 1.5, 1],
-                opacity: [0.5, 0.8, 0.5]
+                scale: [1, 1.3, 1],
+                opacity: [0.3, 0.5, 0.3]
               }}
               transition={{
-                duration: 2,
+                duration: 3,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
             />
             {/* Person with Dollar Icon */}
             <div className="relative flex flex-col items-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 {/* Person head */}
                 <circle cx="12" cy="7" r="3" fill="#F9E27D" stroke="#F9E27D" strokeWidth="1.5"/>
                 {/* Person body */}
@@ -146,7 +178,7 @@ export function MapBackground({
                 style={{
                   backgroundColor: '#F9E27D',
                   color: '#000000',
-                  boxShadow: '0 0 8px rgba(249, 226, 125, 0.8)'
+                  boxShadow: '0 0 6px rgba(249, 226, 125, 0.6)'
                 }}
               >
                 $
@@ -156,53 +188,55 @@ export function MapBackground({
         </motion.div>
       ))}
 
-      {/* Animated Car */}
+      {/* Animated Car - travels around perimeter with reduced opacity */}
       {showAnimatedCar && (
         <motion.div
           className="absolute pointer-events-none"
+          style={{
+            opacity: 0.35
+          }}
           animate={{
             left: carWaypoints.map(wp => `${wp.x}%`),
             top: carWaypoints.map(wp => `${wp.y}%`)
           }}
           transition={{
-            duration: 30,
+            duration: isMobile ? 20 : 35,
             repeat: Infinity,
             ease: "linear"
           }}
-          style={{
-            transform: 'translate(-50%, -50%)'
-          }}
         >
-          <CashCarIcon width={80} height={40} glowIntensity="high" />
+          <div style={{ transform: 'translate(-50%, -50%)' }}>
+            <CashCarIcon width={isMobile ? 60 : 80} height={isMobile ? 30 : 40} glowIntensity="low" />
+          </div>
         </motion.div>
       )}
 
-      {/* Scattered Background Cars (Static) */}
+      {/* Scattered Background Cars (Static) - positioned at edges with reduced opacity */}
       {!showAnimatedCar && (
         <>
           <motion.div 
-            className="absolute opacity-20"
-            style={{ left: '15%', top: '20%' }}
-            animate={{ x: [0, 10, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <CashCarIcon width={60} height={30} glowIntensity="low" />
-          </motion.div>
-          <motion.div 
-            className="absolute opacity-20"
-            style={{ left: '75%', top: '45%' }}
-            animate={{ x: [0, -8, 0] }}
+            className="absolute"
+            style={{ left: '10%', top: '20%', opacity: 0.15 }}
+            animate={{ x: [0, 8, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
           >
-            <CashCarIcon width={60} height={30} glowIntensity="low" />
+            <CashCarIcon width={55} height={28} glowIntensity="low" />
           </motion.div>
           <motion.div 
-            className="absolute opacity-15"
-            style={{ left: '40%', top: '70%' }}
-            animate={{ x: [0, 12, 0] }}
+            className="absolute"
+            style={{ left: '88%', top: '30%', opacity: 0.15 }}
+            animate={{ x: [0, -6, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
           >
-            <CashCarIcon width={60} height={30} glowIntensity="low" />
+            <CashCarIcon width={55} height={28} glowIntensity="low" />
+          </motion.div>
+          <motion.div 
+            className="absolute"
+            style={{ left: '12%', top: '78%', opacity: 0.12 }}
+            animate={{ x: [0, 10, 0] }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <CashCarIcon width={50} height={25} glowIntensity="low" />
           </motion.div>
         </>
       )}
