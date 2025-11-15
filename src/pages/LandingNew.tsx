@@ -59,7 +59,7 @@ export default function LandingNew() {
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0" />
             
             {/* Top Section with Buttons and Car */}
-            <div className="relative z-50 pt-32 pb-8">
+            <div className="relative z-50 pt-36 pb-8">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* CTA Buttons at Top */}
                 <motion.div initial={{
