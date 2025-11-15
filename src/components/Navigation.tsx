@@ -1,13 +1,16 @@
 import { motion } from 'motion/react';
-import { Menu, X, MapPin } from 'lucide-react';
+import { Menu, X, User, CreditCard, HelpCircle, Moon, Sun, LogOut } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SportsCar } from './SportsCar';
-import { ThemeToggle } from './ThemeToggle';
 import { Button } from './ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from 'next-themes';
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const menuItems = [{
     label: 'How It Works',
     href: '#how-it-works',
@@ -42,7 +45,7 @@ export function Navigation() {
             <motion.div className="flex items-center gap-3 cursor-pointer" whileHover={{
             scale: 1.05
           }} onClick={() => navigate('/')}>
-              <span className="font-bold bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent text-6xl" style={{ fontFamily: "'Playfair Display', serif" }}>cashridez</span>
+              <span className="font-bold bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent text-6xl drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] hover:drop-shadow-[0_0_25px_rgba(250,204,21,1)]" style={{ fontFamily: "'Playfair Display', serif" }}>cashridez</span>
             </motion.div>
 
           {/* Desktop Menu */}
@@ -54,7 +57,6 @@ export function Navigation() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
-            <ThemeToggle />
             <Button variant="ghost" onClick={() => navigate('/auth')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
               Sign In
             </Button>
@@ -65,7 +67,6 @@ export function Navigation() {
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-3">
-            <ThemeToggle />
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-900 dark:text-white p-2" aria-label="Toggle menu">
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -88,22 +89,69 @@ export function Navigation() {
               {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className={`${item.color} hover:scale-105 transition-all duration-300 text-left font-medium`}>
                   {item.label}
                 </button>)}
-              <div className="flex flex-col gap-2 mt-4">
-                <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-                  Sign In
-                </Button>
-                <Button onClick={() => navigate('/auth')} className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold transition-all duration-300 hover:scale-105 shadow-lg shadow-yellow-500/50">
-                  Get Started
-                </Button>
+              <div className="flex flex-col gap-2 mt-4 border-t border-yellow-500/20 pt-4">
+                {user ? (
+                  <>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { navigate('/profile'); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Subscription
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { /* Open support dialog */ setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <HelpCircle className="mr-2 h-4 w-4" />
+                      Support
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                      {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { signOut(); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-red-400 hover:text-red-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" onClick={() => { navigate('/auth'); setIsMenuOpen(false); }} className="w-full text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+                      Sign In
+                    </Button>
+                    <Button onClick={() => { navigate('/auth'); setIsMenuOpen(false); }} className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold transition-all duration-300 hover:scale-105 shadow-lg shadow-yellow-500/50">
+                      Get Started
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>}
       </motion.nav>
 
     {/* Animated Header Section */}
-    <div className="fixed top-16 left-0 right-0 h-32 z-40 pointer-events-none overflow-hidden">
+    <div className="fixed top-16 left-0 right-0 h-32 z-50 pointer-events-none overflow-hidden">
       {/* Driving Car Animation */}
-      <motion.div className="absolute top-8" animate={{
+      <motion.div className="absolute top-8 z-50" animate={{
         x: ['-15%', '115%']
       }} transition={{
         duration: 40,
@@ -111,25 +159,6 @@ export function Navigation() {
         ease: "linear"
       }}>
         <SportsCar width={100} height={50} />
-      </motion.div>
-
-      {/* Destination Pin with Dollar Sign */}
-      <motion.div className="absolute top-8 right-20 relative" animate={{
-        y: [0, -10, 0]
-      }} transition={{
-        duration: 2,
-        repeat: Infinity
-      }}>
-        <MapPin className="w-10 h-10 text-gold drop-shadow-lg" fill="currentColor" />
-        <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" initial={{
-          scale: 0
-        }} animate={{
-          scale: 1
-        }} transition={{
-          delay: 0.5
-        }}>
-          <span className="text-black font-bold text-xs">$</span>
-        </motion.div>
       </motion.div>
     </div>
     </>;
