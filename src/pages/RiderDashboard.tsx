@@ -22,6 +22,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
+import { DashboardCar } from "@/components/DashboardCar";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -361,7 +362,8 @@ const RiderDashboard = () => {
       <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
       
       <div className="relative z-10">
-        <AppHeader />
+        <AppHeader showCar={false} />
+        <DashboardCar />
 
       <div className="container mx-auto px-4 py-8">
         {/* Verification Notice */}

@@ -17,6 +17,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
+import { DashboardCar } from "@/components/DashboardCar";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -301,7 +302,8 @@ const DriverDashboard = () => {
       <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
       
       <div className="relative z-10">
-        <AppHeader />
+        <AppHeader showCar={false} />
+        <DashboardCar />
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">My Trips</h1>
