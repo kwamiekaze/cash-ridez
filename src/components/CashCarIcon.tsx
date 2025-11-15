@@ -7,6 +7,7 @@ interface CashCarIconProps {
   className?: string;
   animate?: boolean;
   glowIntensity?: 'none' | 'low' | 'medium' | 'high';
+  letter?: string;
 }
 
 export function CashCarIcon({ 
@@ -14,7 +15,8 @@ export function CashCarIcon({
   height = 60,
   className = "",
   animate = false,
-  glowIntensity = 'medium'
+  glowIntensity = 'medium',
+  letter = '$'
 }: CashCarIconProps) {
   const glowFilters = {
     none: '',
@@ -99,7 +101,7 @@ export function CashCarIcon({
           fontWeight="bold"
           fontFamily="Arial, sans-serif"
         >
-          $
+          {letter}
         </text>
       </g>
     </svg>
