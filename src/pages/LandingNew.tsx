@@ -75,8 +75,8 @@ export default function LandingNew() {
                       <span>📍</span>
                       Post a Trip
                     </button>
-                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-yellow-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-white/50 dark:bg-black/50 backdrop-blur-sm text-yellow-600 dark:text-yellow-400 hover:bg-yellow-400/20">
-                      <CashCarIcon width={32} height={16} glowIntensity="none" />
+                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-gray-900 dark:text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
+                      <CashCarIcon width={48} height={24} glowIntensity="low" />
                       Respond to Trips
                     </button>
                   </div>
