@@ -117,7 +117,7 @@ export default function LandingNew() {
                     <span className="text-2xl">📍</span>
                     Post a Trip
                   </button>
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center gap-4">
                     <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-xl font-bold rounded-3xl transition-all hover:scale-105 flex items-center justify-center gap-3" style={{
                     borderColor: '#E8C368',
                     borderWidth: '3px',
@@ -128,7 +128,19 @@ export default function LandingNew() {
                       <CashCarIcon width={60} height={30} glowIntensity="none" />
                       Respond to Trips
                     </button>
-                    
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.1, 1],
+                        opacity: [0.6, 1, 0.6]
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <DollarSign className="w-8 h-8" style={{ color: '#E8C368' }} />
+                    </motion.div>
                   </div>
                 </motion.div>
               </div>
