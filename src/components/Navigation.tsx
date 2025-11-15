@@ -110,7 +110,7 @@ export function Navigation() {
         repeat: Infinity,
         ease: "linear"
       }}>
-        <SportsCar width={100} height={50} showDollarSign={false} />
+        <SportsCar width={100} height={50} />
       </motion.div>
 
       {/* Destination Pin with Dollar Sign */}
@@ -121,6 +121,15 @@ export function Navigation() {
         repeat: Infinity
       }}>
         <MapPin className="w-10 h-10 text-gold drop-shadow-lg" fill="currentColor" />
+        <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" initial={{
+          scale: 0
+        }} animate={{
+          scale: 1
+        }} transition={{
+          delay: 0.5
+        }}>
+          <span className="text-black font-bold text-xs">$</span>
+        </motion.div>
       </motion.div>
     </div>
     </>;
