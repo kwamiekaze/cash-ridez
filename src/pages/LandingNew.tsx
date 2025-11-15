@@ -93,15 +93,21 @@ export default function LandingNew() {
                   delay: 0.4
                 }} className="flex flex-wrap justify-center gap-6 text-sm sm:text-base">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                      <div className="relative">
+                        <CheckCircle2 className="w-6 h-6 text-[#1DA1F2] drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" fill="#1DA1F2" strokeWidth={2.5} />
+                      </div>
                       <span className="font-medium text-neutral-50">ID Verified</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                      <div className="relative">
+                        <CheckCircle2 className="w-6 h-6 text-[#1DA1F2] drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" fill="#1DA1F2" strokeWidth={2.5} />
+                      </div>
                       <span className="font-medium text-green-700">Safe Connections</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                      <div className="relative">
+                        <CheckCircle2 className="w-6 h-6 text-[#1DA1F2] drop-shadow-[0_0_8px_rgba(29,161,242,0.6)]" fill="#1DA1F2" strokeWidth={2.5} />
+                      </div>
                       <span className="font-medium text-amber-400">Community-Driven</span>
                     </div>
                   </motion.div>
