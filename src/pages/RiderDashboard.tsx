@@ -409,8 +409,8 @@ const RiderDashboard = () => {
           )}
           <Button 
             size="lg" 
-            variant="outline" 
-            className="h-20 text-lg hover:bg-accent transition-colors"
+            variant="secondary" 
+            className="h-20 text-lg"
             onClick={() => navigate("/profile")}
           >
             <User className="w-6 h-6 mr-2" />
@@ -484,7 +484,7 @@ const RiderDashboard = () => {
                     </div>
                     <div className="flex gap-2 w-full">
                       <Button
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
                         onClick={(e) => handleCancelTrip(request, e)}
                         className="flex-1"
@@ -550,7 +550,7 @@ const RiderDashboard = () => {
                         Complete
                       </Button>
                       <Button
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
                         onClick={(e) => handleCancelTrip(request, e)}
                         className="flex-1"

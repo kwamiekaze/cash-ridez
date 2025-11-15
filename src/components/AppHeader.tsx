@@ -7,6 +7,9 @@ import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { motion } from "motion/react";
+import { CashCarIcon } from "./CashCarIcon";
+import { MapPin } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StatusBadge from "@/components/StatusBadge";
@@ -43,6 +46,31 @@ const AppHeader = ({
     fetchProfile();
   }, [user]);
   return <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 relative overflow-hidden">
+      {/* Animated Car driving towards glowing location icon */}
+      <motion.div 
+        className="absolute top-2 md:top-3 z-50 pointer-events-none flex items-center"
+        animate={{
+          x: ['-10%', '85%']
+        }}
+        transition={{
+          duration: 28,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+      >
+        <CashCarIcon width={50} height={25} glowIntensity="low" className="md:w-[60px] md:h-[30px]" />
+      </motion.div>
+
+      {/* Glowing Location Icon */}
+      <div className="absolute top-2 md:top-3 right-[10%] z-40 pointer-events-none">
+        <MapPin 
+          className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" 
+          style={{
+            filter: 'drop-shadow(0 0 12px rgba(250,204,21,0.9)) drop-shadow(0 0 20px rgba(250,204,21,0.6))'
+          }}
+        />
+      </div>
+
       <div className="container mx-auto px-4 py-3 md:py-4 relative z-10">
         <div className="flex items-center justify-between">
           <div className="flex flex-col cursor-pointer" onClick={() => {
