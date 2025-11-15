@@ -4,6 +4,9 @@ import { Card } from "@/components/ui/card";
 import { Car, Shield, Users, MapPin, Star, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { CarIcon } from "@/components/CarIcon";
+import { motion } from "motion/react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const trustBadges = [{
   icon: Shield,
@@ -28,13 +31,20 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
   return <div className="min-h-screen bg-background">
+      <CarIcon />
+      
       {/* Header */}
       <header className="border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-primary lowercase">
+            <motion.span 
+              className="text-2xl font-bold text-primary lowercase"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
               cashridez
-            </span>
+            </motion.span>
             <nav className="hidden md:flex items-center gap-8">
               <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 How It Works
@@ -45,6 +55,7 @@ const Index = () => {
               <a href="#" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 Support
               </a>
+              <ThemeToggle />
               <Button variant="ghost" onClick={() => navigate("/auth")} className="text-foreground hover:text-primary">
                 Sign In
               </Button>
