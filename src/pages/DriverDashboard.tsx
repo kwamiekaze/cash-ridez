@@ -238,7 +238,7 @@ const DriverDashboard = () => {
             <div className="flex gap-2 pt-4 border-t">
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 className="flex-1"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -278,7 +278,7 @@ const DriverDashboard = () => {
               </div>
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate(`/trip/${request.id}`);

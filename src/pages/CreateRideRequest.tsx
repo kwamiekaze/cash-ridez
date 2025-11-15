@@ -370,7 +370,7 @@ const CreateRideRequest = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-gradient-primary" size="lg" disabled={isSubmitting}>
+            <Button type="submit" className="w-full bg-gradient-primary text-background font-semibold hover:opacity-90 transition-opacity" size="lg" disabled={isSubmitting}>
               {isSubmitting ? "Creating Request..." : "Create Trip Request"}
             </Button>
             
