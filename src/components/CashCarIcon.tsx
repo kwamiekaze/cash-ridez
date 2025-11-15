@@ -39,46 +39,51 @@ export function CashCarIcon({
         </linearGradient>
       </defs>
       
-      {/* Classic Sedan Car - Matching Reference Image */}
+      {/* Sleek Sports/Muscle Car */}
       <g stroke="#E8C368" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-        {/* Main body - horizontal long shape */}
-        <path d="M 25 42 L 115 42" />
+        {/* Low-profile body with aggressive angles */}
+        <path d="M 20 45 L 25 45 L 30 40 L 115 40 L 120 45" />
         
-        {/* Front fender curve */}
-        <path d="M 25 42 Q 20 42 20 38 Q 20 34 25 34 L 40 34" />
+        {/* Front hood slope */}
+        <path d="M 20 45 L 18 43 L 20 40 L 30 40" />
         
-        {/* Rear fender curve */}
-        <path d="M 100 34 L 115 34 Q 120 34 120 38 Q 120 42 115 42" />
+        {/* Rear spoiler */}
+        <path d="M 115 40 L 122 40 L 124 42 L 120 45" />
         
-        {/* Windshield and roof */}
-        <path d="M 40 34 L 45 24 L 55 24" />
-        <path d="M 55 24 L 85 24" />
-        <path d="M 85 24 L 95 24 L 100 34" />
+        {/* Aggressive windshield and roofline */}
+        <path d="M 40 40 L 48 26 L 58 24 L 82 24 L 92 26 L 100 40" />
         
-        {/* Bottom body line */}
-        <path d="M 25 42 L 25 48" />
-        <path d="M 40 48 L 100 48" />
-        <path d="M 115 42 L 115 48" />
+        {/* Side window contour */}
+        <path d="M 48 26 L 58 26" />
+        <path d="M 82 26 L 92 26" />
+        <line x1="70" y1="24" x2="70" y2="27" strokeWidth="1.5" />
         
-        {/* Front wheel well */}
-        <path d="M 25 48 Q 30 50 35 50 Q 40 50 40 48" />
+        {/* Lower body line */}
+        <path d="M 25 45 L 25 50" />
+        <path d="M 42 50 L 98 50" />
+        <path d="M 120 45 L 120 50" />
         
-        {/* Rear wheel well */}
-        <path d="M 100 48 Q 105 50 110 50 Q 115 50 115 48" />
+        {/* Front wheel well - aggressive curve */}
+        <path d="M 25 50 Q 31 52 37 52 Q 42 52 42 50" />
         
-        {/* Front Wheel - Full circle */}
-        <circle cx="35" cy="50" r="8" strokeWidth="3" />
-        <circle cx="35" cy="50" r="4" fill="none" strokeWidth="2" />
-        <circle cx="35" cy="50" r="2" fill="#E8C368" />
+        {/* Rear wheel well - aggressive curve */}
+        <path d="M 98 50 Q 104 52 110 52 Q 120 52 120 50" />
         
-        {/* Rear Wheel - Full circle */}
-        <circle cx="105" cy="50" r="8" strokeWidth="3" />
-        <circle cx="105" cy="50" r="4" fill="none" strokeWidth="2" />
-        <circle cx="105" cy="50" r="2" fill="#E8C368" />
+        {/* Front Wheel - Full circle with sporty design */}
+        <circle cx="37" cy="52" r="8" strokeWidth="3" />
+        <circle cx="37" cy="52" r="5" fill="none" strokeWidth="2" />
+        <circle cx="37" cy="52" r="2" fill="#E8C368" />
         
-        {/* Window detail */}
-        <line x1="60" y1="24" x2="60" y2="28" strokeWidth="1.5" />
-        <line x1="80" y1="24" x2="80" y2="28" strokeWidth="1.5" />
+        {/* Rear Wheel - Full circle with sporty design */}
+        <circle cx="110" cy="52" r="8" strokeWidth="3" />
+        <circle cx="110" cy="52" r="5" fill="none" strokeWidth="2" />
+        <circle cx="110" cy="52" r="2" fill="#E8C368" />
+        
+        {/* Air intake detail on front */}
+        <path d="M 23 42 L 27 42" strokeWidth="1.5" />
+        
+        {/* Side vent detail */}
+        <path d="M 75 35 L 78 35 M 76 37 L 79 37" strokeWidth="1" />
       </g>
       
       {/* Dollar Badge on Roof */}
