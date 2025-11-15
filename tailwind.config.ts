@@ -64,15 +64,28 @@ export default {
           DEFAULT: "hsl(var(--verified))",
           foreground: "hsl(var(--verified-foreground))",
         },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          light: "hsl(var(--gold-light))",
+          dark: "hsl(var(--gold-dark))",
+        },
+        emerald: {
+          DEFAULT: "hsl(var(--emerald))",
+          light: "hsl(var(--emerald-light))",
+          dark: "hsl(var(--emerald-dark))",
+        },
       },
       fontFamily: {
         sans: ["Poppins", "Inter", "sans-serif"],
+        heading: ["Montserrat", "Poppins", "sans-serif"],
+        serif: ["serif"],
       },
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',
         'gradient-button': 'var(--gradient-button)',
         'gradient-hero': 'var(--gradient-hero)',
         'gradient-gold': 'var(--gradient-gold)',
+        'gradient-emerald': 'var(--gradient-emerald)',
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',
@@ -80,6 +93,8 @@ export default {
         'lg': 'var(--shadow-lg)',
         'xl': 'var(--shadow-xl)',
         'glow': 'var(--shadow-glow)',
+        'gold': 'var(--shadow-gold)',
+        'emerald': 'var(--shadow-emerald)',
         'elegant': 'var(--shadow-elegant)',
         'card': 'var(--shadow-card)',
       },
