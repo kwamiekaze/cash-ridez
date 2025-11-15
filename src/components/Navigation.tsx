@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { ThemeToggle } from './ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -66,17 +67,28 @@ export function Navigation() {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-4">
+            {user && <NotificationBell />}
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
-              Sign In
-            </Button>
-            <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold shadow-lg shadow-yellow-500/50 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-yellow-500/70">
-              Get Started
-            </Button>
+            {user ? (
+              <Button variant="ghost" onClick={() => navigate('/dashboard')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
+                Dashboard
+              </Button>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => navigate('/auth')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
+                  Sign In
+                </Button>
+                <Button onClick={() => navigate('/auth')} className="bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold shadow-lg shadow-yellow-500/50 transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-yellow-500/70">
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex md:hidden items-center gap-3">
+            {user && <NotificationBell />}
+            <ThemeToggle />
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-900 dark:text-white p-2" aria-label="Toggle menu">
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
