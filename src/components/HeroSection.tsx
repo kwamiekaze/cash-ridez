@@ -60,12 +60,8 @@ export function HeroSection() {
         }} transition={{
           delay: 0.4
         }} className="text-6xl md:text-8xl font-bold leading-tight">
-            <span className="gold-shimmer block mb-4">
-              Your Community
-            </span>
-            <span className="bg-gradient-to-r from-gold via-emerald to-gold bg-clip-text text-transparent">
-              Travel Network
-            </span>
+            <span className="gold-shimmer block mb-4">Your Community Travel Network</span>
+            
           </motion.h1>
 
           {/* Quote Section */}
