@@ -16,21 +16,20 @@ interface RiderMarker {
   active?: boolean;
 }
 
-// Desktop: Icons positioned around the perimeter (safe zone in center)
+// Desktop: 5 riders positioned around the perimeter (safe zone in center)
 const riderMarkersDesktop: RiderMarker[] = [
-  { id: 1, x: 12, y: 25 },  // Top-left
-  { id: 2, x: 88, y: 25 },  // Top-right
-  { id: 3, x: 12, y: 75 },  // Bottom-left
-  { id: 4, x: 88, y: 75 },  // Bottom-right
-  { id: 5, x: 50, y: 88 },  // Bottom-center
+  { id: 1, x: 8, y: 20 },   // Top-left
+  { id: 2, x: 92, y: 20 },  // Top-right
+  { id: 3, x: 8, y: 80 },   // Bottom-left
+  { id: 4, x: 92, y: 80 },  // Bottom-right
+  { id: 5, x: 50, y: 90 },  // Bottom-center
 ];
 
-// Mobile: Fewer icons, positioned at corners only
+// Mobile: 3 riders positioned at corners only
 const riderMarkersMobile: RiderMarker[] = [
-  { id: 1, x: 10, y: 20 },  // Top-left
-  { id: 2, x: 90, y: 20 },  // Top-right
-  { id: 3, x: 10, y: 85 },  // Bottom-left
-  { id: 4, x: 90, y: 85 },  // Bottom-right
+  { id: 1, x: 8, y: 15 },   // Top-left
+  { id: 2, x: 92, y: 15 },  // Top-right
+  { id: 3, x: 50, y: 88 },  // Bottom-center
 ];
 
 // Car travels around the perimeter, avoiding the top animated car area
