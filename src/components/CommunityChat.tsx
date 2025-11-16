@@ -72,8 +72,7 @@ export function CommunityChat() {
       const { data, error } = await supabase
         .from("community_messages")
         .select("*")
-        .order("created_at", { ascending: true })
-        .limit(100);
+        .order("created_at", { ascending: true });
 
       if (error) {
         console.error("Error fetching messages:", error);
@@ -214,13 +213,34 @@ export function CommunityChat() {
       <div className="p-4 border-b border-border">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           💬 Community Chat
-          <span className="text-xs text-muted-foreground font-normal">
-            (Last 24 hours)
-          </span>
         </h3>
         <p className="text-xs text-muted-foreground mt-1">
           Connect with verified drivers and riders in your area
         </p>
+        {isAdmin && (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={async () => {
+              if (confirm("Are you sure you want to clear all messages in this chat?")) {
+                const { error } = await supabase
+                  .from("community_messages")
+                  .delete()
+                  .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+                
+                if (error) {
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                } else {
+                  toast({ title: "Success", description: "Chat cleared" });
+                  setMessages([]);
+                }
+              }
+            }}
+            className="mt-2"
+          >
+            Clear Chat
+          </Button>
+        )}
       </div>
 
       <ScrollArea className="flex-1 p-4 relative" ref={scrollRef}>

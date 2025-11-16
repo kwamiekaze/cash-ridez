@@ -39,6 +39,7 @@ export function AdminRidesManagement() {
   const [filteredRides, setFilteredRides] = useState<RideWithProfiles[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateSort, setDateSort] = useState<string>("newest");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +48,7 @@ export function AdminRidesManagement() {
 
   useEffect(() => {
     filterRides();
-  }, [rides, searchQuery, statusFilter]);
+  }, [rides, searchQuery, statusFilter, dateSort]);
 
   const fetchRides = async () => {
     try {
@@ -125,6 +126,13 @@ export function AdminRidesManagement() {
           ride.driver_profile?.full_name?.toLowerCase().includes(query)
       );
     }
+    
+    // Date sorting
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return dateSort === "newest" ? dateB - dateA : dateA - dateB;
+    });
 
     setFilteredRides(filtered);
   };
@@ -164,6 +172,16 @@ export function AdminRidesManagement() {
               <SelectItem value="assigned">Assigned</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={dateSort} onValueChange={setDateSort}>
+            <SelectTrigger className="w-full md:w-[180px]">
+              <SelectValue placeholder="Sort by date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
             </SelectContent>
           </Select>
         </div>

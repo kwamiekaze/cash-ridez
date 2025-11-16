@@ -225,6 +225,44 @@ export type Database = {
           },
         ]
       }
+      chat_room_invites: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string
+          invited_user_id: string
+          responded_at: string | null
+          room_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by: string
+          invited_user_id: string
+          responded_at?: string | null
+          room_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string
+          invited_user_id?: string
+          responded_at?: string | null
+          room_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_room_invites_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_room_messages: {
         Row: {
           created_at: string
@@ -384,6 +422,71 @@ export type Database = {
             columns: ["ride_request_id"]
             isOneToOne: false
             referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_chats: {
+        Row: {
+          chat_name: string | null
+          created_at: string
+          created_by: string
+          id: string
+          participant_1_id: string
+          participant_2_id: string
+          updated_at: string
+        }
+        Insert: {
+          chat_name?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          participant_1_id: string
+          participant_2_id: string
+          updated_at?: string
+        }
+        Update: {
+          chat_name?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          participant_1_id?: string
+          participant_2_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      direct_messages: {
+        Row: {
+          attachment_url: string | null
+          chat_id: string
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          chat_id: string
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          chat_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "direct_chats"
             referencedColumns: ["id"]
           },
         ]
@@ -549,6 +652,7 @@ export type Database = {
           chat_blocked: boolean | null
           chat_message_count: number | null
           chat_muted: boolean | null
+          chat_rooms_banned_from: string[] | null
           completed_trips_count: number | null
           consecutive_cancellations: number | null
           created_at: string | null
@@ -608,6 +712,7 @@ export type Database = {
           chat_blocked?: boolean | null
           chat_message_count?: number | null
           chat_muted?: boolean | null
+          chat_rooms_banned_from?: string[] | null
           completed_trips_count?: number | null
           consecutive_cancellations?: number | null
           created_at?: string | null
@@ -667,6 +772,7 @@ export type Database = {
           chat_blocked?: boolean | null
           chat_message_count?: number | null
           chat_muted?: boolean | null
+          chat_rooms_banned_from?: string[] | null
           completed_trips_count?: number | null
           consecutive_cancellations?: number | null
           created_at?: string | null

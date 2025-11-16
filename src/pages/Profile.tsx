@@ -436,7 +436,10 @@ const Profile = () => {
 
             {/* Phone Number */}
             <div className="space-y-2">
-              <Label htmlFor="phone_number">Contact Number</Label>
+              <Label htmlFor="phone_number">
+                Contact Number
+                <span className="ml-2 text-xs text-muted-foreground">(Optional - Admin's view only)</span>
+              </Label>
               <Input
                 id="phone_number"
                 type="tel"
@@ -444,6 +447,9 @@ const Profile = () => {
                 onChange={(e) => setProfile({ ...profile, phone_number: e.target.value })}
                 placeholder="Enter your phone number"
               />
+              <p className="text-xs text-muted-foreground">
+                Your phone number is only visible to admins and will never be publicly displayed or shared with other users.
+              </p>
             </div>
 
             {/* Bio */}
