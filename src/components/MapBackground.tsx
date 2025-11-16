@@ -25,11 +25,11 @@ const riderMarkersDesktop: RiderMarker[] = [
   { id: 5, x: 50, y: 90 },  // Bottom-center
 ];
 
-// Mobile: 3 riders positioned at edges with padding for full visibility
+// Mobile: 3 riders positioned to avoid text overlap
 const riderMarkersMobile: RiderMarker[] = [
-  { id: 1, x: 10, y: 18 },   // Top-left with padding
   { id: 2, x: 90, y: 18 },   // Top-right with padding
   { id: 3, x: 10, y: 82 },   // Bottom-left with padding
+  { id: 4, x: 50, y: 55 },   // Center area
 ];
 
 // Car travels around the perimeter, avoiding the top animated car area
