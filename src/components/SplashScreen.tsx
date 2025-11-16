@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { CashCarIcon } from './CashCarIcon';
+import { SportsCar } from './SportsCar';
 import { useEffect, useState } from 'react';
 
 interface SplashScreenProps {
@@ -23,71 +23,54 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      style={{
-        background: '#000000'
-      }}
     >
-      {/* Faint City Grid Background */}
-      <div className="absolute inset-0 opacity-20">
-        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
-              <path d="M 80 0 L 0 0 0 80" fill="none" stroke="rgba(0, 178, 111, 0.3)" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#grid)" />
-        </svg>
-      </div>
-
-      {/* Glowing Golden Orbs */}
-      <motion.div
-        className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl"
-        style={{ background: 'radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, rgba(249, 226, 125, 0.2) 50%, transparent 70%)' }}
-        animate={{
-          scale: [1, 1.3, 1],
-          opacity: [0.5, 0.8, 0.5]
-        }}
-        transition={{
-          duration: 2.5,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      />
-      <motion.div
-        className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl"
-        style={{ background: 'radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, rgba(249, 226, 125, 0.2) 50%, transparent 70%)' }}
-        animate={{
-          scale: [1.3, 1, 1.3],
-          opacity: [0.8, 0.5, 0.8]
-        }}
-        transition={{
-          duration: 2.5,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      />
-      <motion.div
-        className="absolute top-1/2 left-1/2 w-[500px] h-[500px] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"
-        style={{ background: 'radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 60%)' }}
-        animate={{
-          scale: [1, 1.2, 1],
-          opacity: [0.6, 0.9, 0.6]
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
+      {/* Subtle background gradient - very dark */}
+      <div 
+        className="absolute inset-0 opacity-30"
+        style={{
+          background: 'radial-gradient(ellipse at center, rgba(20, 20, 20, 0.8) 0%, rgba(0, 0, 0, 1) 70%)'
         }}
       />
 
       {/* Main Content */}
       <div className="relative z-10 flex flex-col items-center justify-center text-center px-4">
-        {/* Cash Car Icon */}
+        
+        {/* Sparkle Particles around car area */}
+        {[...Array(12)].map((_, i) => {
+          const angle = (i * 30) * (Math.PI / 180);
+          const radius = 140 + (i % 3) * 20;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius - 40;
+          
+          return (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 rounded-full bg-yellow-300"
+              style={{
+                left: `calc(50% + ${x}px)`,
+                top: `calc(50% + ${y}px)`,
+                boxShadow: '0 0 4px 2px rgba(255, 215, 0, 0.8)'
+              }}
+              animate={{
+                opacity: [0, 1, 0],
+                scale: [0, 1.5, 0]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.15,
+                ease: "easeInOut"
+              }}
+            />
+          );
+        })}
+
+        {/* Gold Sports Car */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -96,16 +79,31 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
             delay: 0.3,
             ease: [0.34, 1.56, 0.64, 1]
           }}
-          className="mb-8"
+          className="mb-8 relative"
         >
+          {/* Subtle glow around car only */}
+          <motion.div
+            className="absolute inset-0 -m-8"
+            animate={{
+              opacity: [0.3, 0.5, 0.3]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            style={{
+              background: 'radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, transparent 70%)',
+              filter: 'blur(20px)'
+            }}
+          />
+          
           <motion.div
             animate={{
               filter: [
-                'drop-shadow(0 0 30px rgba(255, 215, 0, 0.8))',
-                'drop-shadow(0 0 60px rgba(255, 215, 0, 1))',
-                'drop-shadow(0 0 80px rgba(255, 215, 0, 0.9))',
-                'drop-shadow(0 0 60px rgba(255, 215, 0, 1))',
-                'drop-shadow(0 0 30px rgba(255, 215, 0, 0.8))'
+                'drop-shadow(0 0 8px rgba(255, 215, 0, 0.4))',
+                'drop-shadow(0 0 12px rgba(255, 215, 0, 0.6))',
+                'drop-shadow(0 0 8px rgba(255, 215, 0, 0.4))'
               ]
             }}
             transition={{
@@ -114,64 +112,35 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
               ease: "easeInOut"
             }}
           >
-            <CashCarIcon width={200} height={100} glowIntensity="high" />
+            <SportsCar width={220} height={110} />
           </motion.div>
         </motion.div>
 
-        {/* Brand Name */}
+        {/* Brand Name with shimmer */}
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="text-5xl md:text-7xl font-bold mb-4"
+          className="text-5xl md:text-7xl font-bold mb-6 gold-shimmer"
           style={{
-            background: 'linear-gradient(90deg, #FFD700 0%, #FFF4A3 25%, #FFD700 50%, #FFF4A3 75%, #FFD700 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textShadow: '0 0 60px rgba(255, 215, 0, 0.6), 0 0 80px rgba(255, 215, 0, 0.4)'
+            textShadow: '0 0 20px rgba(255, 215, 0, 0.3)'
           }}
         >
-          CashRidez
+          cashridez.com
         </motion.h1>
 
-        {/* Tagline */}
-        <motion.div
+        {/* Tagline with shimmer */}
+        <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="space-y-2 mb-4"
-        >
-          <p className="text-xl md:text-2xl font-semibold text-[#F9E27D]">
-            Powered by people, driven by cash.
-          </p>
-          <p className="text-lg md:text-xl font-medium text-[#F9E27D]/80">
-            Earn more, save more.
-          </p>
-        </motion.div>
-
-
-        {/* Pulsing Dollar Badge Animation */}
-        <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-          animate={{
-            scale: [1, 1.05, 1],
-            opacity: [0.3, 0.6, 0.3]
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: "easeInOut"
+          className="text-xl md:text-2xl font-semibold gold-shimmer"
+          style={{
+            textShadow: '0 0 15px rgba(255, 215, 0, 0.2)'
           }}
         >
-          <div 
-            className="w-40 h-40 rounded-full"
-            style={{
-              background: 'radial-gradient(circle, rgba(249, 226, 125, 0.2) 0%, transparent 70%)',
-              filter: 'blur(20px)'
-            }}
-          />
-        </motion.div>
+          Powered by people, driven by cash 💰
+        </motion.p>
       </div>
     </motion.div>
   );
