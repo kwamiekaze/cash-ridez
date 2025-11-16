@@ -42,7 +42,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewerIsAdmin, setViewerIsAdmin] = useState(false);
-  const [cancelRate, setCancelRate] = useState<number | null>(null);
+  const [primaryRole, setPrimaryRole] = useState<"rider" | "driver">("rider");
   const [loading, setLoading] = useState(false);
   const [idImageUrl, setIdImageUrl] = useState<string | null>(null);
 
@@ -94,16 +94,11 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
 
         setIsAdmin(!!adminData);
 
-        // Fetch cancellation stats
-        const { data: cancelData } = await supabase
-          .from("cancellation_stats")
-          .select("rider_rate_90d, driver_rate_90d")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (cancelData) {
-          const worstRate = Math.max(cancelData.rider_rate_90d || 0, cancelData.driver_rate_90d || 0);
-          setCancelRate(worstRate);
+        // Determine primary role based on rating counts
+        if (profileData) {
+          const riderCount = profileData.rider_rating_count || 0;
+          const driverCount = profileData.driver_rating_count || 0;
+          setPrimaryRole(driverCount > riderCount ? "driver" : "rider");
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -187,12 +182,10 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
           </Card>
 
           {/* Cancellation Rate */}
-          {cancelRate !== null && (
-            <Card className="p-4">
-              <h4 className="font-semibold text-sm mb-2">Cancellation Rate</h4>
-              <CancellationBadge userId={profile.id} size="md" />
-            </Card>
-          )}
+          <Card className="p-4">
+            <h4 className="font-semibold text-sm mb-2">Cancellation Rate</h4>
+            <CancellationBadge userId={profile.id} role={primaryRole} size="md" />
+          </Card>
 
           {/* Bio */}
           {profile.bio && (
