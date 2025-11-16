@@ -25,9 +25,8 @@ Operated by: Cash Ridez Connect LLC, Atlanta, Georgia, USA<strong>Last Updated:<
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                1. Overview
-              </h2>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Last Updated: November, 2025
+Operated by: Cash Ridez Connect LLC, Atlanta, Georgia, USALast Updated: November 2, 2025Operated by: Cash Ridez Connect LLC, Atlanta, Georgia, USA</h2>
               <p className="mb-3">
                 CashRidez.com is a community platform where verified members communicate, post trips, and coordinate transportation within their communities. These Community Guidelines explain expected behavior and prohibited conduct. By using CashRidez you agree to follow these guidelines along with our <a href="/terms" className="text-primary hover:underline">Terms of Service</a>. CashRidez may update these guidelines at any time. Violations may result in warnings, suspension, or permanent removal.
               </p>
