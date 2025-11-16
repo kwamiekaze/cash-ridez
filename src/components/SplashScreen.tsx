@@ -29,7 +29,7 @@ export function SplashScreen({ onComplete, duration = 3000 }: SplashScreenProps)
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
       style={{
-        background: 'linear-gradient(180deg, #1a1000 0%, #2d1f00 30%, #3d2800 60%, #1a1000 100%)'
+        background: '#000000'
       }}
     >
       {/* Faint City Grid Background */}
