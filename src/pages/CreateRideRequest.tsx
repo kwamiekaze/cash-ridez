@@ -47,6 +47,7 @@ const CreateRideRequest = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [canCreateTrip, setCanCreateTrip] = useState(false);
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -70,6 +71,18 @@ const CreateRideRequest = () => {
       if (!profileData?.is_verified && profileData?.verification_status !== 'approved') {
         toast.error("You must be verified to post trip requests");
         navigate("/dashboard");
+        return;
+      }
+
+      // Check subscription and trip limit
+      const subscriptionActive = profileData?.subscription_active || false;
+      const completedTrips = profileData?.completed_trips_count || 0;
+      const canCreate = subscriptionActive || completedTrips < 3;
+      setCanCreateTrip(canCreate);
+
+      if (!canCreate) {
+        toast.error("You've reached your free trip limit. Please subscribe to continue.");
+        navigate("/subscription");
         return;
       }
       

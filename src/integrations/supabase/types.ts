@@ -1175,6 +1175,10 @@ export type Database = {
         Args: { _profile_id: string; _viewer_id: string }
         Returns: boolean
       }
+      can_view_phone_number: {
+        Args: { _profile_id: string; _viewer_id: string }
+        Returns: boolean
+      }
       check_active_ride: { Args: { _user_id: string }; Returns: boolean }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       create_notification: {
@@ -1187,6 +1191,10 @@ export type Database = {
           p_type: string
           p_user_id: string
         }
+        Returns: string
+      }
+      get_or_create_direct_chat: {
+        Args: { _participant_1_id: string; _participant_2_id: string }
         Returns: string
       }
       get_safe_profile_for_open_ride: {
