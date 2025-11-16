@@ -296,6 +296,33 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_typing_indicators: {
+        Row: {
+          created_at: string | null
+          id: string
+          room_id: string
+          room_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          room_id: string
+          room_type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          room_id?: string
+          room_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_messages: {
         Row: {
           created_at: string | null
@@ -426,6 +453,30 @@ export type Database = {
           status?: string
           submitted_at?: string
           user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      message_read_receipts: {
+        Row: {
+          id: string
+          message_id: string
+          message_type: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          message_type: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          message_type?: string
+          read_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -753,6 +804,7 @@ export type Database = {
           dropoff_zip: string
           eta_minutes: number | null
           id: string
+          passenger_count: number | null
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
@@ -786,6 +838,7 @@ export type Database = {
           dropoff_zip: string
           eta_minutes?: number | null
           id?: string
+          passenger_count?: number | null
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
@@ -819,6 +872,7 @@ export type Database = {
           dropoff_zip?: string
           eta_minutes?: number | null
           id?: string
+          passenger_count?: number | null
           pickup_address?: string
           pickup_lat?: number
           pickup_lng?: number
@@ -1016,6 +1070,7 @@ export type Database = {
         Returns: boolean
       }
       check_active_ride: { Args: { _user_id: string }; Returns: boolean }
+      cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       create_notification: {
         Args: {
           p_link?: string

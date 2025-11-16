@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, MessageSquare, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, MapPin, MessageSquare, Clock, CheckCircle, XCircle, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/RatingDisplay";
@@ -533,6 +533,18 @@ export default function TripDetails() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium">Pickup Time</p>
                   <p className="text-sm text-muted-foreground">{new Date(request.pickup_time).toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            
+            {request.passenger_count && (
+              <div className="flex items-start gap-2">
+                <Users className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium">Passengers</p>
+                  <p className="text-sm text-muted-foreground">
+                    {request.passenger_count} {request.passenger_count === 1 ? 'passenger' : 'passengers'}
+                  </p>
                 </div>
               </div>
             )}

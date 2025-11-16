@@ -2,7 +2,7 @@ import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, DollarSign, CheckCircle, XCircle } from "lucide-react";
+import { MapPin, Clock, DollarSign, CheckCircle, XCircle, Users } from "lucide-react";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { UserChip } from "@/components/UserChip";
@@ -57,11 +57,21 @@ export const TripCard = memo(({ request, isCompleted, onComplete, onCancel, user
                 <p className="text-sm text-muted-foreground break-words">To: {request.dropoff_address}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-              <p className="text-sm text-muted-foreground">
-                {format(new Date(request.pickup_time), "MMM d, yyyy 'at' h:mm a")}
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(request.pickup_time), "MMM d, yyyy 'at' h:mm a")}
+                </p>
+              </div>
+              {request.passenger_count && (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    {request.passenger_count} {request.passenger_count === 1 ? 'passenger' : 'passengers'}
+                  </p>
+                </div>
+              )}
             </div>
             {request.price_offer && (
               <div className="flex items-center gap-2">
