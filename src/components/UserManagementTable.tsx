@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -22,6 +22,8 @@ interface User {
   paused: boolean;
   admin_locked_fields: string[] | null;
   full_name: string | null;
+  created_at: string | null;
+  verification_reviewed_at: string | null;
 }
 
 interface UserManagementTableProps {
@@ -32,6 +34,38 @@ interface UserManagementTableProps {
 
 export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagementTableProps) {
   const [loading, setLoading] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("created_at");
+  const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
+
+  useEffect(() => {
+    let filtered = [...users];
+    
+    // Role filter
+    if (roleFilter === "rider") {
+      filtered = filtered.filter(u => u.is_rider);
+    } else if (roleFilter === "driver") {
+      filtered = filtered.filter(u => u.is_driver);
+    } else if (roleFilter === "verified") {
+      filtered = filtered.filter(u => u.is_verified);
+    }
+    
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortBy === "created_at") {
+        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      } else if (sortBy === "created_at_asc") {
+        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      } else if (sortBy === "verification_date") {
+        return new Date(b.verification_reviewed_at || 0).getTime() - new Date(a.verification_reviewed_at || 0).getTime();
+      } else if (sortBy === "verification_date_asc") {
+        return new Date(a.verification_reviewed_at || 0).getTime() - new Date(b.verification_reviewed_at || 0).getTime();
+      }
+      return 0;
+    });
+    
+    setFilteredUsers(filtered);
+  }, [users, roleFilter, sortBy]);
 
   const handleVerificationToggle = async (userId: string, currentStatus: boolean) => {
     setLoading(userId);
@@ -150,10 +184,10 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
             <TableHead className="text-white font-semibold">Status</TableHead>
             <TableHead className="text-white font-semibold">Rating</TableHead>
             <TableHead className="text-white font-semibold">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users.map((user) => (
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredUsers.map((user) => (
             <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50 border-border/30" onClick={() => onViewUser(user.id)}>
               <TableCell>
                 <UserChip 
