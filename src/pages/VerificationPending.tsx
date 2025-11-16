@@ -109,8 +109,8 @@ export default function VerificationPending() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="max-w-2xl w-full">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <Card className="max-w-2xl w-full bg-card border-border">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="relative">
@@ -136,6 +136,7 @@ export default function VerificationPending() {
           <div className="relative rounded-lg overflow-hidden bg-muted">
             <video
               autoPlay
+              loop
               preload="metadata"
               muted
               playsInline

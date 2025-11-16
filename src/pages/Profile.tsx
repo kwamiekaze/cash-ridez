@@ -260,12 +260,14 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-black relative">
       {/* Animated Map Background */}
       <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
       
       <div className="relative z-10">
-        <AppHeader />
+        <div className="border-b border-yellow-400/20 bg-black/90 backdrop-blur-sm sticky top-0 z-50">
+          <AppHeader />
+        </div>
         <div className="container mx-auto px-4 py-8 max-w-2xl">
         <Button
           variant="ghost"
@@ -511,9 +513,6 @@ const Profile = () => {
         {/* Role-specific sections */}
         {user && (
           <div className="mt-6 space-y-6">
-            {/* Rider ZIP Editor */}
-            {profile.is_rider && <RiderZipEditor />}
-            
             {/* Individual Ratings Display */}
             {profile.is_rider && profile.rider_rating_count > 0 && (
               <UserRatingsDisplay userId={user.id} ratingType="rider" />
