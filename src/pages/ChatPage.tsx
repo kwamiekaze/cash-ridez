@@ -9,23 +9,34 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserChip } from "@/components/UserChip";
 import AppHeader from "@/components/AppHeader";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { useReadReceipts } from "@/hooks/useReadReceipts";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [tripInfo, setTripInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const { typingUsers, setTyping } = useTypingIndicator(id || '', 'ride', currentUserId);
+  const { markAsRead, getReadBy } = useReadReceipts('ride_message', currentUserId, readReceiptsEnabled);
+  
+  let typingTimeout: NodeJS.Timeout;
 
   useEffect(() => {
     getCurrentUser();
     fetchTripInfo();
     fetchMessages();
+    loadReadReceiptsPreference();
 
     // Subscribe to realtime messages
     const channel = supabase
@@ -39,20 +50,44 @@ export default function ChatPage() {
           filter: `ride_request_id=eq.${id}`
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new]);
+          const newMsg = payload.new;
+          setMessages(prev => [...prev, newMsg]);
           scrollToBottom();
+          // Mark as read if it's not our message
+          if (newMsg.sender_id !== currentUserId && readReceiptsEnabled) {
+            markAsRead(newMsg.id);
+          }
         }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      setTyping(false);
     };
   }, [id]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
+  };
+
+  const loadReadReceiptsPreference = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('notification_preferences')
+        .eq('id', user.id)
+        .single();
+      
+      if (data) {
+        const prefs = data.notification_preferences as any;
+        setReadReceiptsEnabled(prefs?.read_receipts ?? true);
+      }
+    } catch (error) {
+      console.error('Error loading read receipts preference:', error);
+    }
   };
 
   const fetchTripInfo = async () => {
@@ -114,6 +149,13 @@ export default function ChatPage() {
         }));
         
         setMessages(messagesWithSenders);
+        
+        // Mark all messages as read that aren't from current user
+        if (readReceiptsEnabled && currentUserId) {
+          messagesWithSenders
+            .filter(msg => msg.sender_id !== currentUserId)
+            .forEach(msg => markAsRead(msg.id));
+        }
       } else {
         setMessages(data || []);
       }
@@ -141,6 +183,7 @@ export default function ChatPage() {
     if (!newMessage.trim() || !currentUserId) return;
 
     setSending(true);
+    setTyping(false);
     try {
       const { error } = await supabase
         .from('ride_messages')
@@ -162,6 +205,14 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleTyping = () => {
+    setTyping(true);
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      setTyping(false);
+    }, 3000);
   };
 
   if (loading) {
@@ -233,37 +284,62 @@ export default function ChatPage() {
                       {(message.sender?.full_name || message.sender?.display_name || message.sender_id)?.charAt(0) || '?'}
                     </AvatarFallback>
                   </Avatar>
-                  <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} max-w-[70%]`}>
-                     <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
-                       <span>{message.sender?.full_name || message.sender?.display_name || message.sender_id}</span>
-                       {message.sender_id && (
-                         <UserChip
-                           userId={message.sender_id}
-                           displayName={message.sender?.display_name}
-                           fullName={message.sender?.full_name}
-                           showCancellationBadge={true}
-                           size="sm"
-                           className="inline-flex"
-                         />
+                   <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} max-w-[70%]`}>
+                      <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+                        <span>{message.sender?.full_name || message.sender?.display_name || message.sender_id}</span>
+                        {message.sender_id && (
+                          <UserChip
+                            userId={message.sender_id}
+                            displayName={message.sender?.display_name}
+                            fullName={message.sender?.full_name}
+                            showCancellationBadge={true}
+                            size="sm"
+                            className="inline-flex"
+                          />
+                        )}
+                      </div>
+                     <div
+                       className={`rounded-lg px-4 py-2 ${
+                         isCurrentUser
+                           ? 'bg-primary text-primary-foreground'
+                           : 'bg-muted'
+                       }`}
+                     >
+                       <p className="text-sm">{message.text}</p>
+                     </div>
+                     <div className="flex items-center gap-2 mt-1">
+                       <span className="text-xs text-muted-foreground">
+                         {new Date(message.created_at).toLocaleTimeString()}
+                       </span>
+                       {isCurrentUser && readReceiptsEnabled && getReadBy(message.id).length > 0 && (
+                         <span className="text-xs text-muted-foreground">
+                           · Read by {getReadBy(message.id).length}
+                         </span>
                        )}
                      </div>
-                    <div
-                      className={`rounded-lg px-4 py-2 ${
-                        isCurrentUser
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <p className="text-sm">{message.text}</p>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      {new Date(message.created_at).toLocaleTimeString()}
-                    </div>
-                  </div>
+                   </div>
                 </div>
               );
             })
           )}
+          
+          {/* Typing Indicator */}
+          {typingUsers.length > 0 && (
+            <div className="flex gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback>...</AvatarFallback>
+              </Avatar>
+              <div className="flex items-center gap-1 bg-muted rounded-lg px-4 py-2">
+                <span className="text-sm text-muted-foreground">typing</span>
+                <span className="flex gap-1">
+                  <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                  <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                  <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                </span>
+              </div>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -302,10 +378,19 @@ export default function ChatPage() {
               <Input
                 placeholder="Type a message..."
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  handleTyping();
+                }}
                 disabled={sending}
                 className="flex-1 min-h-[44px]"
                 aria-label="Message input"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage(e);
+                  }
+                }}
               />
               <Button 
                 type="submit" 

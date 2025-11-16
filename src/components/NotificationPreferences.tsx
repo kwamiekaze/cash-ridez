@@ -13,6 +13,7 @@ interface NotificationPrefs {
   new_offers: boolean;
   messages: boolean;
   ride_updates: boolean;
+  read_receipts: boolean;
 }
 
 export function NotificationPreferences() {
@@ -23,6 +24,7 @@ export function NotificationPreferences() {
     new_offers: false,
     messages: true,
     ride_updates: true,
+    read_receipts: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +53,7 @@ export function NotificationPreferences() {
           new_offers: parsedPrefs?.new_offers ?? false,
           messages: parsedPrefs?.messages ?? true,
           ride_updates: parsedPrefs?.ride_updates ?? true,
+          read_receipts: parsedPrefs?.read_receipts ?? true,
         });
       }
     } catch (error) {
@@ -70,6 +73,7 @@ export function NotificationPreferences() {
         newPrefs.new_offers = true;
         newPrefs.messages = true;
         newPrefs.ride_updates = true;
+        newPrefs.read_receipts = true;
       }
       
       // If disabling any individual pref, disable "all notifications"
@@ -79,7 +83,7 @@ export function NotificationPreferences() {
       
       // If enabling all individual prefs, enable "all notifications"
       if (key !== 'all_notifications' && value) {
-        const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates;
+        const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates && newPrefs.read_receipts;
         if (allEnabled) {
           newPrefs.all_notifications = true;
         }
@@ -200,6 +204,25 @@ export function NotificationPreferences() {
               id="ride_updates"
               checked={prefs.ride_updates}
               onCheckedChange={(checked) => updatePreference('ride_updates', checked)}
+            />
+          </div>
+          {/* Read Receipts */}
+          <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+            <div className="flex items-start gap-3 flex-1">
+              <MessageSquare className="h-5 w-5 mt-0.5 text-primary" />
+              <div>
+                <Label htmlFor="read_receipts" className="font-medium cursor-pointer">
+                  Read Receipts
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Let others know when you've read their messages
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="read_receipts"
+              checked={prefs.read_receipts}
+              onCheckedChange={(checked) => updatePreference('read_receipts', checked)}
             />
           </div>
         </div>

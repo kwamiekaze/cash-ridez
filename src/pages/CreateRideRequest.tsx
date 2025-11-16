@@ -86,6 +86,7 @@ const CreateRideRequest = () => {
     emergencyName: "",
     emergencyPhone: "",
     priceOffer: "",
+    passengerCount: "1",
   });
 
   const geocodeAddress = async (address: string) => {
@@ -212,6 +213,7 @@ const CreateRideRequest = () => {
           rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
           rider_note_image_url: null,
           price_offer: parseFloat(formData.priceOffer),
+          passenger_count: parseInt(formData.passengerCount),
           search_keywords: keywords,
           status: "open",
         })
