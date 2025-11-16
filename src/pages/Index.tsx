@@ -49,7 +49,7 @@ const Index = () => {
               <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 How It Works
               </a>
-              <a href="#features" className="text-foreground/80 hover:text-primary font-medium transition-colors">
+              <a href="#features" className="text-foreground hover:text-primary font-medium transition-colors">
                 Community
               </a>
               <a href="#" className="text-foreground/80 hover:text-primary font-medium transition-colors">
@@ -58,7 +58,7 @@ const Index = () => {
               <Button variant="ghost" onClick={() => navigate("/auth")} className="text-foreground hover:text-primary">
                 Sign In
               </Button>
-              <Button onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6">
+              <Button onClick={() => navigate("/auth")} className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-6 drop-shadow-[0_0_12px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_20px_hsl(var(--primary)/0.8)]">
                 Get Started
               </Button>
             </nav>
@@ -97,10 +97,10 @@ const Index = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-10 py-7 rounded-full" onClick={() => navigate("/rider/create-request")}>
+              <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-10 py-7 rounded-full drop-shadow-[0_0_12px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_20px_hsl(var(--primary)/0.8)]" onClick={() => navigate("/rider/create-request")}>
                 Post a Trip
               </Button>
-              <Button size="lg" variant="outline" className="border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground text-lg px-10 py-7 rounded-full" onClick={() => navigate("/trips")}>
+              <Button size="lg" variant="outline" className="border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground text-lg px-10 py-7 rounded-full drop-shadow-[0_0_12px_hsl(var(--primary)/0.6)] hover:drop-shadow-[0_0_20px_hsl(var(--primary)/0.8)]" onClick={() => navigate("/trips")}>
                 Respond to Trips
               </Button>
             </div>
