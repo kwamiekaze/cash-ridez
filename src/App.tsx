@@ -32,6 +32,7 @@ const BillingCancelled = lazy(() => import("./pages/BillingCancelled"));
 const Subscription = lazy(() => import("./pages/Subscription"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Community = lazy(() => import("./pages/Community"));
 const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
 const Updates = lazy(() => import("./pages/Updates"));
 const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/community" element={<Community />} />
             <Route
               path="/onboarding"
               element={
