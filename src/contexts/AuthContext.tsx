@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setTimeout(async () => {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("active_role, is_verified, verification_status")
+            .select("active_role, is_verified, verification_status, verification_submitted_at, id_image_url")
             .eq("id", session.user.id)
             .single();
           
@@ -58,11 +58,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             } else {
               navigate('/dashboard');
             }
-          } else if (profile?.verification_status === 'pending') {
-            // Pending verification goes to verification pending page
+          } else if (profile?.verification_status === 'pending' && (profile?.verification_submitted_at || profile?.id_image_url)) {
+            // Only redirect to verification-pending if they actually submitted an ID
             navigate('/verification-pending');
           } else {
-            // New users go to onboarding
+            // New users or users without ID submission go to onboarding
             navigate('/onboarding');
           }
         }, 100);
