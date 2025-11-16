@@ -223,7 +223,14 @@ export function CommunityChat() {
         </p>
       </div>
 
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-4 relative" ref={scrollRef}>
+        {/* Message Counter in Top Right */}
+        <div className="absolute top-2 right-2 px-3 py-1 bg-card border border-border rounded-full shadow-sm z-10">
+          <span className="text-sm font-medium text-foreground">
+            {messageCount}/10
+          </span>
+        </div>
+
         <div className="space-y-4">
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
@@ -310,7 +317,7 @@ export function CommunityChat() {
         {!canSendMessage && !isSubscribed && (
           <div className="mb-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-sm text-yellow-600 dark:text-yellow-400">
-              You've reached your free message limit ({messageCount}/10). Subscribe to continue chatting!
+              You've reached your free message limit. Subscribe to continue chatting!
             </p>
           </div>
         )}
@@ -326,9 +333,6 @@ export function CommunityChat() {
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          {!isSubscribed && `${messageCount}/10 free messages used`}
-        </p>
       </form>
     </Card>
   );
