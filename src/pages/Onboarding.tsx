@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Car, Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
+import { Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
+import { DashboardCar } from "@/components/DashboardCar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RolePicker } from "@/components/RolePicker";
@@ -143,11 +144,19 @@ const Onboarding = () => {
   return <div className="min-h-screen bg-background">
       {/* Header with user dropdown */}
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Car className="w-6 h-6 text-primary" />
-            <span className="text-xl font-bold">Cash Ridez</span>
-          </div>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span 
+                className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-4xl md:text-6xl animate-shimmer bg-[length:200%_auto]" 
+                style={{ 
+                  fontFamily: "'Playfair Display', serif",
+                  filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6)) drop-shadow(0 0 60px rgba(250,204,21,0.4))'
+                }}
+              >
+                cashridez
+              </span>
+            </div>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -183,10 +192,16 @@ const Onboarding = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </header>
 
       <div className="flex flex-col items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
+        {/* Animated Car below header */}
+        <div className="w-full max-w-2xl mb-8">
+          <DashboardCar />
+        </div>
+        
         <div className="text-center mb-6 max-w-2xl w-full">
           <h1 className="text-4xl font-bold mb-6">Welcome to Cash Ridez!</h1>
         </div>
