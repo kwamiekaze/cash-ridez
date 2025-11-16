@@ -49,7 +49,7 @@ const Index = () => {
               <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 How It Works
               </a>
-              <a href="#features" className="text-foreground hover:text-primary font-medium transition-colors">
+              <a href="/community" className="text-foreground hover:text-primary font-medium transition-colors">
                 Community
               </a>
               <a href="#" className="text-foreground/80 hover:text-primary font-medium transition-colors">
@@ -246,7 +246,15 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border/30 py-16 bg-background">
         <div className="container mx-auto px-4">
-          <div className="pt-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex gap-6 text-sm">
+              <a href="/community" className="text-foreground/60 hover:text-primary font-medium transition-colors">
+                Community Guidelines
+              </a>
+              <a href="/terms" className="text-foreground/60 hover:text-primary font-medium transition-colors">
+                Terms of Service
+              </a>
+            </div>
             <p className="text-center text-sm text-foreground/60 font-medium">
               © 2025 CashRidez. All rights reserved.
             </p>
