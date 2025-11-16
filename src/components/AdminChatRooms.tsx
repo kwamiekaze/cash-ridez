@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Users } from "lucide-react";
+import { Plus, Trash2, Users, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { AdminInviteUserDialog } from "@/components/AdminInviteUserDialog";
 
 interface ChatRoom {
   id: string;
@@ -27,6 +28,8 @@ export function AdminChatRooms() {
   const { toast } = useToast();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [selectedRoomForInvite, setSelectedRoomForInvite] = useState<{ id: string; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
@@ -228,6 +231,17 @@ export function AdminChatRooms() {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedRoomForInvite({ id: room.id, name: room.name });
+                        setInviteDialogOpen(true);
+                      }}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Invite User
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={room.is_active ? "outline" : "default"}
                       onClick={() => handleToggleActive(room.id, room.is_active)}
                     >
@@ -372,6 +386,15 @@ export function AdminChatRooms() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {selectedRoomForInvite && (
+        <AdminInviteUserDialog
+          roomId={selectedRoomForInvite.id}
+          roomName={selectedRoomForInvite.name}
+          open={inviteDialogOpen}
+          onOpenChange={setInviteDialogOpen}
+        />
+      )}
     </div>
   );
 }

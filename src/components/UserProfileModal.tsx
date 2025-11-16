@@ -7,11 +7,12 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { MemberBadge } from "@/components/MemberBadge";
 import { AdminBadge } from "@/components/AdminBadge";
-import { Car, MessageCircle, ExternalLink } from "lucide-react";
+import { Car, MessageCircle, ExternalLink, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { DirectMessageDialog } from "@/components/DirectMessageDialog";
+import { AdminBanUserDialog } from "@/components/AdminBanUserDialog";
 
 interface UserProfileModalProps {
   userId: string | null;
@@ -38,13 +39,16 @@ interface UserProfile {
 
 export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModalProps) {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [viewerIsAdmin, setViewerIsAdmin] = useState(false);
   const [primaryRole, setPrimaryRole] = useState<"rider" | "driver">("rider");
   const [loading, setLoading] = useState(false);
   const [idImageUrl, setIdImageUrl] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [dmDialogOpen, setDmDialogOpen] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [chatRooms, setChatRooms] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
     if (!userId || !open || !user) return;
@@ -62,12 +66,26 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
         
         setViewerIsAdmin(!!viewerAdminData);
 
-        // Fetch profile data
+        // Fetch profile data (including phone number for admins)
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email")
+          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email, phone_number")
           .eq("id", userId)
           .single();
+
+        // Check if viewer can see phone number
+        if (viewerAdminData && profileData) {
+          setPhoneNumber(profileData.phone_number);
+        }
+
+        // Fetch chat rooms for ban dialog
+        if (viewerAdminData) {
+          const { data: rooms } = await supabase
+            .from("chat_rooms")
+            .select("id, name")
+            .eq("is_active", true);
+          setChatRooms(rooms || []);
+        }
 
         if (profileData) {
           setProfile(profileData as any);
@@ -245,21 +263,49 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
             </Card>
           )}
 
-          {/* Admin Chat Button */}
-          {viewerIsAdmin && userId !== user?.id && (
-            <Button
-              onClick={() => {
-                onOpenChange(false);
-                navigate(`/chat/${userId}`);
-              }}
-              className="w-full"
-            >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Message User
-            </Button>
+          {/* Message User Button */}
+          {userId !== user?.id && (
+            <>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setDmDialogOpen(true)}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Message User
+              </Button>
+
+              {viewerIsAdmin && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setBanDialogOpen(true)}
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  Moderate User
+                </Button>
+              )}
+            </>
           )}
         </div>
       </DialogContent>
+
+      {userId && (
+        <>
+          <DirectMessageDialog
+            otherUserId={userId}
+            open={dmDialogOpen}
+            onOpenChange={setDmDialogOpen}
+          />
+          <AdminBanUserDialog
+            userId={userId}
+            userName={profile?.display_name || profile?.full_name || "User"}
+            chatRooms={chatRooms}
+            open={banDialogOpen}
+            onOpenChange={setBanDialogOpen}
+          />
+        </>
+      )}
     </Dialog>
   );
 }

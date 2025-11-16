@@ -140,7 +140,7 @@ export function CommunityChat() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim() || !user || !canSendMessage) return;
 
     setSending(true);
     const { error } = await supabase
@@ -158,6 +158,19 @@ export function CommunityChat() {
       });
     } else {
       setNewMessage("");
+      // Refresh message count after sending
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("chat_message_count, subscription_active")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setMessageCount(profile.chat_message_count || 0);
+        setCanSendMessage(
+          (profile.subscription_active || profile.chat_message_count < 10)
+        );
+      }
     }
     setSending(false);
   };
