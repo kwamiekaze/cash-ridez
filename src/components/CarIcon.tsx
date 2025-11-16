@@ -12,9 +12,19 @@ export const CarIcon = () => {
         width="48"
         height="48"
         viewBox="0 0 64 64"
-        className="text-primary drop-shadow-glow"
-        animate={{ y: [0, -4, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        className="text-primary drop-shadow-glow-strong"
+        animate={{ 
+          y: [0, -4, 0],
+          filter: [
+            'drop-shadow(0 0 16px hsl(51 100% 50% / 0.8)) drop-shadow(0 0 32px hsl(51 100% 50% / 0.6))',
+            'drop-shadow(0 0 24px hsl(51 100% 50% / 1)) drop-shadow(0 0 48px hsl(51 100% 50% / 0.8))',
+            'drop-shadow(0 0 16px hsl(51 100% 50% / 0.8)) drop-shadow(0 0 32px hsl(51 100% 50% / 0.6))'
+          ]
+        }}
+        transition={{ 
+          y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+          filter: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+        }}
       >
         <g fill="currentColor">
           {/* Car body */}
