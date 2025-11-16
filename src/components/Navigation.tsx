@@ -19,20 +19,25 @@ export function Navigation() {
     color: 'text-white'
   }, {
     label: 'Community',
-    href: '#community',
+    href: '/community',
     color: 'text-emerald-400'
   }, {
     label: 'Support',
     href: '#support',
     color: 'text-yellow-400'
   }];
-  const scrollToSection = (href: string) => {
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({
-        behavior: 'smooth'
-      });
+  const handleMenuClick = (href: string) => {
+    if (href.startsWith('/')) {
+      navigate(href);
       setIsMenuOpen(false);
+    } else {
+      const element = document.querySelector(href);
+      if (element) {
+        element.scrollIntoView({
+          behavior: 'smooth'
+        });
+        setIsMenuOpen(false);
+      }
     }
   };
     return <>
@@ -60,7 +65,7 @@ export function Navigation() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
-            {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className={`${item.color} hover:scale-110 transition-all duration-300 hover:drop-shadow-lg font-medium`}>
+            {menuItems.map(item => <button key={item.label} onClick={() => handleMenuClick(item.href)} className={`${item.color} hover:scale-110 transition-all duration-300 hover:drop-shadow-lg font-medium`}>
                 {item.label}
               </button>)}
           </div>
@@ -112,7 +117,7 @@ export function Navigation() {
         y: -20
       }} className="md:hidden mt-4 pb-4 border-t border-yellow-500/20 pt-4">
             <div className="flex flex-col gap-4">
-              {menuItems.map(item => <button key={item.label} onClick={() => scrollToSection(item.href)} className={`${item.color} hover:scale-105 transition-all duration-300 text-left font-medium`}>
+              {menuItems.map(item => <button key={item.label} onClick={() => handleMenuClick(item.href)} className={`${item.color} hover:scale-105 transition-all duration-300 text-left font-medium`}>
                   {item.label}
                 </button>)}
               <div className="flex flex-col gap-2 mt-4 border-t border-yellow-500/20 pt-4">
