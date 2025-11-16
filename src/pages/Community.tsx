@@ -2,18 +2,11 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
 export default function Community() {
   const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
+  return <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
       <div className="container mx-auto px-4 py-12">
-        <Button
-          variant="ghost"
-          className="mb-6"
-          onClick={() => navigate("/")}
-        >
+        <Button variant="ghost" className="mb-6" onClick={() => navigate("/")}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Home
         </Button>
@@ -25,8 +18,8 @@ export default function Community() {
 
           <div className="space-y-6 text-gray-700 dark:text-gray-300">
             <section>
-              <p className="text-sm mb-6">
-                <strong>Last Updated:</strong> November 2, 2025<br />
+              <p className="text-sm mb-6">Last Updated: November, 2025
+Operated by: Cash Ridez Connect LLC, Atlanta, Georgia, USA<strong>Last Updated:</strong> November 2, 2025<br />
                 <strong>Operated by:</strong> Cash Ridez Connect LLC, Atlanta, Georgia, USA
               </p>
             </section>
@@ -191,6 +184,5 @@ export default function Community() {
           </div>
         </Card>
       </div>
-    </div>
-  );
+    </div>;
 }
