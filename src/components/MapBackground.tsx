@@ -29,7 +29,7 @@ const riderMarkersDesktop: RiderMarker[] = [
 const riderMarkersMobile: RiderMarker[] = [
   { id: 2, x: 90, y: 18 },   // Top-right with padding
   { id: 3, x: 10, y: 82 },   // Bottom-left with padding
-  { id: 4, x: 50, y: 55 },   // Center area
+  { id: 4, x: 50, y: 95 },   // Bottom-center, below all text
 ];
 
 // Car travels around the perimeter, avoiding the top animated car area
