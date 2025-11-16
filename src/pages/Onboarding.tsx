@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
-import { DashboardCar } from "@/components/DashboardCar";
+import { motion } from "motion/react";
+import { SportsCar } from "@/components/SportsCar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RolePicker } from "@/components/RolePicker";
@@ -143,9 +144,9 @@ const Onboarding = () => {
   }
   return <div className="min-h-screen bg-background">
       {/* Header with user dropdown */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-card relative overflow-hidden">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative">
             <div className="flex items-center gap-3">
               <span 
                 className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-4xl md:text-6xl animate-shimmer bg-[length:200%_auto]" 
@@ -157,6 +158,28 @@ const Onboarding = () => {
                 cashridez
               </span>
             </div>
+
+            {/* Animated Car */}
+            <motion.div
+              animate={{
+                x: ['0%', 'calc(100vw - 450px)']
+              }}
+              transition={{
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+              className="absolute left-[280px] top-1/2 -translate-y-1/2"
+              style={{ 
+                filter: 'drop-shadow(0 0 12px rgba(249, 226, 125, 0.7)) drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))'
+              }}
+            >
+              <SportsCar 
+                width={80} 
+                height={40}
+                showDollarSign={true}
+              />
+            </motion.div>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -197,13 +220,8 @@ const Onboarding = () => {
       </header>
 
       <div className="flex flex-col items-center justify-center p-4 min-h-[calc(100vh-4rem)]">
-        {/* Animated Car below header */}
-        <div className="w-full max-w-2xl mb-8">
-          <DashboardCar />
-        </div>
-        
         <div className="text-center mb-6 max-w-2xl w-full">
-          <h1 className="text-4xl font-bold mb-6">Welcome to Cash Ridez!</h1>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 gold-shimmer">Welcome to Cash Ridez!</h1>
         </div>
 
         <Card className="max-w-2xl w-full p-8">
