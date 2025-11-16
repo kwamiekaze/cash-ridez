@@ -18,7 +18,7 @@ export default function RoleRedirect() {
         }
         const { data: profile } = await supabase
           .from("profiles")
-          .select("is_verified, verification_status, active_role")
+          .select("is_verified, verification_status, verification_submitted_at, id_image_url, active_role")
           .eq("id", session.user.id)
           .single();
 
@@ -27,7 +27,7 @@ export default function RoleRedirect() {
           else if (profile?.active_role === "driver") setTarget("/driver");
           else if (profile?.active_role === "rider") setTarget("/rider");
           else setTarget("/dashboard"); // default to dashboard if role not set
-        } else if (profile?.verification_status === "pending") {
+        } else if (profile?.verification_status === "pending" && (profile?.verification_submitted_at || profile?.id_image_url)) {
           setTarget("/verification-pending");
         } else {
           setTarget("/onboarding");
