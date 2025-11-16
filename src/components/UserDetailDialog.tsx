@@ -45,6 +45,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     is_rider: false,
     is_driver: false,
   });
+  const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
+  const [idPreviewOpen, setIdPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (userId && open) {
@@ -178,14 +180,13 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                 size="sm"
                 onClick={async () => {
                   try {
-                    // id_image_url now stores the file path directly
                     const { data, error } = await supabase.storage
                       .from('id-verifications')
-                      .createSignedUrl(user.id_image_url, 3600); // 1 hour expiry
-                    
+                      .createSignedUrl(user.id_image_url, 3600);
                     if (error) throw error;
                     if (data?.signedUrl) {
-                      window.open(data.signedUrl, '_blank');
+                      setIdPreviewUrl(data.signedUrl);
+                      setIdPreviewOpen(true);
                     }
                   } catch (error) {
                     console.error('Error opening ID image:', error);

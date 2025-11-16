@@ -23,7 +23,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       
       const { data } = await supabase
         .from("profiles")
-        .select("is_verified, verification_status, active_role")
+        .select("is_verified, verification_status, verification_submitted_at, id_image_url, active_role")
         .eq("id", user.id)
         .single();
       
@@ -60,8 +60,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }
 
-  // Redirect pending verification users to verification pending page
-  if (location.pathname === "/onboarding" && profile?.verification_status === 'pending') {
+  // Redirect pending verification users to verification pending page ONLY if they actually submitted
+  if (
+    location.pathname === "/onboarding" &&
+    profile?.verification_status === 'pending' &&
+    (profile?.verification_submitted_at || profile?.id_image_url)
+  ) {
     return <Navigate to="/verification-pending" replace />;
   }
 

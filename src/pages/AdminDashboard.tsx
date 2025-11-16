@@ -76,6 +76,7 @@ const AdminDashboard = () => {
       .from("profiles")
       .select("*")
       .eq("verification_status", "pending")
+      .not("verification_submitted_at", "is", null)
       .order("verification_submitted_at", { ascending: false });
     
     setPendingUsers(pendingData || []);
