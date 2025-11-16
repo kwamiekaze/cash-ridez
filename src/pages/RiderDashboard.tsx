@@ -643,8 +643,12 @@ const RiderDashboard = () => {
         />
       )}
       
-      <FloatingSupport inChatTab={activeTab === "chat"} />
-      <FloatingChat inChatTab={activeTab === "chat"} />
+      {activeTab !== "chat" && (
+        <>
+          <FloatingSupport />
+          <FloatingChat />
+        </>
+      )}
       </div>
     </div>
   );

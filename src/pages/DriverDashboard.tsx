@@ -297,8 +297,12 @@ const DriverDashboard = () => {
         </Tabs>
         </div>
         
-        <FloatingSupport inChatTab={activeTab === "chat"} />
-        <FloatingChat inChatTab={activeTab === "chat"} />
+        {activeTab !== "chat" && (
+          <>
+            <FloatingSupport />
+            <FloatingChat />
+          </>
+        )}
       </div>
     </div>
   );
