@@ -390,6 +390,19 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
           </div>
         </div>
       </DialogContent>
+
+      {/* ID Image Preview Dialog */}
+      <Dialog open={idPreviewOpen} onOpenChange={setIdPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+          <div className="relative w-full h-full p-4">
+            <img 
+              src={idPreviewUrl || ''} 
+              alt="ID Verification" 
+              className="max-w-full max-h-[85vh] object-contain rounded mx-auto" 
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -14,6 +14,7 @@ interface NotificationPrefs {
   messages: boolean;
   ride_updates: boolean;
   read_receipts: boolean;
+  system_messages: boolean;
 }
 
 export function NotificationPreferences() {
@@ -25,6 +26,7 @@ export function NotificationPreferences() {
     messages: true,
     ride_updates: true,
     read_receipts: true,
+    system_messages: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +56,7 @@ export function NotificationPreferences() {
           messages: parsedPrefs?.messages ?? true,
           ride_updates: parsedPrefs?.ride_updates ?? true,
           read_receipts: parsedPrefs?.read_receipts ?? true,
+          system_messages: parsedPrefs?.system_messages ?? true,
         });
       }
     } catch (error) {
@@ -74,6 +77,7 @@ export function NotificationPreferences() {
         newPrefs.messages = true;
         newPrefs.ride_updates = true;
         newPrefs.read_receipts = true;
+        newPrefs.system_messages = true;
       }
       
       // If disabling any individual pref, disable "all notifications"
@@ -83,7 +87,7 @@ export function NotificationPreferences() {
       
       // If enabling all individual prefs, enable "all notifications"
       if (key !== 'all_notifications' && value) {
-        const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates && newPrefs.read_receipts;
+        const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates && newPrefs.read_receipts && newPrefs.system_messages;
         if (allEnabled) {
           newPrefs.all_notifications = true;
         }
@@ -223,6 +227,26 @@ export function NotificationPreferences() {
               id="read_receipts"
               checked={prefs.read_receipts}
               onCheckedChange={(checked) => updatePreference('read_receipts', checked)}
+            />
+          </div>
+          
+          {/* System Messages */}
+          <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
+            <div className="flex items-start gap-3 flex-1">
+              <Bell className="h-5 w-5 mt-0.5 text-primary" />
+              <div>
+                <Label htmlFor="system_messages" className="font-medium cursor-pointer">
+                  System Messages
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Important announcements and updates from administrators
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="system_messages"
+              checked={prefs.system_messages}
+              onCheckedChange={(checked) => updatePreference('system_messages', checked)}
             />
           </div>
         </div>

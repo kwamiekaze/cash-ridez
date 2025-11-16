@@ -217,7 +217,26 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(idImageUrl, '_blank')}
+                onClick={() => {
+                  const imgDialog = document.createElement('dialog');
+                  imgDialog.className = 'fixed inset-0 z-50 bg-black/80 backdrop-blur-sm';
+                  imgDialog.innerHTML = `
+                    <div class="fixed inset-0 flex items-center justify-center p-4" onclick="this.parentElement.close()">
+                      <div class="relative max-w-4xl max-h-[90vh] bg-background rounded-lg p-4" onclick="event.stopPropagation()">
+                        <button onclick="this.closest('dialog').close()" class="absolute top-2 right-2 p-2 rounded-full bg-background/80 hover:bg-background text-foreground">
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                        <img src="${idImageUrl}" alt="ID Verification" class="max-w-full max-h-[80vh] object-contain rounded" />
+                      </div>
+                    </div>
+                  `;
+                  document.body.appendChild(imgDialog);
+                  imgDialog.showModal();
+                  imgDialog.addEventListener('close', () => imgDialog.remove());
+                }}
                 className="w-full"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
