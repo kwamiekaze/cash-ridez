@@ -86,6 +86,18 @@ export default {
         'elegant': 'var(--shadow-elegant)',
         'card': 'var(--shadow-card)',
       },
+      dropShadow: {
+        'glow': [
+          '0 0 12px hsl(51 100% 50% / 0.6)',
+          '0 0 20px hsl(51 100% 50% / 0.4)',
+          '0 0 30px hsl(51 100% 50% / 0.2)'
+        ],
+        'glow-strong': [
+          '0 0 16px hsl(51 100% 50% / 0.8)',
+          '0 0 32px hsl(51 100% 50% / 0.6)',
+          '0 0 48px hsl(51 100% 50% / 0.4)'
+        ],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
