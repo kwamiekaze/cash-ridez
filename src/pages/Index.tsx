@@ -251,6 +251,9 @@ const Index = () => {
               <a href="/community" className="text-foreground/60 hover:text-primary font-medium transition-colors">
                 Community Guidelines
               </a>
+              <a href="/privacy" className="text-foreground/60 hover:text-primary font-medium transition-colors">
+                Privacy Policy
+              </a>
               <a href="/terms" className="text-foreground/60 hover:text-primary font-medium transition-colors">
                 Terms of Service
               </a>

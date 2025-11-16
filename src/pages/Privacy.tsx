@@ -25,140 +25,254 @@ export default function Privacy() {
 
           <div className="space-y-6 text-gray-700 dark:text-gray-300">
             <section>
+              <p className="text-sm mb-6">
+                <strong>Last Updated:</strong> November, 2025<br />
+                <strong>Operated by:</strong> Cash Ridez Connect LLC, Atlanta, Georgia, USA
+              </p>
+            </section>
+
+            <section>
+              <p className="mb-3">
+                This Privacy Policy explains how CashRidez.com collects, uses, protects, and shares your information.
+                By using the platform, you agree to the practices described in this Privacy Policy.
+              </p>
+              <p className="mb-3">
+                CashRidez may update this policy at any time. Continued use of the platform means you accept the updated policy.
+              </p>
+            </section>
+
+            <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                 1. Information We Collect
               </h2>
               <p className="mb-3">
-                CashRidez collects the following information to provide and improve our services:
+                CashRidez collects only the information necessary to operate a safe community communication platform. We do not sell user data.
               </p>
-              <ul className="list-disc list-inside space-y-2 ml-4">
-                <li><strong>Account Information:</strong> Name, email address, phone number, and profile photo</li>
-                <li><strong>ID Verification:</strong> Government-issued ID photos for verification purposes</li>
-                <li><strong>Location Data:</strong> Pickup and drop-off locations for trip coordination</li>
-                <li><strong>Trip Information:</strong> Trip details, ratings, and communication history</li>
-                <li><strong>Device Information:</strong> Device type, browser type, and IP address</li>
+              
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">A. Information You Provide</h3>
+              <p className="mb-2">When you create an account or update your profile, you may provide:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Name</li>
+                <li>Email address</li>
+                <li>Phone number</li>
+                <li>Communication preferences</li>
+                <li>Profile photo (if uploaded)</li>
+                <li>Vehicle details (if posted voluntarily by drivers)</li>
+                <li>Trip information you choose to post, such as origin, destination, date, and time</li>
               </ul>
+
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">B. Identity Verification</h3>
+              <p className="mb-2">To maintain a safe community, we may request ID verification. This may include:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Driver license photo</li>
+                <li>Selfie verification</li>
+                <li>Other identification information as required by our verification partners</li>
+              </ul>
+
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">C. Payment Information</h3>
+              <p className="mb-2">
+                CashRidez charges a monthly communication fee processed through Stripe or similar third-party providers.
+              </p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>We do not store full credit card or payment details</li>
+                <li>Stripe securely processes and stores payment data under its own Privacy Policy</li>
+              </ul>
+
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">D. Automatically Collected Information</h3>
+              <p className="mb-2">We may collect data such as:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Device type</li>
+                <li>Browser type</li>
+                <li>IP address</li>
+                <li>Pages viewed</li>
+                <li>Date and time of access</li>
+                <li>Platform usage logs</li>
+              </ul>
+              <p className="mb-4">This information helps with security, functionality, analytics, and troubleshooting.</p>
+
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">E. Communication Data</h3>
+              <p className="mb-2">Messages sent through the platform may be stored securely to:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Support communication between users</li>
+                <li>Investigate violations</li>
+                <li>Enhance safety</li>
+                <li>Improve platform features</li>
+              </ul>
+              <p>We do not scan or sell message content for advertising or marketing purposes.</p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
                 2. How We Use Your Information
               </h2>
-              <p className="mb-3">
-                Your information is used to:
-              </p>
+              <p className="mb-2">CashRidez uses your information to:</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
-                <li>Facilitate connections between riders and drivers</li>
-                <li>Verify user identities for platform safety</li>
-                <li>Enable communication between users for trip coordination</li>
-                <li>Process ratings and reviews</li>
-                <li>Improve platform features and user experience</li>
-                <li>Send important notifications about your trips and account</li>
-                <li>Prevent fraud and maintain platform security</li>
+                <li>Maintain your account</li>
+                <li>Process your monthly membership</li>
+                <li>Verify identity</li>
+                <li>Enable trip posting and communication between members</li>
+                <li>Enhance platform safety</li>
+                <li>Provide customer support</li>
+                <li>Improve platform functionality</li>
+                <li>Investigate violations and fraud</li>
+                <li>Comply with legal obligations</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                3. Information Sharing
+                3. How We Share Your Information
               </h2>
-              <p className="mb-3">
-                We share your information only in the following circumstances:
-              </p>
-              <ul className="list-disc list-inside space-y-2 ml-4">
-                <li><strong>With Other Users:</strong> Your name, profile photo, and ratings are visible to users you connect with</li>
-                <li><strong>Legal Requirements:</strong> When required by law or to protect our legal rights</li>
-                <li><strong>Service Providers:</strong> With trusted third-party services that help us operate the platform</li>
+              <p className="mb-3">We do not sell your information. We may share information only with:</p>
+              
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">A. Service Providers</h3>
+              <p className="mb-2">These include:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Payment processors such as Stripe</li>
+                <li>Supabase for secure database storage</li>
+                <li>Verification partners</li>
+                <li>Email or notification services</li>
               </ul>
-              <p className="mt-3">
-                <strong>Important:</strong> Your contact information (email, phone number) remains private and is not shared with other users unless you choose to share it directly.
-              </p>
-            </section>
+              <p className="mb-4">All providers must follow strict confidentiality rules.</p>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                4. Data Security
-              </h2>
-              <p>
-                We implement industry-standard security measures to protect your personal information. However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">B. Other Users</h3>
+              <p className="mb-4">
+                Information you choose to post publicly, such as trip listings, may be visible to other members.
+                Private messages are visible only to the users involved, unless legally required or needed for safety investigation.
               </p>
-            </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                5. ID Verification Data
-              </h2>
-              <p>
-                ID verification photos are securely stored and used solely for verification purposes. This data is encrypted and accessible only to authorized verification personnel.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                6. Location Data
-              </h2>
-              <p>
-                Location data is used only to facilitate trip connections and is shared with other users only when you post or accept a trip. You can control location sharing through your device settings.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                7. Your Rights
-              </h2>
-              <p className="mb-3">
-                You have the right to:
-              </p>
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">C. Legal Requests</h3>
+              <p className="mb-2">We may disclose information if required to:</p>
               <ul className="list-disc list-inside space-y-2 ml-4">
-                <li>Access your personal information</li>
-                <li>Correct inaccurate information</li>
-                <li>Request deletion of your account and data</li>
-                <li>Opt out of non-essential communications</li>
-                <li>Export your data</li>
+                <li>Comply with laws or court orders</li>
+                <li>Respond to law enforcement</li>
+                <li>Protect the safety of users or the public</li>
+                <li>Prevent fraud or harmful conduct</li>
               </ul>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                8. Data Retention
+                4. Data Storage and Security
               </h2>
+              <p className="mb-3">
+                CashRidez uses secure third-party infrastructure such as Supabase and encrypted communication methods to store data.
+              </p>
+              <p className="mb-2">Security measures include:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Encryption at rest and in transit</li>
+                <li>Access control and authentication</li>
+                <li>Monitoring for unauthorized access</li>
+                <li>Regular security reviews</li>
+              </ul>
               <p>
-                We retain your information for as long as your account is active or as needed to provide services. After account deletion, we may retain certain information as required by law or for legitimate business purposes.
+                No system is entirely immune from risks. By using CashRidez, you agree that you understand and accept these risks.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                9. Children's Privacy
+                5. User Choices and Controls
               </h2>
+              
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">A. Access and Updates</h3>
+              <p className="mb-4">You may update your account information at any time through your profile settings.</p>
+
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">B. Deleting Your Account</h3>
+              <p className="mb-2">You may request account deletion by contacting:</p>
+              <p className="mb-4">Email: cashridezconnect@gmail.com</p>
+              <p className="mb-4">
+                Some information may be retained as required for legal compliance, safety investigations, or transaction history.
+              </p>
+
+              <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">C. Communication Preferences</h3>
               <p>
-                CashRidez is not intended for users under 18 years of age. We do not knowingly collect information from children.
+                You may opt out of promotional emails while still receiving essential account and safety notifications.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                10. Changes to This Policy
+                6. Cookies and Tracking Technologies
               </h2>
+              <p className="mb-2">CashRidez may use cookies or similar tools to:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Recognize users</li>
+                <li>Improve performance</li>
+                <li>Maintain login sessions</li>
+                <li>Analyze usage</li>
+              </ul>
               <p>
-                We may update this privacy policy from time to time. We will notify you of significant changes through the platform or via email.
+                You may disable cookies in your browser settings, but some features may not function properly.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
-                11. Contact Us
+                7. Children's Privacy
               </h2>
-              <p>
-                For privacy-related questions or to exercise your rights, please contact our support team through the platform.
-              </p>
+              <ul className="list-disc list-inside space-y-2 ml-4">
+                <li>CashRidez is not intended for individuals under 18</li>
+                <li>We do not knowingly collect information from minors</li>
+                <li>If we learn that a user is under 18, the account will be removed</li>
+              </ul>
             </section>
-          </div>
 
-          <div className="mt-8 pt-8 border-t border-yellow-500/20">
-            <p className="text-sm text-gray-600 dark:text-gray-500 text-center">
-              Last Updated: January 2025
-            </p>
+            <section>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                8. Third-Party Links
+              </h2>
+              <ul className="list-disc list-inside space-y-2 ml-4">
+                <li>The platform may link to third-party sites such as mapping tools or payment processors</li>
+                <li>CashRidez is not responsible for the privacy practices or content of those sites</li>
+                <li>Use them at your own discretion</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                9. Data Retention
+              </h2>
+              <p className="mb-2">CashRidez retains information only as long as necessary for:</p>
+              <ul className="list-disc list-inside space-y-2 ml-4 mb-4">
+                <li>Operating the platform</li>
+                <li>Compliance with law</li>
+                <li>Security auditing</li>
+                <li>Account history</li>
+              </ul>
+              <p>After retention periods, data may be deleted or anonymized.</p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                10. International Users
+              </h2>
+              <ul className="list-disc list-inside space-y-2 ml-4">
+                <li>CashRidez is operated in the United States</li>
+                <li>By using the platform, you consent to the transfer and storage of your information in the United States</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                11. Changes to This Privacy Policy
+              </h2>
+              <ul className="list-disc list-inside space-y-2 ml-4">
+                <li>Any changes to this Privacy Policy will be posted on this page with an updated date</li>
+                <li>Continued use of the platform means you accept those changes</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                12. Contact Information
+              </h2>
+              <p className="mb-2">For questions or requests, please contact:</p>
+              <p className="mb-1">Cash Ridez Connect LLC</p>
+              <p className="mb-1">8735 Dunwoody Place Suite R</p>
+              <p className="mb-1">Atlanta, GA 30350</p>
+              <p>Email: cashridezconnect@gmail.com</p>
+            </section>
           </div>
         </Card>
       </div>
