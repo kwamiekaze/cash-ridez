@@ -25,11 +25,11 @@ const riderMarkersDesktop: RiderMarker[] = [
   { id: 5, x: 50, y: 90 },  // Bottom-center
 ];
 
-// Mobile: 3 riders positioned at corners only
+// Mobile: 3 riders positioned at extreme edges only
 const riderMarkersMobile: RiderMarker[] = [
-  { id: 1, x: 8, y: 15 },   // Top-left
-  { id: 2, x: 92, y: 15 },  // Top-right
-  { id: 3, x: 50, y: 88 },  // Bottom-center
+  { id: 1, x: 3, y: 15 },   // Top-left edge
+  { id: 2, x: 97, y: 15 },  // Top-right edge
+  { id: 3, x: 3, y: 85 },   // Bottom-left edge
 ];
 
 // Car travels around the perimeter, avoiding the top animated car area
