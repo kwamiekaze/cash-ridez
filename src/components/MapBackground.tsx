@@ -8,6 +8,8 @@ interface MapBackgroundProps {
   showRiders?: boolean;
   intensity?: 'subtle' | 'normal' | 'prominent';
   className?: string;
+  excludeZones?: ('top' | 'middle' | 'bottom' | 'left' | 'right')[];
+  maxRiders?: number;
 }
 
 interface RiderMarker {
@@ -18,29 +20,30 @@ interface RiderMarker {
 }
 
 // Generate random riders around the perimeter (avoiding center)
-const generateRandomRiders = (count: number, isMobile: boolean): RiderMarker[] => {
+const generateRandomRiders = (count: number, isMobile: boolean, excludeZones: string[] = []): RiderMarker[] => {
   const riders: RiderMarker[] = [];
   
-  // Define perimeter zones (edges of the map)
-  const zones = isMobile 
+  // Define perimeter zones (edges of the map) with zone names
+  const allZones = isMobile 
     ? [
-        // Mobile zones - corners and edges
-        { xRange: [5, 20], yRange: [15, 25] },    // Top-left
-        { xRange: [80, 95], yRange: [15, 25] },   // Top-right
-        { xRange: [5, 20], yRange: [75, 90] },    // Bottom-left
-        { xRange: [80, 95], yRange: [75, 90] },   // Bottom-right
+        { xRange: [5, 20], yRange: [15, 25], name: 'top' },    // Top-left
+        { xRange: [80, 95], yRange: [15, 25], name: 'top' },   // Top-right
+        { xRange: [5, 20], yRange: [75, 90], name: 'bottom' },    // Bottom-left
+        { xRange: [80, 95], yRange: [75, 90], name: 'bottom' },   // Bottom-right
       ]
     : [
-        // Desktop zones - more variety around perimeter
-        { xRange: [5, 25], yRange: [20, 35] },    // Top-left
-        { xRange: [75, 95], yRange: [20, 35] },   // Top-right
-        { xRange: [5, 25], yRange: [65, 85] },    // Bottom-left
-        { xRange: [75, 95], yRange: [65, 85] },   // Bottom-right
-        { xRange: [35, 65], yRange: [80, 92] },   // Bottom-center
-        { xRange: [3, 15], yRange: [40, 60] },    // Left-center
-        { xRange: [85, 97], yRange: [40, 60] },   // Right-center
-        { xRange: [35, 65], yRange: [15, 25] },   // Top-center
+        { xRange: [5, 25], yRange: [20, 35], name: 'top' },    // Top-left
+        { xRange: [75, 95], yRange: [20, 35], name: 'top' },   // Top-right
+        { xRange: [5, 25], yRange: [65, 85], name: 'bottom' },    // Bottom-left
+        { xRange: [75, 95], yRange: [65, 85], name: 'bottom' },   // Bottom-right
+        { xRange: [35, 65], yRange: [80, 92], name: 'bottom' },   // Bottom-center
+        { xRange: [3, 15], yRange: [40, 60], name: 'middle' },    // Left-center
+        { xRange: [85, 97], yRange: [40, 60], name: 'middle' },   // Right-center
+        { xRange: [35, 65], yRange: [15, 25], name: 'top' },   // Top-center
       ];
+  
+  // Filter out excluded zones
+  const zones = allZones.filter(zone => !excludeZones.includes(zone.name));
 
   for (let i = 0; i < count; i++) {
     const zone = zones[i % zones.length];
@@ -72,7 +75,9 @@ export function MapBackground({
   showAnimatedCar = false, 
   showRiders = false,
   intensity = 'normal',
-  className = ''
+  className = '',
+  excludeZones = [],
+  maxRiders
 }: MapBackgroundProps) {
   const isMobile = useIsMobile();
   
@@ -84,13 +89,16 @@ export function MapBackground({
 
   const gridOpacity = opacityMap[intensity];
   
-  // Generate random number of riders (3-12) for this instance
-  const riderCount = useMemo(() => 3 + Math.floor(Math.random() * 10), []);
+  // Generate random number of riders (3-12) for this instance, or use maxRiders if provided
+  const riderCount = useMemo(() => {
+    const randomCount = 3 + Math.floor(Math.random() * 10);
+    return maxRiders ? Math.min(randomCount, maxRiders) : randomCount;
+  }, [maxRiders]);
   
   // Generate random rider positions
   const riderMarkers = useMemo(() => 
-    generateRandomRiders(riderCount, isMobile), 
-    [riderCount, isMobile]
+    generateRandomRiders(riderCount, isMobile, excludeZones), 
+    [riderCount, isMobile, excludeZones]
   );
   
   // Generate car waypoints to visit riders

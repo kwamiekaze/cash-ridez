@@ -57,7 +57,7 @@ export default function LandingNew() {
           {/* Hero Section with Animated Map */}
           <section className="relative min-h-screen flex flex-col overflow-hidden">
             {/* Animated Map Background for Hero */}
-            <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
+            <MapBackground showAnimatedCar showRiders intensity="prominent" excludeZones={['top', 'middle']} className="absolute inset-0 z-0 pointer-events-none" />
             
             {/* Top Section with Buttons and Car */}
             <div className="relative z-50 pt-36 pb-4">
@@ -166,7 +166,7 @@ export default function LandingNew() {
 
           {/* How It Works */}
           <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
-            <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
+            <MapBackground showAnimatedCar showRiders intensity="subtle" excludeZones={['top']} className="absolute inset-0 z-0 pointer-events-none" />
             <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{
               opacity: 0,
@@ -263,7 +263,7 @@ export default function LandingNew() {
 
         {/* Support Section */}
         <section id="support" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
-          <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
+          <MapBackground showAnimatedCar showRiders intensity="subtle" maxRiders={6} className="absolute inset-0 z-0 pointer-events-none" />
           <div className="container mx-auto px-4 text-center relative z-10">
           <motion.div initial={{
               opacity: 0,
