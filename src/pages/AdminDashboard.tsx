@@ -18,6 +18,7 @@ import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { SystemMessageDialog } from "@/components/SystemMessageDialog";
+import { AdminChatRooms } from "@/components/AdminChatRooms";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -85,6 +86,7 @@ const AdminDashboard = () => {
     { id: "subscribed", label: "Subscribed", icon: Crown },
     { id: "rides", label: "Rides", icon: Car },
     { id: "community", label: "Chat/Community", icon: MessageSquare },
+    { id: "rooms", label: "Chat Rooms", icon: Users },
     { id: "messages", label: "System Messages", icon: Megaphone },
   ];
 
@@ -159,7 +161,7 @@ const AdminDashboard = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             {/* Desktop Navigation */}
-            <TabsList className="hidden lg:grid w-full grid-cols-6 bg-card/50 backdrop-blur-sm border border-border/50">
+            <TabsList className="hidden lg:grid w-full grid-cols-7 bg-card/50 backdrop-blur-sm border border-border/50">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -233,6 +235,16 @@ const AdminDashboard = () => {
               </motion.div>
             </TabsContent>
 
+            <TabsContent value="rooms" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <AdminChatRooms />
+              </motion.div>
+            </TabsContent>
+
             <TabsContent value="messages" className="space-y-6">
               <motion.div
                 initial={{ opacity: 0 }}
@@ -252,7 +264,7 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
 
-        {activeTab !== "community" && (
+        {activeTab !== "community" && activeTab !== "rooms" && (
           <>
             <FloatingSupport />
             <FloatingChat />

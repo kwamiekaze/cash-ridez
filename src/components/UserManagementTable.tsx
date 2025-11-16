@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Eye, ExternalLink, Pause, Play } from "lucide-react";
+import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock } from "lucide-react";
 import { UserChip } from "@/components/UserChip";
 
 interface User {
@@ -20,6 +20,8 @@ interface User {
   photo_url: string;
   id_image_url: string;
   paused: boolean;
+  admin_locked_fields: string[] | null;
+  full_name: string | null;
 }
 
 interface UserManagementTableProps {
@@ -110,6 +112,33 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
     }
   };
 
+  const handleLockNameToggle = async (userId: string, currentLockedFields: string[] | null) => {
+    setLoading(userId);
+    try {
+      const lockedFields = currentLockedFields || [];
+      const isCurrentlyLocked = lockedFields.includes('full_name');
+      
+      const newLockedFields = isCurrentlyLocked
+        ? lockedFields.filter(field => field !== 'full_name')
+        : [...lockedFields, 'full_name'];
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ admin_locked_fields: newLockedFields })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast.success(`Full name ${isCurrentlyLocked ? 'unlocked' : 'locked'} successfully`);
+      onUpdate();
+    } catch (error: any) {
+      console.error('Error toggling name lock:', error);
+      toast.error(error.message || 'Failed to update lock status');
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -189,6 +218,19 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                     onClick={() => onViewUser(user.id)}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleLockNameToggle(user.id, user.admin_locked_fields)}
+                    disabled={loading === user.id || !user.full_name}
+                    title={user.admin_locked_fields?.includes('full_name') ? "Unlock full name" : "Lock full name"}
+                  >
+                    {user.admin_locked_fields?.includes('full_name') ? (
+                      <Lock className="h-4 w-4 text-destructive" />
+                    ) : (
+                      <Unlock className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </TableCell>
