@@ -3,7 +3,7 @@ import { SportsCar } from "./SportsCar";
 
 export const DashboardCar = () => {
   return (
-    <div className="relative w-full h-[90px] overflow-hidden mb-4">
+    <div className="relative w-full h-[50px] overflow-hidden mb-4">
       <motion.div
         animate={{
           x: ['-100%', '100%']
@@ -19,8 +19,8 @@ export const DashboardCar = () => {
         }}
       >
         <SportsCar 
-          width={180} 
-          height={90}
+          width={80} 
+          height={40}
           showDollarSign={true}
         />
       </motion.div>

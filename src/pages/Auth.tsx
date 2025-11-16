@@ -9,8 +9,6 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CashCarIcon } from "@/components/CashCarIcon";
-import { motion } from "motion/react";
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -71,19 +69,6 @@ const Auth = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-black via-emerald-950/20 to-black" />
       
       <div className="w-full max-w-md relative z-10">
-        {/* Animated Car at Top */}
-        <div className="absolute -top-8 md:-top-16 left-0 right-0 h-20 md:h-24 z-50 pointer-events-none overflow-visible">
-          <motion.div className="absolute top-0 z-50" animate={{
-          x: ['-20%', '120%']
-        }} transition={{
-          duration: 35,
-          repeat: Infinity,
-          ease: "linear"
-        }}>
-            <CashCarIcon width={80} height={40} glowIntensity="medium" />
-          </motion.div>
-        </div>
-
         {/* Logo */}
         <div className="text-center mb-8 mt-8">
           <div className="inline-flex flex-col items-center gap-3 mb-4">
