@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import { CashCarIcon } from './CashCarIcon';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useMemo } from 'react';
 
 interface MapBackgroundProps {
   showAnimatedCar?: boolean;
@@ -16,43 +17,56 @@ interface RiderMarker {
   active?: boolean;
 }
 
-// Desktop: Icons positioned around the perimeter (safe zone in center)
-const riderMarkersDesktop: RiderMarker[] = [
-  { id: 1, x: 12, y: 25 },  // Top-left
-  { id: 2, x: 88, y: 25 },  // Top-right
-  { id: 3, x: 12, y: 75 },  // Bottom-left
-  { id: 4, x: 88, y: 75 },  // Bottom-right
-  { id: 5, x: 50, y: 88 },  // Bottom-center
-];
+// Generate random riders around the perimeter (avoiding center)
+const generateRandomRiders = (count: number, isMobile: boolean): RiderMarker[] => {
+  const riders: RiderMarker[] = [];
+  
+  // Define perimeter zones (edges of the map)
+  const zones = isMobile 
+    ? [
+        // Mobile zones - corners and edges
+        { xRange: [5, 20], yRange: [15, 25] },    // Top-left
+        { xRange: [80, 95], yRange: [15, 25] },   // Top-right
+        { xRange: [5, 20], yRange: [75, 90] },    // Bottom-left
+        { xRange: [80, 95], yRange: [75, 90] },   // Bottom-right
+      ]
+    : [
+        // Desktop zones - more variety around perimeter
+        { xRange: [5, 25], yRange: [20, 35] },    // Top-left
+        { xRange: [75, 95], yRange: [20, 35] },   // Top-right
+        { xRange: [5, 25], yRange: [65, 85] },    // Bottom-left
+        { xRange: [75, 95], yRange: [65, 85] },   // Bottom-right
+        { xRange: [35, 65], yRange: [80, 92] },   // Bottom-center
+        { xRange: [3, 15], yRange: [40, 60] },    // Left-center
+        { xRange: [85, 97], yRange: [40, 60] },   // Right-center
+        { xRange: [35, 65], yRange: [15, 25] },   // Top-center
+      ];
 
-// Mobile: Fewer icons, positioned at corners only
-const riderMarkersMobile: RiderMarker[] = [
-  { id: 1, x: 10, y: 20 },  // Top-left
-  { id: 2, x: 90, y: 20 },  // Top-right
-  { id: 3, x: 10, y: 85 },  // Bottom-left
-  { id: 4, x: 90, y: 85 },  // Bottom-right
-];
+  for (let i = 0; i < count; i++) {
+    const zone = zones[i % zones.length];
+    const x = zone.xRange[0] + Math.random() * (zone.xRange[1] - zone.xRange[0]);
+    const y = zone.yRange[0] + Math.random() * (zone.yRange[1] - zone.yRange[0]);
+    
+    riders.push({
+      id: i + 1,
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+    });
+  }
+  
+  return riders;
+};
 
-// Car travels around the perimeter, avoiding the top animated car area
-const carWaypointsDesktop = [
-  { x: 10, y: 30 },   // Top-left corner (lower to avoid top car)
-  { x: 25, y: 25 },   // Mid-left
-  { x: 90, y: 30 },   // Top-right corner (lower to avoid top car)
-  { x: 92, y: 50 },   // Right-center
-  { x: 90, y: 75 },   // Bottom-right corner
-  { x: 50, y: 85 },   // Bottom-center
-  { x: 10, y: 75 },   // Bottom-left corner
-  { x: 8, y: 50 },    // Left-center
-  { x: 10, y: 30 },   // Loop back to start
-];
-
-const carWaypointsMobile = [
-  { x: 10, y: 18 },   // Top-left
-  { x: 90, y: 18 },   // Top-right
-  { x: 90, y: 85 },   // Bottom-right
-  { x: 10, y: 85 },   // Bottom-left
-  { x: 10, y: 18 },   // Loop back
-];
+// Generate waypoints for the car to visit riders
+const generateCarWaypoints = (riders: RiderMarker[]) => {
+  // Add starting position, then visit each rider, then loop back
+  const waypoints = riders.map(rider => ({ x: rider.x, y: rider.y }));
+  // Add the first position at the end to complete the loop
+  if (waypoints.length > 0) {
+    waypoints.push({ x: waypoints[0].x, y: waypoints[0].y });
+  }
+  return waypoints;
+};
 
 export function MapBackground({ 
   showAnimatedCar = false, 
@@ -70,9 +84,20 @@ export function MapBackground({
 
   const gridOpacity = opacityMap[intensity];
   
-  // Use mobile or desktop markers/waypoints based on screen size
-  const riderMarkers = isMobile ? riderMarkersMobile : riderMarkersDesktop;
-  const carWaypoints = isMobile ? carWaypointsMobile : carWaypointsDesktop;
+  // Generate random number of riders (3-12) for this instance
+  const riderCount = useMemo(() => 3 + Math.floor(Math.random() * 10), []);
+  
+  // Generate random rider positions
+  const riderMarkers = useMemo(() => 
+    generateRandomRiders(riderCount, isMobile), 
+    [riderCount, isMobile]
+  );
+  
+  // Generate car waypoints to visit riders
+  const carWaypoints = useMemo(() => 
+    generateCarWaypoints(riderMarkers), 
+    [riderMarkers]
+  );
 
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`}>
