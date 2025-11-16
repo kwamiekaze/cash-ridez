@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { MapPin, Shield, CheckCircle2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
+import { MapBackground } from './MapBackground';
 export function HeroSection() {
   const navigate = useNavigate();
   const features = [{
@@ -15,31 +16,8 @@ export function HeroSection() {
     label: 'Community-Driven'
   }];
   return <section className="relative min-h-screen pt-52 pb-20 overflow-hidden">
-      {/* Animated Background Orbs */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-950 to-black" />
-        <motion.div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-gold/5 rounded-full blur-3xl" animate={{
-        scale: [1, 1.2, 1],
-        opacity: [0.3, 0.5, 0.3]
-      }} transition={{
-        duration: 8,
-        repeat: Infinity
-      }} />
-        <motion.div className="absolute bottom-0 right-1/4 w-[800px] h-[800px] bg-emerald/5 rounded-full blur-3xl" animate={{
-        scale: [1.2, 1, 1.2],
-        opacity: [0.5, 0.3, 0.5]
-      }} transition={{
-        duration: 8,
-        repeat: Infinity
-      }} />
-        <motion.div className="absolute top-1/3 right-1/3 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl" animate={{
-        scale: [1, 1.3, 1],
-        opacity: [0.2, 0.4, 0.2]
-      }} transition={{
-        duration: 10,
-        repeat: Infinity
-      }} />
-      </div>
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
 
 
       <div className="container px-4 relative z-20 mx-0">
