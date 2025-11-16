@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppHeader from "@/components/AppHeader";
@@ -11,14 +12,16 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Shield, Users, Crown, Car, MessageSquare } from "lucide-react";
+import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone } from "lucide-react";
 import { motion } from "motion/react";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { UserDetailDialog } from "@/components/UserDetailDialog";
+import { SystemMessageDialog } from "@/components/SystemMessageDialog";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("verifications");
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -27,6 +30,7 @@ const AdminDashboard = () => {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [systemMessageDialogOpen, setSystemMessageDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -81,6 +85,7 @@ const AdminDashboard = () => {
     { id: "subscribed", label: "Subscribed", icon: Crown },
     { id: "rides", label: "Rides", icon: Car },
     { id: "community", label: "Chat/Community", icon: MessageSquare },
+    { id: "messages", label: "System Messages", icon: Megaphone },
   ];
 
   const handleTabChange = (value: string) => {
@@ -116,38 +121,45 @@ const AdminDashboard = () => {
                 </p>
               </div>
 
-              {/* Mobile Menu Button */}
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild className="lg:hidden">
-                  <Button variant="outline" size="icon">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-64 bg-card">
-                  <div className="flex flex-col gap-2 mt-8">
-                    {menuItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Button
-                          key={item.id}
-                          variant={activeTab === item.id ? "default" : "ghost"}
-                          className="w-full justify-start gap-2"
-                          onClick={() => handleTabChange(item.id)}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {item.label}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </SheetContent>
-              </Sheet>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => setSystemMessageDialogOpen(true)} className="gap-2 hidden md:flex">
+                  <Megaphone className="h-4 w-4" />
+                  Send Message
+                </Button>
+
+                {/* Mobile Menu Button */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild className="lg:hidden">
+                    <Button variant="outline" size="icon">
+                      <Menu className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-64 bg-card">
+                    <div className="flex flex-col gap-2 mt-8">
+                      {menuItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <Button
+                            key={item.id}
+                            variant={activeTab === item.id ? "default" : "ghost"}
+                            className="w-full justify-start gap-2"
+                            onClick={() => handleTabChange(item.id)}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             {/* Desktop Navigation */}
-            <TabsList className="hidden lg:grid w-full grid-cols-5 bg-card/50 backdrop-blur-sm border border-border/50">
+            <TabsList className="hidden lg:grid w-full grid-cols-6 bg-card/50 backdrop-blur-sm border border-border/50">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -220,6 +232,23 @@ const AdminDashboard = () => {
                 <CommunityChat />
               </motion.div>
             </TabsContent>
+
+            <TabsContent value="messages" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="text-center text-muted-foreground py-8">
+                  <Megaphone className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="mb-4">Manage system-wide announcements and messages</p>
+                  <Button onClick={() => navigate('/admin/system-messages')} className="gap-2">
+                    <Megaphone className="h-4 w-4" />
+                    Go to System Messages
+                  </Button>
+                </div>
+              </motion.div>
+            </TabsContent>
           </Tabs>
         </div>
 
@@ -238,6 +267,14 @@ const AdminDashboard = () => {
             onUpdate={fetchUsers}
           />
         )}
+
+        <SystemMessageDialog
+          open={systemMessageDialogOpen}
+          onOpenChange={setSystemMessageDialogOpen}
+          onSuccess={() => {
+            // Optionally refresh or show success message
+          }}
+        />
       </div>
     </AdminRoute>
   );

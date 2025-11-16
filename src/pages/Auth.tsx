@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { CarIcon } from "@/components/CarIcon";
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -65,8 +66,13 @@ const Auth = () => {
     }
   };
   return <div className="min-h-screen bg-black dark:bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-black via-emerald-950/20 to-black" />
+      {/* Animated Car Background */}
+      <div className="absolute inset-0 z-0">
+        <CarIcon />
+      </div>
+      
+      {/* Background Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-emerald-950/40 to-black/80 z-0" />
       
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}

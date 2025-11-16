@@ -7,8 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
-import { FloatingChat } from "@/components/FloatingChat";
-import FloatingSupport from "@/components/FloatingSupport";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
@@ -35,6 +33,8 @@ const Subscription = lazy(() => import("./pages/Subscription"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
+const Updates = lazy(() => import("./pages/Updates"));
+const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -72,7 +72,7 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -85,8 +85,6 @@ const App = () => (
           <AuthProvider>
           <DeferMount>
             <NotificationPermissionDialog />
-            <FloatingChat />
-            <FloatingSupport />
           </DeferMount>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
@@ -212,6 +210,22 @@ const App = () => (
                 <ProtectedRoute>
                   <Subscription />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/updates"
+              element={
+                <ProtectedRoute>
+                  <Updates />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/system-messages"
+              element={
+                <AdminRoute>
+                  <AdminSystemMessages />
+                </AdminRoute>
               }
             />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

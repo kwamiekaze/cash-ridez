@@ -225,6 +225,77 @@ export type Database = {
           },
         ]
       }
+      chat_room_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_room_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "chat_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_rooms: {
+        Row: {
+          allowed_roles: string[]
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_public: boolean
+          max_participants: number | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_roles?: string[]
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          max_participants?: number | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_roles?: string[]
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          max_participants?: number | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       community_messages: {
         Row: {
           created_at: string | null
@@ -792,6 +863,42 @@ export type Database = {
           subject?: string
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      system_messages: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_published: boolean
+          message: string
+          published_at: string | null
+          target_roles: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_published?: boolean
+          message: string
+          published_at?: string | null
+          target_roles?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_published?: boolean
+          message?: string
+          published_at?: string | null
+          target_roles?: string[]
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }
