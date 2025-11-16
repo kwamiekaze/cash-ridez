@@ -350,7 +350,7 @@ const Onboarding = () => {
                 </div>
               </Card>
               
-              <h2 className="text-xl font-semibold mb-4">Upload Your ID</h2>
+              <h2 className="text-xl font-semibold mb-4 text-center">Upload Your ID</h2>
               <Card className="p-6">
                 <Label htmlFor="id-upload" className="cursor-pointer">
                   <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
@@ -369,7 +369,7 @@ const Onboarding = () => {
                   <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
                 </Label>
               </Card>
-              <p className="text-xs text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2 text-center">
                 Your ID will be reviewed by our team. Only verified users can post or connect with trip requests.
               </p>
             </div>}
