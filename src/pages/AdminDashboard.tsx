@@ -223,8 +223,12 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
 
-        <FloatingSupport inChatTab={activeTab === "community"} />
-        <FloatingChat inChatTab={activeTab === "community"} />
+        {activeTab !== "community" && (
+          <>
+            <FloatingSupport />
+            <FloatingChat />
+          </>
+        )}
 
         {selectedUserId && (
           <UserDetailDialog
