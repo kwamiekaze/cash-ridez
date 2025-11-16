@@ -154,7 +154,7 @@ const Onboarding = () => {
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar>
                   <AvatarImage src={profile?.photo_url} alt={profile?.display_name || user?.email} />
-                  <AvatarFallback>
+                  <AvatarFallback className="text-yellow-200">
                     {profile?.display_name?.[0] || user?.email?.[0] || "U"}
                   </AvatarFallback>
                 </Avatar>
