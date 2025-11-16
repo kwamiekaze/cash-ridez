@@ -89,8 +89,12 @@ export function Navigation() {
           <div className="flex md:hidden items-center gap-3">
             {user && <NotificationBell />}
             <ThemeToggle />
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-900 dark:text-white p-2" aria-label="Toggle menu">
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2" aria-label="Toggle menu">
+              {isMenuOpen ? (
+                <X size={24} className="text-yellow-400 animate-shimmer" style={{ filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6))' }} />
+              ) : (
+                <Menu size={24} className="text-yellow-400 animate-shimmer" style={{ filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6))' }} />
+              )}
             </button>
           </div>
         </div>
