@@ -109,26 +109,26 @@ const AdminDashboard = () => {
         
         <AppHeader showStatus={false} />
 
-        <div className="container mx-auto px-4 py-6 relative z-10">
+        <div className="container mx-auto px-4 py-4 md:py-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-4 md:mb-6"
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
                   Admin Dashboard
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-gray-300 text-sm md:text-base">
                   Manage users, verifications, and system operations
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <Button onClick={() => setSystemMessageDialogOpen(true)} className="gap-2 hidden md:flex">
+                <Button onClick={() => setSystemMessageDialogOpen(true)} className="gap-2 text-xs sm:text-sm">
                   <Megaphone className="h-4 w-4" />
-                  Send Message
+                  <span className="hidden sm:inline">Send Message</span>
                 </Button>
 
                 {/* Mobile Menu Button */}
@@ -146,11 +146,11 @@ const AdminDashboard = () => {
                           <Button
                             key={item.id}
                             variant={activeTab === item.id ? "default" : "ghost"}
-                            className="w-full justify-start gap-2"
+                            className="w-full justify-start gap-2 text-white hover:text-white"
                             onClick={() => handleTabChange(item.id)}
                           >
                             <Icon className="h-4 w-4" />
-                            {item.label}
+                            <span className="text-white">{item.label}</span>
                           </Button>
                         );
                       })}
@@ -161,7 +161,7 @@ const AdminDashboard = () => {
             </div>
           </motion.div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
             {/* Desktop Navigation */}
             <TabsList className="hidden lg:grid w-full grid-cols-8 bg-card/50 backdrop-blur-sm border border-border/50">
               {menuItems.map((item) => {
@@ -170,10 +170,10 @@ const AdminDashboard = () => {
                   <TabsTrigger
                     key={item.id}
                     value={item.id}
-                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-white"
                   >
                     <Icon className="h-4 w-4 mr-2" />
-                    {item.label}
+                    <span className="hidden xl:inline">{item.label}</span>
                   </TabsTrigger>
                 );
               })}
