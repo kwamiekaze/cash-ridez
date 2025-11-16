@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Bell, MessageSquare, Car, DollarSign, Activity } from 'lucide-react';
+import { Bell, MessageSquare, DollarSign, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface NotificationPrefs {
@@ -13,7 +13,6 @@ interface NotificationPrefs {
   new_offers: boolean;
   messages: boolean;
   ride_updates: boolean;
-  notify_new_driver: boolean;
 }
 
 export function NotificationPreferences() {
@@ -24,7 +23,6 @@ export function NotificationPreferences() {
     new_offers: false,
     messages: true,
     ride_updates: true,
-    notify_new_driver: false,
   });
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +36,7 @@ export function NotificationPreferences() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('notification_preferences, notify_new_driver')
+        .select('notification_preferences')
         .eq('id', user?.id)
         .single();
 
@@ -53,7 +51,6 @@ export function NotificationPreferences() {
           new_offers: parsedPrefs?.new_offers ?? false,
           messages: parsedPrefs?.messages ?? true,
           ride_updates: parsedPrefs?.ride_updates ?? true,
-          notify_new_driver: data.notify_new_driver ?? false, // Read from direct column
         });
       }
     } catch (error) {
@@ -70,40 +67,29 @@ export function NotificationPreferences() {
       // If enabling "all notifications", enable all individual preferences
       if (key === 'all_notifications' && value) {
         newPrefs.new_trips = true;
-      newPrefs.new_offers = true;
-      newPrefs.messages = true;
-      newPrefs.ride_updates = true;
-      newPrefs.notify_new_driver = true;
-    }
+        newPrefs.new_offers = true;
+        newPrefs.messages = true;
+        newPrefs.ride_updates = true;
+      }
       
       // If disabling any individual pref, disable "all notifications"
       if (key !== 'all_notifications' && !value) {
         newPrefs.all_notifications = false;
       }
       
-    // If enabling all individual prefs, enable "all notifications"
-    if (key !== 'all_notifications' && value) {
-      const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates && newPrefs.notify_new_driver;
-      if (allEnabled) {
-        newPrefs.all_notifications = true;
+      // If enabling all individual prefs, enable "all notifications"
+      if (key !== 'all_notifications' && value) {
+        const allEnabled = newPrefs.new_trips && newPrefs.new_offers && newPrefs.messages && newPrefs.ride_updates;
+        if (allEnabled) {
+          newPrefs.all_notifications = true;
+        }
       }
-    }
 
       setPrefs(newPrefs);
 
-      // Update both the JSONB column and direct notify_new_driver column
-      const updates: any = {
-        notification_preferences: newPrefs
-      };
-      
-      // Also update the direct column for notify_new_driver for edge function access
-      if (key === 'notify_new_driver' || key === 'all_notifications') {
-        updates.notify_new_driver = newPrefs.notify_new_driver;
-      }
-
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({ notification_preferences: newPrefs })
         .eq('id', user?.id);
 
       if (error) throw error;
@@ -157,26 +143,6 @@ export function NotificationPreferences() {
         </div>
 
         <div className="space-y-4">
-          {/* New Trips */}
-          <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-            <div className="flex items-start gap-3 flex-1">
-              <Car className="h-5 w-5 mt-0.5 text-primary" />
-              <div>
-                <Label htmlFor="new_trips" className="font-medium cursor-pointer">
-                  New Trip Requests
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Get alerts when new trips are posted in your area
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="new_trips"
-              checked={prefs.new_trips}
-              onCheckedChange={(checked) => updatePreference('new_trips', checked)}
-            />
-          </div>
-
           {/* New Offers */}
           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
             <div className="flex items-start gap-3 flex-1">
@@ -234,26 +200,6 @@ export function NotificationPreferences() {
               id="ride_updates"
               checked={prefs.ride_updates}
               onCheckedChange={(checked) => updatePreference('ride_updates', checked)}
-            />
-          </div>
-
-          {/* New Driver Notifications */}
-          <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
-            <div className="flex items-start gap-3 flex-1">
-              <Car className="h-5 w-5 mt-0.5 text-primary" />
-              <div>
-                <Label htmlFor="notify_new_driver" className="font-medium cursor-pointer">
-                  New Driver Alerts
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified when a driver becomes available in your area
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="notify_new_driver"
-              checked={prefs.notify_new_driver}
-              onCheckedChange={(checked) => updatePreference('notify_new_driver', checked)}
             />
           </div>
         </div>

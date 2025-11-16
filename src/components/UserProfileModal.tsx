@@ -2,13 +2,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { MemberBadge } from "@/components/MemberBadge";
 import { AdminBadge } from "@/components/AdminBadge";
-import { Car } from "lucide-react";
+import { Car, MessageCircle, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface UserProfileModalProps {
   userId: string | null;
@@ -34,29 +37,54 @@ interface UserProfile {
 }
 
 export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModalProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [viewerIsAdmin, setViewerIsAdmin] = useState(false);
   const [cancelRate, setCancelRate] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [idImageUrl, setIdImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || !open) return;
+    if (!userId || !open || !user) return;
 
     const fetchProfile = async () => {
       setLoading(true);
       try {
+        // Check if viewer is admin
+        const { data: viewerAdminData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id)
+          .eq("role", "admin")
+          .maybeSingle();
+        
+        setViewerIsAdmin(!!viewerAdminData);
+
         // Fetch profile data
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model")
+          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email")
           .eq("id", userId)
           .single();
 
         if (profileData) {
-          setProfile(profileData);
+          setProfile(profileData as any);
+          
+          // If admin and there's an ID image, get signed URL
+          if (viewerAdminData && profileData.id_image_url) {
+            const { data: signedUrlData } = await supabase.storage
+              .from('id-verifications')
+              .createSignedUrl(profileData.id_image_url, 3600);
+            
+            if (signedUrlData) {
+              setIdImageUrl(signedUrlData.signedUrl);
+            }
+          }
         }
 
-        // Check if admin
+        // Check if profile user is admin
         const { data: adminData } = await supabase
           .from("user_roles")
           .select("role")
@@ -85,7 +113,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
     };
 
     fetchProfile();
-  }, [userId, open]);
+  }, [userId, open, user]);
 
   if (!profile) {
     return (
@@ -187,6 +215,36 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
                 {profile.car_model && profile.car_model}
               </p>
             </Card>
+          )}
+
+          {/* Admin-only ID Image */}
+          {viewerIsAdmin && idImageUrl && (
+            <Card className="p-4">
+              <h4 className="font-semibold text-sm mb-2">Submitted ID</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(idImageUrl, '_blank')}
+                className="w-full"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View ID Image
+              </Button>
+            </Card>
+          )}
+
+          {/* Admin Chat Button */}
+          {viewerIsAdmin && userId !== user?.id && (
+            <Button
+              onClick={() => {
+                onOpenChange(false);
+                navigate(`/chat/${userId}`);
+              }}
+              className="w-full"
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Message User
+            </Button>
           )}
         </div>
       </DialogContent>

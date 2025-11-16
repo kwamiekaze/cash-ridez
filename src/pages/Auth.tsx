@@ -9,7 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CarIcon } from "@/components/CarIcon";
+import { CashCarIcon } from "@/components/CashCarIcon";
+import { MapBackground } from "@/components/MapBackground";
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -65,11 +66,9 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
-  return <div className="min-h-screen bg-black dark:bg-black flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Car Background */}
-      <div className="absolute inset-0 z-0">
-        <CarIcon />
-      </div>
+  return <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-background via-background to-accent/5">
+      <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
+      <CashCarIcon />
       
       {/* Background Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-emerald-950/40 to-black/80 z-0" />

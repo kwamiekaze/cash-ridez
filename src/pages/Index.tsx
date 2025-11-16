@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { CarIcon } from "@/components/CarIcon";
 import { motion } from "motion/react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+
 
 const trustBadges = [{
   icon: Shield,
@@ -55,7 +55,6 @@ const Index = () => {
               <a href="#" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 Support
               </a>
-              <ThemeToggle />
               <Button variant="ghost" onClick={() => navigate("/auth")} className="text-foreground hover:text-primary">
                 Sign In
               </Button>
