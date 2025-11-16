@@ -17,13 +17,7 @@ export function HeroSection() {
   }];
   return <section className="relative min-h-screen pt-52 pb-20 overflow-hidden">
       {/* Animated Map Background */}
-      <MapBackground 
-        showAnimatedCar 
-        showRiders 
-        intensity="subtle" 
-        excludeZones={['top', 'middle']}
-        className="absolute inset-0 z-0 pointer-events-none" 
-      />
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
 
 
       <div className="container px-4 relative z-20 mx-0">
