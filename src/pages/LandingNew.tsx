@@ -78,7 +78,7 @@ export default function LandingNew() {
                       <span>📍</span>
                       Post a Trip
                     </button>
-                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-gray-900 dark:text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
+                    <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
                       <CashCarIcon width={48} height={24} glowIntensity="low" />
                       Respond to Trips
                     </button>
@@ -200,7 +200,7 @@ export default function LandingNew() {
                 <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-emerald-500 rounded-full flex items-center justify-center text-2xl font-bold text-black mb-6 border-2 border-yellow-300 shadow-md">
                   {step.number}
                 </div>
-                <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">{step.title}</h3>
+                <h3 className="text-2xl font-bold mb-4 text-white">{step.title}</h3>
                 <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
                 <div className="absolute top-4 right-4">
                   <CheckCircle2 className="w-6 h-6 text-emerald-500 dark:text-emerald-400" />
