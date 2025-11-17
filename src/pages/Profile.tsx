@@ -17,7 +17,7 @@ import { ImageCropDialog } from "@/components/ImageCropDialog";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { RiderZipEditor } from "@/components/RiderZipEditor";
-
+import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { MapBackground } from "@/components/MapBackground";
 
 const Profile = () => {
@@ -529,6 +529,14 @@ const Profile = () => {
             
             {/* Notification Preferences */}
             <NotificationPreferences />
+
+            {/* Rider ZIP */}
+            {profile.is_rider && (
+              <RiderZipEditor />
+            )}
+
+            {/* Change Password */}
+            <ChangePasswordForm />
           </div>
         )}
       </div>

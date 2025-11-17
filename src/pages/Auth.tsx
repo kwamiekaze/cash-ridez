@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { MapBackground } from "@/components/MapBackground";
+import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 const Auth = () => {
   const navigate = useNavigate();
   const {
@@ -17,6 +18,7 @@ const Auth = () => {
     signUp
   } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -109,6 +111,16 @@ const Auth = () => {
                     <Input id="signin-password" name="password" type="password" placeholder="••••••••" className="pl-10" required />
                   </div>
                 </div>
+                
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="text-sm text-yellow-400/80 hover:text-yellow-400 p-0 h-auto"
+                  onClick={() => setForgotPasswordOpen(true)}
+                >
+                  Forgot password?
+                </Button>
+
                 <Button type="submit" className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold" disabled={isLoading}>
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
@@ -141,6 +153,11 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+
+          <ForgotPasswordDialog 
+            open={forgotPasswordOpen} 
+            onOpenChange={setForgotPasswordOpen} 
+          />
 
           {/* Google sign-in temporarily disabled */}
           {/* <div className="relative my-6">

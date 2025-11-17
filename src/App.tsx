@@ -36,6 +36,7 @@ const Community = lazy(() => import("./pages/Community"));
 const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
 const Updates = lazy(() => import("./pages/Updates"));
 const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -91,6 +92,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LandingNew />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/community" element={<Community />} />
