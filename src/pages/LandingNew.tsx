@@ -27,7 +27,7 @@ export default function LandingNew() {
   }];
   const benefits = [{
     title: 'No Upfront Cost',
-    description: 'Join the CashRidez community for free - no hidden fees or upfront payments.'
+    description: 'Join the CashRidez community for free and post trips or respond to trips with no upfront payments.'
   }, {
     title: 'Request a Trip for Free',
     description: 'Post your pickup and drop-off locations in seconds. Fast, convenient, and completely free.'
