@@ -51,9 +51,9 @@ export function HeroSection() {
           y: 0
         }} transition={{
           delay: 0.5
-        }} className="max-w-3xl mx-auto text-center">
-            <p className="text-xl text-gold">
-              Powered by people, driven by cash
+        }} className="max-w-3xl mx-auto p-6 border-l-4 border-gold bg-gold/5 rounded-r-lg">
+            <p className="text-xl text-gray-300 italic">
+              "Powered by people, Driven by Cash. Earn More, Save More" 
             </p>
           </motion.div>
 
