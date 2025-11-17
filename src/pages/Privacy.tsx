@@ -7,7 +7,7 @@ export default function Privacy() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black">
       <div className="container mx-auto px-4 py-12">
         <Button
           variant="ghost"
@@ -18,12 +18,12 @@ export default function Privacy() {
           Back to Home
         </Button>
 
-        <Card className="p-8 max-w-4xl mx-auto bg-white dark:bg-gray-900 border border-yellow-500/20">
+        <Card className="p-8 max-w-4xl mx-auto bg-gray-900 border border-yellow-500/20">
           <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
             Privacy Policy
           </h1>
 
-          <div className="space-y-6 text-gray-700 dark:text-gray-300">
+          <div className="space-y-6 text-gray-300">
             <section>
               <p className="text-sm mb-6">
                 <strong>Last Updated:</strong> November, 2025<br />
