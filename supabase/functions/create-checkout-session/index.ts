@@ -105,7 +105,12 @@ serve(async (req) => {
       console.log('[CHECKOUT] Using existing customer:', customerId);
     }
 
-    const priceId = "price_1SLBB1DEimdSeEFoSH87GTKp";
+    // Get price ID from environment variable
+    const priceId = Deno.env.get('STRIPE_PRICE_ID');
+    if (!priceId) {
+      throw new Error('STRIPE_PRICE_ID environment variable is not set');
+    }
+    console.log('[CHECKOUT] Using price ID:', priceId);
 
     const origin = req.headers.get("origin") || "https://cashridez.com";
     

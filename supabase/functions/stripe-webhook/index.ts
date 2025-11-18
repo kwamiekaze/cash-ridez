@@ -78,14 +78,15 @@ serve(async (req) => {
             .from("profiles")
             .update({
               stripe_subscription_id: subscription.id,
-              subscription_active: true,
+              subscription_active: ['active', 'trialing'].includes(subscription.status),
+              subscription_status: subscription.status,
               subscription_current_period_end: subscription.current_period_end,
               is_member: true,
             })
             .eq("id", userId);
 
-          console.log(`[WEBHOOK] Subscription activated for user ${userId}`);
-          await logBillingEvent(supabase, userId, event.type, event.id, { subscriptionId: subscription.id });
+          console.log(`[WEBHOOK] Subscription activated for user ${userId}, status: ${subscription.status}`);
+          await logBillingEvent(supabase, userId, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status });
         }
         break;
       }
@@ -108,14 +109,15 @@ serve(async (req) => {
             await supabase
               .from("profiles")
               .update({
-                subscription_active: true,
+                subscription_active: ['active', 'trialing'].includes(subscription.status),
+                subscription_status: subscription.status,
                 subscription_current_period_end: subscription.current_period_end,
                 is_member: true,
               })
               .eq("id", profile.id);
 
-            console.log(`[WEBHOOK] Subscription renewed for user ${profile.id}`);
-            await logBillingEvent(supabase, profile.id, event.type, event.id, { invoiceId: invoice.id });
+            console.log(`[WEBHOOK] Subscription renewed for user ${profile.id}, status: ${subscription.status}`);
+            await logBillingEvent(supabase, profile.id, event.type, event.id, { invoiceId: invoice.id, status: subscription.status });
           }
         }
         break;
@@ -137,6 +139,7 @@ serve(async (req) => {
             .from("profiles")
             .update({
               subscription_active: false,
+              subscription_status: 'past_due',
               is_member: false,
             })
             .eq("id", profile.id);
@@ -149,8 +152,8 @@ serve(async (req) => {
             p_user_id: profile.id,
             p_type: 'payment_failed',
             p_title: 'Payment Failed',
-            p_message: 'Your membership payment did not go through. Please update your payment method to continue unlimited use.',
-            p_link: '/billing',
+            p_message: 'Your unlimited access payment failed. Please update your payment method to restore access.',
+            p_link: '/subscription',
           });
         }
         break;

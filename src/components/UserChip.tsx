@@ -7,7 +7,7 @@ import { AdminBadge } from "@/components/AdminBadge";
 import { UserProfileModal } from "@/components/UserProfileModal";
 import { VehicleInfo } from "@/components/VehicleInfo";
 import { supabase } from "@/integrations/supabase/client";
-import { Crown } from "lucide-react";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 interface UserChipProps {
   userId: string;
@@ -146,7 +146,7 @@ export const UserChip = memo(function UserChip({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className={`font-medium ${textSizes[size]} truncate`}>{name}</p>
-            {isAdmin && <Crown className="h-4 w-4 text-primary fill-primary" />}
+            {isMember && <PremiumCrown size={14} />}
             <AdminBadge isAdmin={isAdmin} />
             <MemberBadge isMember={isMember} />
             {showCancellationBadge && (

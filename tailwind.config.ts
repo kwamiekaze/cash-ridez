@@ -57,6 +57,8 @@ export default {
           light: "hsl(var(--emerald-light))",
           dark: "hsl(var(--emerald-dark))",
         },
+        "premium-gold": "hsl(var(--premium-gold))",
+        "premium-gold-glow": "hsl(var(--premium-gold-glow))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

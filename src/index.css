@@ -54,6 +54,10 @@ All colors MUST be HSL.
     --gradient-gold-glow: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 100%);
     --gradient-hero-light: linear-gradient(180deg, hsl(270 50% 95% / 0.3) 0%, hsl(0 0% 100%) 40%, hsl(0 0% 100%) 100%);
     
+    /* Premium crown colors */
+    --premium-gold: 45 100% 60%;
+    --premium-gold-glow: 45 100% 70%;
+    
     /* Shadows */
     --shadow-gold: 0 8px 32px hsl(var(--gold) / 0.4);
     --shadow-emerald: 0 8px 32px hsl(var(--emerald) / 0.4);
