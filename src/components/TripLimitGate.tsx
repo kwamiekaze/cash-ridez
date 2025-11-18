@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
 import {
   Dialog,
@@ -9,9 +9,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Crown, Lock } from "lucide-react";
+import { Lock, Car, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 interface TripLimitGateProps {
   children: ReactNode;
@@ -20,10 +20,17 @@ interface TripLimitGateProps {
 }
 
 export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProps) => {
-  const { canUseFeatures, subscribed, completed_trips, startCheckout } = useSubscription();
+  const { canUseFeatures, isPremium, completed_trips, startCheckout } = useSubscription();
   const [showDialog, setShowDialog] = useState(false);
 
   const handleClick = () => {
+    // Premium users bypass all limits
+    if (isPremium) {
+      onProceed();
+      return;
+    }
+    
+    // Non-premium users hit the limit check
     if (!canUseFeatures) {
       setShowDialog(true);
     } else {
@@ -33,7 +40,6 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
 
   const handleSubscribe = async () => {
     try {
-      // Pass current URL so user returns here after checkout
       await startCheckout(window.location.href);
       setShowDialog(false);
     } catch (error) {
@@ -57,26 +63,40 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
               Free Trip Limit Reached
             </DialogTitle>
             <DialogDescription className="text-center">
-              You've used your {completed_trips} free trips! 
+              You've reached your limit of 3 free {action}. Upgrade to unlock unlimited trips and community chat!
             </DialogDescription>
           </DialogHeader>
 
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-start gap-3">
-              <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-1" />
-              <div>
-                <p className="font-semibold text-sm mb-2">Unlimited Use - $9.99/month</p>
-                <p className="text-xs text-muted-foreground">
-                  Subscribe to unlock unlimited rides and help us cover hosting, support, and new safety features that keep our safe community moving, saving, and earning.
-                </p>
+          <div className="p-4 bg-gradient-to-r from-card to-card rounded-lg border border-[hsl(var(--premium-gold))]/20 space-y-3">
+            <div className="text-center mb-2">
+              <PremiumCrown size={32} className="inline-block" />
+              <p className="font-bold text-lg mt-2 text-[hsl(var(--premium-gold))]">CashRidez Unlimited</p>
+              <p className="text-xl font-bold">$9/month</p>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <Car className="w-4 h-4 text-[hsl(var(--premium-gold))]" />
+                <span>Unlimited trip posts & acceptances</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[hsl(var(--premium-gold))]" />
+                <span>Unlimited community chat</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <PremiumCrown size={14} />
+                <span>VIP crown badge</span>
               </div>
             </div>
           </div>
 
           <DialogFooter className="flex flex-col gap-2 sm:flex-col">
-            <Button onClick={handleSubscribe} size="lg" className="w-full">
-              <Crown className="w-4 h-4 mr-2" />
-              Subscribe for $9.99/month
+            <Button 
+              onClick={handleSubscribe} 
+              size="lg" 
+              className="w-full bg-gradient-to-r from-primary to-[hsl(var(--premium-gold))] hover:opacity-90"
+            >
+              <PremiumCrown className="mr-2" />
+              Upgrade to Unlimited – $9/month
             </Button>
             <Button onClick={() => setShowDialog(false)} variant="outline" className="w-full">
               Maybe Later

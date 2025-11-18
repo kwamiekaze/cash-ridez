@@ -140,5 +140,7 @@ export const useSubscription = () => {
     startCheckout,
     manageSubscription,
     canUseFeatures: status.subscribed || status.completed_trips < 3,
+    hasPremiumAccess: status.subscribed, // Helper for unlimited features
+    isPremium: status.subscribed, // Alias for consistency
   };
 };

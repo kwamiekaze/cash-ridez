@@ -48,16 +48,19 @@ export function CommunityChat() {
       // Check message count and subscription
       const { data: profile } = await supabase
         .from("profiles")
-        .select("chat_message_count, subscription_active, chat_blocked")
+        .select("chat_message_count, subscription_active, subscription_status, chat_blocked")
         .eq("id", user.id)
         .single();
 
       if (profile) {
+        const hasPremium = profile.subscription_active && 
+          (profile.subscription_status === 'active' || profile.subscription_status === 'trialing');
+        
         setMessageCount(profile.chat_message_count || 0);
-        setIsSubscribed(profile.subscription_active || false);
+        setIsSubscribed(hasPremium);
         setCanSendMessage(
           !profile.chat_blocked && 
-          (profile.subscription_active || profile.chat_message_count < 10)
+          (hasPremium || profile.chat_message_count < 10)
         );
       }
     };
