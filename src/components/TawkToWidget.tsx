@@ -1,9 +1,8 @@
 import { useEffect } from 'react';
 
-// ⚠️ REPLACE THIS WITH YOUR ACTUAL TAWK.TO PROPERTY ID
-// Get it from: https://dashboard.tawk.to/ → Administration → Property Settings
-// Look for the widget code that looks like: https://embed.tawk.to/YOUR_PROPERTY_ID/default
+// Tawk.to widget configuration
 const TAWK_PROPERTY_ID = '691d0f3c1d15ae193bc30fa5';
+const TAWK_WIDGET_KEY = '1jaco71ui';
 
 const TawkToWidget = () => {
   useEffect(() => {
@@ -22,7 +21,7 @@ const TawkToWidget = () => {
     // Create and load script
     const script = document.createElement('script');
     script.async = true;
-    script.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/default`;
+    script.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/${TAWK_WIDGET_KEY}`;
     script.charset = 'UTF-8';
     script.setAttribute('crossorigin', '*');
     
