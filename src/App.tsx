@@ -77,6 +77,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" forcedTheme="dark">
       <TooltipProvider>
+        <TawkToWidget />
         <Toaster />
         <Sonner />
         <BrowserRouter
@@ -86,7 +87,6 @@ const App = () => (
           }}
         >
           <AuthProvider>
-          <TawkToWidget />
           <DeferMount>
             <NotificationPermissionDialog />
           </DeferMount>
