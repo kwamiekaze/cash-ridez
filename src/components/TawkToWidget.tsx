@@ -1,8 +1,13 @@
 import { useEffect } from 'react';
 
+// ⚠️ REPLACE THIS WITH YOUR ACTUAL TAWK.TO PROPERTY ID
+// Get it from: https://dashboard.tawk.to/ → Administration → Property Settings
+// Look for the widget code that looks like: https://embed.tawk.to/YOUR_PROPERTY_ID/default
+const TAWK_PROPERTY_ID = '691d0f3c1d15ae193bc30fa5';
+
 const TawkToWidget = () => {
   useEffect(() => {
-    console.log('[TawkTo] Component mounted, attempting to load widget...');
+    console.log('[TawkTo] Initializing with property ID:', TAWK_PROPERTY_ID);
     
     // Check if already loaded
     if (window.Tawk_API) {
@@ -13,13 +18,11 @@ const TawkToWidget = () => {
     // Initialize Tawk variables FIRST (critical!)
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
-    
-    console.log('[TawkTo] Tawk_API initialized, creating script element...');
 
     // Create and load script
     const script = document.createElement('script');
     script.async = true;
-    script.src = 'https://embed.tawk.to/691d0f3c1d15ae193bc30fa5/default';
+    script.src = `https://embed.tawk.to/${TAWK_PROPERTY_ID}/default`;
     script.charset = 'UTF-8';
     script.setAttribute('crossorigin', '*');
     
