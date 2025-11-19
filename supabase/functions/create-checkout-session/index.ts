@@ -107,6 +107,7 @@ serve(async (req) => {
 
     // Get price ID from environment variable
     const priceId = Deno.env.get('STRIPE_PRICE_ID');
+    console.log('[CHECKOUT] STRIPE_PRICE_ID from environment:', priceId);
     if (!priceId) {
       throw new Error('STRIPE_PRICE_ID environment variable is not set');
     }
