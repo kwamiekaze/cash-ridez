@@ -111,7 +111,31 @@ serve(async (req) => {
     if (!priceId) {
       throw new Error('STRIPE_PRICE_ID environment variable is not set');
     }
-    console.log('[CHECKOUT] Using price ID:', priceId);
+    
+    // Verify the price exists in Stripe before creating checkout
+    try {
+      console.log('[CHECKOUT] Verifying price exists in Stripe:', priceId);
+      const price = await stripe.prices.retrieve(priceId);
+      console.log('[CHECKOUT] Price verified:', {
+        id: price.id,
+        product: price.product,
+        active: price.active,
+        currency: price.currency,
+        unit_amount: price.unit_amount
+      });
+      
+      if (!price.active) {
+        throw new Error(`Price ${priceId} exists but is not active in Stripe`);
+      }
+    } catch (priceError: any) {
+      console.error('[CHECKOUT] Price verification failed:', {
+        priceId,
+        error: priceError.message,
+        type: priceError.type,
+        code: priceError.code
+      });
+      throw new Error(`Invalid STRIPE_PRICE_ID: ${priceId}. Error: ${priceError.message}. Please verify this price exists in your Stripe dashboard.`);
+    }
 
     const origin = req.headers.get("origin") || "https://cashridez.com";
     
@@ -149,15 +173,24 @@ serve(async (req) => {
       });
     } catch (error) {
       console.error('[CHECKOUT] Error creating session:', error);
+      const err = error as any;
+      console.error('[CHECKOUT] Error details:', {
+        message: err.message,
+        type: err.type,
+        code: err.code,
+        statusCode: err.statusCode,
+        raw: err.raw
+      });
       await logBillingEvent(supabaseClient, user.id, 'checkout_session_error', { priceId }, null, error);
       
-      // Provide helpful error messages
-      const err = error as any;
+      // Provide specific error messages
       let errorMessage = err.message || 'An error occurred';
       if (err.code === 'resource_missing') {
-        errorMessage = 'Subscription plan not found. Please contact support.';
+        errorMessage = `Price ${priceId} not found in Stripe. Verify the price exists and is active in your Stripe dashboard.`;
       } else if (err.type === 'StripePermissionError') {
         errorMessage = 'Stripe API key missing required permissions. Please contact support.';
+      } else if (err.type === 'StripeInvalidRequestError') {
+        errorMessage = `Stripe API error: ${err.message}`;
       }
       
       throw new Error(errorMessage);
