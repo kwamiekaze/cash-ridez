@@ -20,6 +20,9 @@
     <link rel="preconnect" href="https://wnajjqsqmrpwyffbpgsj.supabase.co" crossorigin>
     <link rel="dns-prefetch" href="https://unpkg.com">
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <!-- Tawk.to preconnect for faster loading -->
+    <link rel="dns-prefetch" href="https://embed.tawk.to">
+    <link rel="preconnect" href="https://embed.tawk.to" crossorigin>
     <!-- Primary SEO -->
     <title>Earn more, save more 💰</title>
     <meta name="description" content="Earn more, save more 💰">
@@ -67,20 +70,51 @@
     
     <!--Start of Tawk.to Script for CashRidez-->
     <!-- Property ID: 691d0f3c1d15ae193bc30fa5 -->
-    <!-- Ticket forwarding email: tickets@cash-ridez-connect-llc.p.tawk.email -->
-    <!-- JS API key (reference only, do not expose elsewhere): 15da70b2b108019d681c946108f34fdd2b8cf493 -->
     <script type="text/javascript">
-      console.log("[CashRidez] Injecting Tawk.to widget script...");
-      var Tawk_API = Tawk_API || {};
-      var Tawk_LoadStart = new Date();
-      (function () {
-        var s1 = document.createElement("script");
-        var s0 = document.getElementsByTagName("script")[0];
-        s1.async = true;
-        s1.src = "https://embed.tawk.to/691d0f3c1d15ae193bc30fa5/default";
-        s1.charset = "UTF-8";
-        s1.setAttribute("crossorigin", "*");
-        s0.parentNode.insertBefore(s1, s0);
+      // Ensure DOM is ready before loading Tawk.to
+      (function() {
+        function initTawk() {
+          console.log("[CashRidez] Starting Tawk.to initialization...");
+          
+          if (window.Tawk_API) {
+            console.log("[CashRidez] Tawk.to already loaded");
+            return;
+          }
+          
+          try {
+            window.Tawk_API = window.Tawk_API || {};
+            window.Tawk_LoadStart = new Date();
+            
+            var s1 = document.createElement("script");
+            s1.async = true;
+            s1.src = "https://embed.tawk.to/691d0f3c1d15ae193bc30fa5/default";
+            s1.charset = "UTF-8";
+            s1.setAttribute("crossorigin", "*");
+            
+            s1.onload = function() {
+              console.log("[CashRidez] ✓ Tawk.to widget loaded successfully!");
+            };
+            
+            s1.onerror = function() {
+              console.error("[CashRidez] ✗ Failed to load Tawk.to widget");
+            };
+            
+            var s0 = document.getElementsByTagName("script")[0];
+            if (s0 && s0.parentNode) {
+              s0.parentNode.insertBefore(s1, s0);
+              console.log("[CashRidez] Tawk.to script tag injected");
+            }
+          } catch (error) {
+            console.error("[CashRidez] Error initializing Tawk.to:", error);
+          }
+        }
+        
+        // Load immediately if DOM is ready, otherwise wait
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initTawk);
+        } else {
+          initTawk();
+        }
       })();
     </script>
     <!--End of Tawk.to Script-->
