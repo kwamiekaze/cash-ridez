@@ -10,6 +10,7 @@ import { NotificationPermissionDialog } from "@/components/NotificationPermissio
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
+import TawkToWidget from "./components/TawkToWidget";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -85,6 +86,7 @@ const App = () => (
           }}
         >
           <AuthProvider>
+          <TawkToWidget />
           <DeferMount>
             <NotificationPermissionDialog />
           </DeferMount>
