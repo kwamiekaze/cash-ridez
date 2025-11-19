@@ -7,49 +7,46 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const logBillingEvent = async (supabase: any, userId: string, eventType: string, requestBody: any, responseBody: any, error?: any) => {
-  try {
-    await supabase.from('billing_logs').insert({
-      user_id: userId,
-      event_type: eventType,
-      request_body: requestBody,
-      response_body: responseBody,
-      error_code: error?.code || null,
-      error_message: error?.message || null,
-    });
-  } catch (logError) {
-    console.error('Failed to log billing event:', logError);
-  }
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
-
   try {
-    console.log('[CHECKOUT] Function started');
-    
-    // Parse request body for return URL
-    let returnUrl = null;
-    try {
-      const body = await req.json();
-      returnUrl = body?.return_url;
-    } catch (e) {
-      // Body parsing failed, use default URLs
-    }
+    console.log("[CHECKOUT] Incoming create-checkout-session request");
 
+    // Validate environment variables first
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const priceId = Deno.env.get("STRIPE_PRICE_ID");
+
+    console.log("[CHECKOUT] Has STRIPE_SECRET_KEY:", !!stripeKey);
+    console.log("[CHECKOUT] STRIPE_PRICE_ID:", priceId);
+
     if (!stripeKey) {
-      throw new Error("STRIPE_SECRET_KEY is not set");
+      throw new Error("Missing STRIPE_SECRET_KEY in Edge Function environment");
+    }
+    if (!priceId) {
+      throw new Error("Missing STRIPE_PRICE_ID in Edge Function environment");
     }
 
+    // Validate Stripe key format
+    if (stripeKey.startsWith("rk_")) {
+      throw new Error("STRIPE_SECRET_KEY appears to be a restricted key (rk_). Please use a standard secret key (sk_)");
+    }
+    if (!stripeKey.startsWith("sk_")) {
+      throw new Error("STRIPE_SECRET_KEY must start with 'sk_' (standard secret key)");
+    }
+
+    console.log("[CHECKOUT] Stripe key format validated (sk_...)");
+
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       throw new Error("No authorization header provided");
@@ -58,11 +55,26 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    if (userError) {
+      console.error("[CHECKOUT] Auth error:", userError);
+      throw new Error(`Authentication error: ${userError.message}`);
+    }
     
-    console.log('[CHECKOUT] User authenticated:', user.id, user.email);
+    const user = userData.user;
+    if (!user?.email) {
+      throw new Error("User not authenticated or email not available");
+    }
+    
+    console.log("[CHECKOUT] User authenticated:", user.id, user.email);
+
+    // Parse request body
+    let body: any = {};
+    try {
+      body = await req.json();
+      console.log("[CHECKOUT] Request body:", body);
+    } catch (e) {
+      console.log("[CHECKOUT] No request body or parsing failed, using defaults");
+    }
 
     // Get user profile
     const { data: profile } = await supabaseClient
@@ -71,141 +83,120 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    console.log('[CHECKOUT] User profile:', profile);
+    console.log("[CHECKOUT] User profile:", { 
+      hasCustomerId: !!profile?.stripe_customer_id,
+      subscriptionActive: profile?.subscription_active 
+    });
 
+    // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    console.log("[CHECKOUT] Stripe initialized");
 
     let customerId = profile?.stripe_customer_id;
 
     // Create or retrieve customer
     if (!customerId) {
-      console.log('[CHECKOUT] Creating new Stripe customer');
-      try {
-        const customer = await stripe.customers.create({
-          email: user.email,
-          metadata: {
-            supabase_user_id: user.id,
-          },
-        });
-        customerId = customer.id;
-        
-        // Update profile with customer ID
-        await supabaseClient
-          .from('profiles')
-          .update({ stripe_customer_id: customerId })
-          .eq('id', user.id);
-          
-        console.log('[CHECKOUT] Created customer:', customerId);
-      } catch (error) {
-        console.error('[CHECKOUT] Error creating customer:', error);
-        await logBillingEvent(supabaseClient, user.id, 'customer_create_error', { email: user.email }, null, error);
-        throw error;
-      }
-    } else {
-      console.log('[CHECKOUT] Using existing customer:', customerId);
-    }
-
-    // Get price ID from environment variable
-    const priceId = Deno.env.get('STRIPE_PRICE_ID');
-    console.log('[CHECKOUT] STRIPE_PRICE_ID from environment:', priceId);
-    if (!priceId) {
-      throw new Error('STRIPE_PRICE_ID environment variable is not set');
-    }
-    
-    // Verify the price exists in Stripe before creating checkout
-    try {
-      console.log('[CHECKOUT] Verifying price exists in Stripe:', priceId);
-      const price = await stripe.prices.retrieve(priceId);
-      console.log('[CHECKOUT] Price verified:', {
-        id: price.id,
-        product: price.product,
-        active: price.active,
-        currency: price.currency,
-        unit_amount: price.unit_amount
-      });
-      
-      if (!price.active) {
-        throw new Error(`Price ${priceId} exists but is not active in Stripe`);
-      }
-    } catch (priceError: any) {
-      console.error('[CHECKOUT] Price verification failed:', {
-        priceId,
-        error: priceError.message,
-        type: priceError.type,
-        code: priceError.code
-      });
-      throw new Error(`Invalid STRIPE_PRICE_ID: ${priceId}. Error: ${priceError.message}. Please verify this price exists in your Stripe dashboard.`);
-    }
-
-    const origin = req.headers.get("origin") || "https://cashridez.com";
-    
-    // Use return URL from request body, or default to billing success
-    const successUrl = returnUrl || `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
-    const cancelUrl = returnUrl || `${origin}/billing/cancelled`;
-    
-    console.log('[CHECKOUT] Creating checkout session with success URL:', successUrl);
-    
-    try {
-      const session = await stripe.checkout.sessions.create({
-        customer: customerId,
-        line_items: [
-          {
-            price: priceId,
-            quantity: 1,
-          },
-        ],
-        mode: "subscription",
-        success_url: successUrl,
-        cancel_url: cancelUrl,
+      console.log("[CHECKOUT] Creating new Stripe customer");
+      const customer = await stripe.customers.create({
+        email: user.email,
         metadata: {
           supabase_user_id: user.id,
         },
-      }, {
-        idempotencyKey: `checkout-${user.id}-${Date.now()}`,
       });
-
-      console.log('[CHECKOUT] Session created:', session.id);
-      await logBillingEvent(supabaseClient, user.id, 'checkout_session_created', { priceId }, { sessionId: session.id, url: session.url });
-
-      return new Response(JSON.stringify({ url: session.url }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } catch (error) {
-      console.error('[CHECKOUT] Error creating session:', error);
-      const err = error as any;
-      console.error('[CHECKOUT] Error details:', {
-        message: err.message,
-        type: err.type,
-        code: err.code,
-        statusCode: err.statusCode,
-        raw: err.raw
-      });
-      await logBillingEvent(supabaseClient, user.id, 'checkout_session_error', { priceId }, null, error);
+      customerId = customer.id;
       
-      // Provide specific error messages
-      let errorMessage = err.message || 'An error occurred';
-      if (err.code === 'resource_missing') {
-        errorMessage = `Price ${priceId} not found in Stripe. Verify the price exists and is active in your Stripe dashboard.`;
-      } else if (err.type === 'StripePermissionError') {
-        errorMessage = 'Stripe API key missing required permissions. Please contact support.';
-      } else if (err.type === 'StripeInvalidRequestError') {
-        errorMessage = `Stripe API error: ${err.message}`;
-      }
-      
-      throw new Error(errorMessage);
+      await supabaseClient
+        .from('profiles')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', user.id);
+        
+      console.log("[CHECKOUT] Created customer:", customerId);
+    } else {
+      console.log("[CHECKOUT] Using existing customer:", customerId);
     }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const err = error as any;
-    console.error('[CHECKOUT] ERROR:', errorMessage);
-    
-    return new Response(JSON.stringify({ 
-      error: errorMessage,
-      code: err.code || 'unknown_error'
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+
+    // Verify price exists in Stripe
+    console.log("[CHECKOUT] Verifying price exists in Stripe:", priceId);
+    const price = await stripe.prices.retrieve(priceId);
+    console.log("[CHECKOUT] Price verified:", {
+      id: price.id,
+      product: price.product,
+      active: price.active,
+      currency: price.currency,
+      unit_amount: price.unit_amount
     });
+    
+    if (!price.active) {
+      throw new Error(`Price ${priceId} exists but is not active in Stripe`);
+    }
+
+    // Determine URLs
+    const origin = req.headers.get("origin") || "https://cashridez.com";
+    const successUrl = body.success_url || `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = body.cancel_url || `${origin}/billing/cancelled`;
+    
+    console.log("[CHECKOUT] Creating checkout session with URLs:", { successUrl, cancelUrl });
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        supabase_user_id: user.id,
+      },
+    });
+
+    console.log("[CHECKOUT] Created session:", session.id, "URL:", session.url);
+
+    // Log billing event
+    try {
+      await supabaseClient.from('billing_logs').insert({
+        user_id: user.id,
+        event_type: 'checkout_session_created',
+        request_body: { priceId },
+        response_body: { sessionId: session.id, url: session.url },
+        error_code: null,
+        error_message: null,
+      });
+    } catch (logErr) {
+      console.error('[CHECKOUT] Failed to log billing event:', logErr);
+    }
+
+    return new Response(
+      JSON.stringify({ url: session.url }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
+    );
+  } catch (error) {
+    const err = error as any;
+    console.error("[CHECKOUT] Error creating checkout session:", {
+      message: err.message,
+      type: err.type,
+      code: err.code,
+      statusCode: err.statusCode,
+      stack: err.stack
+    });
+    
+    return new Response(
+      JSON.stringify({
+        error: err.message || String(error) || "Unknown error",
+        code: err.code || "unknown_error",
+        type: err.type || "unknown_type"
+      }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      }
+    );
   }
 });
