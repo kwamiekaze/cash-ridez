@@ -2,12 +2,21 @@ import { useEffect } from 'react';
 
 const TawkToWidget = () => {
   useEffect(() => {
-    // Only load if not already loaded
+    console.log('[TawkTo] Component mounted, attempting to load widget...');
+    
+    // Check if already loaded
     if (window.Tawk_API) {
+      console.log('[TawkTo] Widget already loaded, skipping');
       return;
     }
 
-    // Load Tawk.to script
+    // Initialize Tawk variables FIRST (critical!)
+    window.Tawk_API = window.Tawk_API || {};
+    window.Tawk_LoadStart = new Date();
+    
+    console.log('[TawkTo] Tawk_API initialized, creating script element...');
+
+    // Create and load script
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://embed.tawk.to/691d0f3c1d15ae193bc30fa5/default';
@@ -15,24 +24,35 @@ const TawkToWidget = () => {
     script.setAttribute('crossorigin', '*');
     
     script.onload = () => {
-      console.log('[TawkTo] Widget loaded successfully');
+      console.log('[TawkTo] ✅ Script loaded successfully!');
+      console.log('[TawkTo] Tawk_API state:', window.Tawk_API);
     };
     
-    script.onerror = () => {
-      console.error('[TawkTo] Failed to load widget');
+    script.onerror = (error) => {
+      console.error('[TawkTo] ❌ Failed to load script:', error);
     };
 
-    document.body.appendChild(script);
+    // Insert at the beginning of body (more aggressive)
+    const firstScript = document.getElementsByTagName('script')[0];
+    if (firstScript && firstScript.parentNode) {
+      firstScript.parentNode.insertBefore(script, firstScript);
+      console.log('[TawkTo] Script element inserted into DOM');
+    } else {
+      document.body.appendChild(script);
+      console.log('[TawkTo] Script element appended to body');
+    }
 
     // Cleanup
     return () => {
-      // Remove script on unmount
+      console.log('[TawkTo] Component unmounting, cleaning up...');
       const scripts = document.querySelectorAll('script[src*="tawk.to"]');
       scripts.forEach(s => s.remove());
       
-      // Clean up Tawk_API
       if (window.Tawk_API) {
         delete window.Tawk_API;
+      }
+      if (window.Tawk_LoadStart) {
+        delete window.Tawk_LoadStart;
       }
     };
   }, []);
@@ -42,7 +62,7 @@ const TawkToWidget = () => {
 
 export default TawkToWidget;
 
-// TypeScript declaration
+// TypeScript declarations
 declare global {
   interface Window {
     Tawk_API?: any;
