@@ -181,8 +181,25 @@ export default function ChatPage() {
     }, 100);
   };
 
+  const isConnected = () => {
+    if (!tripInfo || !currentUserId) return false;
+    
+    // Check if trip is assigned and user is participant
+    return tripInfo.status === 'assigned' && 
+           (tripInfo.rider_id === currentUserId || tripInfo.assigned_driver_id === currentUserId);
+  };
+
   const handleFileUpload = async (file: File) => {
     if (!file || !id || !currentUserId) return;
+
+    if (!isConnected()) {
+      toast({
+        title: "Not Connected",
+        description: "You must be connected on a trip to send attachments",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setUploading(true);
     try {
@@ -230,6 +247,15 @@ export default function ChatPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUserId) return;
+
+    if (!isConnected()) {
+      toast({
+        title: "Not Connected",
+        description: "You must be connected on a trip to send messages",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setSending(true);
     setTyping(false);
@@ -448,7 +474,7 @@ export default function ChatPage() {
               size="sm"
               className="h-8 px-2"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || !isConnected()}
             >
               <Paperclip className="h-4 w-4" />
               <span className="sr-only">Attach file</span>
@@ -459,7 +485,7 @@ export default function ChatPage() {
               size="sm"
               className="h-8 px-2"
               onClick={() => cameraInputRef.current?.click()}
-              disabled={uploading}
+              disabled={uploading || !isConnected()}
             >
               <Camera className="h-4 w-4" />
               <span className="sr-only">Take photo</span>
@@ -469,16 +495,21 @@ export default function ChatPage() {
           </div>
           
           {/* Message Input - Bottom */}
+          {!isConnected() && (
+            <div className="px-4 py-3 border-t bg-muted/50 text-center text-sm text-muted-foreground">
+              You must be connected on a trip to send messages
+            </div>
+          )}
           <form onSubmit={handleSendMessage} className="p-4">
             <div className="flex gap-2 items-end">
               <Input
-                placeholder="Type a message..."
+                placeholder={isConnected() ? "Type a message..." : "Connect on a trip to message"}
                 value={newMessage}
                 onChange={(e) => {
                   setNewMessage(e.target.value);
                   handleTyping();
                 }}
-                disabled={sending || uploading}
+                disabled={sending || uploading || !isConnected()}
                 className="flex-1 min-h-[44px]"
                 aria-label="Message input"
                 onKeyDown={(e) => {
