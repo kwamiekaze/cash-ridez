@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Paperclip, Camera } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Camera, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserChip } from "@/components/UserChip";
@@ -25,7 +25,10 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   
   const { typingUsers, setTyping } = useTypingIndicator(id || '', 'ride', currentUserId);
   const { markAsRead, getReadBy } = useReadReceipts('ride_message', currentUserId, readReceiptsEnabled);
@@ -178,6 +181,52 @@ export default function ChatPage() {
     }, 100);
   };
 
+  const handleFileUpload = async (file: File) => {
+    if (!file || !id || !currentUserId) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUserId}/${id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(fileName);
+
+      const { error: messageError } = await supabase
+        .from('ride_messages')
+        .insert({
+          ride_request_id: id,
+          sender_id: currentUserId,
+          text: file.type.startsWith('image/') ? '📷 Image' : '📎 Attachment',
+          attachment_url: publicUrl
+        });
+
+      if (messageError) throw messageError;
+
+      toast({
+        title: "Success",
+        description: "Attachment sent successfully",
+      });
+      scrollToBottom();
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload attachment",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !currentUserId) return;
@@ -305,6 +354,28 @@ export default function ChatPage() {
                            : 'bg-muted'
                        }`}
                      >
+                       {message.attachment_url && (
+                         <div className="mb-2">
+                           {message.text.includes('📷') ? (
+                             <img 
+                               src={message.attachment_url} 
+                               alt="Attachment" 
+                               className="rounded max-w-full max-h-64 object-cover cursor-pointer"
+                               onClick={() => window.open(message.attachment_url, '_blank')}
+                             />
+                           ) : (
+                             <a 
+                               href={message.attachment_url} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="flex items-center gap-2 text-sm underline"
+                             >
+                               <Paperclip className="h-4 w-4" />
+                               View Attachment
+                             </a>
+                           )}
+                         </div>
+                       )}
                        <p className="text-sm">{message.text}</p>
                      </div>
                      <div className="flex items-center gap-2 mt-1">
@@ -348,12 +419,36 @@ export default function ChatPage() {
         <div className="max-w-4xl mx-auto">
           {/* Action Buttons Toolbar - Top */}
           <div className="px-4 pt-3 pb-2 border-b border-border/50 flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,application/pdf,.doc,.docx"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.target.value = '';
+              }}
+            />
             <Button 
               type="button" 
               variant="ghost" 
               size="sm"
               className="h-8 px-2"
-              disabled
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
             >
               <Paperclip className="h-4 w-4" />
               <span className="sr-only">Attach file</span>
@@ -363,13 +458,14 @@ export default function ChatPage() {
               variant="ghost" 
               size="sm"
               className="h-8 px-2"
-              disabled
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={uploading}
             >
               <Camera className="h-4 w-4" />
               <span className="sr-only">Take photo</span>
             </Button>
             <div className="flex-1" />
-            <span className="text-xs text-muted-foreground">Message attachments coming soon</span>
+            {uploading && <span className="text-xs text-muted-foreground">Uploading...</span>}
           </div>
           
           {/* Message Input - Bottom */}
@@ -382,7 +478,7 @@ export default function ChatPage() {
                   setNewMessage(e.target.value);
                   handleTyping();
                 }}
-                disabled={sending}
+                disabled={sending || uploading}
                 className="flex-1 min-h-[44px]"
                 aria-label="Message input"
                 onKeyDown={(e) => {
@@ -394,7 +490,7 @@ export default function ChatPage() {
               />
               <Button 
                 type="submit" 
-                disabled={sending || !newMessage.trim()}
+                disabled={sending || uploading || !newMessage.trim()}
                 className="min-h-[44px] px-4"
                 aria-label="Send message"
               >
