@@ -155,15 +155,7 @@ export function Navigation() {
                       <HelpCircle className="mr-2 h-4 w-4" />
                       Support
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
-                    >
-                      {theme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-                      {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                    </Button>
-                    <Button 
+                    <Button
                       variant="ghost" 
                       onClick={() => { signOut(); setIsMenuOpen(false); }} 
                       className="w-full justify-start text-red-400 hover:text-red-300 transition-all duration-300 hover:scale-105"
