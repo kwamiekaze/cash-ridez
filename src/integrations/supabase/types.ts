@@ -1155,6 +1155,7 @@ export type Database = {
     Functions: {
       accept_ride_atomic: {
         Args: {
+          p_accepted_offer_id?: string
           p_driver_id: string
           p_eta_minutes: number
           p_ride_id: string

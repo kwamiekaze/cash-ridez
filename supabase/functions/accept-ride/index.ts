@@ -57,7 +57,7 @@ serve(async (req) => {
       throw new Error('You have reached your free trip limit. Please subscribe to continue accepting rides.');
     }
 
-    console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}, skipActiveRideCheck: ${skipActiveRideCheck || false}`);
+    console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}, skipActiveRideCheck: ${skipActiveRideCheck || false}, acceptedOfferId: ${acceptedOfferId || 'none'}`);
 
     // Use a transaction-like approach with RPC call
     const { data, error } = await supabase.rpc('accept_ride_atomic', {
@@ -65,6 +65,7 @@ serve(async (req) => {
       p_driver_id: finalDriverId,
       p_eta_minutes: etaMinutes || 0,
       p_skip_active_check: skipActiveRideCheck || false,
+      p_accepted_offer_id: acceptedOfferId || null,
     });
 
     if (error) {
