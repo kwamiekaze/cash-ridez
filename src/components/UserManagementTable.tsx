@@ -193,6 +193,7 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                 <UserChip 
                   userId={user.id}
                   displayName={user.display_name}
+                  fullName={user.full_name || undefined}
                   photoUrl={user.photo_url}
                   size="sm"
                   showCancellationBadge={false}

@@ -216,25 +216,15 @@ export function AdminRidesManagement() {
               {filteredRides.map((ride) => (
                 <TableRow key={ride.id}>
                   <TableCell className="min-w-[150px]">
-                    <UserChip 
-                      userId={ride.rider_id} 
-                      displayName={ride.rider_profile.display_name} 
-                      fullName={ride.rider_profile.full_name} 
-                      photoUrl={ride.rider_profile.photo_url}
-                      role="rider"
-                      size="sm"
-                    />
+                    <div className="text-sm font-medium">
+                      {ride.rider_profile.full_name || ride.rider_profile.display_name || 'Unknown User'}
+                    </div>
                   </TableCell>
                   <TableCell className="min-w-[150px]">
                     {ride.driver_profile && ride.assigned_driver_id ? (
-                      <UserChip 
-                        userId={ride.assigned_driver_id} 
-                        displayName={ride.driver_profile.display_name} 
-                        fullName={ride.driver_profile.full_name} 
-                        photoUrl={ride.driver_profile.photo_url}
-                        role="driver"
-                        size="sm"
-                      />
+                      <div className="text-sm font-medium">
+                        {ride.driver_profile.full_name || ride.driver_profile.display_name || 'Unknown User'}
+                      </div>
                     ) : (
                       <span className="text-sm text-muted-foreground">Unassigned</span>
                     )}

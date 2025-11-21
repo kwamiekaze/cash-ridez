@@ -49,6 +49,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
   const [dmDialogOpen, setDmDialogOpen] = useState(false);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [chatRooms, setChatRooms] = useState<Array<{ id: string; name: string }>>([]);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
 
   useEffect(() => {
     if (!userId || !open || !user) return;
@@ -153,7 +154,10 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
         <div className="space-y-4">
           {/* Avatar and Name */}
           <div className="flex flex-col items-center gap-3">
-            <Avatar className="h-24 w-24">
+            <Avatar 
+              className="h-24 w-24 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+              onClick={() => profile.photo_url && setImagePreviewOpen(true)}
+            >
               <AvatarImage src={profile.photo_url || undefined} />
               <AvatarFallback className="text-2xl">
                 {displayName[0]?.toUpperCase()}
@@ -306,6 +310,28 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
           />
         </>
       )}
+
+      {/* Image Preview Dialog */}
+      <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden bg-black/95">
+          <div className="relative w-full h-[80vh] flex items-center justify-center">
+            <button
+              onClick={() => setImagePreviewOpen(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-background/80 hover:bg-background text-foreground"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <img 
+              src={profile?.photo_url || undefined} 
+              alt={displayName}
+              className="max-w-full max-h-full object-contain"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
