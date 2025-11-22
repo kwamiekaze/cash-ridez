@@ -63,12 +63,13 @@ const DriverDashboard = () => {
         setOpenRequests(enrichedOpen);
       }
 
-      // Fetch connected (assigned) requests
+      // Fetch connected (assigned) requests - exclude trips driver has rated
       const { data: connectedData } = await supabase
         .from("ride_requests")
         .select("*")
         .eq("assigned_driver_id", user?.id)
         .eq("status", "assigned")
+        .is("driver_rating", null)
         .order("updated_at", { ascending: false });
 
       if (connectedData) {
@@ -86,12 +87,12 @@ const DriverDashboard = () => {
         setConnectedRequests(enrichedConnected);
       }
 
-      // Fetch completed requests
+      // Fetch completed requests - include trips driver has rated OR status is completed
       const { data: completedData } = await supabase
         .from("ride_requests")
         .select("*")
         .eq("assigned_driver_id", user?.id)
-        .eq("status", "completed")
+        .or("status.eq.completed,driver_rating.not.is.null")
         .order("updated_at", { ascending: false })
         .limit(20);
 
@@ -117,6 +118,7 @@ const DriverDashboard = () => {
 
   const renderTripCard = (request: any) => {
     const isCompleted = request.status === "completed";
+    const hasDriverRated = request.driver_rating !== null;
     
     return (
       <Card
@@ -175,7 +177,7 @@ const DriverDashboard = () => {
             </div>
           </div>
 
-          {!isCompleted && (
+          {!hasDriverRated && !isCompleted && (
             <div className="flex gap-2 pt-4 border-t">
               <Button
                 size="sm"
@@ -202,13 +204,13 @@ const DriverDashboard = () => {
             </div>
           )}
 
-          {isCompleted && (
+          {(hasDriverRated || isCompleted) && (
             <div className="flex items-center justify-between pt-4 border-t">
               <div className="flex items-center gap-2 text-sm">
-                {request.rider_rating ? (
+                {request.driver_rating ? (
                   <div className="flex items-center gap-1">
                     <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600 font-medium">Rated</span>
+                    <span className="text-green-600 font-medium">You Rated</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1">
