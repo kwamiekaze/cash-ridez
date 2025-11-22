@@ -45,8 +45,26 @@ export default function TripDetails() {
     fetchTripData();
     getCurrentUser();
 
+    // Subscribe to realtime updates for the trip itself (for status changes)
+    const tripChannel = supabase
+      .channel(`trip-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ride_requests',
+          filter: `id=eq.${id}`
+        },
+        () => {
+          console.log('Trip status updated, refetching...');
+          fetchTripData();
+        }
+      )
+      .subscribe();
+
     // Subscribe to realtime updates for offers
-    const channel = supabase
+    const offersChannel = supabase
       .channel('counter-offers-changes')
       .on(
         'postgres_changes',
@@ -63,7 +81,8 @@ export default function TripDetails() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(tripChannel);
+      supabase.removeChannel(offersChannel);
     };
   }, [id]);
 
@@ -672,16 +691,17 @@ export default function TripDetails() {
             {(request.status === 'assigned' || request.status === 'completed') && (
               <>
                 <div className="flex flex-col sm:flex-row gap-2">
+                  {/* Only show Open Chat button when trip is still assigned (not completed) */}
                   {request.status === 'assigned' && (
                     <Button 
                       onClick={() => navigate(`/chat/${id}`)}
                       className="flex-1"
-                      disabled={((isRider && request.rider_rating) || (!isRider && request.driver_rating))}
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Open Chat
                     </Button>
                   )}
+                  {/* Show Rate button if user hasn't rated yet, regardless of trip status */}
                   {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && request.status !== 'cancelled' && (
                     <Button 
                       onClick={() => setShowRatingDialog(true)}
@@ -691,6 +711,7 @@ export default function TripDetails() {
                       Rate {isRider ? 'Driver' : 'Rider'}
                     </Button>
                   )}
+                  {/* Show confirmation when user has already rated */}
                   {((isRider && request.rider_rating) || (!isRider && request.driver_rating)) && (
                     <Button 
                       variant="outline"
@@ -717,14 +738,13 @@ export default function TripDetails() {
                   </div>
                 )}
                 
-                {/* Complete/Cancel buttons - only show if trip is still assigned (not completed) */}
+                {/* Call and Cancel buttons - ONLY show if trip is still assigned (not completed) */}
                 {request.status === 'assigned' && (
                   <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
                     <MaskedCallButton
                       tripId={id!}
                       userRole={isRider ? "rider" : "driver"}
                       tripStatus={request.status}
-                      disabled={((isRider && request.rider_rating) || (!isRider && request.driver_rating))}
                     />
                     <Button
                       onClick={() => {
@@ -733,7 +753,6 @@ export default function TripDetails() {
                       }}
                       variant="destructive"
                       className="flex-1"
-                      disabled={((isRider && request.rider_rating) || (!isRider && request.driver_rating))}
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancel Trip
