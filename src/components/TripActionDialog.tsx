@@ -75,7 +75,14 @@ const TripActionDialog = ({
         // Get current user ID from auth
         const { data: { user } } = await supabase.auth.getUser();
         
-        // Set active_role based on completion and reset active ride
+        // Check if both parties will have completed after this update
+        const otherPartyCompleted = userRole === "rider" ? request.driver_completed : request.rider_completed;
+        if (otherPartyCompleted) {
+          // Both parties completed - mark trip as fully completed
+          updates.status = "completed";
+        }
+        
+        // Always clear active ride for the completing user
         if (user?.id) {
           await supabase
             .from("profiles")
