@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
     if (trip.status !== 'assigned') {
       console.error('[call-start] Invalid trip status:', trip.status);
       return new Response(
-        JSON.stringify({ success: false, error: `Trip must be in assigned status to make a call. Current status: ${trip.status}` }),
+        JSON.stringify({ success: false, error: 'Trip must be assigned to make a call.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
     console.log('[call-start] Fetching participant profiles');
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, phone_number, is_verified')
+      .select('id, phone_number')
       .in('id', [trip.rider_id, trip.assigned_driver_id]);
 
     if (profilesError || !profiles || profiles.length !== 2) {
@@ -101,30 +101,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('[call-start] Profiles fetched:', profiles.map(p => ({ id: p.id, hasPhone: !!p.phone_number, verified: p.is_verified })));
+    console.log('[call-start] Profiles fetched:', profiles.map(p => ({ id: p.id, hasPhone: !!p.phone_number })));
 
     const riderProfile = profiles.find(p => p.id === trip.rider_id);
     const driverProfile = profiles.find(p => p.id === trip.assigned_driver_id);
 
-    // Validate BOTH participants have phone numbers AND are verified
+    // Validate BOTH participants have phone numbers
     const riderHasPhone = riderProfile?.phone_number != null && riderProfile.phone_number.trim() !== '';
     const driverHasPhone = driverProfile?.phone_number != null && driverProfile.phone_number.trim() !== '';
-    const riderIsVerified = riderProfile?.is_verified === true;
-    const driverIsVerified = driverProfile?.is_verified === true;
 
-    // Check if both have phone numbers and are verified
-    if (!riderHasPhone || !driverHasPhone || !riderIsVerified || !driverIsVerified) {
-      console.error('[call-start] Validation failed:', {
+    if (!riderHasPhone || !driverHasPhone) {
+      console.error('[call-start] Phone number validation failed:', {
         riderHasPhone,
-        driverHasPhone,
-        riderIsVerified,
-        driverIsVerified
+        driverHasPhone
       });
       
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Both users must have a verified phone number on file to place a call.' 
+          error: 'Rider or driver is missing a phone number.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -181,35 +176,47 @@ Deno.serve(async (req) => {
     const functionsBaseUrl = `${supabaseUrl}/functions/v1`;
 
     console.log('[call-start] Initiating call to:', initiatorPhone);
-    // Initiate call to the initiator
-    const call = await twilioClient.calls.create({
-      to: initiatorPhone,
-      from: twilioPhoneNumber,
-      url: `${functionsBaseUrl}/call-voice?callId=${callRecord.id}&role=${initiatorRole}`,
-      statusCallback: `${functionsBaseUrl}/call-status?callId=${callRecord.id}`,
-      statusCallbackMethod: 'POST',
-      method: 'POST'
-    });
+    
+    try {
+      // Initiate call to the initiator
+      const call = await twilioClient.calls.create({
+        to: initiatorPhone,
+        from: twilioPhoneNumber,
+        url: `${functionsBaseUrl}/call-voice?callId=${callRecord.id}&role=${initiatorRole}`,
+        statusCallback: `${functionsBaseUrl}/call-status?callId=${callRecord.id}`,
+        statusCallbackMethod: 'POST',
+        method: 'POST'
+      });
 
-    console.log('[call-start] Call created successfully, SID:', call.sid);
+      console.log('[call-start] Call created successfully, SID:', call.sid);
 
-    // Update call record with Twilio SID
-    const sidField = initiatorRole === 'rider' ? 'twilio_call_sid_rider' : 'twilio_call_sid_driver';
-    await supabase
-      .from('calls')
-      .update({ [sidField]: call.sid })
-      .eq('id', callRecord.id);
+      // Update call record with Twilio SID
+      const sidField = initiatorRole === 'rider' ? 'twilio_call_sid_rider' : 'twilio_call_sid_driver';
+      await supabase
+        .from('calls')
+        .update({ [sidField]: call.sid })
+        .eq('id', callRecord.id);
 
-    console.log(`Call initiated: ${callRecord.id}, Twilio SID: ${call.sid}`);
+      console.log(`Call initiated: ${callRecord.id}, Twilio SID: ${call.sid}`);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        call_id: callRecord.id,
-        message: 'Call initiated. Answer the incoming call from our CashRidez number.'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      return new Response(
+        JSON.stringify({
+          success: true,
+          call_id: callRecord.id,
+          message: 'Call initiated. Answer the incoming call from our CashRidez number.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (twilioError) {
+      console.error('[call-start] Twilio error:', twilioError);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Unable to start the call right now. Please try again later.' 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error) {
     console.error('[call-start] Unexpected error:', error);
