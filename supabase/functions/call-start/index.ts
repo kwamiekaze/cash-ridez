@@ -102,19 +102,22 @@ Deno.serve(async (req) => {
       Deno.env.get('TWILIO_AUTH_TOKEN')
     );
 
-    const appBaseUrl = Deno.env.get('APP_BASE_URL');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
 
-    if (!appBaseUrl || !twilioPhoneNumber) {
+    if (!supabaseUrl || !twilioPhoneNumber) {
       throw new Error('Missing required environment variables');
     }
+
+    // Use Supabase edge function URLs for callbacks
+    const functionsBaseUrl = `${supabaseUrl}/functions/v1`;
 
     // Initiate call to the initiator
     const call = await twilioClient.calls.create({
       to: initiatorPhone,
       from: twilioPhoneNumber,
-      url: `${appBaseUrl}/api/calls/voice?callId=${callRecord.id}&role=${initiatorRole}`,
-      statusCallback: `${appBaseUrl}/api/calls/status?callId=${callRecord.id}&leg=initiator`,
+      url: `${functionsBaseUrl}/call-voice?callId=${callRecord.id}&role=${initiatorRole}`,
+      statusCallback: `${functionsBaseUrl}/call-status?callId=${callRecord.id}`,
       statusCallbackMethod: 'POST',
       method: 'POST'
     });

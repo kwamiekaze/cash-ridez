@@ -18,6 +18,7 @@ import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
 import { TripCounter } from "@/components/TripCounter";
 import { useSubscription } from "@/hooks/useSubscription";
+import { MaskedCallButton } from "@/components/MaskedCallButton";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -202,6 +203,11 @@ const DriverDashboard = () => {
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Chat
               </Button>
+              <MaskedCallButton
+                tripId={request.id}
+                userRole="driver"
+                tripStatus={request.status}
+              />
               <Button
                 size="sm"
                 className="flex-1"
