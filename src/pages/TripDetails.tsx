@@ -17,6 +17,7 @@ import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +39,7 @@ export default function TripDetails() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOffer, setEditedOffer] = useState("");
+  const { checkStatus } = useSubscription();
 
   useEffect(() => {
     fetchTripData();
@@ -439,6 +441,9 @@ export default function TripDetails() {
         description: "Thank you for your feedback! Trip marked as complete.",
       });
 
+      // Refresh subscription status to update trip counter
+      await checkStatus();
+      
       fetchTripData();
     } catch (error: any) {
       toast({
@@ -845,7 +850,9 @@ export default function TripDetails() {
           onOpenChange={setActionDialogOpen}
           action={actionType}
           userRole={isRider ? "rider" : "driver"}
-          onSuccess={() => {
+          onSuccess={async () => {
+            // Refresh subscription status to update trip counter
+            await checkStatus();
             fetchTripData();
             if (actionType === "complete" || actionType === "cancel") {
               navigate(isRider ? "/rider" : "/driver");
