@@ -8,6 +8,7 @@ import { UserProfileModal } from "@/components/UserProfileModal";
 import { VehicleInfo } from "@/components/VehicleInfo";
 import { supabase } from "@/integrations/supabase/client";
 import { PremiumCrown } from "@/components/PremiumCrown";
+import { SubscriptionBadge } from "@/components/SubscriptionBadge";
 
 interface UserChipProps {
   userId: string;
@@ -41,6 +42,7 @@ export const UserChip = memo(function UserChip({
   const [ratingAvg, setRatingAvg] = useState(providedRatingAvg);
   const [ratingCount, setRatingCount] = useState(providedRatingCount);
   const [isMember, setIsMember] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [vehicleInfo, setVehicleInfo] = useState<{ year?: string; make?: string; model?: string }>({});
   const [modalOpen, setModalOpen] = useState(false);
@@ -67,7 +69,7 @@ export const UserChip = memo(function UserChip({
       try {
         // Single combined query
         const [profileRes, roleRes, statsRes] = await Promise.all([
-          supabase.from('profiles').select('is_member, car_year, car_make, car_model').eq('id', userId).single(),
+          supabase.from('profiles').select('is_member, subscription_active, subscription_status, car_year, car_make, car_model').eq('id', userId).single(),
           supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
           role && (providedRatingAvg === undefined || providedRatingCount === undefined)
             ? supabase.from('user_public_stats').select('*').eq('user_id', userId).maybeSingle()
@@ -75,6 +77,8 @@ export const UserChip = memo(function UserChip({
         ]);
 
         const isMember = profileRes.data?.is_member || false;
+        const hasPremiumAccess = profileRes.data?.subscription_active && 
+          (profileRes.data?.subscription_status === 'active' || profileRes.data?.subscription_status === 'trialing');
         const isAdmin = !!roleRes.data;
         const stats = statsRes.data;
         
@@ -90,10 +94,11 @@ export const UserChip = memo(function UserChip({
         // Cache the results
         userDataCache.set(userId, {
           timestamp: now,
-          data: { isMember, isAdmin, stats, vehicleInfo: profileRes.data }
+          data: { isMember, isAdmin, isSubscribed: hasPremiumAccess, stats, vehicleInfo: profileRes.data }
         });
 
         setIsMember(isMember);
+        setIsSubscribed(hasPremiumAccess || false);
         setIsAdmin(isAdmin);
 
         if (stats && role) {
@@ -146,6 +151,7 @@ export const UserChip = memo(function UserChip({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className={`font-medium ${textSizes[size]} truncate`}>{name}</p>
+            {isSubscribed && <SubscriptionBadge size={16} />}
             {isMember && <PremiumCrown size={14} />}
             <AdminBadge isAdmin={isAdmin} />
             <MemberBadge isMember={isMember} />
