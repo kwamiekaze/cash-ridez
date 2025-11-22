@@ -46,7 +46,18 @@ Deno.serve(async (req) => {
       .single();
 
     if (profileError || !otherProfile?.phone_number) {
-      throw new Error('Other party phone number not found');
+      console.error(`[call-voice] Could not find phone number for ${role === 'rider' ? 'driver' : 'rider'}:`, profileError);
+      
+      // Return TwiML with helpful message instead of throwing
+      const noPhoneTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Sorry, we could not reach the other party. Please try again later.</Say>
+  <Hangup/>
+</Response>`;
+      
+      return new Response(noPhoneTwiml, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
+      });
     }
 
     const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
@@ -67,17 +78,16 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Error in call-voice:', error);
+    console.error('[call-voice] Unexpected error:', error);
     
-    // Return TwiML error message
+    // Return TwiML error message - don't use 400 status, just return error TwiML
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Sorry, we could not connect your call. Please try again later.</Say>
+  <Say>Sorry, we could not reach the other party. Please try again later.</Say>
   <Hangup/>
 </Response>`;
 
     return new Response(errorTwiml, {
-      status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
     });
   }
