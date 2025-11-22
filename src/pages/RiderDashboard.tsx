@@ -23,12 +23,15 @@ import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
+import { TripCounter } from "@/components/TripCounter";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { startCheckout } = useSubscription();
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "chat">("open");
   const [requests, setRequests] = useState<any[]>([]);
@@ -421,6 +424,14 @@ const RiderDashboard = () => {
             View Profile
           </Button>
         </div>
+
+        {/* Trip Counter */}
+        {profile && (
+          <TripCounter 
+            completedTrips={profile.completed_trips_count || 0}
+            onSubscribe={startCheckout}
+          />
+        )}
 
         {/* Subscription Panel */}
         <div className="mb-8">

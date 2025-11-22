@@ -16,19 +16,24 @@ import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
+import { TripCounter } from "@/components/TripCounter";
+import { useSubscription } from "@/hooks/useSubscription";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { startCheckout } = useSubscription();
   const [openRequests, setOpenRequests] = useState<any[]>([]);
   const [connectedRequests, setConnectedRequests] = useState<any[]>([]);
   const [completedRequests, setCompletedRequests] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("open");
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       fetchRequests();
+      fetchProfile();
     }
 
     // Set tab from URL parameter
@@ -37,6 +42,12 @@ const DriverDashboard = () => {
       setActiveTab(tabParam);
     }
   }, [user, searchParams]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    setProfile(data);
+  };
 
   const fetchRequests = async () => {
     try {
@@ -248,6 +259,14 @@ const DriverDashboard = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-bold">My Trips</h1>
           </div>
+
+          {/* Trip Counter */}
+          {profile && (
+            <TripCounter 
+              completedTrips={profile.completed_trips_count || 0}
+              onSubscribe={startCheckout}
+            />
+          )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">

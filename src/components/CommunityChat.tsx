@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Send, Trash2, Shield } from "lucide-react";
+import { Send, Trash2, Shield, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,6 +15,7 @@ interface Message {
   user_id: string;
   message: string;
   created_at: string;
+  is_flagged?: boolean;
   sender?: {
     display_name: string;
     photo_url: string | null;
@@ -90,9 +91,18 @@ export function CommunityChat() {
           .select("id, display_name, photo_url")
           .in("id", userIds);
 
+        // Check which messages are flagged
+        const { data: flags } = await supabase
+          .from("user_message_flags")
+          .select("content_id")
+          .eq("content_type", "community_message");
+
+        const flaggedIds = new Set(flags?.map(f => f.content_id) || []);
+
         const enrichedMessages = data.map(msg => ({
           ...msg,
-          sender: profiles?.find(p => p.id === msg.user_id)
+          sender: profiles?.find(p => p.id === msg.user_id),
+          is_flagged: flaggedIds.has(msg.id)
         }));
 
         setMessages(enrichedMessages);
@@ -224,6 +234,56 @@ export function CommunityChat() {
     }
   };
 
+  const handleApproveMessage = async (messageId: string) => {
+    if (!isAdmin) return;
+
+    const { error } = await supabase
+      .from("user_message_flags")
+      .delete()
+      .eq("content_id", messageId)
+      .eq("content_type", "community_message");
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      setMessages(prev => prev.map(m => 
+        m.id === messageId ? { ...m, is_flagged: false } : m
+      ));
+      toast({
+        title: "Success",
+        description: "Message approved"
+      });
+    }
+  };
+
+  const handleDeleteFlaggedMessage = async (messageId: string) => {
+    if (!isAdmin) return;
+
+    // Delete both the flag and the message
+    const [flagError, msgError] = await Promise.all([
+      supabase.from("user_message_flags").delete().eq("content_id", messageId).eq("content_type", "community_message"),
+      supabase.from("community_messages").delete().eq("id", messageId)
+    ]);
+
+    if (flagError.error || msgError.error) {
+      toast({
+        title: "Error",
+        description: flagError.error?.message || msgError.error?.message,
+        variant: "destructive"
+      });
+    } else {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      toast({
+        title: "Success",
+        description: "Message deleted"
+      });
+    }
+  };
+
   return (
     <Card className="flex flex-col h-[600px] bg-card/80 backdrop-blur-sm">
       <div className="p-4 border-b border-border">
@@ -275,10 +335,16 @@ export function CommunityChat() {
           ) : (
             messages.map((msg) => {
               const isOwnMessage = msg.user_id === user?.id;
+              const isFlagged = msg.is_flagged && !isAdmin;
+              const isFlaggedForAdmin = msg.is_flagged && isAdmin;
+              
+              // Hide flagged messages from non-admins
+              if (isFlagged) return null;
+              
               return (
                 <div
                   key={msg.id}
-                  className={`flex gap-3 ${isOwnMessage ? "flex-row-reverse" : ""}`}
+                  className={`flex gap-3 ${isOwnMessage ? "flex-row-reverse" : ""} ${isFlaggedForAdmin ? "bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20" : ""}`}
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={msg.sender?.photo_url || undefined} />
@@ -294,39 +360,73 @@ export function CommunityChat() {
                           {msg.sender?.display_name || "User"}
                         </span>
                       )}
+                      {isFlaggedForAdmin && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500 text-white">
+                          Flagged
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {format(new Date(msg.created_at), "h:mm a")}
                       </span>
                       {(isOwnMessage || isAdmin) && (
                         <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => handleDelete(msg.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {!isFlaggedForAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleDelete(msg.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
                           {isAdmin && !isOwnMessage && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => handleModerateUser(msg.user_id, 'mute')}
-                                title="Mute user"
-                              >
-                                <Shield className="h-3 w-3 text-yellow-500" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
-                                onClick={() => handleModerateUser(msg.user_id, 'block')}
-                                title="Block user"
-                              >
-                                <Shield className="h-3 w-3 text-destructive" />
-                              </Button>
+                              {isFlaggedForAdmin ? (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2"
+                                    onClick={() => handleApproveMessage(msg.id)}
+                                    title="Approve message"
+                                  >
+                                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                                    <span className="text-xs">Approve</span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2"
+                                    onClick={() => handleDeleteFlaggedMessage(msg.id)}
+                                    title="Delete message"
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1 text-destructive" />
+                                    <span className="text-xs">Delete</span>
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => handleModerateUser(msg.user_id, 'mute')}
+                                    title="Mute user"
+                                  >
+                                    <Shield className="h-3 w-3 text-yellow-500" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    onClick={() => handleModerateUser(msg.user_id, 'block')}
+                                    title="Block user"
+                                  >
+                                    <Shield className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
                             </>
                           )}
                         </>
