@@ -12,6 +12,7 @@ import AppHeader from "@/components/AppHeader";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { useReadReceipts } from "@/hooks/useReadReceipts";
 import { useAuth } from "@/contexts/AuthContext";
+import { MaskedCallButton } from "@/components/MaskedCallButton";
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
@@ -311,6 +312,13 @@ export default function ChatPage() {
                 </p>
               )}
             </div>
+            {tripInfo && currentUserId && (
+              <MaskedCallButton
+                tripId={id!}
+                userRole={tripInfo.rider_id === currentUserId ? "rider" : "driver"}
+                tripStatus={tripInfo.status}
+              />
+            )}
           </div>
         </div>
       </div>

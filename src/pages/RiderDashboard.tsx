@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppHeader from "@/components/AppHeader";
-import { Car, LogOut, Plus, User, History, MapPin, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Car, LogOut, Plus, User, History, MapPin, Clock, CheckCircle, XCircle, MessageSquare } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
@@ -25,6 +25,7 @@ import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
 import { TripCounter } from "@/components/TripCounter";
 import { useSubscription } from "@/hooks/useSubscription";
+import { MaskedCallButton } from "@/components/MaskedCallButton";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -70,7 +71,8 @@ const RiderDashboard = () => {
 
     const fetchRequests = async () => {
       if (!user) return;
-      // Rider dashboard should ONLY show trips where user is the rider
+      // Rider dashboard should show all trips where user is the rider
+      // Exclude assigned trips where rider has already rated (move to completed)
       const { data, error } = await supabase
         .from("ride_requests")
         .select("*")
@@ -553,6 +555,35 @@ const RiderDashboard = () => {
                           <p className="text-sm break-words flex-1 min-w-0">{request.dropoff_address}</p>
                         </div>
                       </div>
+                    </div>
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/chat/${request.id}`);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Chat
+                      </Button>
+                      <MaskedCallButton
+                        tripId={request.id}
+                        userRole="rider"
+                        tripStatus={request.status}
+                      />
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/trip/${request.id}`);
+                        }}
+                      >
+                        View Details
+                      </Button>
                     </div>
                     <div className="flex gap-2 w-full">
                       <Button

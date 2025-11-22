@@ -907,13 +907,15 @@ export default function TripDetails() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="text-2xl font-bold text-primary">${offer.amount}</p>
-                          <Badge variant={
-                            offer.status === 'accepted' ? 'default' :
-                            offer.status === 'rejected' ? 'destructive' : 
-                            'secondary'
-                          }>
-                            {offer.status}
-                          </Badge>
+                          {(request.status !== 'assigned' || offer.status === 'accepted') && (
+                            <Badge variant={
+                              offer.status === 'accepted' ? 'default' :
+                              offer.status === 'rejected' ? 'destructive' : 
+                              'secondary'
+                            }>
+                              {offer.status}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       {offer.message && (
