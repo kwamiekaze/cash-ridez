@@ -60,7 +60,7 @@ const RiderDashboard = () => {
       // Force fresh fetch by adding timestamp to bypass any caching
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_rider, is_driver, phone_number, profile_zip")
         .eq("id", user?.id)
         .single();
       
@@ -69,9 +69,11 @@ const RiderDashboard = () => {
         return;
       }
       
-      console.log("Profile data fetched:", { 
+      console.log("✅ Profile data fetched:", { 
+        id: data?.id,
         completed_trips_count: data?.completed_trips_count,
-        free_uses_remaining: data?.free_uses_remaining 
+        free_uses_remaining: data?.free_uses_remaining,
+        full_data: data
       });
       
       setProfile(data);
