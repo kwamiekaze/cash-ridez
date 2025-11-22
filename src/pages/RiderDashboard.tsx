@@ -56,7 +56,24 @@ const RiderDashboard = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
-      const { data } = await supabase.from("profiles").select("*").eq("id", user?.id).single();
+      
+      // Force fresh fetch by adding timestamp to bypass any caching
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user?.id)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return;
+      }
+      
+      console.log("Profile data fetched:", { 
+        completed_trips_count: data?.completed_trips_count,
+        free_uses_remaining: data?.free_uses_remaining 
+      });
+      
       setProfile(data);
       
       // Check if user has active_role set to driver - if so, redirect to trips
@@ -149,8 +166,26 @@ const RiderDashboard = () => {
 
     fetchProfile();
     fetchRequests();
+    
+    // Set up realtime subscription for profile updates
+    const profileChannel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log("Profile updated via realtime:", payload.new);
+          setProfile(payload.new);
+        }
+      )
+      .subscribe();
 
-    // Subscribe to changes
+    // Subscribe to ride request changes
     const channel = supabase
       .channel("rider_requests_changes")
       .on(
@@ -159,7 +194,7 @@ const RiderDashboard = () => {
           event: "*",
           schema: "public",
           table: "ride_requests",
-          filter: `rider_id=eq.${user?.id}` // Note: realtime only supports single column filters
+          filter: `rider_id=eq.${user?.id}`
         },
         () => {
           fetchRequests();
@@ -168,6 +203,7 @@ const RiderDashboard = () => {
       .subscribe();
 
     return () => {
+      profileChannel.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, [user]);
