@@ -504,7 +504,7 @@ const RiderDashboard = () => {
           </TabsContent>
 
           <TabsContent value="assigned" className="mt-6 space-y-4">
-            {requests.filter(r => r.status === "assigned").length === 0 ? (
+            {requests.filter(r => r.status === "assigned" && r.rider_rating === null).length === 0 ? (
               <Card className="p-12 text-center bg-gradient-to-br from-card to-muted/20">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                   <Car className="w-8 h-8 text-primary" />
@@ -513,7 +513,7 @@ const RiderDashboard = () => {
                 <p className="text-muted-foreground">Your active trips will appear here</p>
               </Card>
             ) : (
-              requests.filter(r => r.status === "assigned").map(request => (
+              requests.filter(r => r.status === "assigned" && r.rider_rating === null).map(request => (
                 <Card key={request.id} className="p-4 sm:p-6 hover:shadow-xl hover:border-primary/50 transition-all duration-200 bg-gradient-to-br from-card to-primary/5 border-2">
                   <div className="flex flex-col gap-4">
                     <div className="flex-1 cursor-pointer" onClick={() => navigate(`/trip/${request.id}`)}>
@@ -570,12 +570,12 @@ const RiderDashboard = () => {
           </TabsContent>
 
           <TabsContent value="completed" className="mt-6 space-y-4">
-            {requests.filter(r => r.status === "completed").length === 0 ? (
+            {requests.filter(r => r.status === "completed" || r.rider_rating !== null).length === 0 ? (
               <Card className="p-8 text-center">
                 <p className="text-muted-foreground">No completed trips yet</p>
               </Card>
             ) : (
-              requests.filter(r => r.status === "completed").map(request => (
+              requests.filter(r => r.status === "completed" || r.rider_rating !== null).map(request => (
                 <Card key={request.id} className="p-6 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(`/trip/${request.id}`)}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
