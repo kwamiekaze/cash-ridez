@@ -42,10 +42,6 @@ export const TripCounter = ({ completedTrips, onSubscribe }: TripCounterProps) =
                 : `${tripsRemaining} free trip${tripsRemaining !== 1 ? 's' : ''} remaining before upgrade needed`
               }
             </p>
-            {/* DEBUG: Show raw database value */}
-            <p className="text-xs text-red-500 font-mono mt-1">
-              DEBUG: completed_trips_count from DB = {completedTrips} (type: {typeof completedTrips})
-            </p>
           </div>
         </div>
         {isAtLimit && (
