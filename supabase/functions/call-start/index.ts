@@ -106,25 +106,25 @@ Deno.serve(async (req) => {
     const riderProfile = profiles.find(p => p.id === trip.rider_id);
     const driverProfile = profiles.find(p => p.id === trip.assigned_driver_id);
 
-    if (!riderProfile?.phone_number || !driverProfile?.phone_number) {
-      const missingRole = !riderProfile?.phone_number ? 'rider' : 'driver';
-      console.error(`[call-start] Missing phone number for ${missingRole}`);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `Both participants must have a phone number to place a call. The ${missingRole} needs to add their phone number in their profile.` 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Validate BOTH participants have phone numbers AND are verified
+    const riderHasPhone = riderProfile?.phone_number != null && riderProfile.phone_number.trim() !== '';
+    const driverHasPhone = driverProfile?.phone_number != null && driverProfile.phone_number.trim() !== '';
+    const riderIsVerified = riderProfile?.is_verified === true;
+    const driverIsVerified = driverProfile?.is_verified === true;
 
-    if (!riderProfile.is_verified || !driverProfile.is_verified) {
-      const unverifiedRole = !riderProfile.is_verified ? 'rider' : 'driver';
-      console.error(`[call-start] ${unverifiedRole} is not verified`);
+    // Check if both have phone numbers and are verified
+    if (!riderHasPhone || !driverHasPhone || !riderIsVerified || !driverIsVerified) {
+      console.error('[call-start] Validation failed:', {
+        riderHasPhone,
+        driverHasPhone,
+        riderIsVerified,
+        driverIsVerified
+      });
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Both participants must be verified to place a call. The ${unverifiedRole} needs to complete verification.` 
+          error: 'Both users must have a verified phone number on file to place a call.' 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
