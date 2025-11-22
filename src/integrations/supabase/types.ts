@@ -1312,6 +1312,7 @@ export type Database = {
       is_verified_user: { Args: { _user_id: string }; Returns: boolean }
       normalize_zip: { Args: { zip_input: string }; Returns: string }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
+      repair_user_trip_counts: { Args: never; Returns: undefined }
       update_cancellation_stats: {
         Args: { p_role: string; p_user_id: string }
         Returns: undefined
