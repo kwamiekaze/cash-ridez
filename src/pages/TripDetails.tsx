@@ -16,6 +16,7 @@ import { UserChip } from "@/components/UserChip";
 import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
+import { MaskedCallButton } from "@/components/MaskedCallButton";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -713,6 +714,11 @@ export default function TripDetails() {
                 {/* Complete/Cancel buttons - only show if trip is still assigned (not completed) */}
                 {request.status === 'assigned' && (
                   <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                    <MaskedCallButton
+                      tripId={id!}
+                      userRole={isRider ? "rider" : "driver"}
+                      tripStatus={request.status}
+                    />
                     <Button
                       onClick={() => {
                         setActionType("cancel");
