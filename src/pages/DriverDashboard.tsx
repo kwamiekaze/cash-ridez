@@ -69,21 +69,23 @@ const DriverDashboard = () => {
   const fetchProfile = async () => {
     if (!user) return;
     
-    // Force fresh fetch
+    // Force fresh fetch with explicit column selection
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_driver, is_rider, phone_number, car_make, car_model, car_year")
       .eq("id", user.id)
       .single();
     
     if (error) {
-      console.error("Error fetching profile:", error);
+      console.error("Error fetching driver profile:", error);
       return;
     }
     
-    console.log("Driver profile data fetched:", { 
+    console.log("✅ Driver profile data fetched:", { 
+      id: data?.id,
       completed_trips_count: data?.completed_trips_count,
-      free_uses_remaining: data?.free_uses_remaining 
+      free_uses_remaining: data?.free_uses_remaining,
+      full_data: data
     });
     
     setProfile(data);
