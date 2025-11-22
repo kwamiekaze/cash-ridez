@@ -22,22 +22,40 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
         body: { trip_id: tripId }
       });
 
-      if (error) throw error;
+      // If there's a network/invocation error
+      if (error) {
+        console.error('Function invocation error:', error);
+        toast({
+          title: "Call Failed",
+          description: "Could not connect to calling service. Please check your internet connection and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
 
+      // If the function returned an error in the response
+      if (data && !data.success) {
+        toast({
+          title: "Call Failed",
+          description: data.error || "Could not initiate call. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Success case
       if (data?.success) {
         toast({
           title: "Call Initiated",
-          description: data.message,
+          description: data.message || "You should receive a call shortly.",
           duration: 7000,
         });
-      } else {
-        throw new Error(data?.error || 'Failed to initiate call');
       }
     } catch (error) {
-      console.error('Call error:', error);
+      console.error('Unexpected call error:', error);
       toast({
         title: "Call Failed",
-        description: error instanceof Error ? error.message : "Could not initiate call. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {

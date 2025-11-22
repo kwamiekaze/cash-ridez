@@ -14,7 +14,10 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const supabase = createClient(
@@ -25,12 +28,18 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      throw new Error('Unauthorized');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const { trip_id } = await req.json();
     if (!trip_id) {
-      throw new Error('trip_id is required');
+      return new Response(
+        JSON.stringify({ success: false, error: 'trip_id is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Fetch trip details
@@ -41,17 +50,26 @@ Deno.serve(async (req) => {
       .single();
 
     if (tripError || !trip) {
-      throw new Error('Trip not found');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Trip not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Validate trip status
     if (trip.status !== 'assigned') {
-      throw new Error('Trip must be in assigned status to make a call');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Trip must be in assigned status to make a call' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Check if user is participant
     if (user.id !== trip.rider_id && user.id !== trip.assigned_driver_id) {
-      throw new Error('You are not a participant in this trip');
+      return new Response(
+        JSON.stringify({ success: false, error: 'You are not a participant in this trip' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Fetch both profiles with phone numbers
@@ -61,18 +79,36 @@ Deno.serve(async (req) => {
       .in('id', [trip.rider_id, trip.assigned_driver_id]);
 
     if (profilesError || !profiles || profiles.length !== 2) {
-      throw new Error('Failed to fetch participant profiles');
+      console.error('Profile fetch error:', profilesError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to fetch participant profiles' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const riderProfile = profiles.find(p => p.id === trip.rider_id);
     const driverProfile = profiles.find(p => p.id === trip.assigned_driver_id);
 
     if (!riderProfile?.phone_number || !driverProfile?.phone_number) {
-      throw new Error('Both participants must have phone numbers set');
+      const missingRole = !riderProfile?.phone_number ? 'rider' : 'driver';
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Both participants must have a verified phone number to place a call. The ${missingRole} needs to add their phone number in their profile.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (!riderProfile.is_verified || !driverProfile.is_verified) {
-      throw new Error('Both participants must be verified');
+      const unverifiedRole = !riderProfile.is_verified ? 'rider' : 'driver';
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Both participants must be verified to place a call. The ${unverifiedRole} needs to complete verification.` 
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Determine initiator and recipient
@@ -96,18 +132,27 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create call record');
     }
 
-    // Initialize Twilio client
-    const twilioClient = twilio(
-      Deno.env.get('TWILIO_ACCOUNT_SID'),
-      Deno.env.get('TWILIO_AUTH_TOKEN')
-    );
-
+    // Check environment variables
+    const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
 
-    if (!supabaseUrl || !twilioPhoneNumber) {
-      throw new Error('Missing required environment variables');
+    if (!twilioAccountSid || !twilioAuthToken || !supabaseUrl || !twilioPhoneNumber) {
+      console.error('Missing environment variables:', {
+        hasTwilioSid: !!twilioAccountSid,
+        hasTwilioToken: !!twilioAuthToken,
+        hasSupabaseUrl: !!supabaseUrl,
+        hasTwilioPhone: !!twilioPhoneNumber
+      });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Server configuration error. Please contact support.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    // Initialize Twilio client
+    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
 
     // Use Supabase edge function URLs for callbacks
     const functionsBaseUrl = `${supabaseUrl}/functions/v1`;
@@ -141,11 +186,11 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in call-start:', error);
+    console.error('Unexpected error in call-start:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: `Failed to initiate call: ${errorMessage}` }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
