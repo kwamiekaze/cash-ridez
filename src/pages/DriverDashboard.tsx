@@ -35,6 +35,28 @@ const DriverDashboard = () => {
     if (user) {
       fetchRequests();
       fetchProfile();
+      
+      // Set up realtime subscription for profile updates
+      const profileChannel = supabase
+        .channel('driver-profile-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log("Driver profile updated via realtime:", payload.new);
+            setProfile(payload.new);
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        profileChannel.unsubscribe();
+      };
     }
 
     // Set tab from URL parameter
@@ -46,7 +68,24 @@ const DriverDashboard = () => {
 
   const fetchProfile = async () => {
     if (!user) return;
-    const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    
+    // Force fresh fetch
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+    
+    if (error) {
+      console.error("Error fetching profile:", error);
+      return;
+    }
+    
+    console.log("Driver profile data fetched:", { 
+      completed_trips_count: data?.completed_trips_count,
+      free_uses_remaining: data?.free_uses_remaining 
+    });
+    
     setProfile(data);
   };
 
