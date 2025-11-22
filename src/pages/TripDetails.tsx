@@ -671,6 +671,7 @@ export default function TripDetails() {
                     <Button 
                       onClick={() => navigate(`/chat/${id}`)}
                       className="flex-1"
+                      disabled={((isRider && request.rider_rating) || (!isRider && request.driver_rating))}
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Open Chat
@@ -718,6 +719,7 @@ export default function TripDetails() {
                       tripId={id!}
                       userRole={isRider ? "rider" : "driver"}
                       tripStatus={request.status}
+                      disabled={((isRider && request.rider_rating) || (!isRider && request.driver_rating))}
                     />
                     <Button
                       onClick={() => {
@@ -726,6 +728,7 @@ export default function TripDetails() {
                       }}
                       variant="destructive"
                       className="flex-1"
+                      disabled={((isRider && request.rider_rating) || (!isRider && request.driver_rating))}
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancel Trip
