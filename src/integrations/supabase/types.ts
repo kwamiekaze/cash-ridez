@@ -88,6 +88,83 @@ export type Database = {
           },
         ]
       }
+      calls: {
+        Row: {
+          created_at: string
+          driver_id: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          initiated_by_user_id: string
+          rider_id: string
+          started_at: string | null
+          status: string
+          trip_id: string
+          twilio_call_sid_driver: string | null
+          twilio_call_sid_rider: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiated_by_user_id: string
+          rider_id: string
+          started_at?: string | null
+          status?: string
+          trip_id: string
+          twilio_call_sid_driver?: string | null
+          twilio_call_sid_rider?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          initiated_by_user_id?: string
+          rider_id?: string
+          started_at?: string | null
+          status?: string
+          trip_id?: string
+          twilio_call_sid_driver?: string | null
+          twilio_call_sid_rider?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_initiated_by_user_id_fkey"
+            columns: ["initiated_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_rider_id_fkey"
+            columns: ["rider_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cancellation_feedback: {
         Row: {
           about_user_id: string
