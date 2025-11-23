@@ -1,5 +1,11 @@
 project_id = "wnajjqsqmrpwyffbpgsj"
 
+[functions.call-voice]
+verify_jwt = false
+
+[functions.call-status]
+verify_jwt = false
+
 [functions.accept-ride]
 verify_jwt = true
 
