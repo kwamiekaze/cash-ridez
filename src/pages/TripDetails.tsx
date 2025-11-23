@@ -449,6 +449,10 @@ export default function TripDetails() {
 
       if (rideError) throw rideError;
 
+      // CRITICAL: Wait for database trigger to update profile ratings
+      // The triggers update rider_rating_avg/driver_rating_avg automatically
+      await new Promise(resolve => setTimeout(resolve, 400));
+
       // Get current user's name for notification
       const { data: currentUserProfile } = await supabase
         .from('profiles')
@@ -456,8 +460,8 @@ export default function TripDetails() {
         .eq('id', currentUserId)
         .single();
 
-      // Send rating notification
-      await supabase.functions.invoke('send-rating-notification', {
+      // Send rating notification (async, don't block)
+      supabase.functions.invoke('send-rating-notification', {
         body: {
           ratedUserId,
           raterName: currentUserProfile?.display_name || 'A user',
@@ -465,25 +469,25 @@ export default function TripDetails() {
           rideId: id,
           ratingType
         }
-      });
+      }).catch(err => console.error('Notification error:', err));
 
       setShowRatingDialog(false);
       
       toast({
         title: "Rating Submitted",
-        description: "Thank you for your feedback! Trip marked as complete.",
+        description: "Profile rating updated! Trip marked as complete.",
       });
       
-      // Refresh subscription status and trip data with proper invalidation
+      // CRITICAL: Refresh ALL data immediately (this refetches trip + profiles)
       await Promise.all([
         checkStatus(),
         fetchTripData()
       ]);
       
-      // Force a small delay to ensure database updates are reflected
-      setTimeout(() => {
-        fetchTripData();
-      }, 500);
+      // Secondary delayed refetch for UI consistency after trigger completes
+      setTimeout(async () => {
+        await fetchTripData();
+      }, 1000);
     } catch (error: any) {
       toast({
         title: "Error",
