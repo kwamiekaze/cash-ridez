@@ -143,13 +143,13 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
         onClick={handleCall}
         disabled={disabled || isInitiating}
         variant="outline"
-        className="flex items-center gap-2"
+        className="w-full flex items-center justify-center gap-2"
       >
         <Phone className="h-4 w-4" />
         {isInitiating ? "Connecting..." : buttonText}
       </Button>
       {statusMessage && (
-        <p className="text-sm text-muted-foreground">{statusMessage}</p>
+        <p className="text-xs text-muted-foreground text-center">{statusMessage}</p>
       )}
     </div>
   );
