@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Clock, DollarSign } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign, Users } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
@@ -333,23 +333,43 @@ const CreateRideRequest = () => {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="offer">Price Offer *</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="offer"
-                  type="number"
-                  placeholder="50"
-                  className="pl-10"
-                  step="1"
-                  min="1"
-                  required
-                  value={formData.priceOffer}
-                  onChange={(e) => setFormData({ ...formData, priceOffer: e.target.value })}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="passengers">Number of Passengers *</Label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="passengers"
+                    type="number"
+                    placeholder="1"
+                    className="pl-10"
+                    min="1"
+                    max="8"
+                    required
+                    value={formData.passengerCount}
+                    onChange={(e) => setFormData({ ...formData, passengerCount: e.target.value })}
+                  />
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">Enter whole dollar amount (e.g., 50 for $50)</p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="offer">Price Offer *</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="offer"
+                    type="number"
+                    placeholder="50"
+                    className="pl-10"
+                    step="1"
+                    min="1"
+                    required
+                    value={formData.priceOffer}
+                    onChange={(e) => setFormData({ ...formData, priceOffer: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Enter whole dollar amount (e.g., 50 for $50)</p>
+              </div>
             </div>
 
             <div className="space-y-2">

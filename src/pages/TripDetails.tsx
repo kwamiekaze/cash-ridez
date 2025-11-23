@@ -237,7 +237,9 @@ export default function TripDetails() {
       });
       setCounterAmount("");
       setCounterMessage("");
-      fetchOffers();
+      
+      // Refresh offers data
+      await fetchOffers();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -316,8 +318,8 @@ export default function TripDetails() {
         });
       }
 
-      fetchOffers();
-      fetchTripData();
+      // Refresh all data with proper cache invalidation
+      await Promise.all([fetchOffers(), fetchTripData(), checkStatus()]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -377,7 +379,9 @@ export default function TripDetails() {
       });
       setCounterAmount("");
       setCounterMessage("");
-      fetchOffers();
+      
+      // Refresh offers and trip data
+      await Promise.all([fetchOffers(), fetchTripData()]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -407,13 +411,21 @@ export default function TripDetails() {
       const ratingType = isRider ? 'driver' : 'rider';
       const ratedUserId = isRider ? request.assigned_driver_id : request.rider_id;
 
-      // Prevent duplicate ratings
-      if (request[updateField]) {
+      // Double-check in database if rating already exists
+      const { data: existingTrip } = await supabase
+        .from('ride_requests')
+        .select(updateField)
+        .eq('id', id)
+        .single();
+
+      if (existingTrip?.[updateField]) {
         toast({
           title: "Already Rated",
           description: "You have already rated this trip.",
           variant: "destructive",
         });
+        setShowRatingDialog(false);
+        fetchTripData();
         return;
       }
 
@@ -460,10 +472,13 @@ export default function TripDetails() {
         description: "Thank you for your feedback! Trip marked as complete.",
       });
 
-      // Refresh subscription status to update trip counter
+      setShowRatingDialog(false);
+      
+      // Refresh subscription status to update trip counter and invalidate queries
       await checkStatus();
       
-      fetchTripData();
+      // Refetch trip data to update UI
+      await fetchTripData();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -882,14 +897,32 @@ export default function TripDetails() {
         {/* Offers Section */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Offers ({offers.length})</CardTitle>
+            <CardTitle>Driver Offers</CardTitle>
           </CardHeader>
           <CardContent>
-            {offers.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">No offers yet</p>
+            {/* Show initial offer status if driver accepted at that price */}
+            {request.status === 'assigned' && request.price_offer && offers.filter(o => o.role === 'driver' && o.status === 'accepted').length === 0 && (
+              <Card className="mb-4 border-green-200 bg-green-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Initial Price Accepted</p>
+                      <p className="text-sm text-muted-foreground">Driver accepted your initial offer</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-primary">${request.price_offer}</p>
+                      <Badge variant="default">Accepted</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            {offers.filter(o => o.role === 'driver').length === 0 && request.status === 'open' ? (
+              <p className="text-center text-muted-foreground py-4">No driver offers yet</p>
             ) : (
               <div className="space-y-4">
-                {offers.map((offer) => (
+                {offers.filter(o => o.role === 'driver').map((offer) => (
                   <Card key={offer.id}>
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between gap-4 mb-3">
