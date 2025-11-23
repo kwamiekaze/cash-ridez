@@ -723,6 +723,7 @@ export type Database = {
           bio: string | null
           blocked: boolean | null
           blocked_until: string | null
+          cancel_count: number
           car_make: string | null
           car_model: string | null
           car_year: string | null
@@ -783,6 +784,7 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          cancel_count?: number
           car_make?: string | null
           car_model?: string | null
           car_year?: string | null
@@ -843,6 +845,7 @@ export type Database = {
           bio?: string | null
           blocked?: boolean | null
           blocked_until?: string | null
+          cancel_count?: number
           car_make?: string | null
           car_model?: string | null
           car_year?: string | null
