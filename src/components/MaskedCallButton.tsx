@@ -24,7 +24,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
 
       // If there's a network/invocation error
       if (error) {
-        console.error('Function invocation error:', error);
+        console.error('[MaskedCallButton] Function invocation error:', error);
         toast({
           title: "Call Failed",
           description: "Could not connect to calling service. Please check your internet connection and try again.",
@@ -35,6 +35,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
 
       // If the function returned an error in the response
       if (data && !data.success) {
+        console.error('[MaskedCallButton] Call failed:', data.error);
         toast({
           title: "Call Failed",
           description: data.error || "Could not initiate call. Please try again.",
@@ -47,12 +48,12 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
       if (data?.success) {
         toast({
           title: "Call Initiated",
-          description: data.message || "You should receive a call shortly.",
+          description: data.message || "You should receive a call shortly from our CashRidez number. Answer it to connect with the other party.",
           duration: 7000,
         });
       }
     } catch (error) {
-      console.error('Unexpected call error:', error);
+      console.error('[MaskedCallButton] Unexpected call error:', error);
       toast({
         title: "Call Failed",
         description: "An unexpected error occurred. Please try again.",
