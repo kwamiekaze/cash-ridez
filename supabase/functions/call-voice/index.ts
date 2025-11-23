@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   // Always return static TwiML - no logic, no errors
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Your CashRidez call reached the app successfully. Goodbye.</Say>
+  <Say voice="alice">Your CashRidez call reached the server successfully. Goodbye.</Say>
   <Hangup/>
 </Response>`;
 
