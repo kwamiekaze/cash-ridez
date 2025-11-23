@@ -15,8 +15,19 @@ Deno.serve(async (req) => {
     const callId = url.searchParams.get('callId');
     const role = url.searchParams.get('role');
 
+    console.log('[call-voice] Request received:', { callId, role });
+
     if (!callId || !role) {
-      throw new Error('Missing callId or role');
+      console.error('[call-voice] Missing required parameters:', { callId, role });
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">We're sorry. Call information is missing. Please try again.</Say>
+  <Hangup/>
+</Response>`;
+      return new Response(errorTwiml, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
+      });
     }
 
     const supabase = createClient(
@@ -32,11 +43,23 @@ Deno.serve(async (req) => {
       .single();
 
     if (callError || !callRecord) {
-      throw new Error('Call record not found');
+      console.error('[call-voice] Call record not found:', { callId, error: callError });
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">We're sorry. Call information not found. Please try again.</Say>
+  <Hangup/>
+</Response>`;
+      return new Response(errorTwiml, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
+      });
     }
+
+    console.log('[call-voice] Call record found:', { rider: callRecord.rider_id, driver: callRecord.driver_id });
 
     // Determine the other party
     const otherPartyId = role === 'rider' ? callRecord.driver_id : callRecord.rider_id;
+    console.log('[call-voice] Other party ID:', otherPartyId);
 
     // Fetch other party's phone number
     const { data: otherProfile, error: profileError } = await supabase
@@ -51,24 +74,48 @@ Deno.serve(async (req) => {
       // Return TwiML with helpful message instead of throwing
       const noPhoneTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Sorry, we could not reach the other party. Please try again later.</Say>
+  <Say voice="alice">We're sorry. The other party's phone number is not available. Please contact them through the app.</Say>
   <Hangup/>
 </Response>`;
       
       return new Response(noPhoneTwiml, {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
       });
     }
 
-    const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
+    console.log('[call-voice] Other party profile found, has phone:', !!otherProfile.phone_number);
 
-    // Generate TwiML to dial the other party
+    const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
+    
+    if (!twilioPhoneNumber) {
+      console.error('[call-voice] Missing TWILIO_PHONE_NUMBER environment variable');
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">We're sorry. Call service is not configured. Please contact support.</Say>
+  <Hangup/>
+</Response>`;
+      return new Response(errorTwiml, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
+      });
+    }
+
+    // Ensure phone number is in E.164 format
+    let formattedPhone = otherProfile.phone_number.trim();
+    if (!formattedPhone.startsWith('+')) {
+      // Assume US number if no country code
+      formattedPhone = `+1${formattedPhone.replace(/\D/g, '')}`;
+    }
+
+    // Generate TwiML to dial the other party - MUST use <Number> tag inside <Dial>
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="${twilioPhoneNumber}">${otherProfile.phone_number}</Dial>
+  <Dial callerId="${twilioPhoneNumber}">
+    <Number>${formattedPhone}</Number>
+  </Dial>
 </Response>`;
 
-    console.log(`Voice routing for call ${callId}: ${role} connecting to other party`);
+    console.log(`[call-voice] Routing call ${callId}: ${role} connecting to ${formattedPhone.substring(0, 5)}***`);
 
     return new Response(twiml, {
       headers: { 
@@ -79,15 +126,18 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('[call-voice] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[call-voice] Error details:', { message: errorMessage, stack: error instanceof Error ? error.stack : undefined });
     
-    // Return TwiML error message - don't use 400 status, just return error TwiML
+    // Return TwiML error message - ALWAYS return 200 with valid TwiML
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say>Sorry, we could not reach the other party. Please try again later.</Say>
+  <Say voice="alice">We're sorry. We could not complete your call at this time. Please try again later.</Say>
   <Hangup/>
 </Response>`;
 
     return new Response(errorTwiml, {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
     });
   }
