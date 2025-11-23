@@ -23,7 +23,6 @@ import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
-import { TripCounter } from "@/components/TripCounter";
 import { useSubscription } from "@/hooks/useSubscription";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 
@@ -464,14 +463,6 @@ const RiderDashboard = () => {
             View Profile
           </Button>
         </div>
-
-        {/* Trip Counter */}
-        {profile && (
-          <TripCounter 
-            completedTrips={profile.completed_trips_count || 0}
-            onSubscribe={startCheckout}
-          />
-        )}
 
         {/* Subscription Panel */}
         <div className="mb-8">

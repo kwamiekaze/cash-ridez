@@ -467,18 +467,23 @@ export default function TripDetails() {
         }
       });
 
+      setShowRatingDialog(false);
+      
       toast({
         title: "Rating Submitted",
         description: "Thank you for your feedback! Trip marked as complete.",
       });
-
-      setShowRatingDialog(false);
       
-      // Refresh subscription status to update trip counter and invalidate queries
-      await checkStatus();
+      // Refresh subscription status and trip data with proper invalidation
+      await Promise.all([
+        checkStatus(),
+        fetchTripData()
+      ]);
       
-      // Refetch trip data to update UI
-      await fetchTripData();
+      // Force a small delay to ensure database updates are reflected
+      setTimeout(() => {
+        fetchTripData();
+      }, 500);
     } catch (error: any) {
       toast({
         title: "Error",

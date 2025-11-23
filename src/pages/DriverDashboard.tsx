@@ -16,7 +16,6 @@ import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
-import { TripCounter } from "@/components/TripCounter";
 import { useSubscription } from "@/hooks/useSubscription";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 
@@ -306,14 +305,6 @@ const DriverDashboard = () => {
           <div className="mb-6">
             <h1 className="text-2xl font-bold">My Trips</h1>
           </div>
-
-          {/* Trip Counter */}
-          {profile && (
-            <TripCounter 
-              completedTrips={profile.completed_trips_count || 0}
-              onSubscribe={startCheckout}
-            />
-          )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">
