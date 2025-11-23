@@ -530,11 +530,6 @@ const Profile = () => {
             {/* Notification Preferences */}
             <NotificationPreferences />
 
-            {/* Rider ZIP */}
-            {profile.is_rider && (
-              <RiderZipEditor />
-            )}
-
             {/* Change Password */}
             <ChangePasswordForm />
           </div>

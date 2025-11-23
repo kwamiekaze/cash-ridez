@@ -65,7 +65,7 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
             id: rating.id,
             rating: rating[ratingField],
             created_at: rating.created_at,
-            rater_name: profileData?.full_name || profileData?.display_name || "Anonymous",
+            rater_name: profileData?.full_name || `User ${raterId.slice(0, 8)}`,
             rater_photo: profileData?.photo_url || "",
             pickup_address: rating.pickup_address,
             dropoff_address: rating.dropoff_address,
@@ -106,18 +106,18 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
       </h3>
       <div className="space-y-3">
         {ratings.map((rating) => (
-          <Card key={rating.id} className="p-4">
-            <div className="flex items-start gap-3">
-              <Avatar className="h-10 w-10">
+          <Card key={rating.id} className="p-3 sm:p-4">
+            <div className="flex flex-col sm:flex-row items-start gap-3">
+              <Avatar className="h-10 w-10 flex-shrink-0">
                 <AvatarImage src={rating.rater_photo} />
                 <AvatarFallback>
                   <User className="h-5 w-5" />
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="text-sm font-medium">{rating.rater_name}</p>
-                  <div className="flex items-center gap-1">
+              <div className="flex-1 min-w-0 w-full">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                  <p className="text-sm font-medium truncate">{rating.rater_name}</p>
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
@@ -133,7 +133,7 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
                 <p className="text-xs text-muted-foreground mb-2">
                   {format(new Date(rating.created_at), "MMM d, yyyy")}
                 </p>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground space-y-1">
                   <p className="truncate">From: {rating.pickup_address}</p>
                   <p className="truncate">To: {rating.dropoff_address}</p>
                 </div>

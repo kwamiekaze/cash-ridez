@@ -714,32 +714,33 @@ export default function TripDetails() {
             {/* Actions for assigned or completed trips */}
             {(request.status === 'assigned' || request.status === 'completed') && (
               <>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  {/* Only show Open Chat button when trip is still assigned (not completed) */}
+                <div className="flex flex-col gap-2">
+                  {/* Row 1: Open Chat button (full width on mobile, disabled after rating) */}
                   {request.status === 'assigned' && (
                     <Button 
                       onClick={() => navigate(`/chat/${id}`)}
-                      className="flex-1"
+                      className="w-full"
+                      disabled={(isRider && request.rider_rating) || (!isRider && request.driver_rating)}
                     >
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Open Chat
                     </Button>
                   )}
-                  {/* Show Rate button if user hasn't rated yet, regardless of trip status */}
+                  
+                  {/* Row 2: Rate button or rated confirmation (full width on mobile) */}
                   {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating)) && request.status !== 'cancelled' && (
                     <Button 
                       onClick={() => setShowRatingDialog(true)}
                       variant={request.status === 'completed' ? 'default' : 'outline'}
-                      className="flex-1"
+                      className="w-full"
                     >
                       Rate {isRider ? 'Driver' : 'Rider'}
                     </Button>
                   )}
-                  {/* Show confirmation when user has already rated */}
                   {((isRider && request.rider_rating) || (!isRider && request.driver_rating)) && (
                     <Button 
                       variant="outline"
-                      className="flex-1"
+                      className="w-full"
                       disabled
                     >
                       ✓ Rated
@@ -762,21 +763,25 @@ export default function TripDetails() {
                   </div>
                 )}
                 
-                {/* Call and Cancel buttons - ONLY show if trip is still assigned (not completed) */}
+                {/* Call and Cancel buttons - disabled after rating */}
                 {request.status === 'assigned' && (
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                    <MaskedCallButton
-                      tripId={id!}
-                      userRole={isRider ? "rider" : "driver"}
-                      tripStatus={request.status}
-                    />
+                  <div className="flex flex-col gap-2 pt-2 border-t">
+                    <div className="w-full">
+                      <MaskedCallButton
+                        tripId={id!}
+                        userRole={isRider ? "rider" : "driver"}
+                        tripStatus={request.status}
+                        disabled={(isRider && request.rider_rating) || (!isRider && request.driver_rating)}
+                      />
+                    </div>
                     <Button
                       onClick={() => {
                         setActionType("cancel");
                         setActionDialogOpen(true);
                       }}
                       variant="destructive"
-                      className="flex-1"
+                      className="w-full"
+                      disabled={(isRider && request.rider_rating) || (!isRider && request.driver_rating)}
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Cancel Trip
