@@ -11,7 +11,7 @@ const statusMap: Record<string, string> = {
   'ringing': 'ringing',
   'in-progress': 'in_progress',
   'completed': 'completed',
-  'busy': 'failed',
+  'busy': 'busy',
   'failed': 'failed',
   'no-answer': 'no_answer',
   'canceled': 'canceled'
