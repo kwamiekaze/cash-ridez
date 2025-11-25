@@ -46,7 +46,29 @@ serve(async (req) => {
     // Use provided driverId or default to current user
     const finalDriverId = driverId || user.id;
 
-    // Check subscription status and completed trips
+    // If a driverId is provided, verify the authenticated user has permission
+    if (driverId && driverId !== user.id) {
+      // The authenticated user must be the rider of this trip to accept another driver's offer
+      const { data: rideData, error: rideError } = await supabase
+        .from('ride_requests')
+        .select('rider_id')
+        .eq('id', rideId)
+        .single();
+
+      if (rideError) {
+        console.error('Error fetching ride data:', rideError);
+        throw new Error('Could not verify trip ownership');
+      }
+
+      if (rideData.rider_id !== user.id) {
+        console.error(`Unauthorized: User ${user.id} is not the rider of trip ${rideId}`);
+        throw new Error('You do not have permission to accept offers for this trip');
+      }
+
+      console.log(`Rider ${user.id} accepting driver ${driverId}'s offer for trip ${rideId}`);
+    }
+
+    // Check subscription status and completed trips for the driver
     const { data: profile } = await supabase
       .from('profiles')
       .select('subscription_active, completed_trips_count')
@@ -54,7 +76,7 @@ serve(async (req) => {
       .single();
 
     if (!profile?.subscription_active && profile?.completed_trips_count >= 3) {
-      throw new Error('You have reached your free trip limit. Please subscribe to continue accepting rides.');
+      throw new Error('Driver has reached their free trip limit. They need to subscribe to continue accepting rides.');
     }
 
     console.log(`Driver ${finalDriverId} attempting to accept ride ${rideId} with ETA ${etaMinutes || 0}, skipActiveRideCheck: ${skipActiveRideCheck || false}, acceptedOfferId: ${acceptedOfferId || 'none'}`);
@@ -69,12 +91,15 @@ serve(async (req) => {
     });
 
     if (error) {
-      console.error('Error accepting ride:', error);
-      throw error;
+      console.error('Error from accept_ride_atomic:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw new Error(`Database error: ${error.message || 'Failed to accept ride'}`);
     }
 
     if (!data || data.success === false) {
-      throw new Error(data?.message || 'Failed to accept ride');
+      const errorMsg = data?.message || 'Failed to accept ride';
+      console.error('accept_ride_atomic returned failure:', errorMsg);
+      throw new Error(errorMsg);
     }
 
     console.log(`Ride ${rideId} successfully accepted by driver ${user.id}`);
