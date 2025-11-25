@@ -1090,6 +1090,7 @@ export default function TripDetails() {
                             driverId: currentUserId,
                             etaMinutes: 0,
                             skipEtaCheck: true,
+                            skipActiveRideCheck: true,
                           },
                         });
 
