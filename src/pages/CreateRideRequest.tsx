@@ -12,7 +12,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
-import { SubscriptionModal } from "@/components/SubscriptionModal";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -49,7 +48,6 @@ const CreateRideRequest = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [canCreateTrip, setCanCreateTrip] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -83,8 +81,8 @@ const CreateRideRequest = () => {
       setCanCreateTrip(canCreate);
 
       if (!canCreate) {
-        setShowSubscriptionModal(true);
-        setLoading(false);
+        toast.error("You've reached your free trip limit. Please subscribe to continue.");
+        navigate("/subscription");
         return;
       }
       
@@ -193,8 +191,9 @@ const CreateRideRequest = () => {
         return;
       }
       if (!currentProfile?.subscription_active && (currentProfile?.completed_trips_count ?? 0) >= 3) {
-        setShowSubscriptionModal(true);
+        toast.error("You have reached your free trip limit. Please subscribe to continue creating trip requests.");
         setIsSubmitting(false);
+        navigate("/subscription");
         return;
       }
 
@@ -254,11 +253,7 @@ const CreateRideRequest = () => {
       navigate("/rider", { state: { refreshRequests: true, newRequestId: newTrip?.id, timestamp: Date.now() } });
     } catch (error: any) {
       const raw = typeof error?.message === 'string' ? error.message : String(error);
-      
-      // Check if error is due to subscription/trip limit (RLS policy violation)
-      if (raw.includes('row-level security') || raw.includes('can_use_trip_features')) {
-        setShowSubscriptionModal(true);
-      } else if (/load failed|failed to fetch|network/i.test(raw)) {
+      if (/load failed|failed to fetch|network/i.test(raw)) {
         toast.error("Network issue while creating your trip. Please try again.");
       } else {
         toast.error(raw || "Failed to create trip request");
@@ -276,23 +271,15 @@ const CreateRideRequest = () => {
   }
 
   return (
-    <>
-      <SubscriptionModal 
-        open={showSubscriptionModal} 
-        onOpenChange={setShowSubscriptionModal}
-        feature="trips"
-        completedCount={profile?.completed_trips_count || 0}
-      />
+    <div className="min-h-screen bg-background relative">
+      {/* Animated Map Background */}
+      <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
       
-      <div className="min-h-screen bg-background relative">
-        {/* Animated Map Background */}
-        <MapBackground showAnimatedCar showRiders intensity="subtle" className="fixed inset-0 z-0" />
+      <div className="relative z-10">
+        <AppHeader />
         
-        <div className="relative z-10">
-          <AppHeader />
-          
-          <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-2xl mx-auto p-8">
+        <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Post your travel plans to connect with others in the community who can help coordinate your trip.
@@ -430,7 +417,6 @@ const CreateRideRequest = () => {
       </div>
       </div>
     </div>
-    </>
   );
 };
 
