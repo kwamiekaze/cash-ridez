@@ -9,6 +9,7 @@ import { Send, Trash2, Shield, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SubscriptionModal } from "@/components/SubscriptionModal";
 
 interface Message {
   id: string;
@@ -32,6 +33,7 @@ export function CommunityChat() {
   const [messageCount, setMessageCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [canSendMessage, setCanSendMessage] = useState(true);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Check user status
@@ -153,7 +155,13 @@ export function CommunityChat() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !canSendMessage) return;
+    if (!newMessage.trim() || !user) return;
+
+    // Check limit before attempting to send
+    if (!canSendMessage && !isSubscribed) {
+      setShowSubscriptionModal(true);
+      return;
+    }
 
     setSending(true);
     const { error } = await supabase
@@ -164,11 +172,16 @@ export function CommunityChat() {
       });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+      // Check if error is due to subscription/chat limit (RLS policy violation)
+      if (error.message.includes('row-level security') || error.message.includes('chat_message_count')) {
+        setShowSubscriptionModal(true);
+      } else {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     } else {
       setNewMessage("");
       // Refresh message count after sending
@@ -285,7 +298,15 @@ export function CommunityChat() {
   };
 
   return (
-    <Card className="flex flex-col h-[600px] bg-card/80 backdrop-blur-sm">
+    <>
+      <SubscriptionModal 
+        open={showSubscriptionModal} 
+        onOpenChange={setShowSubscriptionModal}
+        feature="chat"
+        completedCount={messageCount}
+      />
+      
+      <Card className="flex flex-col h-[600px] bg-card/80 backdrop-blur-sm">
       <div className="p-4 border-b border-border">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           💬 Community Chat
@@ -471,5 +492,6 @@ export function CommunityChat() {
         </div>
       </form>
     </Card>
+    </>
   );
 }
