@@ -9,11 +9,12 @@
 //
 // REQUIRED SECRETS (already configured in Lovable Cloud):
 //   - STRIPE_SECRET_KEY: Your live Stripe secret key
-//   - STRIPE_WEBHOOK_SECRET: Primary webhook signing secret
-//   - STRIPE_WEBHOOK_SECRET_THIN: Secondary webhook signing secret
+//   - STRIPE_WEBHOOK_SECRET_SNAPSHOT: Primary webhook signing secret (Snapshot endpoint)
+//   - STRIPE_WEBHOOK_SECRET_THIN: Secondary webhook signing secret (Thin endpoint)
 //
 // EVENTS HANDLED:
 //   - checkout.session.completed: New subscription purchased
+//   - customer.created: New customer created in Stripe
 //   - invoice.payment_succeeded: Subscription renewed successfully
 //   - invoice.payment_failed: Payment failed (deactivates subscription)
 //   - customer.subscription.updated: Subscription status changed
@@ -56,11 +57,12 @@ serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
   
   // Get both webhook secrets
-  const primarySecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  const primarySecret = Deno.env.get("STRIPE_WEBHOOK_SECRET_SNAPSHOT");
   const thinSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET_THIN");
 
-  console.log(`[WEBHOOK] Received request with signature present: ${!!signature}`);
-  console.log(`[WEBHOOK] Primary secret available: ${!!primarySecret}`);
+  console.log(`🔥 [WEBHOOK] Stripe webhook received`);
+  console.log(`[WEBHOOK] Signature present: ${!!signature}`);
+  console.log(`[WEBHOOK] Snapshot secret available: ${!!primarySecret}`);
   console.log(`[WEBHOOK] Thin secret available: ${!!thinSecret}`);
 
   // CRITICAL: Always return 200 to Stripe, even on errors, to prevent retry storms
@@ -84,10 +86,10 @@ serve(async (req) => {
   let event: Stripe.Event;
   let verifiedSecret: string | null = null;
 
-  // Try primary secret first
+  // Try primary secret first (Snapshot)
   if (primarySecret) {
     try {
-      console.log("[WEBHOOK] Attempting verification with PRIMARY secret");
+      console.log("[WEBHOOK] Attempting verification with SNAPSHOT secret");
       event = await stripe.webhooks.constructEventAsync(
         body,
         signature,
@@ -95,10 +97,10 @@ serve(async (req) => {
         undefined,
         cryptoProvider
       );
-      verifiedSecret = "PRIMARY";
-      console.log("[WEBHOOK] ✓ Verification successful with PRIMARY secret");
+      verifiedSecret = "SNAPSHOT";
+      console.log("[WEBHOOK] ✓ Verification successful with SNAPSHOT secret");
     } catch (err) {
-      console.log("[WEBHOOK] Primary secret verification failed, trying thin secret...");
+      console.log("[WEBHOOK] Snapshot secret verification failed, trying thin secret...");
     }
   }
 
@@ -130,7 +132,9 @@ serve(async (req) => {
     });
   }
 
-  console.log(`[WEBHOOK] Event received: ${event.type} (verified with ${verifiedSecret} secret)`);
+  console.log(`🔥 [WEBHOOK] Stripe event received: ${event.type} (verified with ${verifiedSecret} secret)`);
+  console.log(`[WEBHOOK] Event ID: ${event.id}`);
+  console.log(`[WEBHOOK] Full event payload:`, JSON.stringify(event, null, 2));
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -140,6 +144,31 @@ serve(async (req) => {
 
   try {
     switch (event.type) {
+      case "customer.created": {
+        const customer = event.data.object as Stripe.Customer;
+        console.log(`[WEBHOOK] Customer created - ID: ${customer.id}, Email: ${customer.email}`);
+        
+        // Store customer ID if we have user metadata
+        const userId = customer.metadata?.supabase_user_id;
+        if (userId) {
+          const { error: updateError } = await supabase
+            .from("profiles")
+            .update({ stripe_customer_id: customer.id })
+            .eq("id", userId);
+
+          if (updateError) {
+            console.error(`[WEBHOOK] Failed to update customer ID for user ${userId}:`, updateError);
+          } else {
+            console.log(`[WEBHOOK] ✓ Stored customer ID ${customer.id} for user ${userId}`);
+          }
+          await logBillingEvent(supabase, userId, event.type, event.id, { customerId: customer.id });
+        } else {
+          console.log(`[WEBHOOK] No user ID in customer metadata, skipping profile update`);
+          await logBillingEvent(supabase, null, event.type, event.id, { customerId: customer.id });
+        }
+        break;
+      }
+
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         console.log(`[WEBHOOK] Checkout completed - Customer: ${session.customer}, Subscription: ${session.subscription}`);
