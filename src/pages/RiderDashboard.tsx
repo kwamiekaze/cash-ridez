@@ -585,17 +585,17 @@ const RiderDashboard = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 pt-4 border-t">
+                    <div className="flex gap-1.5 pt-4 border-t">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="flex-1"
+                        className="flex-1 h-9 px-2 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/chat/${request.id}`);
                         }}
                       >
-                        <MessageSquare className="h-4 w-4 mr-2" />
+                        <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
                         Chat
                       </Button>
                       <MaskedCallButton
@@ -605,7 +605,7 @@ const RiderDashboard = () => {
                       />
                       <Button
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 h-9 px-2 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/trip/${request.id}`);
