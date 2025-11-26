@@ -9,9 +9,10 @@ interface MaskedCallButtonProps {
   userRole: "rider" | "driver";
   tripStatus: string;
   disabled?: boolean;
+  className?: string;
 }
 
-export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: MaskedCallButtonProps) {
+export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, className }: MaskedCallButtonProps) {
   const { toast } = useToast();
   const [isInitiating, setIsInitiating] = useState(false);
   const [lastCallStatus, setLastCallStatus] = useState<string | null>(null);
@@ -143,7 +144,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
       disabled={disabled || isInitiating}
       variant="outline"
       size="sm"
-      className="flex-1 h-9 px-2 text-xs"
+      className={className || "flex-1 h-9 px-2 text-xs"}
       title={statusMessage || undefined}
     >
       <Phone className="h-3.5 w-3.5 mr-1.5" />
