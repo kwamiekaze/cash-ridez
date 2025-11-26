@@ -27,9 +27,13 @@ serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 
+  // CRITICAL: Always return 200 to Stripe, even on errors, to prevent retry storms
   if (!signature || !webhookSecret) {
     console.error("Missing signature or webhook secret");
-    return new Response("Webhook Error: Missing signature or secret", { status: 400 });
+    return new Response(JSON.stringify({ received: false, error: "Missing signature or secret" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const body = await req.text();
@@ -46,7 +50,11 @@ serve(async (req) => {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`Webhook signature verification failed: ${errorMessage}`);
-    return new Response(`Webhook Error: ${errorMessage}`, { status: 400 });
+    // Return 200 even on signature failure to prevent Stripe retry storms
+    return new Response(JSON.stringify({ received: false, error: "Signature verification failed" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   console.log(`[WEBHOOK] Event received: ${event.type}`);
@@ -227,8 +235,9 @@ serve(async (req) => {
     console.error(`[WEBHOOK] Error processing event: ${errorMessage}`);
     await logBillingEvent(supabase, null, event.type, event.id, event.data.object, error);
     
-    return new Response(JSON.stringify({ error: errorMessage }), {
-      status: 500,
+    // CRITICAL: Return 200 even on processing errors to prevent Stripe retry storms
+    return new Response(JSON.stringify({ received: true, error: errorMessage }), {
+      status: 200,
       headers: { "Content-Type": "application/json" },
     });
   }
