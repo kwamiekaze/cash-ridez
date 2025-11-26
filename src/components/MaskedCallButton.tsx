@@ -138,19 +138,16 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled }: Mas
   const statusMessage = getCallStatusMessage();
 
   return (
-    <div className="flex flex-col gap-2">
-      <Button
-        onClick={handleCall}
-        disabled={disabled || isInitiating}
-        variant="outline"
-        className="w-full flex items-center justify-center gap-2"
-      >
-        <Phone className="h-4 w-4" />
-        {isInitiating ? "Connecting..." : buttonText}
-      </Button>
-      {statusMessage && (
-        <p className="text-xs text-muted-foreground text-center">{statusMessage}</p>
-      )}
-    </div>
+    <Button
+      onClick={handleCall}
+      disabled={disabled || isInitiating}
+      variant="outline"
+      size="sm"
+      className="flex-1 h-9 px-2 text-xs"
+      title={statusMessage || undefined}
+    >
+      <Phone className="h-3.5 w-3.5 mr-1.5" />
+      {isInitiating ? "Connecting..." : buttonText}
+    </Button>
   );
 }
