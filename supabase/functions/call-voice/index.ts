@@ -1,3 +1,32 @@
+// ============================================================================
+// TWILIO VOICE WEBHOOK FOR CASHRIDEZ
+// ============================================================================
+//
+// This Supabase Edge Function handles Twilio voice webhook callbacks.
+// When a call is answered, Twilio calls this endpoint to get TwiML instructions.
+//
+// WEBHOOK URL (configured automatically by call-start):
+//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-voice
+//
+// PARAMETERS:
+//   - callId: The call record ID from our database
+//   - role: 'rider' or 'driver' (who answered first)
+//
+// FLOW:
+//   1. Twilio calls this when first party answers
+//   2. Function looks up call details from database
+//   3. Returns TwiML to dial the other party
+//   4. Call is bridged between rider and driver
+//
+// AUTHENTICATION: No JWT required (verify_jwt = false) - Twilio webhook
+//
+// IMPORTANT:
+//   - Always returns valid TwiML XML (even on errors)
+//   - Returns HTTP 200 to prevent Twilio errors
+//   - Uses fallback TwiML if lookup fails
+//
+// ============================================================================
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -22,6 +51,7 @@ Deno.serve(async (req) => {
     const callId = url.searchParams.get('callId');
     const role = url.searchParams.get('role');
 
+    console.log(`[call-voice] Call webhook received - callId: ${callId}, role: ${role || 'not specified'}`);
     if (!callId) {
       console.error('Missing callId parameter');
       return new Response(fallbackTwiML, {
@@ -113,7 +143,7 @@ Deno.serve(async (req) => {
   </Dial>
 </Response>`;
 
-    console.log(`Bridging call ${callId}: dialing ${otherPartyPhone} from ${twilioPhoneNumber}`);
+    console.log(`[call-voice] Bridging call ${callId}: connecting to other party (role determined: ${role || 'inferred'})`);
 
     return new Response(twiml, {
       status: 200,

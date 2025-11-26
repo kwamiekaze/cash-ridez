@@ -1,3 +1,32 @@
+// ============================================================================
+// STRIPE WEBHOOK ENDPOINT FOR CASHRIDEZ
+// ============================================================================
+//
+// This Supabase Edge Function handles Stripe webhook events for subscriptions.
+//
+// WEBHOOK URL (configure in Stripe Dashboard):
+//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/stripe-webhook
+//
+// REQUIRED SECRETS (already configured in Lovable Cloud):
+//   - STRIPE_SECRET_KEY: Your live Stripe secret key
+//   - STRIPE_WEBHOOK_SECRET: Primary webhook signing secret
+//   - STRIPE_WEBHOOK_SECRET_THIN: Secondary webhook signing secret
+//
+// EVENTS HANDLED:
+//   - checkout.session.completed: New subscription purchased
+//   - invoice.payment_succeeded: Subscription renewed successfully
+//   - invoice.payment_failed: Payment failed (deactivates subscription)
+//   - customer.subscription.updated: Subscription status changed
+//   - customer.subscription.deleted: Subscription cancelled
+//
+// IMPORTANT:
+//   - This endpoint supports TWO webhook secrets for flexibility
+//   - Always returns HTTP 200 to prevent Stripe retry storms
+//   - Logs all events for debugging (check Supabase logs)
+//   - Updates profiles table with subscription_active and subscription_status
+//
+// ============================================================================
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -25,12 +54,27 @@ const logBillingEvent = async (supabase: any, userId: string | null, eventType: 
 
 serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  
+  // Get both webhook secrets
+  const primarySecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  const thinSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET_THIN");
+
+  console.log(`[WEBHOOK] Received request with signature present: ${!!signature}`);
+  console.log(`[WEBHOOK] Primary secret available: ${!!primarySecret}`);
+  console.log(`[WEBHOOK] Thin secret available: ${!!thinSecret}`);
 
   // CRITICAL: Always return 200 to Stripe, even on errors, to prevent retry storms
-  if (!signature || !webhookSecret) {
-    console.error("Missing signature or webhook secret");
-    return new Response(JSON.stringify({ received: false, error: "Missing signature or secret" }), {
+  if (!signature) {
+    console.error("[WEBHOOK] Missing Stripe-Signature header");
+    return new Response(JSON.stringify({ received: false, error: "Missing signature" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!primarySecret && !thinSecret) {
+    console.error("[WEBHOOK] No webhook secrets configured");
+    return new Response(JSON.stringify({ received: false, error: "No webhook secrets configured" }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -38,18 +82,47 @@ serve(async (req) => {
 
   const body = await req.text();
   let event: Stripe.Event;
+  let verifiedSecret: string | null = null;
 
-  try {
-    event = await stripe.webhooks.constructEventAsync(
-      body,
-      signature,
-      webhookSecret,
-      undefined,
-      cryptoProvider
-    );
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error(`Webhook signature verification failed: ${errorMessage}`);
+  // Try primary secret first
+  if (primarySecret) {
+    try {
+      console.log("[WEBHOOK] Attempting verification with PRIMARY secret");
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        primarySecret,
+        undefined,
+        cryptoProvider
+      );
+      verifiedSecret = "PRIMARY";
+      console.log("[WEBHOOK] ✓ Verification successful with PRIMARY secret");
+    } catch (err) {
+      console.log("[WEBHOOK] Primary secret verification failed, trying thin secret...");
+    }
+  }
+
+  // Try thin secret if primary failed or wasn't available
+  if (!event && thinSecret) {
+    try {
+      console.log("[WEBHOOK] Attempting verification with THIN secret");
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        thinSecret,
+        undefined,
+        cryptoProvider
+      );
+      verifiedSecret = "THIN";
+      console.log("[WEBHOOK] ✓ Verification successful with THIN secret");
+    } catch (err) {
+      console.log("[WEBHOOK] Thin secret verification also failed");
+    }
+  }
+
+  // If both secrets failed
+  if (!event!) {
+    console.error("[WEBHOOK] ✗ Signature verification failed with both secrets");
     // Return 200 even on signature failure to prevent Stripe retry storms
     return new Response(JSON.stringify({ received: false, error: "Signature verification failed" }), {
       status: 200,
@@ -57,7 +130,7 @@ serve(async (req) => {
     });
   }
 
-  console.log(`[WEBHOOK] Event received: ${event.type}`);
+  console.log(`[WEBHOOK] Event received: ${event.type} (verified with ${verifiedSecret} secret)`);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -69,11 +142,11 @@ serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log(`[WEBHOOK] Checkout completed for customer: ${session.customer}`);
+        console.log(`[WEBHOOK] Checkout completed - Customer: ${session.customer}, Subscription: ${session.subscription}`);
 
         const userId = session.metadata?.supabase_user_id;
         if (!userId) {
-          console.error("No user ID in session metadata");
+          console.error("[WEBHOOK] ✗ No user ID in session metadata");
           await logBillingEvent(supabase, null, event.type, event.id, session, { message: 'No user ID in metadata' });
           break;
         }
@@ -93,7 +166,7 @@ serve(async (req) => {
             })
             .eq("id", userId);
 
-          console.log(`[WEBHOOK] Subscription activated for user ${userId}, status: ${subscription.status}`);
+          console.log(`[WEBHOOK] ✓ Subscription activated for user ${userId}, status: ${subscription.status}`);
           await logBillingEvent(supabase, userId, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status });
         }
         break;
@@ -101,7 +174,7 @@ serve(async (req) => {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log(`[WEBHOOK] Payment succeeded for customer: ${invoice.customer}`);
+        console.log(`[WEBHOOK] Payment succeeded - Customer: ${invoice.customer}, Invoice: ${invoice.id}`);
 
         if (invoice.subscription) {
           const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
@@ -124,7 +197,7 @@ serve(async (req) => {
               })
               .eq("id", profile.id);
 
-            console.log(`[WEBHOOK] Subscription renewed for user ${profile.id}, status: ${subscription.status}`);
+            console.log(`[WEBHOOK] ✓ Subscription renewed for user ${profile.id}, status: ${subscription.status}`);
             await logBillingEvent(supabase, profile.id, event.type, event.id, { invoiceId: invoice.id, status: subscription.status });
           }
         }
@@ -133,7 +206,7 @@ serve(async (req) => {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log(`[WEBHOOK] Payment failed for customer: ${invoice.customer}`);
+        console.log(`[WEBHOOK] ✗ Payment failed - Customer: ${invoice.customer}, Invoice: ${invoice.id}`);
 
         // Find user by customer ID
         const { data: profile } = await supabase
@@ -152,7 +225,7 @@ serve(async (req) => {
             })
             .eq("id", profile.id);
 
-          console.log(`[WEBHOOK] Subscription deactivated for user ${profile.id} due to payment failure`);
+          console.log(`[WEBHOOK] ✗ Subscription deactivated for user ${profile.id} due to payment failure`);
           await logBillingEvent(supabase, profile.id, event.type, event.id, { invoiceId: invoice.id });
           
           // Create notification
@@ -169,7 +242,7 @@ serve(async (req) => {
 
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log(`[WEBHOOK] Subscription updated: ${subscription.id}, status: ${subscription.status}`);
+        console.log(`[WEBHOOK] Subscription updated - ID: ${subscription.id}, Status: ${subscription.status}`);
 
         // Find user by customer ID
         const { data: profile } = await supabase
@@ -190,7 +263,7 @@ serve(async (req) => {
             })
             .eq("id", profile.id);
 
-          console.log(`[WEBHOOK] Subscription status updated for user ${profile.id}: ${isActive ? 'active' : 'inactive'}`);
+          console.log(`[WEBHOOK] ✓ Subscription status updated for user ${profile.id}: ${isActive ? 'active' : 'inactive'}`);
           await logBillingEvent(supabase, profile.id, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status });
         }
         break;
@@ -198,7 +271,7 @@ serve(async (req) => {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        console.log(`[WEBHOOK] Subscription deleted: ${subscription.id}`);
+        console.log(`[WEBHOOK] Subscription deleted - ID: ${subscription.id}`);
 
         // Find user by customer ID
         const { data: profile } = await supabase
@@ -216,14 +289,14 @@ serve(async (req) => {
             })
             .eq("id", profile.id);
 
-          console.log(`[WEBHOOK] Subscription cancelled for user ${profile.id}`);
+          console.log(`[WEBHOOK] ✓ Subscription cancelled for user ${profile.id}`);
           await logBillingEvent(supabase, profile.id, event.type, event.id, { subscriptionId: subscription.id });
         }
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
     }
 
     return new Response(JSON.stringify({ received: true }), {
