@@ -766,14 +766,13 @@ export default function TripDetails() {
                 {/* Call and Cancel buttons - disabled after rating */}
                 {request.status === 'assigned' && (
                   <div className="flex flex-col gap-2 pt-2 border-t">
-                    <div className="w-full">
-                      <MaskedCallButton
-                        tripId={id!}
-                        userRole={isRider ? "rider" : "driver"}
-                        tripStatus={request.status}
-                        disabled={(isRider && request.rider_rating) || (!isRider && request.driver_rating)}
-                      />
-                    </div>
+                    <MaskedCallButton
+                      tripId={id!}
+                      userRole={isRider ? "rider" : "driver"}
+                      tripStatus={request.status}
+                      disabled={(isRider && request.rider_rating) || (!isRider && request.driver_rating)}
+                      className="w-full"
+                    />
                     <Button
                       onClick={() => {
                         setActionType("cancel");
