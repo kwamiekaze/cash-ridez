@@ -1,3 +1,33 @@
+// ============================================================================
+// TWILIO STATUS WEBHOOK FOR CASHRIDEZ
+// ============================================================================
+//
+// This Supabase Edge Function handles Twilio call status updates.
+// Twilio posts status changes here throughout the call lifecycle.
+//
+// WEBHOOK URL (configured automatically by call-start):
+//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-status
+//
+// PARAMETERS:
+//   - callId: The call record ID from our database
+//   - CallStatus: Current Twilio call status (from POST body)
+//   - CallDuration: Duration in seconds (when completed)
+//
+// STATUS MAPPING:
+//   - queued/ringing → ringing
+//   - in-progress → in_progress
+//   - completed → completed
+//   - busy/failed/no-answer/canceled → respective statuses
+//
+// AUTHENTICATION: No JWT required (verify_jwt = false) - Twilio webhook
+//
+// IMPORTANT:
+//   - Updates call records in real-time
+//   - Records start time, end time, and duration
+//   - Always returns HTTP 200 to acknowledge receipt
+//
+// ============================================================================
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 
 const corsHeaders = {
@@ -42,7 +72,7 @@ Deno.serve(async (req) => {
       throw new Error('Missing CallStatus');
     }
 
-    console.log(`Call status update: ${callId}, leg: ${leg}, status: ${callStatus}, sid: ${callSid}`);
+    console.log(`[call-status] Call status update received - callId: ${callId}, status: ${callStatus}, leg: ${leg || 'main'}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -82,7 +112,7 @@ Deno.serve(async (req) => {
       throw updateError;
     }
 
-    console.log(`Call ${callId} updated to status: ${mappedStatus}`);
+    console.log(`[call-status] ✓ Call ${callId} updated to status: ${mappedStatus}`);
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -90,7 +120,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in call-status:', error);
+    console.error('[call-status] ✗ Error processing status update:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
       JSON.stringify({ error: errorMessage }),

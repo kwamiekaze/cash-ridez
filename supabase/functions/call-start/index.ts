@@ -1,3 +1,29 @@
+// ============================================================================
+// TWILIO CALL INITIATOR FOR CASHRIDEZ
+// ============================================================================
+//
+// This Supabase Edge Function initiates masked calls between riders and drivers.
+//
+// ENDPOINT URL:
+//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-start
+//
+// REQUIRED SECRETS (already configured in Lovable Cloud):
+//   - TWILIO_ACCOUNT_SID: Your Twilio account SID
+//   - TWILIO_AUTH_TOKEN: Your Twilio auth token
+//   - TWILIO_PHONE_NUMBER: Your Twilio phone number (caller ID)
+//   - APP_BASE_URL: https://cash-ridez.lovable.app
+//
+// FLOW:
+//   1. Frontend calls this function with trip_id
+//   2. Creates call record in database
+//   3. Initiates Twilio call to the initiator
+//   4. Twilio calls call-voice endpoint to bridge the call
+//   5. Status updates sent to call-status endpoint
+//
+// AUTHENTICATION: Requires valid Supabase JWT (verify_jwt = true)
+//
+// ============================================================================
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import twilio from "npm:twilio@5.3.5";
 
@@ -13,6 +39,7 @@ Deno.serve(async (req) => {
 
   try {
     console.log('[call-start] Function invoked');
+    console.log('[call-start] Environment check - Twilio SID available:', !!Deno.env.get('TWILIO_ACCOUNT_SID'));
     
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
@@ -189,6 +216,7 @@ Deno.serve(async (req) => {
       });
 
       console.log('[call-start] Call created successfully, SID:', call.sid);
+      console.log('[call-start] Call bridging initiated - waiting for participants to answer');
 
       // Update call record with Twilio SID
       const sidField = initiatorRole === 'rider' ? 'twilio_call_sid_rider' : 'twilio_call_sid_driver';
