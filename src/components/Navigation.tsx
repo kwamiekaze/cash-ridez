@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Menu, X, User, CreditCard, HelpCircle, Moon, Sun, LogOut } from 'lucide-react';
+import { Menu, X, User, CreditCard, HelpCircle, Moon, Sun, LogOut, Download } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SportsCar } from './SportsCar';
@@ -80,6 +80,10 @@ export function Navigation() {
               </Button>
             ) : (
               <>
+                <Button variant="ghost" onClick={() => navigate('/install-app')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download App
+                </Button>
                 <Button variant="ghost" onClick={() => navigate('/auth')} className="text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)] hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.8)]">
                   Sign In
                 </Button>
@@ -166,6 +170,14 @@ export function Navigation() {
                   </>
                 ) : (
                   <>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { navigate('/install-app'); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download App
+                    </Button>
                     <Button variant="ghost" onClick={() => { navigate('/auth'); setIsMenuOpen(false); }} className="w-full text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105 drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
                       Sign In
                     </Button>
