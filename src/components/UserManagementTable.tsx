@@ -215,23 +215,21 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
   };
 
   return (
-    <div className="rounded-md border overflow-hidden">
+    <div className="rounded-md border overflow-hidden bg-card/50 backdrop-blur-sm">
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="border-border/50">
-              <TableHead className="text-white font-semibold min-w-[150px]">User</TableHead>
-              <TableHead className="text-white font-semibold min-w-[180px] hidden sm:table-cell">Email</TableHead>
-              <TableHead className="text-white font-semibold min-w-[80px] hidden md:table-cell">Type</TableHead>
-              <TableHead className="text-white font-semibold min-w-[100px]">Status</TableHead>
-              <TableHead className="text-white font-semibold min-w-[70px] hidden lg:table-cell">Rating</TableHead>
-              <TableHead className="text-white font-semibold min-w-[280px]">Actions</TableHead>
+              <TableHead className="text-white font-semibold w-[140px] sm:w-[180px] sticky left-0 bg-card/95 backdrop-blur-sm z-10">User</TableHead>
+              <TableHead className="text-white font-semibold w-[180px] hidden md:table-cell">Email</TableHead>
+              <TableHead className="text-white font-semibold w-[90px]">Status</TableHead>
+              <TableHead className="text-white font-semibold w-auto">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredUsers.map((user) => (
               <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50 border-border/30" onClick={() => onViewUser(user.id)}>
-                <TableCell className="min-w-[150px]">
+                <TableCell className="sticky left-0 bg-card/95 backdrop-blur-sm z-10 w-[140px] sm:w-[180px]">
                   <UserChip 
                     userId={user.id}
                     displayName={user.display_name}
@@ -241,13 +239,10 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                     showCancellationBadge={false}
                   />
                 </TableCell>
-                <TableCell className="font-medium text-white text-xs sm:text-sm min-w-[180px] hidden sm:table-cell">
+                <TableCell className="font-medium text-white text-xs sm:text-sm w-[180px] hidden md:table-cell">
                   <div className="truncate max-w-[180px]" title={user.email}>{user.email}</div>
                 </TableCell>
-                <TableCell className="min-w-[80px] hidden md:table-cell">
-                  <Badge variant="outline" className="text-white border-white/30 text-xs">User</Badge>
-                </TableCell>
-                <TableCell className="min-w-[100px]">
+                <TableCell className="w-[90px]">
                   <div className="flex flex-col gap-1">
                     {user.is_verified ? (
                       <Badge className="bg-green-500 text-white text-xs whitespace-nowrap">Verified</Badge>
@@ -256,16 +251,11 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                     ) : (
                       <Badge variant="secondary" className="text-xs whitespace-nowrap">Pending</Badge>
                     )}
-                    {user.paused && <Badge variant="secondary" className="text-xs whitespace-nowrap">Paused</Badge>}
+                    {user.paused && <Badge variant="secondary" className="text-xs whitespace-nowrap mt-1">Paused</Badge>}
                   </div>
                 </TableCell>
-                <TableCell className="text-white text-xs sm:text-sm min-w-[70px] hidden lg:table-cell">
-                  {user.rider_rating_avg > 0 || user.driver_rating_avg > 0
-                    ? `${Math.max(user.rider_rating_avg, user.driver_rating_avg).toFixed(1)}`
-                    : "N/A"}
-                </TableCell>
-                <TableCell className="min-w-[280px]">
-                  <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                <TableCell className="w-auto">
+                  <div className="flex gap-1 flex-wrap justify-end sm:justify-start" onClick={(e) => e.stopPropagation()}>
                     {!user.is_verified && user.verification_status === "pending" && (
                       <>
                         <Button
@@ -273,22 +263,22 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                           variant="default"
                           onClick={() => handleVerificationToggle(user.id, user.is_verified)}
                           disabled={loading === user.id}
-                          title="Approve Verification"
-                          className="h-8 px-2 text-xs whitespace-nowrap"
+                          title="Approve"
+                          className="h-8 w-8 p-0 sm:w-auto sm:px-3"
                         >
-                          <Check className="h-3 w-3 mr-1" />
-                          <span className="hidden sm:inline">Approve</span>
+                          <Check className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline text-xs">Approve</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
                           onClick={() => handleRejectVerification(user.id)}
                           disabled={loading === user.id}
-                          title="Reject Verification"
-                          className="h-8 px-2 text-xs whitespace-nowrap"
+                          title="Reject"
+                          className="h-8 w-8 p-0 sm:w-auto sm:px-3"
                         >
-                          <X className="h-3 w-3 mr-1" />
-                          <span className="hidden sm:inline">Reject</span>
+                          <X className="h-3 w-3 sm:mr-1" />
+                          <span className="hidden sm:inline text-xs">Reject</span>
                         </Button>
                       </>
                     )}
@@ -298,10 +288,10 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                         variant="outline"
                         onClick={() => handleVerificationToggle(user.id, user.is_verified)}
                         disabled={loading === user.id}
-                        title="Unverify User"
+                        title="Unverify"
                         className="h-8 w-8 p-0"
                       >
-                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <X className="h-3 w-3" />
                       </Button>
                     )}
                     <Button
@@ -312,7 +302,7 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                       title={user.paused ? "Unpause" : "Pause"}
                       className="h-8 w-8 p-0"
                     >
-                      {user.paused ? <Play className="h-3 w-3 sm:h-4 sm:w-4" /> : <Pause className="h-3 w-3 sm:h-4 sm:w-4" />}
+                      {user.paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
                     </Button>
                     {user.id_image_url && (
                       <Button
@@ -322,7 +312,7 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                         className="h-8 w-8 p-0"
                         title="View ID"
                       >
-                        <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <ExternalLink className="h-3 w-3" />
                       </Button>
                     )}
                     <Button
@@ -332,20 +322,20 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
                       className="h-8 w-8 p-0"
                       title="View User"
                     >
-                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <Eye className="h-3 w-3" />
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleLockNameToggle(user.id, user.admin_locked_fields)}
                       disabled={loading === user.id || !user.full_name}
-                      title={user.admin_locked_fields?.includes('full_name') ? "Unlock full name" : "Lock full name"}
+                      title={user.admin_locked_fields?.includes('full_name') ? "Unlock" : "Lock"}
                       className="h-8 w-8 p-0"
                     >
                       {user.admin_locked_fields?.includes('full_name') ? (
-                        <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+                        <Lock className="h-3 w-3 text-destructive" />
                       ) : (
-                        <Unlock className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <Unlock className="h-3 w-3" />
                       )}
                     </Button>
                   </div>
