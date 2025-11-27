@@ -124,6 +124,45 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     }
   };
 
+  const handleRejectVerification = async () => {
+    if (!userId) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_verified: false,
+          verification_status: "rejected",
+        })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      // Send rejection notification email
+      try {
+        await supabase.functions.invoke("send-status-notification", {
+          body: {
+            userEmail: user.email,
+            displayName: user.display_name || user.email,
+            status: "rejected",
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending notification email:", emailError);
+      }
+
+      toast.success("Verification rejected - user notified to resubmit");
+      onUpdate();
+      fetchUserDetails(); // Refresh the user data
+    } catch (error: any) {
+      toast.error("Failed to reject verification");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!user) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -175,28 +214,40 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
           {user.id_image_url && (
             <Card className="p-4">
               <Label className="text-sm font-medium mb-2 block">ID Verification Image</Label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.storage
-                      .from('id-verifications')
-                      .createSignedUrl(user.id_image_url, 3600);
-                    if (error) throw error;
-                    if (data?.signedUrl) {
-                      setIdPreviewUrl(data.signedUrl);
-                      setIdPreviewOpen(true);
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      const { data, error } = await supabase.storage
+                        .from('id-verifications')
+                        .createSignedUrl(user.id_image_url, 3600);
+                      if (error) throw error;
+                      if (data?.signedUrl) {
+                        setIdPreviewUrl(data.signedUrl);
+                        setIdPreviewOpen(true);
+                      }
+                    } catch (error) {
+                      console.error('Error opening ID image:', error);
+                      toast.error('Failed to open ID image');
                     }
-                  } catch (error) {
-                    console.error('Error opening ID image:', error);
-                    toast.error('Failed to open ID image');
-                  }
-                }}
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                View ID Image
-              </Button>
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View ID Image
+                </Button>
+                {!user.is_verified && user.verification_status === "pending" && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRejectVerification}
+                    disabled={saving}
+                  >
+                    Reject ID
+                  </Button>
+                )}
+              </div>
             </Card>
           )}
 
