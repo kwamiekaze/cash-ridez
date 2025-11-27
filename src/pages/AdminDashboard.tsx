@@ -12,8 +12,9 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart } from "lucide-react";
+import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search } from "lucide-react";
 import { motion } from "motion/react";
+import { Input } from "@/components/ui/input";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { UserDetailDialog } from "@/components/UserDetailDialog";
@@ -33,6 +34,7 @@ const AdminDashboard = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [systemMessageDialogOpen, setSystemMessageDialogOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -131,6 +133,19 @@ const AdminDashboard = () => {
                   <Megaphone className="h-4 w-4" />
                   <span className="hidden sm:inline">Send Message</span>
                 </Button>
+            
+                {/* Admin User Search */}
+                {(activeTab === "users" || activeTab === "verifications") && (
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search users..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="pl-9 h-9 text-xs sm:text-sm"
+                    />
+                  </div>
+                )}
 
                 {/* Mobile Menu Button */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -187,7 +202,16 @@ const AdminDashboard = () => {
                 transition={{ delay: 0.1 }}
               >
                 <UserManagementTable 
-                  users={pendingUsers} 
+                  users={pendingUsers.filter(user => {
+                    if (!userSearchQuery.trim()) return true;
+                    const query = userSearchQuery.toLowerCase();
+                    return (
+                      user.display_name?.toLowerCase().includes(query) ||
+                      user.full_name?.toLowerCase().includes(query) ||
+                      user.email?.toLowerCase().includes(query) ||
+                      user.id?.toLowerCase().includes(query)
+                    );
+                  })} 
                   onUpdate={fetchUsers}
                   onViewUser={handleViewUser}
                 />
@@ -201,7 +225,16 @@ const AdminDashboard = () => {
                 transition={{ delay: 0.1 }}
               >
                 <UserManagementTable 
-                  users={allUsers} 
+                  users={allUsers.filter(user => {
+                    if (!userSearchQuery.trim()) return true;
+                    const query = userSearchQuery.toLowerCase();
+                    return (
+                      user.display_name?.toLowerCase().includes(query) ||
+                      user.full_name?.toLowerCase().includes(query) ||
+                      user.email?.toLowerCase().includes(query) ||
+                      user.id?.toLowerCase().includes(query)
+                    );
+                  })} 
                   onUpdate={fetchUsers}
                   onViewUser={handleViewUser}
                 />

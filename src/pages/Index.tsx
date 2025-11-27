@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Car, Shield, Users, MapPin, Star, CheckCircle2 } from "lucide-react";
+import { Car, Shield, Users, MapPin, Star, CheckCircle2, Download, HeadphonesIcon, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { CarIcon } from "@/components/CarIcon";
 import { motion } from "motion/react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import SupportDialog from "@/components/SupportDialog";
 
 
 const trustBadges = [{
@@ -22,6 +24,7 @@ const trustBadges = [{
 const Index = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const [supportDialogOpen, setSupportDialogOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -52,9 +55,24 @@ const Index = () => {
               <a href="/community" className="text-foreground hover:text-primary font-medium transition-colors">
                 Community
               </a>
-              <a href="#" className="text-foreground/80 hover:text-primary font-medium transition-colors">
-                Support
-              </a>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="text-foreground hover:text-primary">
+                    <Menu className="h-4 w-4 mr-2" />
+                    Menu
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-card border-border z-50">
+                  <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
+                    <HeadphonesIcon className="mr-2 h-4 w-4" />
+                    Support
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/install-app')} className="cursor-pointer text-[hsl(var(--primary))]">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download App
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button variant="ghost" onClick={() => navigate("/auth")} className="text-foreground hover:text-primary">
                 Sign In
               </Button>
@@ -264,6 +282,7 @@ const Index = () => {
           </div>
         </div>
       </footer>
+      <SupportDialog open={supportDialogOpen} onOpenChange={setSupportDialogOpen} />
     </div>;
 };
 export default Index;
