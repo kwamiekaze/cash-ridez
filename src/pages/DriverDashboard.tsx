@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Calendar, Clock, DollarSign, MessageSquare, CheckCircle, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, Calendar, Clock, DollarSign, MessageSquare, CheckCircle, XCircle, Search, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import AppHeader from "@/components/AppHeader";
 import { UserChip } from "@/components/UserChip";
@@ -29,6 +31,8 @@ const DriverDashboard = () => {
   const [completedRequests, setCompletedRequests] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("open");
   const [profile, setProfile] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "highest_payout" | "highest_rated">("newest");
 
   useEffect(() => {
     if (user) {
@@ -167,6 +171,43 @@ const DriverDashboard = () => {
       toast.error("Failed to load trips");
     }
   };
+
+  // Filter and sort open requests
+  const filteredOpenRequests = useMemo(() => {
+    let filtered = [...openRequests];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(request => {
+        const pickupMatch = request.pickup_address?.toLowerCase().includes(query);
+        const dropoffMatch = request.dropoff_address?.toLowerCase().includes(query);
+        const pickupZipMatch = request.pickup_zip?.toLowerCase().includes(query);
+        const dropoffZipMatch = request.dropoff_zip?.toLowerCase().includes(query);
+        const riderNameMatch = request.rider?.display_name?.toLowerCase().includes(query) || 
+                               request.rider?.full_name?.toLowerCase().includes(query);
+        return pickupMatch || dropoffMatch || pickupZipMatch || dropoffZipMatch || riderNameMatch;
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case "highest_payout":
+          return (b.price_offer || 0) - (a.price_offer || 0);
+        case "highest_rated":
+          const aRating = a.rider?.rider_rating_avg || 0;
+          const bRating = b.rider?.rider_rating_avg || 0;
+          return bRating - aRating;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [openRequests, searchQuery, sortBy]);
 
   const renderTripCard = (request: any) => {
     const isCompleted = request.status === "completed";
@@ -315,14 +356,61 @@ const DriverDashboard = () => {
             </TabsList>
 
           <TabsContent value="open" className="space-y-4">
-            {openRequests.length === 0 ? (
+            {/* Search and Filter Controls */}
+            <Card className="p-4">
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by location, zip code, or rider name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                    <SelectTrigger className="w-full sm:w-[200px]">
+                      <SlidersHorizontal className="h-4 w-4 mr-2" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Most Recent</SelectItem>
+                      <SelectItem value="highest_payout">Highest Payout</SelectItem>
+                      <SelectItem value="highest_rated">Highly Rated Rider</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {(searchQuery || sortBy !== "newest") && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {filteredOpenRequests.length} trip{filteredOpenRequests.length !== 1 ? 's' : ''} found
+                    </span>
+                    {(searchQuery || sortBy !== "newest") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSortBy("newest");
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {filteredOpenRequests.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
-                  No open trip requests available
+                  {searchQuery ? "No trips match your search" : "No open trip requests available"}
                 </CardContent>
               </Card>
             ) : (
-              openRequests.map((request) => renderTripCard(request))
+              filteredOpenRequests.map((request) => renderTripCard(request))
             )}
           </TabsContent>
 

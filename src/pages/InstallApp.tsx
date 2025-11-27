@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Share2, CheckCircle, Smartphone } from "lucide-react";
+import { Download, Share2, CheckCircle } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import { toast } from "sonner";
@@ -57,9 +57,7 @@ export default function InstallApp() {
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg">
-              <Smartphone className="w-10 h-10 text-black" />
-            </div>
+            <img src="/icon.png" alt="Cash Ridez App Icon" className="w-20 h-20 rounded-2xl shadow-lg" />
           </div>
           <h1 className="text-4xl font-bold mb-3 gold-shimmer">Get the Cash Ridez App</h1>
           <p className="text-lg text-muted-foreground">
