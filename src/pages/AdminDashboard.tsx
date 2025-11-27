@@ -112,13 +112,13 @@ const AdminDashboard = () => {
         
         <AppHeader showStatus={false} />
 
-        <div className="container mx-auto px-4 py-4 md:py-6 relative z-10">
+        <div className="container mx-auto px-2 sm:px-4 py-4 md:py-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-4 md:mb-6"
           >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+            <div className="flex flex-col gap-3 mb-4">
               <div>
                 <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2">
                   Admin Dashboard
@@ -128,21 +128,24 @@ const AdminDashboard = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button onClick={() => setSystemMessageDialogOpen(true)} className="gap-2 text-xs sm:text-sm">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
+                <Button 
+                  onClick={() => setSystemMessageDialogOpen(true)} 
+                  className="gap-2 text-xs sm:text-sm w-full sm:w-auto"
+                >
                   <Megaphone className="h-4 w-4" />
-                  <span className="hidden sm:inline">Send Message</span>
+                  <span>Send Message</span>
                 </Button>
             
                 {/* Admin User Search */}
                 {(activeTab === "users" || activeTab === "verifications") && (
-                  <div className="relative w-full sm:w-64">
+                  <div className="relative flex-1 sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search users..."
                       value={userSearchQuery}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
-                      className="pl-9 h-9 text-xs sm:text-sm"
+                      className="pl-9 h-9 text-xs sm:text-sm w-full"
                     />
                   </div>
                 )}
@@ -150,7 +153,7 @@ const AdminDashboard = () => {
                 {/* Mobile Menu Button */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild className="lg:hidden">
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" className="h-9 w-9">
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
