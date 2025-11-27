@@ -1,11 +1,12 @@
 {
-  "name": "CashRidez",
-  "short_name": "CashRidez",
+  "name": "Cash Ridez",
+  "short_name": "Cash Ridez",
   "description": "Your Community Travel Network - Powered by People",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#A4C639",
+  "background_color": "#000000",
+  "theme_color": "#FACC15",
   "orientation": "portrait-primary",
   "icons": [
     {

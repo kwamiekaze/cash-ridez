@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, History, HeadphonesIcon, Crown, Shield, Megaphone } from "lucide-react";
+import { LogOut, User, History, HeadphonesIcon, Crown, Shield, Megaphone, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
@@ -154,6 +154,11 @@ const AppHeader = ({
                 <DropdownMenuItem onClick={() => navigate('/updates')} className="cursor-pointer">
                   <Megaphone className="mr-2 h-4 w-4" />
                   Updates
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/install-app')} className="cursor-pointer text-yellow-400">
+                  <Download className="mr-2 h-4 w-4" />
+                  Download App
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
