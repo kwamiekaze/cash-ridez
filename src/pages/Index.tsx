@@ -48,6 +48,7 @@ const Index = () => {
             >
               cashridez
             </motion.span>
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
               <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
                 How It Works
@@ -80,6 +81,42 @@ const Index = () => {
                 Get Started
               </Button>
             </nav>
+
+            {/* Mobile Navigation */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-foreground hover:text-primary">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-card border-border z-50">
+                  <DropdownMenuItem onClick={() => {
+                    const element = document.getElementById('how-it-works');
+                    element?.scrollIntoView({ behavior: 'smooth' });
+                  }} className="cursor-pointer">
+                    How It Works
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/community')} className="cursor-pointer">
+                    Community
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
+                    <HeadphonesIcon className="mr-2 h-4 w-4" />
+                    Support
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/install-app')} className="cursor-pointer text-[hsl(var(--primary))]">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download App
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/auth')} className="cursor-pointer">
+                    Sign In
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/auth')} className="cursor-pointer font-semibold text-primary">
+                    Get Started
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
