@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, Download, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 export default function VerificationPending() {
   const { user } = useAuth();
@@ -174,6 +175,30 @@ export default function VerificationPending() {
           <div className="text-center text-sm text-muted-foreground">
             <p>You'll be automatically redirected once your account is verified.</p>
           </div>
+
+          {/* Download App CTA */}
+          <Card className="bg-gradient-to-br from-yellow-400/10 to-yellow-600/10 border-yellow-400/20">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                  <Smartphone className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">Verification in Progress</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    While we review your ID, add Cash Ridez to your home screen for the best, app-like experience.
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate('/install-app')}
+                  className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-semibold"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download App
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </CardContent>
       </Card>
     </div>

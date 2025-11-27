@@ -37,6 +37,7 @@ const RoleRedirect = lazy(() => import("./components/RoleRedirect"));
 const Updates = lazy(() => import("./pages/Updates"));
 const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const InstallApp = lazy(() => import("./pages/InstallApp"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -230,6 +231,14 @@ const App = () => (
                 <AdminRoute>
                   <AdminSystemMessages />
                 </AdminRoute>
+              }
+            />
+            <Route
+              path="/install-app"
+              element={
+                <ProtectedRoute>
+                  <InstallApp />
+                </ProtectedRoute>
               }
             />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
