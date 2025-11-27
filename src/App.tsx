@@ -235,11 +235,7 @@ const App = () => (
             />
             <Route
               path="/install-app"
-              element={
-                <ProtectedRoute>
-                  <InstallApp />
-                </ProtectedRoute>
-              }
+              element={<InstallApp />}
             />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
