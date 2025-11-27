@@ -84,23 +84,64 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
 
       if (error) throw error;
 
-      // Send email notification for both approve and reject
-      try {
-        await supabase.functions.invoke("send-status-notification", {
-          body: {
-            userEmail: user.email,
-            displayName: user.display_name || user.email,
-            status: !currentStatus ? "approved" : "rejected",
-          },
-        });
-      } catch (emailError) {
-        console.error("Error sending notification email:", emailError);
+      // Send email notification for approval
+      if (!currentStatus) {
+        try {
+          await supabase.functions.invoke("send-status-notification", {
+            body: {
+              userEmail: user.email,
+              displayName: user.display_name || user.email,
+              status: "approved",
+            },
+          });
+        } catch (emailError) {
+          console.error("Error sending notification email:", emailError);
+        }
       }
 
       toast.success(`User ${!currentStatus ? "verified" : "unverified"} successfully`);
       onUpdate();
     } catch (error: any) {
       toast.error("Failed to update verification status");
+      console.error(error);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleRejectVerification = async (userId: string) => {
+    setLoading(userId);
+    try {
+      const user = users.find(u => u.id === userId);
+      if (!user) throw new Error("User not found");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_verified: false,
+          verification_status: "rejected",
+        })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      // Send rejection notification email
+      try {
+        await supabase.functions.invoke("send-status-notification", {
+          body: {
+            userEmail: user.email,
+            displayName: user.display_name || user.email,
+            status: "rejected",
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending notification email:", emailError);
+      }
+
+      toast.success("Verification rejected - user notified to resubmit");
+      onUpdate();
+    } catch (error: any) {
+      toast.error("Failed to reject verification");
       console.error(error);
     } finally {
       setLoading(null);
@@ -174,112 +215,146 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
   };
 
   return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-border/50">
-            <TableHead className="text-white font-semibold">User</TableHead>
-            <TableHead className="text-white font-semibold">Email</TableHead>
-            <TableHead className="text-white font-semibold">Type</TableHead>
-            <TableHead className="text-white font-semibold">Status</TableHead>
-            <TableHead className="text-white font-semibold">Rating</TableHead>
-            <TableHead className="text-white font-semibold">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {filteredUsers.map((user) => (
-            <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50 border-border/30" onClick={() => onViewUser(user.id)}>
-              <TableCell>
-                <UserChip 
-                  userId={user.id}
-                  displayName={user.display_name}
-                  fullName={user.full_name || undefined}
-                  photoUrl={user.photo_url}
-                  size="sm"
-                  showCancellationBadge={false}
-                />
-              </TableCell>
-              <TableCell className="font-medium text-white text-xs sm:text-sm">{user.email}</TableCell>
-              <TableCell>
-                <Badge variant="outline" className="text-white border-white/30">User</Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col gap-1">
-                  {user.is_verified ? (
-                    <Badge className="bg-green-500 text-white text-xs">Verified</Badge>
-                  ) : (
-                    <Badge variant="destructive" className="text-xs">Unverified</Badge>
-                  )}
-                  {user.paused && <Badge variant="secondary" className="text-xs">Paused</Badge>}
-                </div>
-              </TableCell>
-              <TableCell className="text-white text-xs sm:text-sm">
-                {user.rider_rating_avg > 0 || user.driver_rating_avg > 0
-                  ? `${Math.max(user.rider_rating_avg, user.driver_rating_avg).toFixed(1)}`
-                  : "N/A"}
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1 sm:gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                  <Button
+    <div className="rounded-md border overflow-hidden">
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-border/50">
+              <TableHead className="text-white font-semibold min-w-[150px]">User</TableHead>
+              <TableHead className="text-white font-semibold min-w-[180px] hidden sm:table-cell">Email</TableHead>
+              <TableHead className="text-white font-semibold min-w-[80px] hidden md:table-cell">Type</TableHead>
+              <TableHead className="text-white font-semibold min-w-[100px]">Status</TableHead>
+              <TableHead className="text-white font-semibold min-w-[70px] hidden lg:table-cell">Rating</TableHead>
+              <TableHead className="text-white font-semibold min-w-[280px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.map((user) => (
+              <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50 border-border/30" onClick={() => onViewUser(user.id)}>
+                <TableCell className="min-w-[150px]">
+                  <UserChip 
+                    userId={user.id}
+                    displayName={user.display_name}
+                    fullName={user.full_name || undefined}
+                    photoUrl={user.photo_url}
                     size="sm"
-                    variant={user.is_verified ? "destructive" : "default"}
-                    onClick={() => handleVerificationToggle(user.id, user.is_verified)}
-                    disabled={loading === user.id}
-                    title={user.is_verified ? "Unverify" : "Verify"}
-                    className="h-8 w-8 p-0"
-                  >
-                    {user.is_verified ? <X className="h-3 w-3 sm:h-4 sm:w-4" /> : <Check className="h-3 w-3 sm:h-4 sm:w-4" />}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={user.paused ? "default" : "outline"}
-                    onClick={() => handlePauseToggle(user.id, user.paused)}
-                    disabled={loading === user.id}
-                    title={user.paused ? "Unpause" : "Pause"}
-                    className="h-8 w-8 p-0"
-                  >
-                    {user.paused ? <Play className="h-3 w-3 sm:h-4 sm:w-4" /> : <Pause className="h-3 w-3 sm:h-4 sm:w-4" />}
-                  </Button>
-                  {user.id_image_url && (
+                    showCancellationBadge={false}
+                  />
+                </TableCell>
+                <TableCell className="font-medium text-white text-xs sm:text-sm min-w-[180px] hidden sm:table-cell">
+                  <div className="truncate max-w-[180px]" title={user.email}>{user.email}</div>
+                </TableCell>
+                <TableCell className="min-w-[80px] hidden md:table-cell">
+                  <Badge variant="outline" className="text-white border-white/30 text-xs">User</Badge>
+                </TableCell>
+                <TableCell className="min-w-[100px]">
+                  <div className="flex flex-col gap-1">
+                    {user.is_verified ? (
+                      <Badge className="bg-green-500 text-white text-xs whitespace-nowrap">Verified</Badge>
+                    ) : user.verification_status === "rejected" ? (
+                      <Badge variant="destructive" className="text-xs whitespace-nowrap">Rejected</Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs whitespace-nowrap">Pending</Badge>
+                    )}
+                    {user.paused && <Badge variant="secondary" className="text-xs whitespace-nowrap">Paused</Badge>}
+                  </div>
+                </TableCell>
+                <TableCell className="text-white text-xs sm:text-sm min-w-[70px] hidden lg:table-cell">
+                  {user.rider_rating_avg > 0 || user.driver_rating_avg > 0
+                    ? `${Math.max(user.rider_rating_avg, user.driver_rating_avg).toFixed(1)}`
+                    : "N/A"}
+                </TableCell>
+                <TableCell className="min-w-[280px]">
+                  <div className="flex gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    {!user.is_verified && user.verification_status === "pending" && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleVerificationToggle(user.id, user.is_verified)}
+                          disabled={loading === user.id}
+                          title="Approve Verification"
+                          className="h-8 px-2 text-xs whitespace-nowrap"
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">Approve</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleRejectVerification(user.id)}
+                          disabled={loading === user.id}
+                          title="Reject Verification"
+                          className="h-8 px-2 text-xs whitespace-nowrap"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          <span className="hidden sm:inline">Reject</span>
+                        </Button>
+                      </>
+                    )}
+                    {user.is_verified && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerificationToggle(user.id, user.is_verified)}
+                        disabled={loading === user.id}
+                        title="Unverify User"
+                        className="h-8 w-8 p-0"
+                      >
+                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant={user.paused ? "default" : "outline"}
+                      onClick={() => handlePauseToggle(user.id, user.paused)}
+                      disabled={loading === user.id}
+                      title={user.paused ? "Unpause" : "Pause"}
+                      className="h-8 w-8 p-0"
+                    >
+                      {user.paused ? <Play className="h-3 w-3 sm:h-4 sm:w-4" /> : <Pause className="h-3 w-3 sm:h-4 sm:w-4" />}
+                    </Button>
+                    {user.id_image_url && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewIdImage(user.id_image_url)}
+                        className="h-8 w-8 p-0"
+                        title="View ID"
+                      >
+                        <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleViewIdImage(user.id_image_url)}
+                      onClick={() => onViewUser(user.id)}
                       className="h-8 w-8 p-0"
-                      title="View ID"
+                      title="View User"
                     >
-                      <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onViewUser(user.id)}
-                    className="h-8 w-8 p-0"
-                    title="View User"
-                  >
-                    <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleLockNameToggle(user.id, user.admin_locked_fields)}
-                    disabled={loading === user.id || !user.full_name}
-                    title={user.admin_locked_fields?.includes('full_name') ? "Unlock full name" : "Lock full name"}
-                    className="h-8 w-8 p-0"
-                  >
-                    {user.admin_locked_fields?.includes('full_name') ? (
-                      <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
-                    ) : (
-                      <Unlock className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleLockNameToggle(user.id, user.admin_locked_fields)}
+                      disabled={loading === user.id || !user.full_name}
+                      title={user.admin_locked_fields?.includes('full_name') ? "Unlock full name" : "Lock full name"}
+                      className="h-8 w-8 p-0"
+                    >
+                      {user.admin_locked_fields?.includes('full_name') ? (
+                        <Lock className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+                      ) : (
+                        <Unlock className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
