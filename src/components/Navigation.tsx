@@ -173,7 +173,7 @@ export function Navigation() {
                     <Button 
                       variant="ghost" 
                       onClick={() => { navigate('/install-app'); setIsMenuOpen(false); }} 
-                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                      className="w-full justify-center text-emerald-400 hover:text-emerald-300 transition-all duration-300 hover:scale-105"
                     >
                       <Download className="mr-2 h-4 w-4" />
                       Download App
