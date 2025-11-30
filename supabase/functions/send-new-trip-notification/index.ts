@@ -180,6 +180,21 @@ Deno.serve(async (req) => {
     const debounceThreshold = new Date(Date.now() - DEBOUNCE_MINUTES * 60 * 1000).toISOString();
     
     const notificationPromises = nearbyDrivers.map(async (driver) => {
+      // Check driver's notification preferences
+      const { data: driverProfile } = await supabaseClient
+        .from('profiles')
+        .select('notification_preferences')
+        .eq('id', driver.user_id)
+        .single();
+
+      const notifPrefs = driverProfile?.notification_preferences as Record<string, any>;
+      const newOffersEnabled = notifPrefs?.new_offers ?? false;
+
+      if (!newOffersEnabled) {
+        console.log(`Skipping notification for driver ${driver.user_id} - new_offers preference disabled`);
+        return null;
+      }
+
       // Check if we've sent a notification to this driver about this trip recently
       const { data: recentNotifications } = await supabaseClient
         .from('notifications')
