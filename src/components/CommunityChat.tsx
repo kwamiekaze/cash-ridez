@@ -9,6 +9,7 @@ import { Send, Trash2, Shield, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 interface Message {
   id: string;
@@ -18,6 +19,7 @@ interface Message {
   is_flagged?: boolean;
   sender?: {
     display_name: string;
+    full_name: string | null;
     photo_url: string | null;
   };
 }
@@ -32,6 +34,7 @@ export function CommunityChat() {
   const [messageCount, setMessageCount] = useState(0);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [canSendMessage, setCanSendMessage] = useState(true);
+  const [adminUserIds, setAdminUserIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Check user status
@@ -45,6 +48,16 @@ export function CommunityChat() {
         _role: 'admin' 
       });
       setIsAdmin(Boolean(adminData));
+
+      // Fetch all admin user IDs
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+      
+      if (adminRoles) {
+        setAdminUserIds(new Set(adminRoles.map(r => r.user_id)));
+      }
 
       // Check message count and subscription
       const { data: profile } = await supabase
@@ -88,7 +101,7 @@ export function CommunityChat() {
         const userIds = [...new Set(data.map(m => m.user_id))];
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name, photo_url")
+          .select("id, display_name, full_name, photo_url")
           .in("id", userIds);
 
         // Check which messages are flagged
@@ -127,7 +140,7 @@ export function CommunityChat() {
           // Fetch sender profile
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id, display_name, photo_url")
+            .select("id, display_name, full_name, photo_url")
             .eq("id", newMsg.user_id)
             .single();
 
@@ -349,15 +362,18 @@ export function CommunityChat() {
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={msg.sender?.photo_url || undefined} />
                     <AvatarFallback>
-                      {msg.sender?.display_name?.[0] || "U"}
+                      {msg.sender?.full_name?.[0] || msg.sender?.display_name?.[0] || "U"}
                     </AvatarFallback>
                   </Avatar>
 
                   <div className={`flex-1 ${isOwnMessage ? "text-right" : ""}`}>
                     <div className="flex items-center gap-2 mb-1">
                       {!isOwnMessage && (
-                        <span className="text-sm font-medium">
-                          {msg.sender?.display_name || "User"}
+                        <span className="text-sm font-medium flex items-center gap-1">
+                          {msg.sender?.full_name || msg.sender?.display_name || "User"}
+                          {adminUserIds.has(msg.user_id) && (
+                            <PremiumCrown size={14} />
+                          )}
                         </span>
                       )}
                       {isFlaggedForAdmin && (

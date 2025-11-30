@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, Loader2, Edit2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 interface DirectMessageDialogProps {
   otherUserId: string;
@@ -37,12 +38,14 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
   const [customChatName, setCustomChatName] = useState("");
   const [subscriptionActive, setSubscriptionActive] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminUserIds, setAdminUserIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && user && otherUserId) {
       initializeChat();
       checkSubscription();
+      fetchAdminUsers();
     }
   }, [open, user, otherUserId]);
 
@@ -62,6 +65,21 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
       _role: 'admin'
     });
     setIsAdmin(Boolean(adminData));
+  };
+
+  const fetchAdminUsers = async () => {
+    try {
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+      
+      if (adminRoles) {
+        setAdminUserIds(new Set(adminRoles.map(r => r.user_id)));
+      }
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+    }
   };
 
   const initializeChat = async () => {
@@ -296,11 +314,14 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
                       >
                         <Avatar className="h-8 w-8">
                           <AvatarFallback>
-                            {isOwn ? "You" : otherUserProfile?.display_name?.[0] || "U"}
+                            {isOwn ? "You" : otherUserProfile?.full_name?.[0] || otherUserProfile?.display_name?.[0] || "U"}
                           </AvatarFallback>
                         </Avatar>
                         <div className={`flex-1 ${isOwn ? "text-right" : ""}`}>
-                          <div className="text-xs text-muted-foreground mb-1">
+                          <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1 justify-start">
+                            {!isOwn && adminUserIds.has(msg.sender_id) && (
+                              <PremiumCrown size={12} />
+                            )}
                             {format(new Date(msg.created_at), "h:mm a")}
                           </div>
                           <div
