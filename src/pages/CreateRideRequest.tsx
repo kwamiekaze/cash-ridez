@@ -323,7 +323,7 @@ const CreateRideRequest = () => {
                 <Input
                   id="time"
                   type="datetime-local"
-                  className="pl-10 text-sm md:text-base [&::-webkit-datetime-edit-fields-wrapper]:text-sm [&::-webkit-calendar-picker-indicator]:scale-90"
+                  className="pl-10 h-10 text-xs sm:text-sm md:text-base [&::-webkit-datetime-edit-fields-wrapper]:text-xs [&::-webkit-datetime-edit-fields-wrapper]:sm:text-sm [&::-webkit-calendar-picker-indicator]:scale-75 [&::-webkit-calendar-picker-indicator]:sm:scale-90"
                   value={formData.pickupTime}
                   onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
                 />
