@@ -1,8 +1,13 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, lazy, Suspense } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { VerificationWelcomeDialog } from "@/components/VerificationWelcomeDialog";
+
+const VerificationWelcomeDialog = lazy(() => 
+  import("@/components/VerificationWelcomeDialog").then(module => ({
+    default: module.VerificationWelcomeDialog
+  }))
+);
 
 interface AuthContextType {
   user: User | null;
@@ -152,10 +157,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={{ user, session, signIn, signUp, signOut, loading }}>
       {children}
       {user && (
-        <VerificationWelcomeDialog 
-          open={showWelcomeDialog} 
-          onOpenChange={setShowWelcomeDialog}
-        />
+        <Suspense fallback={null}>
+          <VerificationWelcomeDialog 
+            open={showWelcomeDialog} 
+            onOpenChange={setShowWelcomeDialog}
+          />
+        </Suspense>
       )}
     </AuthContext.Provider>
   );
