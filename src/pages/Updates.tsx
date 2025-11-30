@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { Megaphone } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface SystemMessage {
   id: string;
@@ -19,12 +20,28 @@ interface SystemMessage {
 }
 
 export default function Updates() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<SystemMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+    checkAdminStatus();
+  }, [user]);
+
+  const checkAdminStatus = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle();
+    
+    setIsAdmin(!!data);
+  };
 
   const fetchMessages = async () => {
     try {
@@ -81,13 +98,15 @@ export default function Updates() {
                     <CardHeader>
                       <div className="flex items-start justify-between gap-4">
                         <CardTitle className="text-xl">{msg.title}</CardTitle>
-                        <div className="flex flex-wrap gap-2">
-                          {msg.target_roles.map((role) => (
-                            <Badge key={role} variant="secondary" className="capitalize">
-                              {role}
-                            </Badge>
-                          ))}
-                        </div>
+                        {isAdmin && (
+                          <div className="flex flex-wrap gap-2">
+                            {msg.target_roles.map((role) => (
+                              <Badge key={role} variant="secondary" className="capitalize">
+                                {role}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(msg.published_at), "PPpp")}
