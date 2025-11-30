@@ -15,6 +15,7 @@ interface SystemMessage {
   target_roles: string[];
   published_at: string;
   created_at: string;
+  attachment_url: string | null;
 }
 
 export default function Updates() {
@@ -94,6 +95,26 @@ export default function Updates() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-foreground whitespace-pre-wrap">{msg.message}</p>
+                      {msg.attachment_url && (
+                        <div className="mt-4">
+                          {msg.attachment_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                            <img 
+                              src={msg.attachment_url} 
+                              alt="Attachment" 
+                              className="max-w-full h-auto rounded-md border"
+                            />
+                          ) : (
+                            <a 
+                              href={msg.attachment_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline flex items-center gap-2"
+                            >
+                              View Attachment
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
