@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertTriangle, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { 
   Dialog, 
@@ -136,20 +135,10 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
   if (!stats) {
     // Show 0% badge if no stats available yet
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Badge variant="default" className={`${sizeClass} flex items-center gap-1`}>
-            <CheckCircle2 className="h-3 w-3" />
-            {showPercentage && <span>0%</span>}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="text-sm space-y-1">
-            <p className="font-semibold">No History</p>
-            <p>This user has no cancellation history yet.</p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
+      <Badge variant="default" className={`${sizeClass} flex items-center gap-1`} title="No cancellation history yet">
+        <CheckCircle2 className="h-3 w-3" />
+        {showPercentage && <span>0%</span>}
+      </Badge>
     );
   }
 
@@ -173,43 +162,21 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
 
     // Always show badge, even for 0%
     return (
-      <Tooltip key={roleType}>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <TooltipTrigger asChild>
-            <DialogTrigger asChild>
-              <Badge 
-                variant={getVariant(badgeTier)} 
-                className={`${sizeClass} flex items-center gap-1 cursor-pointer`}
-              >
-                <IconComponent className="h-3 w-3" />
-                {showPercentage && (
-                  <span>
-                    {formatRate(cancellationRate)}%
-                  </span>
-                )}
-              </Badge>
-            </DialogTrigger>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div className="text-sm space-y-2">
-              <p className="font-semibold">{getTitle(badgeTier)}</p>
-              <p>
-                {roleType === "rider" ? "Rider" : "Driver"} cancellation rate:{" "}
-                <span className={getBadgeClass(badgeTier)}>
-                  {formatRate(cancellationRate)}%
-                </span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Based on {totalCommitted} committed trips
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {chargeableCancels} chargeable cancellations
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Click to view detailed cancellation breakdown
-              </p>
-            </div>
-          </TooltipContent>
+      <Dialog key={roleType} open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogTrigger asChild>
+          <Badge 
+            variant={getVariant(badgeTier)} 
+            className={`${sizeClass} flex items-center gap-1 cursor-pointer`}
+            title={`${getTitle(badgeTier)}: ${formatRate(cancellationRate)}% - Click for details`}
+          >
+            <IconComponent className="h-3 w-3" />
+            {showPercentage && (
+              <span>
+                {formatRate(cancellationRate)}%
+              </span>
+            )}
+          </Badge>
+        </DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancellation Stats - {roleType === "rider" ? "Rider" : "Driver"}</DialogTitle>
@@ -274,8 +241,7 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
             Close
           </Button>
         </DialogContent>
-        </Dialog>
-      </Tooltip>
+      </Dialog>
     );
   };
 
