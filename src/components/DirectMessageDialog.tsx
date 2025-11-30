@@ -36,6 +36,7 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
   const [editingName, setEditingName] = useState(false);
   const [customChatName, setCustomChatName] = useState("");
   const [subscriptionActive, setSubscriptionActive] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +55,13 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
       .single();
     
     setSubscriptionActive(profile?.subscription_active || false);
+
+    // Check if user is admin
+    const { data: adminData } = await supabase.rpc('has_role', {
+      _user_id: user.id,
+      _role: 'admin'
+    });
+    setIsAdmin(Boolean(adminData));
   };
 
   const initializeChat = async () => {
@@ -319,7 +327,7 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
                   disabled={sending}
-                  maxLength={500}
+                  maxLength={isAdmin ? 1000 : 500}
                 />
                 <Button type="submit" disabled={!newMessage.trim() || sending}>
                   {sending ? (

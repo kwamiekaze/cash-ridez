@@ -463,7 +463,7 @@ export function CommunityChat() {
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder={canSendMessage ? "Type a message..." : "Subscribe to send messages"}
             disabled={sending || !canSendMessage}
-            maxLength={500}
+            maxLength={isAdmin ? 1000 : 500}
           />
           <Button type="submit" disabled={!newMessage.trim() || sending || !canSendMessage}>
             <Send className="h-4 w-4" />
