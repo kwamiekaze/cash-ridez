@@ -16,14 +16,12 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { useToast } from "@/hooks/use-toast";
 import TripActionDialog from "@/components/TripActionDialog";
 import { AvailableDriversList } from "@/components/AvailableDriversList";
-import { SubscriptionPanel } from "@/components/SubscriptionPanel";
 import { TripLimitGate } from "@/components/TripLimitGate";
 import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
-import { useSubscription } from "@/hooks/useSubscription";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 
 const RiderDashboard = () => {
@@ -31,7 +29,6 @@ const RiderDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { startCheckout } = useSubscription();
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "chat">("open");
   const [requests, setRequests] = useState<any[]>([]);
@@ -697,10 +694,6 @@ const RiderDashboard = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Subscription Panel - Positioned at bottom */}
-        <div className="mt-8">
-          <SubscriptionPanel />
-        </div>
       </div>
 
       {selectedTrip && (
