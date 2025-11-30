@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Megaphone } from "lucide-react";
+import { Megaphone, Paperclip, X } from "lucide-react";
 
 interface SystemMessageDialogProps {
   open: boolean;
@@ -25,6 +25,7 @@ export function SystemMessageDialog({ open, onOpenChange, onSuccess }: SystemMes
     admin: true,
   });
   const [sending, setSending] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +55,30 @@ export function SystemMessageDialog({ open, onOpenChange, onSuccess }: SystemMes
     setSending(true);
 
     try {
+      let attachmentUrl: string | null = null;
+
+      // Upload attachment if provided
+      if (attachmentFile) {
+        const fileExt = attachmentFile.name.split('.').pop();
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = fileName;
+
+        const { error: uploadError } = await supabase.storage
+          .from('system-message-attachments')
+          .upload(filePath, attachmentFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('system-message-attachments')
+          .getPublicUrl(filePath);
+
+        attachmentUrl = publicUrl;
+      }
+
       // Insert system message
       const { data: messageData, error: messageError } = await supabase
         .from("system_messages")
@@ -64,6 +89,7 @@ export function SystemMessageDialog({ open, onOpenChange, onSuccess }: SystemMes
           is_published: true,
           published_at: new Date().toISOString(),
           created_by: (await supabase.auth.getUser()).data.user?.id || '',
+          attachment_url: attachmentUrl,
         } as any)
         .select()
         .single();
@@ -104,6 +130,7 @@ export function SystemMessageDialog({ open, onOpenChange, onSuccess }: SystemMes
       // Reset form
       setTitle("");
       setMessage("");
+      setAttachmentFile(null);
       setTargetRoles({ rider: true, driver: true, admin: true });
       onOpenChange(false);
       onSuccess?.();
@@ -159,6 +186,51 @@ export function SystemMessageDialog({ open, onOpenChange, onSuccess }: SystemMes
             <p className="text-xs text-muted-foreground text-right">
               {message.length}/1000 characters
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Attachment (Optional)</Label>
+            <div className="space-y-2">
+              {attachmentFile ? (
+                <div className="flex items-center gap-2 p-2 border rounded-md">
+                  <Paperclip className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm flex-1 truncate">{attachmentFile.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAttachmentFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 5242880) {
+                          toast({
+                            title: "Error",
+                            description: "File size must be less than 5MB",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setAttachmentFile(file);
+                      }
+                    }}
+                    className="cursor-pointer"
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Images or PDFs, max 5MB
+              </p>
+            </div>
           </div>
 
           <div className="space-y-2">

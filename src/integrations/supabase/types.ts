@@ -1108,6 +1108,7 @@ export type Database = {
       }
       system_messages: {
         Row: {
+          attachment_url: string | null
           created_at: string
           created_by: string
           id: string
@@ -1119,6 +1120,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_url?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -1130,6 +1132,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_url?: string | null
           created_at?: string
           created_by?: string
           id?: string
