@@ -151,10 +151,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AuthContext.Provider value={{ user, session, signIn, signUp, signOut, loading }}>
       {children}
-      <VerificationWelcomeDialog 
-        open={showWelcomeDialog} 
-        onOpenChange={setShowWelcomeDialog}
-      />
+      {user && (
+        <VerificationWelcomeDialog 
+          open={showWelcomeDialog} 
+          onOpenChange={setShowWelcomeDialog}
+        />
+      )}
     </AuthContext.Provider>
   );
 };
