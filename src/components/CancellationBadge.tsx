@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertTriangle, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { 
   Dialog, 
@@ -26,6 +26,7 @@ const statsCache = new Map<string, any>();
 export function CancellationBadge({ userId, role = "both", size = "sm", showIcon = true }: CancellationBadgeProps) {
   const [stats, setStats] = useState<any>(statsCache.get(userId) || null);
   const [loading, setLoading] = useState(!statsCache.has(userId));
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -102,7 +103,30 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
     }
   };
 
+  const getTitle = (tier: string) => {
+    switch (tier) {
+      case 'green': return 'Excellent Reliability';
+      case 'yellow': return 'Fair Reliability';
+      case 'red': return 'Poor Reliability';
+      default: return 'Reliability Status';
+    }
+  };
+
+  const getBadgeClass = (tier: string) => {
+    switch (tier) {
+      case 'green': return 'text-green-600';
+      case 'yellow': return 'text-yellow-600';
+      case 'red': return 'text-red-600';
+      default: return '';
+    }
+  };
+
+  const formatRate = (rate: number) => {
+    return Math.round(rate * 100) / 100;
+  };
+
   const sizeClass = size === "sm" ? "text-[10px] px-1.5 py-0" : "text-xs px-2 py-0.5";
+  const showPercentage = true;
 
   if (loading) {
     return null;
@@ -112,22 +136,20 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
   if (!stats) {
     // Show 0% badge if no stats available yet
     return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant="default" className={`${sizeClass} flex items-center gap-1`}>
-              <CheckCircle2 className="h-3 w-3" />
-              Cancel: 0%
-            </Badge>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs">
-            <div className="space-y-1 text-xs">
-              <p className="font-semibold">No Cancellation Data</p>
-              <p>This user has no cancellation history yet.</p>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="default" className={`${sizeClass} flex items-center gap-1`}>
+            <CheckCircle2 className="h-3 w-3" />
+            {showPercentage && <span>0%</span>}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="text-sm space-y-1">
+            <p className="font-semibold">No History</p>
+            <p>This user has no cancellation history yet.</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -138,76 +160,122 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
     const cancels90d = roleType === "rider" ? (stats?.rider_90d_cancels || 0) : (stats?.driver_90d_cancels || 0);
     const committedLifetime = roleType === "rider" ? (stats?.rider_lifetime_committed || 0) : (stats?.driver_lifetime_committed || 0);
     const cancelsLifetime = roleType === "rider" ? (stats?.rider_lifetime_cancels || 0) : (stats?.driver_lifetime_cancels || 0);
+    const chargeableCancels = roleType === "rider" ? (stats?.rider_cancels_chargeable || 0) : (stats?.driver_cancels_chargeable || 0);
+    const totalCommitted = roleType === "rider" ? (stats?.rider_total_committed || 0) : (stats?.driver_total_committed || 0);
 
+    const cancellationRate = rate90d;
     const badgeTier = stats?.badge_tier || 'green';
     const IconComponent = getIcon(badgeTier);
 
+    const handleBadgeClick = () => {
+      setDialogOpen(true);
+    };
+
     // Always show badge, even for 0%
     return (
-      <TooltipProvider key={roleType}>
+      <Dialog key={roleType} open={dialogOpen} onOpenChange={setDialogOpen}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge 
-              variant={getVariant(badgeTier)} 
-              className={`${sizeClass} flex items-center gap-1`}
-              aria-label={`Cancellation rate ${rate90d.toFixed(0)} percent in last 90 days`}
-            >
-              {showIcon && <IconComponent className="h-3 w-3" />}
-              Cancel: {rate90d.toFixed(0)}%
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="p-0 h-auto ml-1" onClick={(e) => e.stopPropagation()}>
-                    <Info className="h-3 w-3" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Cancellation Rate Explained</DialogTitle>
-                    <DialogDescription>
-                      How we calculate reliability scores
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm">
-                    <div>
-                      <h4 className="font-semibold mb-2">90-Day Rate (Primary)</h4>
-                      <p>Percentage of trips cancelled in the last 90 days. This is the main score shown.</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Lifetime Rate (Secondary)</h4>
-                      <p>Overall cancellation rate across all trips ever taken.</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Color Coding</h4>
-                      <ul className="space-y-1">
-                        <li>🟢 Green: Under 5% (Excellent)</li>
-                        <li>🟡 Yellow: 5-15% (Moderate)</li>
-                        <li>🔴 Red: Over 15% (High risk)</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold mb-2">Notes</h4>
-                      <p>Only trips that were committed to (accepted by a driver) count toward cancellation rates. Safety-related cancellations may not be counted.</p>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </Badge>
+            <DialogTrigger asChild>
+              <Badge 
+                variant={getVariant(badgeTier)} 
+                className={`${sizeClass} flex items-center gap-1 cursor-pointer`}
+              >
+                <IconComponent className="h-3 w-3" />
+                {showPercentage && (
+                  <span>
+                    {formatRate(cancellationRate)}%
+                  </span>
+                )}
+              </Badge>
+            </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs">
-            <div className="space-y-1 text-xs">
-              <p className="font-semibold capitalize">{roleType} Cancellation Rate</p>
-              <p>90-day: {rate90d.toFixed(1)}% ({cancels90d.toFixed(1)}/{committed90d || 0})</p>
-              <p>Lifetime: {rateLifetime.toFixed(1)}% ({cancelsLifetime.toFixed(1)}/{committedLifetime || 0})</p>
-              <p className="text-muted-foreground mt-2">
-                {committed90d === 0 && committedLifetime === 0 && "No trip history"}
-                {(committed90d > 0 || committedLifetime > 0) && rate90d < 5 && "Excellent reliability"}
-                {(committed90d > 0 || committedLifetime > 0) && rate90d >= 5 && rate90d <= 15 && "Moderate cancellation rate"}
-                {(committed90d > 0 || committedLifetime > 0) && rate90d > 15 && "High cancellation rate - caution advised"}
+          <TooltipContent>
+            <div className="text-sm space-y-2">
+              <p className="font-semibold">{getTitle(badgeTier)}</p>
+              <p>
+                {roleType === "rider" ? "Rider" : "Driver"} cancellation rate:{" "}
+                <span className={getBadgeClass(badgeTier)}>
+                  {formatRate(cancellationRate)}%
+                </span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Based on {totalCommitted} committed trips
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {chargeableCancels} chargeable cancellations
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Click to view detailed cancellation breakdown
               </p>
             </div>
           </TooltipContent>
         </Tooltip>
-      </TooltipProvider>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancellation Stats - {roleType === "rider" ? "Rider" : "Driver"}</DialogTitle>
+            <DialogDescription>
+              Detailed breakdown of cancellation history and reliability
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-muted">
+              <h3 className="font-semibold mb-2">Overall Status</h3>
+              <div className="flex items-center gap-2">
+                <Badge variant={getVariant(badgeTier)} className="flex items-center gap-1">
+                  <IconComponent className="h-4 w-4" />
+                  {getTitle(badgeTier)}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-sm text-muted-foreground">90-Day Rate</p>
+                <p className="text-2xl font-bold">{formatRate(rate90d)}%</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {cancels90d} of {committed90d} trips
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-sm text-muted-foreground">Lifetime Rate</p>
+                <p className="text-2xl font-bold">{formatRate(rateLifetime)}%</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {cancelsLifetime} of {committedLifetime} trips
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted">
+              <h3 className="font-semibold mb-2">Chargeable Cancellations</h3>
+              <p className="text-xl font-bold">{chargeableCancels}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Total number of cancellations that count against reliability
+              </p>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <div className="text-xs text-muted-foreground">
+                  <p className="mb-1">Cancellations are weighted based on timing:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Last-minute cancellations (within 2 hours) count more heavily</li>
+                    <li>Cancellations with valid reasons may count less</li>
+                    <li>Your 90-day rate determines your reliability badge</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button onClick={() => setDialogOpen(false)} className="w-full">
+            Close
+          </Button>
+        </DialogContent>
+      </Dialog>
     );
   };
 
