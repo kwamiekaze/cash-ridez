@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { VerificationWelcomeDialog } from "@/components/VerificationWelcomeDialog";
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -115,9 +117,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate("/auth");
   };
 
+  // Subscribe to profile verification changes to show welcome dialog
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('profile-verification-dialog')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          const oldStatus = payload.old.verification_status;
+          const newStatus = payload.new.verification_status;
+          
+          // Show welcome dialog when user becomes verified
+          if (oldStatus !== 'approved' && newStatus === 'approved') {
+            setShowWelcomeDialog(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ user, session, signIn, signUp, signOut, loading }}>
       {children}
+      <VerificationWelcomeDialog 
+        open={showWelcomeDialog} 
+        onOpenChange={setShowWelcomeDialog}
+      />
     </AuthContext.Provider>
   );
 };
