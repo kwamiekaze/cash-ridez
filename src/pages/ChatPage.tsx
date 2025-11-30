@@ -13,6 +13,7 @@ import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { useReadReceipts } from "@/hooks/useReadReceipts";
 import { useAuth } from "@/contexts/AuthContext";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,7 @@ export default function ChatPage() {
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminUserIds, setAdminUserIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -43,6 +45,7 @@ export default function ChatPage() {
     fetchMessages();
     loadReadReceiptsPreference();
     checkIfAdmin();
+    fetchAdminUsers();
 
     // Subscribe to realtime messages
     const channel = supabase
@@ -109,6 +112,21 @@ export default function ChatPage() {
     }
   };
 
+  const fetchAdminUsers = async () => {
+    try {
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+      
+      if (adminRoles) {
+        setAdminUserIds(new Set(adminRoles.map(r => r.user_id)));
+      }
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+    }
+  };
+
   const fetchTripInfo = async () => {
     try {
       const { data, error } = await supabase
@@ -158,7 +176,7 @@ export default function ChatPage() {
         const senderIds = [...new Set(data.map(msg => msg.sender_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, display_name, full_name')
+          .select('id, display_name, full_name, photo_url')
           .in('id', senderIds);
         
         const profileMap = new Map(profiles?.map(p => [p.id, p]));
@@ -384,7 +402,12 @@ export default function ChatPage() {
                   </Avatar>
                    <div className={`flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'} max-w-[70%]`}>
                       <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
-                        <span>{message.sender?.full_name || message.sender?.display_name || message.sender_id}</span>
+                        <span className="flex items-center gap-1">
+                          {message.sender?.full_name || message.sender?.display_name || message.sender_id}
+                          {message.sender_id && adminUserIds.has(message.sender_id) && (
+                            <PremiumCrown size={12} />
+                          )}
+                        </span>
                         {message.sender_id && (
                           <UserChip
                             userId={message.sender_id}
