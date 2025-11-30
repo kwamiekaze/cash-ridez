@@ -464,11 +464,6 @@ const RiderDashboard = () => {
           </Button>
         </div>
 
-        {/* Subscription Panel */}
-        <div className="mb-8">
-          <SubscriptionPanel />
-        </div>
-
         {/* Trips Tabs */}
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "chat")} className="w-full">
           <TabsList className="grid w-full grid-cols-4 gap-1">
@@ -701,6 +696,11 @@ const RiderDashboard = () => {
             <CommunityChat />
           </TabsContent>
         </Tabs>
+
+        {/* Subscription Panel - Positioned at bottom */}
+        <div className="mt-8">
+          <SubscriptionPanel />
+        </div>
       </div>
 
       {selectedTrip && (
