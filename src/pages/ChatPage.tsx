@@ -27,6 +27,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [readReceiptsEnabled, setReadReceiptsEnabled] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +42,7 @@ export default function ChatPage() {
     fetchTripInfo();
     fetchMessages();
     loadReadReceiptsPreference();
+    checkIfAdmin();
 
     // Subscribe to realtime messages
     const channel = supabase
@@ -91,6 +93,19 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error('Error loading read receipts preference:', error);
+    }
+  };
+
+  const checkIfAdmin = async () => {
+    if (!user) return;
+    try {
+      const { data: adminData } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
+      });
+      setIsAdmin(Boolean(adminData));
+    } catch (error) {
+      console.error('Error checking admin status:', error);
     }
   };
 
@@ -520,6 +535,7 @@ export default function ChatPage() {
                 disabled={sending || uploading || !isConnected()}
                 className="flex-1 min-h-[44px]"
                 aria-label="Message input"
+                maxLength={isAdmin ? 1000 : 500}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
