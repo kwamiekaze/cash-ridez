@@ -173,8 +173,8 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
 
     // Always show badge, even for 0%
     return (
-      <Dialog key={roleType} open={dialogOpen} onOpenChange={setDialogOpen}>
-        <Tooltip>
+      <Tooltip key={roleType}>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
               <Badge 
@@ -210,7 +210,6 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
               </p>
             </div>
           </TooltipContent>
-        </Tooltip>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancellation Stats - {roleType === "rider" ? "Rider" : "Driver"}</DialogTitle>
@@ -275,7 +274,8 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
             Close
           </Button>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      </Tooltip>
     );
   };
 
