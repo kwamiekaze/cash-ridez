@@ -151,16 +151,16 @@ export function NotificationPreferences() {
         </div>
 
         <div className="space-y-4">
-          {/* New Offers */}
+          {/* New Request */}
           <div className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors">
             <div className="flex items-start gap-3 flex-1">
               <DollarSign className="h-5 w-5 mt-0.5 text-primary" />
               <div>
                 <Label htmlFor="new_offers" className="font-medium cursor-pointer">
-                  New Offers
+                  New Request
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Notify when drivers make offers on your trips
+                  Notify when riders make a new trip request
                 </p>
               </div>
             </div>
