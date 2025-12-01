@@ -328,7 +328,7 @@ const CreateRideRequest = () => {
                 <Input
                   id="time"
                   type="datetime-local"
-                  className="pl-10"
+                  className="pl-10 w-full"
                   value={formData.pickupTime}
                   onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
                 />
