@@ -52,6 +52,25 @@ const CreateRideRequest = () => {
   const [loading, setLoading] = useState(true);
   const [canCreateTrip, setCanCreateTrip] = useState(false);
 
+  const handleSaveContact = () => {
+    const vCard = `BEGIN:VCARD
+VERSION:3.0
+FN:Cash Ridez Connect LLC
+TEL;TYPE=CELL:+16789288816
+END:VCARD`;
+    
+    const blob = new Blob([vCard], { type: 'text/vcard' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'CashRidezConnect.vcf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success("Contact file downloaded! Open it to save to your phone.");
+  };
+
   useEffect(() => {
     const checkVerification = async () => {
       if (!user) return;
@@ -291,7 +310,15 @@ const CreateRideRequest = () => {
         <Card className="max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
           <p className="text-sm text-muted-foreground mb-6">
-            Post your travel plans to connect with drivers in the community, for easy in app calling save +1 (678) 928-8816 to your contact list.
+            Post your travel plans to connect with drivers in the community, for easy in app calling save{' '}
+            <button
+              type="button"
+              onClick={handleSaveContact}
+              className="text-warning hover:text-warning/80 font-semibold underline decoration-warning/50 hover:decoration-warning transition-colors cursor-pointer"
+            >
+              +1 (678) 928-8816
+            </button>
+            {' '}to your contact list.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
