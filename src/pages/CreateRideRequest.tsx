@@ -335,14 +335,14 @@ const CreateRideRequest = () => {
                           const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
                           setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
                         }}
-                        className="h-10 w-full"
+                        className="h-12 w-full text-base"
                       />
                     </div>
                     <div className="space-y-2">
                       <Button
                         type="button"
                         variant="default"
-                        className="w-full h-10"
+                        className="w-full h-12"
                         onClick={() => setPopoverOpen(false)}
                       >
                         Set
@@ -351,8 +351,11 @@ const CreateRideRequest = () => {
                         <Button
                           type="button"
                           variant="outline"
-                          className="w-full h-10"
-                          onClick={() => setFormData({ ...formData, pickupTime: '' })}
+                          className="w-full h-12"
+                          onClick={() => {
+                            setFormData({ ...formData, pickupTime: '' });
+                            setPopoverOpen(false);
+                          }}
                         >
                           Clear
                         </Button>
