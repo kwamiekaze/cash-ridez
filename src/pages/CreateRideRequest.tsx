@@ -94,6 +94,7 @@ const CreateRideRequest = () => {
     
     checkVerification();
   }, [user, navigate]);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [formData, setFormData] = useState({
     pickupAddress: "",
     dropoffAddress: "",
@@ -295,7 +296,7 @@ const CreateRideRequest = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="flex flex-col items-center mb-6 gap-2">
-              <Popover>
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     type="button"
@@ -342,7 +343,7 @@ const CreateRideRequest = () => {
                         type="button"
                         variant="default"
                         className="w-full h-10"
-                        onClick={() => {}}
+                        onClick={() => setPopoverOpen(false)}
                       >
                         Set
                       </Button>
