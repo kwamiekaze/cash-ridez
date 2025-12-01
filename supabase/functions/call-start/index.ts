@@ -32,6 +32,41 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to extract phone number from text
+function extractPhoneNumber(text: string): string | null {
+  if (!text) return null;
+  
+  // Remove common formatting characters
+  const cleaned = text.replace(/[\s\-\(\)\.]/g, '');
+  
+  // Match various phone number formats:
+  // - 10 digits: 1234567890
+  // - 11 digits with country code: 11234567890 or +11234567890
+  const phoneRegex = /(\+?1)?(\d{10})/;
+  const match = cleaned.match(phoneRegex);
+  
+  if (match && match[2]) {
+    // Return in E.164 format: +1XXXXXXXXXX
+    return `+1${match[2]}`;
+  }
+  
+  return null;
+}
+
+// Helper function to extract contact info from rider_note
+function extractContactFromRiderNote(riderNote: string | null): string | null {
+  if (!riderNote) return null;
+  
+  // rider_note format: "Trip Details: ... | Contact: ... | Emergency: ..."
+  const contactMatch = riderNote.match(/Contact:\s*([^|]+)/i);
+  if (contactMatch && contactMatch[1]) {
+    const contactText = contactMatch[1].trim();
+    return extractPhoneNumber(contactText);
+  }
+  
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -77,11 +112,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch trip details
+    // Fetch trip details including rider_note for fallback contact info
     console.log('[call-start] Fetching trip details');
     const { data: trip, error: tripError } = await supabase
       .from('ride_requests')
-      .select('id, status, rider_id, assigned_driver_id')
+      .select('id, status, rider_id, assigned_driver_id, rider_note')
       .eq('id', trip_id)
       .single();
 
@@ -133,9 +168,25 @@ Deno.serve(async (req) => {
     const riderProfile = profiles.find(p => p.id === trip.rider_id);
     const driverProfile = profiles.find(p => p.id === trip.assigned_driver_id);
 
+    // Get rider phone number - fallback to contact info from rider_note if profile phone is missing
+    let riderPhoneNumber = riderProfile?.phone_number?.trim() || '';
+    if (!riderPhoneNumber && trip.rider_note) {
+      console.log('[call-start] Rider has no profile phone, attempting to extract from rider_note');
+      const extractedPhone = extractContactFromRiderNote(trip.rider_note);
+      if (extractedPhone) {
+        console.log('[call-start] Successfully extracted phone from rider_note');
+        riderPhoneNumber = extractedPhone;
+      } else {
+        console.log('[call-start] Could not extract phone from rider_note');
+      }
+    }
+
+    // Get driver phone number from profile
+    const driverPhoneNumber = driverProfile?.phone_number?.trim() || '';
+
     // Validate BOTH participants have phone numbers
-    const riderHasPhone = riderProfile?.phone_number != null && riderProfile.phone_number.trim() !== '';
-    const driverHasPhone = driverProfile?.phone_number != null && driverProfile.phone_number.trim() !== '';
+    const riderHasPhone = riderPhoneNumber !== '';
+    const driverHasPhone = driverPhoneNumber !== '';
 
     if (!riderHasPhone || !driverHasPhone) {
       console.error('[call-start] Phone number validation failed:', {
@@ -143,17 +194,25 @@ Deno.serve(async (req) => {
         driverHasPhone
       });
       
+      let errorMessage = 'Unable to initiate call. ';
+      if (!riderHasPhone) {
+        errorMessage += 'Rider must provide a valid phone number. ';
+      }
+      if (!driverHasPhone) {
+        errorMessage += 'Driver must add a phone number to their profile. ';
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Rider or driver is missing a phone number.' 
+          error: errorMessage.trim()
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Determine initiator and recipient
-    const initiatorPhone = user.id === trip.rider_id ? riderProfile.phone_number : driverProfile.phone_number;
+    // Determine initiator and recipient phone numbers
+    const initiatorPhone = user.id === trip.rider_id ? riderPhoneNumber : driverPhoneNumber;
     const initiatorRole = user.id === trip.rider_id ? 'rider' : 'driver';
 
     // Create call record
