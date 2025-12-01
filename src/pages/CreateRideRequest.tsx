@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, DollarSign, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign, Users } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
@@ -27,6 +27,7 @@ const rideRequestSchema = z.object({
   dropoffAddress: z.string().trim().transform(sanitizeHtml).pipe(
     z.string().min(1, "Dropoff address is required").max(500, "Dropoff address must be less than 500 characters")
   ),
+  pickupTime: z.string().optional(),
   contactInfo: z.string().trim().transform(sanitizeHtml).pipe(
     z.string().min(1, "Contact info is required").max(200, "Contact info must be less than 200 characters")
   ),
@@ -93,6 +94,7 @@ const CreateRideRequest = () => {
   const [formData, setFormData] = useState({
     pickupAddress: "",
     dropoffAddress: "",
+    pickupTime: "",
     contactInfo: "",
     emergencyName: "",
     emergencyPhone: "",
@@ -125,7 +127,23 @@ const CreateRideRequest = () => {
         return;
       }
 
-      // 2) Run trip-limit queries in parallel and use COUNT for speed
+      // 2) Validate pickup time if provided
+      if (formData.pickupTime) {
+        const pickupDate = new Date(formData.pickupTime);
+        const now = new Date();
+        if (isNaN(pickupDate.getTime())) {
+          toast.error("Invalid pickup time format");
+          setIsSubmitting(false);
+          return;
+        }
+        if (pickupDate < now) {
+          toast.error("Pickup time cannot be in the past");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // 3) Run trip-limit queries in parallel and use COUNT for speed
       const userId = user?.id as string;
       const openPromise = supabase
         .from("ride_requests")
@@ -205,7 +223,7 @@ const CreateRideRequest = () => {
            dropoff_lat: dropoffGeo.lat,
            dropoff_lng: dropoffGeo.lng,
            dropoff_zip: dropoffGeo.zip,
-            pickup_time: new Date().toISOString(),
+            pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
             rider_note: [
              formData.tripDetails ? `Trip Details: ${formData.tripDetails.trim()}` : null,
              formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}` : null,
@@ -301,6 +319,23 @@ const CreateRideRequest = () => {
                   onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="pickupTime">Pickup Time (Optional)</Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  id="pickupTime"
+                  type="datetime-local"
+                  className="pl-10"
+                  value={formData.pickupTime}
+                  onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Leave empty for immediate pickup request
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
