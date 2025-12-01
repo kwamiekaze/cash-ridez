@@ -294,7 +294,7 @@ const CreateRideRequest = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex justify-center mb-6">
+            <div className="flex flex-col items-center mb-6 gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -334,23 +334,37 @@ const CreateRideRequest = () => {
                           const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
                           setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
                         }}
-                        className="h-10"
+                        className="h-10 w-full"
                       />
                     </div>
-                    {formData.pickupTime && (
+                    <div className="space-y-2">
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setFormData({ ...formData, pickupTime: '' })}
+                        variant="default"
+                        className="w-full h-10"
+                        onClick={() => {}}
                       >
-                        Clear
+                        Set
                       </Button>
-                    )}
+                      {formData.pickupTime && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full h-10"
+                          onClick={() => setFormData({ ...formData, pickupTime: '' })}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
+              {formData.pickupTime && (
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(formData.pickupTime), "MMM d, yyyy 'at' h:mm a")}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
