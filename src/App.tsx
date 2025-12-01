@@ -75,8 +75,6 @@ const queryClient = new QueryClient({
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" forcedTheme="dark">
-      <Toaster />
-      <Sonner />
       <BrowserRouter
         future={{
           v7_startTransition: true,
@@ -84,6 +82,8 @@ const App = () => (
         }}
       >
         <AuthProvider>
+          <Toaster />
+          <Sonner />
           <DeferMount>
             <NotificationPermissionDialog />
           </DeferMount>
