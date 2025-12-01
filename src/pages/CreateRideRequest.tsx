@@ -292,6 +292,23 @@ const CreateRideRequest = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
+              <Label htmlFor="pickupTime">Pickup Time (Optional)</Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                  id="pickupTime"
+                  type="datetime-local"
+                  className="pl-10"
+                  value={formData.pickupTime}
+                  onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Leave empty for immediate pickup request
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="pickup">Pickup Address *</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-success" />
@@ -319,23 +336,6 @@ const CreateRideRequest = () => {
                   onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pickupTime">Pickup Time (Optional)</Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
-                <Input
-                  id="pickupTime"
-                  type="datetime-local"
-                  className="pl-10"
-                  value={formData.pickupTime}
-                  onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Leave empty for immediate pickup request
-              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
