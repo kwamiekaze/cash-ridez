@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { ArrowLeft, MapPin, Clock, DollarSign, Users } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -47,6 +49,7 @@ const rideRequestSchema = z.object({
 const CreateRideRequest = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -323,20 +326,24 @@ END:VCARD`;
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="flex flex-col items-center mb-6 gap-2">
-              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-14 w-14 rounded-full hover:bg-accent/50 transition-colors"
-                  >
-                    <Clock className="h-8 w-8 text-warning" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-auto" side="bottom" align="center" sideOffset={8}>
-                  <div className="p-4 space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Select Pickup Date & Time</Label>
+              {/* Date/Time Picker Button */}
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-14 w-14 rounded-full hover:bg-accent/50 transition-colors"
+                onClick={() => setPopoverOpen(true)}
+              >
+                <Clock className="h-8 w-8 text-warning" />
+              </Button>
+
+              {/* Mobile: Full-screen Dialog */}
+              {isMobile ? (
+                <Dialog open={popoverOpen} onOpenChange={setPopoverOpen}>
+                  <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-auto p-0">
+                    <DialogHeader className="p-4 pb-0">
+                      <DialogTitle>Select Pickup Date & Time</DialogTitle>
+                    </DialogHeader>
+                    <div className="p-4 space-y-4">
                       <Calendar
                         mode="single"
                         selected={formData.pickupTime ? new Date(formData.pickupTime) : undefined}
@@ -349,48 +356,113 @@ END:VCARD`;
                         }}
                         disabled={(date) => date < new Date()}
                         initialFocus
-                        className="pointer-events-auto"
+                        className="pointer-events-auto rounded-md border"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="time" className="text-sm">Time</Label>
-                      <Input
-                        id="time"
-                        type="time"
-                        value={formData.pickupTime ? formData.pickupTime.split('T')[1] : ''}
-                        onChange={(e) => {
-                          const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
-                          setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
-                        }}
-                        className="h-12 w-full text-base"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Button
-                        type="button"
-                        variant="default"
-                        className="w-full h-12"
-                        onClick={() => setPopoverOpen(false)}
-                      >
-                        Set
-                      </Button>
-                      {formData.pickupTime && (
+                      <div className="space-y-2">
+                        <Label htmlFor="time-mobile" className="text-sm">Time</Label>
+                        <Input
+                          id="time-mobile"
+                          type="time"
+                          value={formData.pickupTime ? formData.pickupTime.split('T')[1] : ''}
+                          onChange={(e) => {
+                            const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
+                            setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
+                          }}
+                          className="h-12 w-full text-base"
+                        />
+                      </div>
+                      <div className="space-y-2">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="default"
                           className="w-full h-12"
-                          onClick={() => {
-                            setFormData({ ...formData, pickupTime: '' });
-                            setPopoverOpen(false);
-                          }}
+                          onClick={() => setPopoverOpen(false)}
                         >
-                          Clear
+                          Set
                         </Button>
-                      )}
+                        {formData.pickupTime && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-12"
+                            onClick={() => {
+                              setFormData({ ...formData, pickupTime: '' });
+                              setPopoverOpen(false);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                /* Desktop: Popover */
+                <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <span className="hidden" />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-background border shadow-lg z-50" side="bottom" align="center" sideOffset={8} avoidCollisions={true} collisionPadding={20}>
+                    <div className="p-4 space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Select Pickup Date & Time</Label>
+                        <Calendar
+                          mode="single"
+                          selected={formData.pickupTime ? new Date(formData.pickupTime) : undefined}
+                          onSelect={(date) => {
+                            if (date) {
+                              const timeStr = formData.pickupTime ? formData.pickupTime.split('T')[1] : '12:00';
+                              const dateStr = format(date, 'yyyy-MM-dd');
+                              setFormData({ ...formData, pickupTime: `${dateStr}T${timeStr}` });
+                            }
+                          }}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="time-desktop" className="text-sm">Time</Label>
+                        <Input
+                          id="time-desktop"
+                          type="time"
+                          value={formData.pickupTime ? formData.pickupTime.split('T')[1] : ''}
+                          onChange={(e) => {
+                            const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
+                            setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
+                          }}
+                          className="h-12 w-full text-base"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Button
+                          type="button"
+                          variant="default"
+                          className="w-full h-12"
+                          onClick={() => setPopoverOpen(false)}
+                        >
+                          Set
+                        </Button>
+                        {formData.pickupTime && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full h-12"
+                            onClick={() => {
+                              setFormData({ ...formData, pickupTime: '' });
+                              setPopoverOpen(false);
+                            }}
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+
               {formData.pickupTime && (
                 <p className="text-sm text-muted-foreground">
                   {format(new Date(formData.pickupTime), "MMM d, yyyy 'at' h:mm a")}
