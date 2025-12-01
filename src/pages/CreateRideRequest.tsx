@@ -100,6 +100,7 @@ const CreateRideRequest = () => {
     emergencyPhone: "",
     priceOffer: "",
     passengerCount: "1",
+    tripDetails: "",
   });
 
   const geocodeAddress = async (address: string) => {
@@ -222,9 +223,13 @@ const CreateRideRequest = () => {
           dropoff_lat: dropoffGeo.lat,
           dropoff_lng: dropoffGeo.lng,
           dropoff_zip: dropoffGeo.zip,
-          pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
-          rider_note: formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}${formData.emergencyName ? ` | Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : ''}` : null,
-          rider_note_image_url: null,
+           pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
+           rider_note: [
+             formData.tripDetails ? `Trip Details: ${formData.tripDetails.trim()}` : null,
+             formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}` : null,
+             formData.emergencyName ? `Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : null
+           ].filter(Boolean).join(' | ') || null,
+           rider_note_image_url: null,
           price_offer: parseFloat(formData.priceOffer),
           passenger_count: parseInt(formData.passengerCount),
           search_keywords: keywords,
@@ -292,7 +297,7 @@ const CreateRideRequest = () => {
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-success" />
                 <Input
                   id="pickup"
-                  placeholder="123 Main St, New York, NY 10001"
+                  placeholder="5380 Peachtree Blvd, Atlanta, GA 30341"
                   className="pl-10"
                   required
                   value={formData.pickupAddress}
@@ -307,7 +312,7 @@ const CreateRideRequest = () => {
                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-destructive" />
                 <Input
                   id="dropoff"
-                  placeholder="456 Park Ave, New York, NY 10022"
+                  placeholder="233 Peachtree St NE, Atlanta, GA 30303"
                   className="pl-10"
                   required
                   value={formData.dropoffAddress}
@@ -323,7 +328,7 @@ const CreateRideRequest = () => {
                 <Input
                   id="time"
                   type="datetime-local"
-                  className="pl-10 h-10 text-xs sm:text-sm md:text-base [&::-webkit-datetime-edit-fields-wrapper]:text-xs [&::-webkit-datetime-edit-fields-wrapper]:sm:text-sm [&::-webkit-calendar-picker-indicator]:scale-75 [&::-webkit-calendar-picker-indicator]:sm:scale-90"
+                  className="pl-10 h-10"
                   value={formData.pickupTime}
                   onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
                 />
@@ -373,10 +378,24 @@ const CreateRideRequest = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact">Contact Info *</Label>
+              <Label htmlFor="tripDetails">Trip Details (Optional)</Label>
+              <Textarea
+                id="tripDetails"
+                placeholder="Add any specific details about your trip that drivers should know..."
+                className="min-h-[80px]"
+                value={formData.tripDetails}
+                onChange={(e) => setFormData({ ...formData, tripDetails: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Share any additional information about your trip
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contact">Save +1 (678) 928-8816 for In-App calling</Label>
               <Input
                 id="contact"
-                placeholder="Phone number or preferred contact method"
+                placeholder="Save +1 (678) 928-8816 for In-App calling"
                 required
                 value={formData.contactInfo}
                 onChange={(e) => setFormData({ ...formData, contactInfo: e.target.value })}
