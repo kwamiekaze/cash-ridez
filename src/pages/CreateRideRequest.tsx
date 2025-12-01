@@ -333,7 +333,7 @@ END:VCARD`;
                     <Clock className="h-8 w-8 text-warning" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="center">
+                <PopoverContent className="w-auto p-0 max-h-[80vh] overflow-auto" side="bottom" align="center" sideOffset={8}>
                   <div className="p-4 space-y-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">Select Pickup Date & Time</Label>
