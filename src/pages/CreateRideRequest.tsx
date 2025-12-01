@@ -291,7 +291,7 @@ const CreateRideRequest = () => {
         <Card className="max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
           <p className="text-sm text-muted-foreground mb-6">
-            Post your travel plans to connect with others in the community who can help coordinate your trip.
+            Post your travel plans to connect with drivers in the community, save +1 (678) 928-8816 to your contact list for in-app calling.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -455,10 +455,10 @@ const CreateRideRequest = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contact">Save +1 (678) 928-8816 for In-App calling</Label>
+              <Label htmlFor="contact">Contact Number *</Label>
               <Input
                 id="contact"
-                placeholder="Save +1 (678) 928-8816 for In-App calling"
+                placeholder="Contact number"
                 required
                 value={formData.contactInfo}
                 onChange={(e) => setFormData({ ...formData, contactInfo: e.target.value })}
