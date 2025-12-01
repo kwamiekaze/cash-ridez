@@ -17,7 +17,8 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const VerificationPending = lazy(() => import("./pages/VerificationPending"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const RiderDashboard = lazy(() => import("./pages/RiderDashboard"));
+// Import RiderDashboard directly to avoid context issues
+import RiderDashboard from "./pages/RiderDashboard";
 const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const CreateRideRequest = lazy(() => import("./pages/CreateRideRequest"));
