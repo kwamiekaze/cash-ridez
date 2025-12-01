@@ -7,7 +7,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { ArrowLeft, MapPin, Clock, DollarSign, Users } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
@@ -291,21 +294,63 @@ const CreateRideRequest = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="pickupTime">Pickup Time (Optional)</Label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
-                <Input
-                  id="pickupTime"
-                  type="datetime-local"
-                  className="pl-10 h-10"
-                  value={formData.pickupTime}
-                  onChange={(e) => setFormData({ ...formData, pickupTime: e.target.value })}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Leave empty for immediate pickup request
-              </p>
+            <div className="flex justify-center mb-6">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-14 w-14 rounded-full hover:bg-accent/50 transition-colors"
+                  >
+                    <Clock className="h-8 w-8 text-warning" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="center">
+                  <div className="p-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Select Pickup Date & Time</Label>
+                      <Calendar
+                        mode="single"
+                        selected={formData.pickupTime ? new Date(formData.pickupTime) : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            const timeStr = formData.pickupTime ? formData.pickupTime.split('T')[1] : '12:00';
+                            const dateStr = format(date, 'yyyy-MM-dd');
+                            setFormData({ ...formData, pickupTime: `${dateStr}T${timeStr}` });
+                          }
+                        }}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="time" className="text-sm">Time</Label>
+                      <Input
+                        id="time"
+                        type="time"
+                        value={formData.pickupTime ? formData.pickupTime.split('T')[1] : ''}
+                        onChange={(e) => {
+                          const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
+                          setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
+                        }}
+                        className="h-10"
+                      />
+                    </div>
+                    {formData.pickupTime && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setFormData({ ...formData, pickupTime: '' })}
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
