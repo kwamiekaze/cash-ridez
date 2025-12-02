@@ -384,15 +384,13 @@ export function CommunityChat() {
                   </Avatar>
 
                   <div className={`flex-1 ${isOwnMessage ? "text-right" : ""}`}>
-                    <div className="flex items-center gap-2 mb-1">
-                      {!isOwnMessage && (
-                        <span className="text-sm font-medium flex items-center gap-1">
-                          {msg.sender?.full_name || msg.sender?.display_name || "User"}
-                          {(adminUserIds.has(msg.user_id) || subscribedUserIds.has(msg.user_id)) && (
-                            <PremiumCrown size={14} />
-                          )}
-                        </span>
-                      )}
+                    <div className={`flex items-center gap-2 mb-1 ${isOwnMessage ? "justify-end" : ""}`}>
+                      <span className="text-sm font-medium flex items-center gap-1">
+                        {msg.sender?.full_name || msg.sender?.display_name || "User"}
+                        {(adminUserIds.has(msg.user_id) || subscribedUserIds.has(msg.user_id)) && (
+                          <PremiumCrown size={14} />
+                        )}
+                      </span>
                       {isFlaggedForAdmin && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500 text-white">
                           Flagged
