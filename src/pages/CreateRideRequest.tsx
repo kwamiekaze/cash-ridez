@@ -312,8 +312,8 @@ END:VCARD`;
         <div className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto p-8">
           <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Post your travel plans to connect with drivers in the community, for easy in app calling save{' '}
+          <p className="text-sm text-muted-foreground mb-6 text-center">
+            Post your travel plans to connect with drivers in the community. For easy in app calling save{' '}
             <button
               type="button"
               onClick={handleSaveContact}
