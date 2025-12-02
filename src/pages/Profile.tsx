@@ -19,6 +19,7 @@ import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { RiderZipEditor } from "@/components/RiderZipEditor";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { MapBackground } from "@/components/MapBackground";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -46,6 +47,8 @@ const Profile = () => {
     car_year: "",
     car_make: "",
     car_model: "",
+    subscription_active: false,
+    subscription_status: "",
   });
   const [adminLockedFields, setAdminLockedFields] = useState<string[]>([]);
   const [originalName, setOriginalName] = useState("");
@@ -89,6 +92,8 @@ const Profile = () => {
           car_year: data.car_year || "",
           car_make: data.car_make || "",
           car_model: data.car_model || "",
+          subscription_active: data.subscription_active || false,
+          subscription_status: data.subscription_status || "",
         });
         setAdminLockedFields(data.admin_locked_fields || []);
         setOriginalName(data.full_name || "");
@@ -324,6 +329,19 @@ const Profile = () => {
                 <span className="font-medium">
                   {profile.created_at ? format(new Date(profile.created_at), "MMMM d, yyyy") : "N/A"}
                 </span>
+              </Card>
+              <Card className="p-4">
+                <p className="text-sm text-muted-foreground mb-1">Membership</p>
+                <div className="flex items-center gap-2">
+                  {profile.subscription_active && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing') ? (
+                    <>
+                      <PremiumCrown size={20} />
+                      <span className="font-medium text-[hsl(var(--premium-gold))]">Premium Member</span>
+                    </>
+                  ) : (
+                    <span className="font-medium text-muted-foreground">Free Plan</span>
+                  )}
+                </div>
               </Card>
             </div>
           </div>

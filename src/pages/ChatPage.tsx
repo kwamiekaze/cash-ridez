@@ -30,6 +30,7 @@ export default function ChatPage() {
   const [uploading, setUploading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminUserIds, setAdminUserIds] = useState<Set<string>>(new Set());
+  const [subscribedUserIds, setSubscribedUserIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -171,13 +172,23 @@ export default function ChatPage() {
 
       if (error) throw error;
       
-      // Fetch sender profiles separately
+      // Fetch sender profiles separately including subscription status
       if (data && data.length > 0) {
         const senderIds = [...new Set(data.map(msg => msg.sender_id))];
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, display_name, full_name, photo_url')
+          .select('id, display_name, full_name, photo_url, subscription_active, subscription_status')
           .in('id', senderIds);
+        
+        // Build set of subscribed user IDs
+        if (profiles) {
+          const subscribedIds = new Set(
+            profiles
+              .filter(p => p.subscription_active && (p.subscription_status === 'active' || p.subscription_status === 'trialing'))
+              .map(p => p.id)
+          );
+          setSubscribedUserIds(subscribedIds);
+        }
         
         const profileMap = new Map(profiles?.map(p => [p.id, p]));
         const messagesWithSenders = data.map(msg => ({
@@ -404,7 +415,7 @@ export default function ChatPage() {
                       <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
                         <span className="flex items-center gap-1">
                           {message.sender?.full_name || message.sender?.display_name || message.sender_id}
-                          {message.sender_id && adminUserIds.has(message.sender_id) && (
+                          {message.sender_id && (adminUserIds.has(message.sender_id) || subscribedUserIds.has(message.sender_id)) && (
                             <PremiumCrown size={12} />
                           )}
                         </span>
