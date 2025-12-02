@@ -8,7 +8,7 @@ import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
 import { motion } from "motion/react";
-import { CashCarIcon } from "./CashCarIcon";
+import { SportsCar } from "./SportsCar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import StatusBadge from "@/components/StatusBadge";
@@ -46,11 +46,6 @@ const AppHeader = ({
     };
     fetchProfile();
   }, [user]);
-  // Determine the letter for the car based on role
-  const carLetter = profile?.active_role === 'rider' ? 'R' : 
-                    profile?.active_role === 'driver' ? 'D' : 
-                    isAdmin ? 'A' : '$';
-
   return <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50 relative overflow-hidden">
       <div className="container mx-auto px-4 py-3 md:py-4 relative z-10">
         <div className="flex items-center justify-between">
@@ -82,15 +77,13 @@ const AppHeader = ({
                     repeat: Infinity,
                     ease: "linear"
                   }}
-                  className="absolute top-0 sm:top-2"
+                  className="absolute top-0"
                   style={{ filter: 'drop-shadow(0 0 12px rgba(249, 226, 125, 0.7)) drop-shadow(0 0 20px rgba(249, 226, 125, 0.5))' }}
                 >
-                  <CashCarIcon 
-                    width={60} 
-                    height={30} 
-                    glowIntensity="none"
-                    letter="$"
-                    className="sm:w-[70px] sm:h-[35px] md:w-[90px] md:h-[45px]" 
+                  <SportsCar 
+                    width={80} 
+                    height={40}
+                    showDollarSign={true}
                   />
                 </motion.div>
               </div>
