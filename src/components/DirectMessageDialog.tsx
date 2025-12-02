@@ -233,7 +233,7 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
     }
   }, [messages]);
 
-  if (!subscriptionActive) {
+  if (!subscriptionActive && !isAdmin) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
