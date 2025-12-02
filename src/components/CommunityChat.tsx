@@ -105,11 +105,12 @@ export function CommunityChat() {
           .select("id, display_name, full_name, photo_url, subscription_active, subscription_status")
           .in("id", userIds);
 
-        // Build set of subscribed user IDs
+        // Build set of subscribed user IDs - check either subscription_active OR subscription_status
+        // to handle potential data sync issues between Stripe webhook and profile updates
         if (profiles) {
           const subscribedIds = new Set(
             profiles
-              .filter(p => p.subscription_active && (p.subscription_status === 'active' || p.subscription_status === 'trialing'))
+              .filter(p => p.subscription_active === true || p.subscription_status === 'active' || p.subscription_status === 'trialing')
               .map(p => p.id)
           );
           setSubscribedUserIds(subscribedIds);
@@ -155,9 +156,8 @@ export function CommunityChat() {
             .eq("id", newMsg.user_id)
             .single();
 
-          // Update subscribed users set if needed
-          if (profile && profile.subscription_active && 
-              (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
+          // Update subscribed users set if needed - check either subscription_active OR subscription_status
+          if (profile && (profile.subscription_active === true || profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
             setSubscribedUserIds(prev => new Set([...prev, profile.id]));
           }
 
