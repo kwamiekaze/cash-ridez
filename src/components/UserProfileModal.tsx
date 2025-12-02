@@ -5,8 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
-import { MemberBadge } from "@/components/MemberBadge";
 import { AdminBadge } from "@/components/AdminBadge";
+import { PremiumCrown } from "@/components/PremiumCrown";
 import { Car, MessageCircle, ExternalLink, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,8 @@ interface UserProfile {
   car_year: string | null;
   car_make: string | null;
   car_model: string | null;
+  subscription_active: boolean;
+  subscription_status: string | null;
 }
 
 export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModalProps) {
@@ -70,7 +72,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
         // Fetch profile data (including phone number for admins)
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email, phone_number")
+          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email, phone_number, subscription_active, subscription_status")
           .eq("id", userId)
           .single();
 
@@ -171,7 +173,12 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
                     ✓ Verified
                   </Badge>
                 )}
-                {profile.is_member && <MemberBadge isMember={profile.is_member} />}
+                {profile.subscription_active && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing') && (
+                  <div className="flex items-center gap-1">
+                    <PremiumCrown size={16} />
+                    <span className="text-xs text-[hsl(var(--premium-gold))]">Premium</span>
+                  </div>
+                )}
                 {isAdmin && <AdminBadge isAdmin={isAdmin} />}
               </div>
             </div>

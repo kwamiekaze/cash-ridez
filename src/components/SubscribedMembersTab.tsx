@@ -12,8 +12,9 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, ExternalLink, CheckCircle } from "lucide-react";
+import { Search, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { PremiumCrown } from "@/components/PremiumCrown";
 
 interface SubscribedMember {
   id: string;
@@ -22,6 +23,7 @@ interface SubscribedMember {
   email: string;
   active_role: string | null;
   is_member: boolean;
+  subscription_active: boolean;
   subscription_status: string | null;
   subscription_current_period_end: number | null;
   stripe_subscription_id: string | null;
@@ -45,10 +47,11 @@ export const SubscribedMembersTab = () => {
 
   const fetchSubscribedMembers = async () => {
     try {
+      // Query users with active subscriptions (subscription_active = true AND status is active/trialing)
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, display_name, email, active_role, is_member, subscription_status, subscription_current_period_end, stripe_subscription_id, created_at')
-        .eq('is_member', true)
+        .select('id, full_name, display_name, email, active_role, is_member, subscription_active, subscription_status, subscription_current_period_end, stripe_subscription_id, created_at')
+        .eq('subscription_active', true)
         .order('subscription_current_period_end', { ascending: false });
 
       if (error) throw error;
@@ -161,7 +164,7 @@ export const SubscribedMembersTab = () => {
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             {member.full_name || member.display_name || 'Unknown'}
-                            <CheckCircle className="h-4 w-4 text-primary fill-primary" />
+                            <PremiumCrown size={16} />
                           </div>
                         </TableCell>
                         <TableCell className="text-sm">{member.email}</TableCell>

@@ -287,12 +287,13 @@ serve(async (req) => {
             .from("profiles")
             .update({
               subscription_active: isActive,
+              subscription_status: subscription.status, // FIX: Also update subscription_status
               subscription_current_period_end: subscription.current_period_end,
               is_member: isActive,
             })
             .eq("id", profile.id);
 
-          console.log(`[WEBHOOK] ✓ Subscription status updated for user ${profile.id}: ${isActive ? 'active' : 'inactive'}`);
+          console.log(`[WEBHOOK] ✓ Subscription status updated for user ${profile.id}: ${isActive ? 'active' : 'inactive'}, status: ${subscription.status}`);
           await logBillingEvent(supabase, profile.id, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status });
         }
         break;
@@ -314,6 +315,7 @@ serve(async (req) => {
             .from("profiles")
             .update({
               subscription_active: false,
+              subscription_status: 'canceled', // FIX: Also update subscription_status
               is_member: false,
             })
             .eq("id", profile.id);

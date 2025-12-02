@@ -35,6 +35,7 @@ export function CommunityChat() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [canSendMessage, setCanSendMessage] = useState(true);
   const [adminUserIds, setAdminUserIds] = useState<Set<string>>(new Set());
+  const [subscribedUserIds, setSubscribedUserIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Check user status
@@ -97,12 +98,22 @@ export function CommunityChat() {
       }
 
       if (data && data.length > 0) {
-        // Fetch sender profiles
+        // Fetch sender profiles including subscription status
         const userIds = [...new Set(data.map(m => m.user_id))];
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url")
+          .select("id, display_name, full_name, photo_url, subscription_active, subscription_status")
           .in("id", userIds);
+
+        // Build set of subscribed user IDs
+        if (profiles) {
+          const subscribedIds = new Set(
+            profiles
+              .filter(p => p.subscription_active && (p.subscription_status === 'active' || p.subscription_status === 'trialing'))
+              .map(p => p.id)
+          );
+          setSubscribedUserIds(subscribedIds);
+        }
 
         // Check which messages are flagged
         const { data: flags } = await supabase
@@ -137,12 +148,18 @@ export function CommunityChat() {
         async (payload) => {
           const newMsg = payload.new as Message;
           
-          // Fetch sender profile
+          // Fetch sender profile with subscription status
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id, display_name, full_name, photo_url")
+            .select("id, display_name, full_name, photo_url, subscription_active, subscription_status")
             .eq("id", newMsg.user_id)
             .single();
+
+          // Update subscribed users set if needed
+          if (profile && profile.subscription_active && 
+              (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
+            setSubscribedUserIds(prev => new Set([...prev, profile.id]));
+          }
 
           setMessages(prev => [...prev, {
             ...newMsg,
@@ -371,7 +388,7 @@ export function CommunityChat() {
                       {!isOwnMessage && (
                         <span className="text-sm font-medium flex items-center gap-1">
                           {msg.sender?.full_name || msg.sender?.display_name || "User"}
-                          {adminUserIds.has(msg.user_id) && (
+                          {(adminUserIds.has(msg.user_id) || subscribedUserIds.has(msg.user_id)) && (
                             <PremiumCrown size={14} />
                           )}
                         </span>
