@@ -775,6 +775,7 @@ export type Database = {
             | Database["public"]["Enums"]["verification_status"]
             | null
           verification_submitted_at: string | null
+          verification_welcome_dismissed: boolean | null
           warning_count: number | null
         }
         Insert: {
@@ -836,6 +837,7 @@ export type Database = {
             | Database["public"]["Enums"]["verification_status"]
             | null
           verification_submitted_at?: string | null
+          verification_welcome_dismissed?: boolean | null
           warning_count?: number | null
         }
         Update: {
@@ -897,6 +899,7 @@ export type Database = {
             | Database["public"]["Enums"]["verification_status"]
             | null
           verification_submitted_at?: string | null
+          verification_welcome_dismissed?: boolean | null
           warning_count?: number | null
         }
         Relationships: []
