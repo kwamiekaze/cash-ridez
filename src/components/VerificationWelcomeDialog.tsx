@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,13 +8,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Phone, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface VerificationWelcomeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  userId: string;
 }
 
-export function VerificationWelcomeDialog({ open, onOpenChange }: VerificationWelcomeDialogProps) {
+export function VerificationWelcomeDialog({ open, onOpenChange, userId }: VerificationWelcomeDialogProps) {
+  const handleDismiss = async () => {
+    // Permanently dismiss the dialog by saving preference to database
+    await supabase
+      .from('profiles')
+      .update({ verification_welcome_dismissed: true })
+      .eq('id', userId);
+    
+    onOpenChange(false);
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md">
@@ -57,7 +68,7 @@ export function VerificationWelcomeDialog({ open, onOpenChange }: VerificationWe
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction className="w-full">Got it!</AlertDialogAction>
+          <AlertDialogAction className="w-full" onClick={handleDismiss}>Got it!</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

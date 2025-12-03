@@ -143,12 +143,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           table: 'profiles',
           filter: `id=eq.${user.id}`,
         },
-        (payload) => {
+        async (payload) => {
           const oldStatus = payload.old.verification_status;
           const newStatus = payload.new.verification_status;
+          const wasDismissed = payload.new.verification_welcome_dismissed;
           
-          // Show welcome dialog when user becomes verified
-          if (oldStatus !== 'approved' && newStatus === 'approved') {
+          // Show welcome dialog when user becomes verified (and hasn't dismissed it)
+          if (oldStatus !== 'approved' && newStatus === 'approved' && !wasDismissed) {
             setShowWelcomeDialog(true);
           }
         }
@@ -212,6 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           <VerificationWelcomeDialog 
             open={showWelcomeDialog} 
             onOpenChange={setShowWelcomeDialog}
+            userId={user.id}
           />
           <PhoneNumberReminderDialog
             open={showPhoneReminderForTrip}
