@@ -20,6 +20,7 @@ import { RiderZipEditor } from "@/components/RiderZipEditor";
 import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { MapBackground } from "@/components/MapBackground";
 import { PremiumCrown } from "@/components/PremiumCrown";
+import { PhoneNumberReminderDialog } from "@/components/PhoneNumberReminderDialog";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -29,6 +30,7 @@ const Profile = () => {
   const [uploading, setUploading] = useState(false);
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showPhoneReminder, setShowPhoneReminder] = useState(false);
   const [profile, setProfile] = useState({
     full_name: "",
     email: "",
@@ -97,6 +99,12 @@ const Profile = () => {
         });
         setAdminLockedFields(data.admin_locked_fields || []);
         setOriginalName(data.full_name || "");
+        
+        // Show phone reminder if verified but no phone number
+        if (data.is_verified && !data.phone_number) {
+          // Small delay to let page load first
+          setTimeout(() => setShowPhoneReminder(true), 500);
+        }
       }
     };
 
@@ -563,6 +571,13 @@ const Profile = () => {
           onCropComplete={handleCropComplete}
         />
       )}
+
+      {/* Phone Number Reminder Dialog */}
+      <PhoneNumberReminderDialog
+        open={showPhoneReminder}
+        onOpenChange={setShowPhoneReminder}
+        showProfileButton={false}
+      />
       </div>
     </div>
   );

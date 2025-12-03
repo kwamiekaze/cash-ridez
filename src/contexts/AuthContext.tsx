@@ -9,6 +9,12 @@ const VerificationWelcomeDialog = lazy(() =>
   }))
 );
 
+const PhoneNumberReminderDialog = lazy(() =>
+  import("@/components/PhoneNumberReminderDialog").then(module => ({
+    default: module.PhoneNumberReminderDialog
+  }))
+);
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -33,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
+  const [showPhoneReminderForTrip, setShowPhoneReminderForTrip] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -153,6 +160,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [user]);
 
+  // Subscribe to trip status changes to show phone reminder when trip gets connected
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('trip-connection-phone-reminder')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ride_requests',
+        },
+        async (payload) => {
+          const oldStatus = payload.old.status;
+          const newStatus = payload.new.status;
+          const riderId = payload.new.rider_id;
+          const driverId = payload.new.assigned_driver_id;
+          
+          // Only trigger when trip becomes assigned
+          if (oldStatus !== 'assigned' && newStatus === 'assigned') {
+            // Check if current user is part of this trip
+            if (user.id === riderId || user.id === driverId) {
+              // Check if user has phone number
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('phone_number')
+                .eq('id', user.id)
+                .single();
+              
+              if (!profile?.phone_number) {
+                setShowPhoneReminderForTrip(true);
+              }
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   return (
     <AuthContext.Provider value={{ user, session, signIn, signUp, signOut, loading }}>
       {children}
@@ -161,6 +212,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           <VerificationWelcomeDialog 
             open={showWelcomeDialog} 
             onOpenChange={setShowWelcomeDialog}
+          />
+          <PhoneNumberReminderDialog
+            open={showPhoneReminderForTrip}
+            onOpenChange={setShowPhoneReminderForTrip}
+            showProfileButton={true}
           />
         </Suspense>
       )}
