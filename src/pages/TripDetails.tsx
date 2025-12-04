@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, MessageSquare, Clock, CheckCircle, XCircle, Users } from "lucide-react";
+import { ArrowLeft, MapPin, MessageSquare, Clock, CheckCircle, XCircle, Users, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { RatingDisplay } from "@/components/RatingDisplay";
@@ -1026,6 +1026,38 @@ export default function TripDetails() {
                               disabled={request.status !== 'open'}
                             >
                               Accept ${offer.amount}
+                            </Button>
+                          )}
+                          {/* Driver can delete their own pending offers */}
+                          {!isRider && offer.by_user_id === currentUserId && (
+                            <Button 
+                              onClick={async () => {
+                                try {
+                                  const { error } = await supabase
+                                    .from('counter_offers')
+                                    .delete()
+                                    .eq('id', offer.id);
+                                  
+                                  if (error) throw error;
+                                  
+                                  toast({
+                                    title: "Offer Deleted",
+                                    description: "Your offer has been removed.",
+                                  });
+                                  fetchOffers();
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Error",
+                                    description: error.message,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              variant="destructive"
+                              className="flex-1 min-w-[100px]"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Offer
                             </Button>
                           )}
                         </div>
