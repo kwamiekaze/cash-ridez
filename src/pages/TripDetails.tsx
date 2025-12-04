@@ -1028,8 +1028,8 @@ export default function TripDetails() {
                               Accept ${offer.amount}
                             </Button>
                           )}
-                          {/* Driver can delete their own pending offers */}
-                          {!isRider && offer.by_user_id === currentUserId && (
+                          {/* Driver can delete their own pending offers, admins can delete any */}
+                          {((!isRider && offer.by_user_id === currentUserId) || isAdmin) && (
                             <Button 
                               onClick={async () => {
                                 try {
@@ -1042,7 +1042,9 @@ export default function TripDetails() {
                                   
                                   toast({
                                     title: "Offer Deleted",
-                                    description: "Your offer has been removed.",
+                                    description: offer.by_user_id === currentUserId 
+                                      ? "Your offer has been removed." 
+                                      : "Offer has been removed by admin.",
                                   });
                                   fetchOffers();
                                 } catch (error: any) {
