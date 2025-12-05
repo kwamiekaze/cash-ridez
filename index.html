@@ -66,6 +66,20 @@
   </head>
 
   <body>
+    <!-- Global Notification Sound -->
+    <audio id="customNotify" preload="auto" src="/sounds/notification.mp3"></audio>
+    <script>
+      window.playNotificationSound = function() {
+        var audio = document.getElementById('customNotify');
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(function(e) {
+            console.log('Audio play failed:', e);
+          });
+        }
+      };
+    </script>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     
