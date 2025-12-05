@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,33 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { MemberBadge } from "@/components/MemberBadge";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatCurrency } from "@/utils/fareEstimator";
 
 const Subscription = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { subscribed, subscription_end, completed_trips, trips_remaining, loading, startCheckout, manageSubscription } = useSubscription();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [totalSavings, setTotalSavings] = useState(0);
+
+  // Fetch user's total savings
+  useEffect(() => {
+    const fetchSavings = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('total_rider_savings_vs_competitor')
+        .eq('id', user.id)
+        .single();
+      if (data?.total_rider_savings_vs_competitor) {
+        setTotalSavings(data.total_rider_savings_vs_competitor);
+      }
+    };
+    fetchSavings();
+  }, [user]);
 
   const handleSubscribe = async () => {
     setShowCheckout(true);
@@ -150,6 +171,16 @@ const Subscription = () => {
                       Subscribe to unlock unlimited access.
                     </AlertDescription>
                   </Alert>
+
+                  {/* Savings Upsell */}
+                  {totalSavings > 0 && (
+                    <div className="bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4">
+                      <p className="text-base font-semibold text-foreground flex items-center gap-2">
+                        <span>💰</span>
+                        So far you've saved {formatCurrency(totalSavings)} compared to traditional rideshare. Keep stacking your savings with a CashRidez membership!
+                      </p>
+                    </div>
+                  )}
 
                   <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-start gap-4 mb-4">

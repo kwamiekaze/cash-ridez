@@ -18,6 +18,8 @@ import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { useSubscription } from "@/hooks/useSubscription";
+import { TripCompletedSavings, SavingsCalculator } from "@/components/SavingsCalculator";
+import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -817,14 +819,30 @@ export default function TripDetails() {
                 
                 {/* Show completion message if trip is completed and user hasn't rated */}
                 {request.status === 'completed' && (
-                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                    <p className="text-sm font-medium text-primary mb-2">Trip Completed</p>
-                    <p className="text-sm text-muted-foreground">
-                      {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating))
-                        ? `Please rate the ${isRider ? 'driver' : 'rider'} to complete your part of this trip.`
-                        : 'Thank you for rating! This trip is now complete.'}
-                    </p>
-                  </div>
+                  <>
+                    <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                      <p className="text-sm font-medium text-primary mb-2">Trip Completed</p>
+                      <p className="text-sm text-muted-foreground">
+                        {((isRider && !request.rider_rating) || (!isRider && !request.driver_rating))
+                          ? `Please rate the ${isRider ? 'driver' : 'rider'} to complete your part of this trip.`
+                          : 'Thank you for rating! This trip is now complete.'}
+                      </p>
+                    </div>
+                    
+                    {/* Savings/Earnings display for completed trips */}
+                    {isRider && request.rider_savings_vs_competitor > 0 && (
+                      <TripCompletedSavings
+                        savings={request.rider_savings_vs_competitor}
+                        mode="rider"
+                      />
+                    )}
+                    {!isRider && request.driver_extra_vs_competitor > 0 && (
+                      <TripCompletedSavings
+                        extra={request.driver_extra_vs_competitor}
+                        mode="driver"
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1123,6 +1141,23 @@ export default function TripDetails() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Driver Earnings Calculator */}
+              {request.price_offer && request.estimated_competitor_driver_earnings && (
+                <div className="mb-4 bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <span className="text-2xl">💰</span>
+                    <div>
+                      <p className="text-base font-bold text-foreground">
+                        If you accept this trip, you're on track to earn about ${Math.max(0, request.price_offer - request.estimated_competitor_driver_earnings).toFixed(0)} more than traditional rideshare.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Traditional rideshare driver earnings: ~${request.estimated_competitor_driver_earnings.toFixed(0)} | CashRidez: ${request.price_offer} (100%)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <form onSubmit={handleSubmitOffer} className="space-y-4">
                 {request.price_offer && (
                   <Button
