@@ -174,15 +174,28 @@ export function NotificationBell() {
     
     // For driver_available notifications, go to the drivers tab in rider dashboard
     if (notification.type === 'driver_available') {
-      navigate('/rider?tab=area');
+      navigate('/rider?tab=chat');
     } else if (notification.type === 'community_message' || notification.type === 'community_chat') {
-      // For community chat notifications, go to the dashboard with chat tab
-      // Use driver dashboard by default since it has the chat tab
-      navigate('/driver?tab=chat');
+      // For community chat notifications, get user's active role and navigate to their dashboard's chat tab
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('active_role')
+        .eq('id', user?.id)
+        .single();
+      
+      const dashboard = profile?.active_role === 'driver' ? '/driver' : '/rider';
+      navigate(`${dashboard}?tab=chat`);
     } else if (notification.link) {
-      // If the link points to /community, redirect to dashboard chat tab instead
+      // If the link points to /community, redirect to user's dashboard chat tab instead
       if (notification.link === '/community') {
-        navigate('/driver?tab=chat');
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('active_role')
+          .eq('id', user?.id)
+          .single();
+        
+        const dashboard = profile?.active_role === 'driver' ? '/driver' : '/rider';
+        navigate(`${dashboard}?tab=chat`);
       } else {
         navigate(notification.link);
       }
