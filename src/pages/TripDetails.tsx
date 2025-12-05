@@ -630,14 +630,28 @@ export default function TripDetails() {
               <MapPin className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium">Pickup Location</p>
-                <p className="text-sm text-muted-foreground break-words">{request.pickup_address}</p>
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(request.pickup_address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-words"
+                >
+                  {request.pickup_address}
+                </a>
               </div>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium">Dropoff Location</p>
-                <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
+                <a 
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(request.dropoff_address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline break-words"
+                >
+                  {request.dropoff_address}
+                </a>
               </div>
             </div>
             {request.price_offer && (
