@@ -122,7 +122,7 @@ export function SavingsCalculator({
                     Typical rideshare apps might charge {formatCurrency(calculation.minFare)} – {formatCurrency(calculation.maxFare)} for this trip.
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Enter your price offer below to see how much you could save with CashRidez!
+                    Create Trip Request to save with CashRidez!
                   </p>
                 </>
               )}

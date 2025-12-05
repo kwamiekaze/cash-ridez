@@ -368,15 +368,16 @@ END:VCARD`;
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="flex flex-col items-center mb-6 gap-2">
+            <div className="flex items-center gap-3 mb-6">
+              <Label className="text-sm text-muted-foreground whitespace-nowrap">Pickup Time (optional)</Label>
               {/* Date/Time Picker Button */}
               <Button
                 type="button"
                 variant="ghost"
-                className="h-14 w-14 rounded-full hover:bg-accent/50 transition-colors"
+                className="h-12 w-12 rounded-full hover:bg-accent/50 transition-colors p-0"
                 onClick={() => setPopoverOpen(true)}
               >
-                <Clock className="h-8 w-8 text-warning" />
+                <Clock className="h-6 w-6 text-warning" />
               </Button>
 
               {/* Mobile: Full-screen Dialog */}
