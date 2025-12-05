@@ -100,10 +100,20 @@ const Profile = () => {
         setAdminLockedFields(data.admin_locked_fields || []);
         setOriginalName(data.full_name || "");
         
-        // Show phone reminder if verified but no phone number
-        if (data.is_verified && !data.phone_number) {
-          // Small delay to let page load first
-          setTimeout(() => setShowPhoneReminder(true), 500);
+        // Show phone reminder ONLY if verified, no phone, AND connected to a trip
+        if (data.is_verified && !data.phone_number && !data.verification_welcome_dismissed) {
+          // Check if user has an assigned trip
+          const { data: assignedTrips } = await supabase
+            .from('ride_requests')
+            .select('id')
+            .eq('status', 'assigned')
+            .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+            .limit(1);
+          
+          if (assignedTrips && assignedTrips.length > 0) {
+            // Small delay to let page load first
+            setTimeout(() => setShowPhoneReminder(true), 500);
+          }
         }
       }
     };

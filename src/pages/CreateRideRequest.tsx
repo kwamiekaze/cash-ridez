@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -472,32 +473,26 @@ END:VCARD`;
 
             <div className="space-y-2">
               <Label htmlFor="pickup">Pickup Address *</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-success" />
-                <Input
-                  id="pickup"
-                  placeholder="5380 Peachtree Blvd, Atlanta, GA 30341"
-                  className="pl-10"
-                  required
-                  value={formData.pickupAddress}
-                  onChange={(e) => setFormData({ ...formData, pickupAddress: e.target.value })}
-                />
-              </div>
+              <AddressAutocomplete
+                id="pickup"
+                placeholder="5380 Peachtree Blvd, Atlanta, GA 30341"
+                required
+                value={formData.pickupAddress}
+                onChange={(value) => setFormData({ ...formData, pickupAddress: value })}
+                icon="pickup"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="dropoff">Dropoff Address *</Label>
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-destructive" />
-                <Input
-                  id="dropoff"
-                  placeholder="233 Peachtree St NE, Atlanta, GA 30303"
-                  className="pl-10"
-                  required
-                  value={formData.dropoffAddress}
-                  onChange={(e) => setFormData({ ...formData, dropoffAddress: e.target.value })}
-                />
-              </div>
+              <AddressAutocomplete
+                id="dropoff"
+                placeholder="233 Peachtree St NE, Atlanta, GA 30303"
+                required
+                value={formData.dropoffAddress}
+                onChange={(value) => setFormData({ ...formData, dropoffAddress: value })}
+                icon="dropoff"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
