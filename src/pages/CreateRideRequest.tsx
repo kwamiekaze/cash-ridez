@@ -424,19 +424,17 @@ END:VCARD`;
                         >
                           Set
                         </Button>
-                        {formData.pickupTime && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full h-12"
-                            onClick={() => {
-                              setFormData({ ...formData, pickupTime: '' });
-                              setPopoverOpen(false);
-                            }}
-                          >
-                            Clear
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full h-12"
+                          onClick={() => {
+                            setFormData({ ...formData, pickupTime: '' });
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          Clear
+                        </Button>
                       </div>
                     </div>
                   </DialogContent>
@@ -488,19 +486,17 @@ END:VCARD`;
                         >
                           Set
                         </Button>
-                        {formData.pickupTime && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="w-full h-12"
-                            onClick={() => {
-                              setFormData({ ...formData, pickupTime: '' });
-                              setPopoverOpen(false);
-                            }}
-                          >
-                            Clear
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full h-12"
+                          onClick={() => {
+                            setFormData({ ...formData, pickupTime: '' });
+                            setPopoverOpen(false);
+                          }}
+                        >
+                          Clear
+                        </Button>
                       </div>
                     </div>
                   </PopoverContent>
