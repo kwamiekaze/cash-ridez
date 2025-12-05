@@ -623,12 +623,12 @@ END:VCARD`;
               </div>
             </div>
 
-            {/* Savings Calculator */}
-            {estimatedDistance && parseFloat(formData.priceOffer) > 0 && (
+            {/* Savings Calculator - shows when addresses are entered */}
+            {estimatedDistance && (
               <SavingsCalculator
                 distanceMiles={estimatedDistance}
                 pickupTime={formData.pickupTime ? new Date(formData.pickupTime) : new Date()}
-                userPrice={parseFloat(formData.priceOffer)}
+                userPrice={parseFloat(formData.priceOffer) || 0}
                 mode="rider"
                 variant="full"
                 className="mt-4"

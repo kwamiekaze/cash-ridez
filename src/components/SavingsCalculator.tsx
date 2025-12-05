@@ -10,7 +10,7 @@ import {
 interface SavingsCalculatorProps {
   distanceMiles?: number;
   pickupTime?: Date;
-  userPrice: number;
+  userPrice?: number;
   mode: "rider" | "driver";
   variant?: "compact" | "full";
   className?: string;
@@ -23,13 +23,13 @@ interface SavingsCalculatorProps {
 export function SavingsCalculator({
   distanceMiles,
   pickupTime,
-  userPrice,
+  userPrice = 0,
   mode,
   variant = "full",
   className = "",
 }: SavingsCalculatorProps) {
   const calculation = useMemo(() => {
-    if (!distanceMiles || distanceMiles <= 0 || userPrice <= 0) {
+    if (!distanceMiles || distanceMiles <= 0) {
       return null;
     }
 
@@ -38,9 +38,10 @@ export function SavingsCalculator({
     const competitorDriverEarn = estimateCompetitorDriverEarnings(estimate.midFare);
 
     if (mode === "rider") {
-      const savings = calculateRiderSavings(estimate.midFare, userPrice);
-      const minSavings = calculateRiderSavings(estimate.minFare, userPrice);
-      const maxSavings = calculateRiderSavings(estimate.maxFare, userPrice);
+      const hasPriceOffer = userPrice > 0;
+      const savings = hasPriceOffer ? calculateRiderSavings(estimate.midFare, userPrice) : 0;
+      const minSavings = hasPriceOffer ? calculateRiderSavings(estimate.minFare, userPrice) : 0;
+      const maxSavings = hasPriceOffer ? calculateRiderSavings(estimate.maxFare, userPrice) : 0;
       return {
         minFare: estimate.minFare,
         maxFare: estimate.maxFare,
@@ -49,16 +50,19 @@ export function SavingsCalculator({
         minSavings,
         maxSavings,
         competitorDriverEarn,
+        hasPriceOffer,
       };
     } else {
       // Driver mode - they keep 100% on CashRidez
-      const extra = calculateDriverExtra(userPrice, competitorDriverEarn);
+      const hasPriceOffer = userPrice > 0;
+      const extra = hasPriceOffer ? calculateDriverExtra(userPrice, competitorDriverEarn) : 0;
       return {
         minFare: estimate.minFare,
         maxFare: estimate.maxFare,
         midFare: estimate.midFare,
         competitorDriverEarn,
         extra,
+        hasPriceOffer,
       };
     }
   }, [distanceMiles, pickupTime, userPrice, mode]);
@@ -95,20 +99,33 @@ export function SavingsCalculator({
         <div className="flex-1 space-y-2">
           {mode === "rider" ? (
             <>
-              <p className="text-lg font-bold text-foreground">
-                You could save {formatCurrency(calculation.minSavings)} – {formatCurrency(calculation.maxSavings)} compared to traditional rideshare.
-              </p>
-              <div className="text-sm text-muted-foreground space-y-1">
-                <p>
-                  Typical apps might charge: {formatCurrency(calculation.minFare)} – {formatCurrency(calculation.maxFare)} for this trip.
-                </p>
-                <p>
-                  Your CashRidez offer: <span className="font-semibold text-success">{formatCurrency(userPrice)}</span>
-                </p>
-                <p className="font-medium text-success">
-                  You're saving about {formatCurrency(calculation.savings)} on this ride.
-                </p>
-              </div>
+              {calculation.hasPriceOffer ? (
+                <>
+                  <p className="text-lg font-bold text-foreground">
+                    You could save {formatCurrency(calculation.minSavings)} – {formatCurrency(calculation.maxSavings)} compared to traditional rideshare.
+                  </p>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>
+                      Typical apps might charge: {formatCurrency(calculation.minFare)} – {formatCurrency(calculation.maxFare)} for this trip.
+                    </p>
+                    <p>
+                      Your CashRidez offer: <span className="font-semibold text-success">{formatCurrency(userPrice)}</span>
+                    </p>
+                    <p className="font-medium text-success">
+                      You're saving about {formatCurrency(calculation.savings)} on this ride.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-lg font-bold text-foreground">
+                    Typical rideshare apps might charge {formatCurrency(calculation.minFare)} – {formatCurrency(calculation.maxFare)} for this trip.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Enter your price offer below to see how much you could save with CashRidez!
+                  </p>
+                </>
+              )}
             </>
           ) : (
             <>
