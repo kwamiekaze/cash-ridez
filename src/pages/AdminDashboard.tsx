@@ -12,7 +12,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search } from "lucide-react";
+import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search, Gift } from "lucide-react";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/input";
 import FloatingSupport from "@/components/FloatingSupport";
@@ -21,6 +21,7 @@ import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { SystemMessageDialog } from "@/components/SystemMessageDialog";
 import { AdminChatRooms } from "@/components/AdminChatRooms";
 import AdminAnalytics from "@/pages/AdminAnalytics";
+import { AdminReferralsTab } from "@/components/AdminReferralsTab";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -88,6 +89,7 @@ const AdminDashboard = () => {
     { id: "verifications", label: "Verifications", icon: Shield },
     { id: "users", label: "Users", icon: Users },
     { id: "subscribed", label: "Subscribed", icon: Crown },
+    { id: "referrals", label: "Referrals", icon: Gift },
     { id: "rides", label: "Rides", icon: Car },
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "community", label: "Chat/Community", icon: MessageSquare },
@@ -182,7 +184,7 @@ const AdminDashboard = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
             {/* Desktop Navigation */}
-            <TabsList className="hidden lg:grid w-full grid-cols-8 bg-card/50 backdrop-blur-sm border border-border/50">
+            <TabsList className="hidden lg:grid w-full grid-cols-9 bg-card/50 backdrop-blur-sm border border-border/50">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -251,6 +253,16 @@ const AdminDashboard = () => {
                 transition={{ delay: 0.1 }}
               >
                 <SubscribedMembersTab />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="referrals" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <AdminReferralsTab />
               </motion.div>
             </TabsContent>
 

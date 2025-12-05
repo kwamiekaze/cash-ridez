@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, History, HeadphonesIcon, Crown, Shield, Megaphone, Download } from "lucide-react";
+import { LogOut, User, History, HeadphonesIcon, Crown, Shield, Megaphone, Download, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
@@ -130,6 +130,10 @@ const AppHeader = ({
                 <DropdownMenuItem onClick={() => navigate("/history")} className="cursor-pointer">
                   <History className="mr-2 h-4 w-4" />
                   History
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/referrals")} className="cursor-pointer">
+                  <Users className="mr-2 h-4 w-4" />
+                  Referrals
                 </DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
                     <Shield className="mr-2 h-4 w-4" />
