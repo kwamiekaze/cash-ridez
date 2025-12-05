@@ -631,9 +631,7 @@ export default function TripDetails() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium">Pickup Location</p>
                 <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(request.pickup_address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={`geo:0,0?q=${encodeURIComponent(request.pickup_address)}`}
                   className="text-sm text-primary hover:underline break-words"
                 >
                   {request.pickup_address}
@@ -645,9 +643,7 @@ export default function TripDetails() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium">Dropoff Location</p>
                 <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(request.dropoff_address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={`geo:0,0?q=${encodeURIComponent(request.dropoff_address)}`}
                   className="text-sm text-primary hover:underline break-words"
                 >
                   {request.dropoff_address}
