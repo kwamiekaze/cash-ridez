@@ -403,7 +403,7 @@ END:VCARD`;
                         className="pointer-events-auto rounded-md border"
                       />
                       <div className="space-y-2">
-                        <Label htmlFor="time-mobile" className="text-sm">Time</Label>
+                        <Label htmlFor="time-mobile" className="text-sm text-center block">Time</Label>
                         <Input
                           id="time-mobile"
                           type="time"
@@ -412,7 +412,7 @@ END:VCARD`;
                             const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
                             setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
                           }}
-                          className="h-12 w-full text-base"
+                          className="h-12 w-full text-base text-center border-0 bg-transparent focus:ring-0 focus-visible:ring-0"
                         />
                       </div>
                       <div className="space-y-2">
@@ -467,7 +467,7 @@ END:VCARD`;
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="time-desktop" className="text-sm">Time</Label>
+                        <Label htmlFor="time-desktop" className="text-sm text-center block">Time</Label>
                         <Input
                           id="time-desktop"
                           type="time"
@@ -476,7 +476,7 @@ END:VCARD`;
                             const dateStr = formData.pickupTime ? formData.pickupTime.split('T')[0] : format(new Date(), 'yyyy-MM-dd');
                             setFormData({ ...formData, pickupTime: `${dateStr}T${e.target.value}` });
                           }}
-                          className="h-12 w-full text-base"
+                          className="h-12 w-full text-base text-center border-0 bg-transparent focus:ring-0 focus-visible:ring-0"
                         />
                       </div>
                       <div className="space-y-2">
