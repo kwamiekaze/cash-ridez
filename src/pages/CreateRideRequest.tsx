@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,8 @@ import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { SavingsCalculator } from "@/components/SavingsCalculator";
+import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -129,6 +131,36 @@ END:VCARD`;
     passengerCount: "1",
     tripDetails: "",
   });
+  
+  // Estimate distance based on addresses (rough estimate for Georgia/Atlanta area)
+  const estimatedDistance = useMemo(() => {
+    if (!formData.pickupAddress || !formData.dropoffAddress) return null;
+    // Rough estimate: assume 15-25 miles for typical metro trip
+    // In production, use Google Maps Distance Matrix API
+    const hasValidAddresses = formData.pickupAddress.length > 5 && formData.dropoffAddress.length > 5;
+    if (!hasValidAddresses) return null;
+    // Base estimate on address complexity - more detailed addresses suggest longer trips
+    const avgLength = (formData.pickupAddress.length + formData.dropoffAddress.length) / 2;
+    return Math.max(5, Math.min(50, avgLength * 0.3)); // 5-50 miles range
+  }, [formData.pickupAddress, formData.dropoffAddress]);
+
+  // Calculate fare estimates for saving to database
+  const fareEstimates = useMemo(() => {
+    if (!estimatedDistance || !formData.priceOffer) return null;
+    const price = parseFloat(formData.priceOffer);
+    if (isNaN(price) || price <= 0) return null;
+    
+    const pickupTime = formData.pickupTime ? new Date(formData.pickupTime) : new Date();
+    const estimate = estimateFromMilesOnly(estimatedDistance, pickupTime);
+    const driverEarnings = estimateCompetitorDriverEarnings(estimate.midFare);
+    
+    return {
+      min: estimate.minFare,
+      max: estimate.maxFare,
+      mid: estimate.midFare,
+      driverEarnings,
+    };
+  }, [estimatedDistance, formData.priceOffer, formData.pickupTime]);
 
   const geocodeAddress = async (address: string) => {
     // Mock geocoding - in production, use Google Maps or Mapbox API
@@ -237,31 +269,41 @@ END:VCARD`;
         ...(formData.contactInfo ? sanitizeForKeywords(formData.contactInfo) : []),
       ];
 
-      // 6) Create the trip
+      // 6) Create the trip with fare estimates
+      const tripInsert: any = {
+        rider_id: userId,
+        pickup_address: formData.pickupAddress.trim(),
+        pickup_lat: pickupGeo.lat,
+        pickup_lng: pickupGeo.lng,
+        pickup_zip: pickupGeo.zip,
+        dropoff_address: formData.dropoffAddress.trim(),
+        dropoff_lat: dropoffGeo.lat,
+        dropoff_lng: dropoffGeo.lng,
+        dropoff_zip: dropoffGeo.zip,
+        pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
+        rider_note: [
+          formData.tripDetails ? `Trip Details: ${formData.tripDetails.trim()}` : null,
+          formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}` : null,
+          formData.emergencyName ? `Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : null
+        ].filter(Boolean).join(' | ') || null,
+        rider_note_image_url: null,
+        price_offer: parseFloat(formData.priceOffer),
+        passenger_count: parseInt(formData.passengerCount),
+        search_keywords: keywords,
+        status: "open",
+      };
+      
+      // Add fare estimates if available
+      if (fareEstimates) {
+        tripInsert.estimated_competitor_fare_min = fareEstimates.min;
+        tripInsert.estimated_competitor_fare_max = fareEstimates.max;
+        tripInsert.estimated_competitor_fare_mid = fareEstimates.mid;
+        tripInsert.estimated_competitor_driver_earnings = fareEstimates.driverEarnings;
+      }
+      
       const { data: newTrip, error } = await supabase
         .from("ride_requests")
-        .insert({
-          rider_id: userId,
-          pickup_address: formData.pickupAddress.trim(),
-          pickup_lat: pickupGeo.lat,
-          pickup_lng: pickupGeo.lng,
-          pickup_zip: pickupGeo.zip,
-           dropoff_address: formData.dropoffAddress.trim(),
-           dropoff_lat: dropoffGeo.lat,
-           dropoff_lng: dropoffGeo.lng,
-           dropoff_zip: dropoffGeo.zip,
-            pickup_time: formData.pickupTime ? new Date(formData.pickupTime).toISOString() : new Date().toISOString(),
-            rider_note: [
-             formData.tripDetails ? `Trip Details: ${formData.tripDetails.trim()}` : null,
-             formData.contactInfo ? `Contact: ${formData.contactInfo.trim()}` : null,
-             formData.emergencyName ? `Emergency: ${formData.emergencyName} - ${formData.emergencyPhone}` : null
-           ].filter(Boolean).join(' | ') || null,
-           rider_note_image_url: null,
-          price_offer: parseFloat(formData.priceOffer),
-          passenger_count: parseInt(formData.passengerCount),
-          search_keywords: keywords,
-          status: "open",
-        })
+        .insert(tripInsert)
         .select()
         .single();
       if (error) throw error;
@@ -580,6 +622,18 @@ END:VCARD`;
                 />
               </div>
             </div>
+
+            {/* Savings Calculator */}
+            {estimatedDistance && parseFloat(formData.priceOffer) > 0 && (
+              <SavingsCalculator
+                distanceMiles={estimatedDistance}
+                pickupTime={formData.pickupTime ? new Date(formData.pickupTime) : new Date()}
+                userPrice={parseFloat(formData.priceOffer)}
+                mode="rider"
+                variant="full"
+                className="mt-4"
+              />
+            )}
 
             <Button type="submit" className="w-full bg-gradient-primary text-background font-semibold hover:opacity-90 transition-opacity" size="lg" disabled={isSubmitting}>
               {isSubmitting ? "Creating Request..." : "Create Trip Request"}

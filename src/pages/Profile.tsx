@@ -21,6 +21,7 @@ import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { MapBackground } from "@/components/MapBackground";
 import { PremiumCrown } from "@/components/PremiumCrown";
 import { PhoneNumberReminderDialog } from "@/components/PhoneNumberReminderDialog";
+import { LifetimeSavings } from "@/components/SavingsCalculator";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -51,6 +52,9 @@ const Profile = () => {
     car_model: "",
     subscription_active: false,
     subscription_status: "",
+    total_driver_earnings: 0,
+    total_driver_extra_vs_competitor: 0,
+    total_rider_savings_vs_competitor: 0,
   });
   const [adminLockedFields, setAdminLockedFields] = useState<string[]>([]);
   const [originalName, setOriginalName] = useState("");
@@ -96,6 +100,9 @@ const Profile = () => {
           car_model: data.car_model || "",
           subscription_active: data.subscription_active || false,
           subscription_status: data.subscription_status || "",
+          total_driver_earnings: data.total_driver_earnings || 0,
+          total_driver_extra_vs_competitor: data.total_driver_extra_vs_competitor || 0,
+          total_rider_savings_vs_competitor: data.total_rider_savings_vs_competitor || 0,
         });
         setAdminLockedFields(data.admin_locked_fields || []);
         setOriginalName(data.full_name || "");
@@ -555,6 +562,21 @@ const Profile = () => {
         {/* Role-specific sections */}
         {user && (
           <div className="mt-6 space-y-6">
+            {/* Lifetime Savings/Earnings */}
+            {profile.is_rider && profile.total_rider_savings_vs_competitor > 0 && (
+              <LifetimeSavings
+                totalSavings={profile.total_rider_savings_vs_competitor}
+                mode="rider"
+              />
+            )}
+            {profile.is_driver && (profile.total_driver_earnings > 0 || profile.total_driver_extra_vs_competitor > 0) && (
+              <LifetimeSavings
+                totalEarnings={profile.total_driver_earnings}
+                totalExtra={profile.total_driver_extra_vs_competitor}
+                mode="driver"
+              />
+            )}
+            
             {/* Individual Ratings Display */}
             {profile.is_rider && profile.rider_rating_count > 0 && (
               <UserRatingsDisplay userId={user.id} ratingType="rider" />

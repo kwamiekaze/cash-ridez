@@ -770,6 +770,9 @@ export type Database = {
           subscription_expires_at: string | null
           subscription_started_at: string | null
           subscription_status: string | null
+          total_driver_earnings: number | null
+          total_driver_extra_vs_competitor: number | null
+          total_rider_savings_vs_competitor: number | null
           updated_at: string | null
           verification_notes: string | null
           verification_reviewed_at: string | null
@@ -835,6 +838,9 @@ export type Database = {
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
+          total_driver_earnings?: number | null
+          total_driver_extra_vs_competitor?: number | null
+          total_rider_savings_vs_competitor?: number | null
           updated_at?: string | null
           verification_notes?: string | null
           verification_reviewed_at?: string | null
@@ -900,6 +906,9 @@ export type Database = {
           subscription_expires_at?: string | null
           subscription_started_at?: string | null
           subscription_status?: string | null
+          total_driver_earnings?: number | null
+          total_driver_extra_vs_competitor?: number | null
+          total_rider_savings_vs_competitor?: number | null
           updated_at?: string | null
           verification_notes?: string | null
           verification_reviewed_at?: string | null
@@ -1042,11 +1051,16 @@ export type Database = {
           cancelled_by: string | null
           created_at: string | null
           driver_completed: boolean | null
+          driver_extra_vs_competitor: number | null
           driver_rating: number | null
           dropoff_address: string
           dropoff_lat: number
           dropoff_lng: number
           dropoff_zip: string
+          estimated_competitor_driver_earnings: number | null
+          estimated_competitor_fare_max: number | null
+          estimated_competitor_fare_mid: number | null
+          estimated_competitor_fare_min: number | null
           eta_minutes: number | null
           id: string
           passenger_count: number | null
@@ -1061,6 +1075,7 @@ export type Database = {
           rider_note: string | null
           rider_note_image_url: string | null
           rider_rating: number | null
+          rider_savings_vs_competitor: number | null
           search_keywords: string[] | null
           status: Database["public"]["Enums"]["ride_status"] | null
           updated_at: string | null
@@ -1076,11 +1091,16 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string | null
           driver_completed?: boolean | null
+          driver_extra_vs_competitor?: number | null
           driver_rating?: number | null
           dropoff_address: string
           dropoff_lat: number
           dropoff_lng: number
           dropoff_zip: string
+          estimated_competitor_driver_earnings?: number | null
+          estimated_competitor_fare_max?: number | null
+          estimated_competitor_fare_mid?: number | null
+          estimated_competitor_fare_min?: number | null
           eta_minutes?: number | null
           id?: string
           passenger_count?: number | null
@@ -1095,6 +1115,7 @@ export type Database = {
           rider_note?: string | null
           rider_note_image_url?: string | null
           rider_rating?: number | null
+          rider_savings_vs_competitor?: number | null
           search_keywords?: string[] | null
           status?: Database["public"]["Enums"]["ride_status"] | null
           updated_at?: string | null
@@ -1110,11 +1131,16 @@ export type Database = {
           cancelled_by?: string | null
           created_at?: string | null
           driver_completed?: boolean | null
+          driver_extra_vs_competitor?: number | null
           driver_rating?: number | null
           dropoff_address?: string
           dropoff_lat?: number
           dropoff_lng?: number
           dropoff_zip?: string
+          estimated_competitor_driver_earnings?: number | null
+          estimated_competitor_fare_max?: number | null
+          estimated_competitor_fare_mid?: number | null
+          estimated_competitor_fare_min?: number | null
           eta_minutes?: number | null
           id?: string
           passenger_count?: number | null
@@ -1129,6 +1155,7 @@ export type Database = {
           rider_note?: string | null
           rider_note_image_url?: string | null
           rider_rating?: number | null
+          rider_savings_vs_competitor?: number | null
           search_keywords?: string[] | null
           status?: Database["public"]["Enums"]["ride_status"] | null
           updated_at?: string | null
