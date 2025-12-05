@@ -176,12 +176,13 @@ export function NotificationBell() {
     if (notification.type === 'driver_available') {
       navigate('/rider?tab=area');
     } else if (notification.type === 'community_message' || notification.type === 'community_chat') {
-      // For community chat notifications, go directly to the chat page
-      navigate('/chat');
+      // For community chat notifications, go to the dashboard with chat tab
+      // Use driver dashboard by default since it has the chat tab
+      navigate('/driver?tab=chat');
     } else if (notification.link) {
-      // If the link points to /community, redirect to /chat instead for chat-related notifications
+      // If the link points to /community, redirect to dashboard chat tab instead
       if (notification.link === '/community') {
-        navigate('/chat');
+        navigate('/driver?tab=chat');
       } else {
         navigate(notification.link);
       }
