@@ -7,20 +7,17 @@
 // ENDPOINT URL:
 //   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-start
 //
-// REQUIRED SECRETS (already configured in Lovable Cloud):
-//   - TWILIO_ACCOUNT_SID: Your Twilio account SID
-//   - TWILIO_AUTH_TOKEN: Your Twilio auth token
-//   - TWILIO_PHONE_NUMBER: Your Twilio phone number (caller ID)
-//   - APP_BASE_URL: https://cash-ridez.lovable.app
-//
-// FLOW:
-//   1. Frontend calls this function with trip_id
-//   2. Creates call record in database
-//   3. Initiates Twilio call to the initiator
-//   4. Twilio calls call-voice endpoint to bridge the call
-//   5. Status updates sent to call-status endpoint
-//
-// AUTHENTICATION: Requires valid Supabase JWT (verify_jwt = true)
+// ERROR CODES returned to frontend:
+//   - NO_USER_PHONE: Current user has no phone
+//   - NO_RIDER_PHONE: Rider has no phone
+//   - NO_DRIVER_PHONE: Driver has no phone
+//   - INVALID_PHONE_FORMAT: Phone format is invalid
+//   - TRIP_NOT_ASSIGNED: Trip must be assigned
+//   - NOT_PARTICIPANT: User is not trip participant
+//   - TRIP_NOT_FOUND: Trip doesn't exist
+//   - UNAUTHORIZED: Missing auth
+//   - SERVER_CONFIG_ERROR: Missing env vars
+//   - TWILIO_ERROR: Twilio API failure
 //
 // ============================================================================
 
@@ -31,6 +28,15 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper to create structured error response
+function errorResponse(code: string, message: string, status: number = 400) {
+  console.error(`[call-start] Error: ${code} - ${message}`);
+  return new Response(
+    JSON.stringify({ success: false, code, error: message }),
+    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
 // Helper function to extract phone number from text
 function extractPhoneNumber(text: string): string | null {
@@ -67,6 +73,13 @@ function extractContactFromRiderNote(riderNote: string | null): string | null {
   return null;
 }
 
+// Validate phone number format
+function isValidPhoneNumber(phone: string | null): boolean {
+  if (!phone) return false;
+  // E.164 format for US: +1 followed by 10 digits
+  return /^\+1\d{10}$/.test(phone);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -74,15 +87,11 @@ Deno.serve(async (req) => {
 
   try {
     console.log('[call-start] Function invoked');
-    console.log('[call-start] Environment check - Twilio SID available:', !!Deno.env.get('TWILIO_ACCOUNT_SID'));
     
+    // Check authorization
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('[call-start] Missing authorization header');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('UNAUTHORIZED', 'Please log in to use in-app calling.', 401);
     }
 
     const supabase = createClient(
@@ -93,27 +102,27 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      console.error('[call-start] Auth error:', userError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('UNAUTHORIZED', 'Please log in to use in-app calling.', 401);
     }
 
     console.log('[call-start] User authenticated:', user.id);
 
-    const { trip_id } = await req.json();
-    console.log('[call-start] Trip ID:', trip_id);
+    // Parse request body
+    let trip_id: string;
+    try {
+      const body = await req.json();
+      trip_id = body.trip_id;
+    } catch {
+      return errorResponse('INVALID_REQUEST', 'Invalid request format.', 400);
+    }
+    
     if (!trip_id) {
-      console.error('[call-start] Missing trip_id');
-      return new Response(
-        JSON.stringify({ success: false, error: 'trip_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('INVALID_REQUEST', 'Trip ID is required.', 400);
     }
 
+    console.log('[call-start] Trip ID:', trip_id);
+
     // Fetch trip details including rider_note for fallback contact info
-    console.log('[call-start] Fetching trip details');
     const { data: trip, error: tripError } = await supabase
       .from('ride_requests')
       .select('id, status, rider_id, assigned_driver_id, rider_note')
@@ -121,35 +130,22 @@ Deno.serve(async (req) => {
       .single();
 
     if (tripError || !trip) {
-      console.error('[call-start] Trip not found:', tripError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Trip not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('TRIP_NOT_FOUND', 'Trip not found. It may have been cancelled.', 404);
     }
 
     console.log('[call-start] Trip found:', { status: trip.status, rider: trip.rider_id, driver: trip.assigned_driver_id });
 
     // Validate trip status
     if (trip.status !== 'assigned') {
-      console.error('[call-start] Invalid trip status:', trip.status);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Trip must be assigned to make a call.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('TRIP_NOT_ASSIGNED', 'This trip must be assigned before you can make a call.', 400);
     }
 
     // Check if user is participant
     if (user.id !== trip.rider_id && user.id !== trip.assigned_driver_id) {
-      console.error('[call-start] User is not a participant:', user.id);
-      return new Response(
-        JSON.stringify({ success: false, error: 'You are not a participant in this trip' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('NOT_PARTICIPANT', 'You are not a participant in this trip.', 403);
     }
 
     // Fetch both profiles with phone numbers
-    console.log('[call-start] Fetching participant profiles');
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, phone_number')
@@ -157,62 +153,67 @@ Deno.serve(async (req) => {
 
     if (profilesError || !profiles || profiles.length !== 2) {
       console.error('[call-start] Profile fetch error:', profilesError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to fetch participant profiles' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return errorResponse('SERVER_CONFIG_ERROR', 'Failed to fetch participant profiles. Please try again.', 500);
     }
-
-    console.log('[call-start] Profiles fetched:', profiles.map(p => ({ id: p.id, hasPhone: !!p.phone_number })));
 
     const riderProfile = profiles.find(p => p.id === trip.rider_id);
     const driverProfile = profiles.find(p => p.id === trip.assigned_driver_id);
 
     // Get rider phone number - fallback to contact info from rider_note if profile phone is missing
-    let riderPhoneNumber = riderProfile?.phone_number?.trim() || '';
-    if (!riderPhoneNumber && trip.rider_note) {
+    let riderPhoneRaw = riderProfile?.phone_number?.trim() || '';
+    if (!riderPhoneRaw && trip.rider_note) {
       console.log('[call-start] Rider has no profile phone, attempting to extract from rider_note');
       const extractedPhone = extractContactFromRiderNote(trip.rider_note);
       if (extractedPhone) {
         console.log('[call-start] Successfully extracted phone from rider_note');
-        riderPhoneNumber = extractedPhone;
-      } else {
-        console.log('[call-start] Could not extract phone from rider_note');
+        riderPhoneRaw = extractedPhone;
       }
     }
 
-    // Get driver phone number from profile
-    const driverPhoneNumber = driverProfile?.phone_number?.trim() || '';
+    // Format and validate phone numbers
+    const riderPhone = extractPhoneNumber(riderPhoneRaw) || riderPhoneRaw;
+    const driverPhone = extractPhoneNumber(driverProfile?.phone_number || '') || driverProfile?.phone_number?.trim() || '';
 
-    // Validate BOTH participants have phone numbers
-    const riderHasPhone = riderPhoneNumber !== '';
-    const driverHasPhone = driverPhoneNumber !== '';
+    // Detailed phone validation with specific error codes
+    const riderHasValidPhone = isValidPhoneNumber(riderPhone);
+    const driverHasValidPhone = isValidPhoneNumber(driverPhone);
 
-    if (!riderHasPhone || !driverHasPhone) {
-      console.error('[call-start] Phone number validation failed:', {
-        riderHasPhone,
-        driverHasPhone
-      });
-      
-      let errorMessage = 'Unable to initiate call. ';
-      if (!riderHasPhone) {
-        errorMessage += 'Rider must provide a valid phone number. ';
-      }
-      if (!driverHasPhone) {
-        errorMessage += 'Driver must add a phone number to their profile. ';
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: errorMessage.trim()
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    console.log('[call-start] Phone validation:', { 
+      riderPhone: riderPhone ? '***' + riderPhone.slice(-4) : 'none',
+      driverPhone: driverPhone ? '***' + driverPhone.slice(-4) : 'none',
+      riderValid: riderHasValidPhone,
+      driverValid: driverHasValidPhone
+    });
+
+    // Return specific error for which phone is missing
+    if (!riderHasValidPhone && !driverHasValidPhone) {
+      return errorResponse(
+        'NO_USER_PHONE',
+        'Both participants need valid phone numbers. Please update your profiles.',
+        400
       );
+    }
+    
+    if (!riderHasValidPhone) {
+      // If current user is rider, tell them to add their phone
+      if (user.id === trip.rider_id) {
+        return errorResponse('NO_USER_PHONE', 'Please add your carrier phone number to your profile to use in-app calling.', 400);
+      }
+      // Otherwise tell driver the rider needs to add phone
+      return errorResponse('NO_RIDER_PHONE', 'The rider hasn\'t provided a valid phone number. Please ask them to update their contact info.', 400);
+    }
+    
+    if (!driverHasValidPhone) {
+      // If current user is driver, tell them to add their phone
+      if (user.id === trip.assigned_driver_id) {
+        return errorResponse('NO_USER_PHONE', 'Please add your carrier phone number to your profile to use in-app calling.', 400);
+      }
+      // Otherwise tell rider the driver needs to add phone
+      return errorResponse('NO_DRIVER_PHONE', 'The driver hasn\'t added a phone number to their profile yet.', 400);
     }
 
     // Determine initiator and recipient phone numbers
-    const initiatorPhone = user.id === trip.rider_id ? riderPhoneNumber : driverPhoneNumber;
+    const initiatorPhone = user.id === trip.rider_id ? riderPhone : driverPhone;
     const initiatorRole = user.id === trip.rider_id ? 'rider' : 'driver';
 
     // Create call record
@@ -229,39 +230,26 @@ Deno.serve(async (req) => {
       .single();
 
     if (callError || !callRecord) {
-      throw new Error('Failed to create call record');
+      console.error('[call-start] Failed to create call record:', callError);
+      return errorResponse('SERVER_CONFIG_ERROR', 'Failed to create call record. Please try again.', 500);
     }
 
     // Check environment variables
-    console.log('[call-start] Checking environment variables');
     const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
 
     if (!twilioAccountSid || !twilioAuthToken || !supabaseUrl || !twilioPhoneNumber) {
-      console.error('[call-start] Missing environment variables:', {
-        hasTwilioSid: !!twilioAccountSid,
-        hasTwilioToken: !!twilioAuthToken,
-        hasSupabaseUrl: !!supabaseUrl,
-        hasTwilioPhone: !!twilioPhoneNumber
-      });
-      return new Response(
-        JSON.stringify({ success: false, error: 'Server configuration error. Please contact support.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.error('[call-start] Missing environment variables');
+      return errorResponse('SERVER_CONFIG_ERROR', 'Server configuration error. Please contact support.', 500);
     }
 
-    console.log('[call-start] Environment variables OK');
-
     // Initialize Twilio client
-    console.log('[call-start] Initializing Twilio client');
     const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
-
-    // Use Supabase edge function URLs for callbacks
     const functionsBaseUrl = `${supabaseUrl}/functions/v1`;
 
-    console.log('[call-start] Initiating call to:', initiatorPhone);
+    console.log('[call-start] Initiating call to:', initiatorPhone.slice(0, 4) + '***');
     
     try {
       // Initiate call to the initiator
@@ -275,7 +263,6 @@ Deno.serve(async (req) => {
       });
 
       console.log('[call-start] Call created successfully, SID:', call.sid);
-      console.log('[call-start] Call bridging initiated - waiting for participants to answer');
 
       // Update call record with Twilio SID
       const sidField = initiatorRole === 'rider' ? 'twilio_call_sid_rider' : 'twilio_call_sid_driver';
@@ -283,8 +270,6 @@ Deno.serve(async (req) => {
         .from('calls')
         .update({ [sidField]: call.sid })
         .eq('id', callRecord.id);
-
-      console.log(`Call initiated: ${callRecord.id}, Twilio SID: ${call.sid}`);
 
       return new Response(
         JSON.stringify({
@@ -294,24 +279,32 @@ Deno.serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } catch (twilioError) {
+    } catch (twilioError: any) {
       console.error('[call-start] Twilio error:', twilioError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Unable to start the call right now. Please try again later.' 
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      
+      // Parse Twilio error for more specific messages
+      const twilioCode = twilioError?.code;
+      const twilioMessage = twilioError?.message || '';
+      
+      // Map common Twilio errors
+      if (twilioCode === 21211 || twilioMessage.includes('invalid phone')) {
+        return errorResponse('INVALID_PHONE_FORMAT', 'The phone number format is invalid. Please update your profile with a valid US number.', 400);
+      }
+      if (twilioCode === 21214 || twilioMessage.includes('not a valid')) {
+        return errorResponse('INVALID_DESTINATION_NUMBER', 'The phone number is not valid. Please check the number and try again.', 400);
+      }
+      if (twilioCode === 21215) {
+        return errorResponse('TWILIO_UNAVAILABLE', 'Cannot reach this phone number. Please verify it\'s correct.', 400);
+      }
+      if (twilioCode === 20429 || twilioMessage.includes('rate')) {
+        return errorResponse('RATE_LIMITED', 'Too many calls. Please wait a few minutes before trying again.', 429);
+      }
+      
+      return errorResponse('TWILIO_ERROR', 'Unable to start the call right now. Please try again later.', 500);
     }
 
   } catch (error) {
     console.error('[call-start] Unexpected error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    console.error('[call-start] Error details:', { message: errorMessage, stack: error instanceof Error ? error.stack : undefined });
-    return new Response(
-      JSON.stringify({ success: false, error: `Failed to initiate call: ${errorMessage}` }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return errorResponse('UNKNOWN', 'An unexpected error occurred. Please try again or contact support.', 500);
   }
 });
