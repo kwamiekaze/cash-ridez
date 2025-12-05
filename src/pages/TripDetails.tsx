@@ -449,9 +449,36 @@ export default function TripDetails() {
 
       if (rideError) throw rideError;
 
-      // CRITICAL: Wait for database trigger to update profile ratings
-      // The triggers update rider_rating_avg/driver_rating_avg automatically
-      await new Promise(resolve => setTimeout(resolve, 400));
+      // CRITICAL: Immediately update the rated user's profile for real-time reflection
+      // This ensures the rating shows immediately even before the trip is fully completed
+      const { data: ratedUserProfile } = await supabase
+        .from('profiles')
+        .select('rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count')
+        .eq('id', ratedUserId)
+        .single();
+
+      if (ratedUserProfile) {
+        const currentAvg = ratingType === 'rider' 
+          ? (ratedUserProfile.rider_rating_avg || 0) 
+          : (ratedUserProfile.driver_rating_avg || 0);
+        const currentCount = ratingType === 'rider'
+          ? (ratedUserProfile.rider_rating_count || 0)
+          : (ratedUserProfile.driver_rating_count || 0);
+        
+        // Calculate new average
+        const newCount = currentCount + 1;
+        const newAvg = ((currentAvg * currentCount) + rating) / newCount;
+        
+        // Update profile directly for immediate reflection
+        const profileUpdate = ratingType === 'rider'
+          ? { rider_rating_avg: parseFloat(newAvg.toFixed(2)), rider_rating_count: newCount }
+          : { driver_rating_avg: parseFloat(newAvg.toFixed(2)), driver_rating_count: newCount };
+        
+        await supabase
+          .from('profiles')
+          .update(profileUpdate)
+          .eq('id', ratedUserId);
+      }
 
       // Get current user's name for notification
       const { data: currentUserProfile } = await supabase
