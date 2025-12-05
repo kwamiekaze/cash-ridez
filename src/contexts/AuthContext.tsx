@@ -55,6 +55,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (event === 'SIGNED_IN' && session) {
         // Small delay to ensure profile is created
         setTimeout(async () => {
+          // Process pending referral code if exists
+          const pendingReferralCode = localStorage.getItem("pending_referral_code");
+          if (pendingReferralCode) {
+            try {
+              await supabase.rpc("process_referral", {
+                p_new_user_id: session.user.id,
+                p_referral_code: pendingReferralCode
+              });
+              console.log("Referral processed successfully");
+            } catch (refError) {
+              console.error("Referral processing error:", refError);
+            } finally {
+              localStorage.removeItem("pending_referral_code");
+            }
+          }
+          
           const { data: profile } = await supabase
             .from("profiles")
             .select("active_role, is_verified, verification_status, verification_submitted_at, id_image_url")

@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Users } from "lucide-react";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 
@@ -47,6 +47,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   });
   const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
   const [idPreviewOpen, setIdPreviewOpen] = useState(false);
+  const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null; referralCode: string | null }>({ count: 0, referrerName: null, referralCode: null });
 
   useEffect(() => {
     if (userId && open) {
@@ -81,6 +82,26 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         is_rider: data.is_rider || false,
         is_driver: data.is_driver || false,
       });
+      
+      // Fetch referral stats
+      const { count } = await supabase
+        .from("referrals")
+        .select("*", { count: "exact", head: true })
+        .eq("referrer_user_id", userId);
+      
+      let referrerName = null;
+      if (data.referred_by_user_id) {
+        const { data: referrer } = await supabase
+          .from("profiles")
+          .select("full_name, display_name, email")
+          .eq("id", data.referred_by_user_id)
+          .single();
+        if (referrer) {
+          referrerName = referrer.full_name || referrer.display_name || referrer.email;
+        }
+      }
+      
+      setReferralStats({ count: count || 0, referrerName, referralCode: data.referral_code });
     } catch (error: any) {
       toast.error("Failed to fetch user details");
       console.error(error);
@@ -209,6 +230,32 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               </div>
             </div>
           </div>
+
+          {/* Referral Info */}
+          <Card className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="h-4 w-4" />
+              <Label className="text-sm font-medium">Referral Information</Label>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Referred By:</span>
+                <span className={referralStats.referrerName ? "text-primary" : "text-muted-foreground"}>
+                  {referralStats.referrerName || "Not referred"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Referrals:</span>
+                <Badge variant="secondary">{referralStats.count}</Badge>
+              </div>
+              {referralStats.referralCode && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Referral Code:</span>
+                  <code className="text-xs bg-muted px-2 py-1 rounded">{referralStats.referralCode}</code>
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* ID Verification */}
           {user.id_image_url && (

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Mail, Lock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Mail, Lock, Gift } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,12 +13,22 @@ import { MapBackground } from "@/components/MapBackground";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     signIn,
     signUp
   } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+
+  // Pre-fill referral code from URL parameter
+  useEffect(() => {
+    const refCode = searchParams.get("ref");
+    if (refCode) {
+      setReferralCode(refCode.toUpperCase());
+    }
+  }, [searchParams]);
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -42,13 +52,21 @@ const Auth = () => {
     const displayName = formData.get("name") as string;
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-    const {
-      error
-    } = await signUp(email, password, displayName);
+    const enteredReferralCode = formData.get("referral_code") as string;
+    
+    // Store referral code in localStorage to process after signup
+    if (enteredReferralCode?.trim()) {
+      localStorage.setItem("pending_referral_code", enteredReferralCode.trim().toUpperCase());
+    }
+    
+    const { error } = await signUp(email, password, displayName);
+    
     if (error) {
       toast.error(error.message || "Failed to create account");
+      localStorage.removeItem("pending_referral_code");
     } else {
       toast.success("Account created!");
+      // Referral will be processed via auth state change listener
     }
     setIsLoading(false);
   };
@@ -145,6 +163,21 @@ const Auth = () => {
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input id="signup-password" name="password" type="password" placeholder="••••••••" className="pl-10" required minLength={8} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-referral">Referral Code (optional)</Label>
+                  <div className="relative">
+                    <Gift className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      id="signup-referral" 
+                      name="referral_code" 
+                      type="text" 
+                      placeholder="Enter referral code" 
+                      className="pl-10 uppercase"
+                      value={referralCode}
+                      onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    />
                   </div>
                 </div>
                 <Button type="submit" className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold" disabled={isLoading}>

@@ -7,12 +7,13 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { AdminBadge } from "@/components/AdminBadge";
 import { PremiumCrown } from "@/components/PremiumCrown";
-import { Car, MessageCircle, ExternalLink, Shield } from "lucide-react";
+import { Car, MessageCircle, ExternalLink, Shield, Users, Link } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DirectMessageDialog } from "@/components/DirectMessageDialog";
 import { AdminBanUserDialog } from "@/components/AdminBanUserDialog";
+import { format } from "date-fns";
 
 interface UserProfileModalProps {
   userId: string | null;
@@ -37,6 +38,8 @@ interface UserProfile {
   car_model: string | null;
   subscription_active: boolean;
   subscription_status: string | null;
+  referral_code: string | null;
+  referred_by_user_id: string | null;
 }
 
 export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModalProps) {
@@ -52,6 +55,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [chatRooms, setChatRooms] = useState<Array<{ id: string; name: string }>>([]);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null }>({ count: 0, referrerName: null });
 
   useEffect(() => {
     if (!userId || !open || !user) return;
@@ -72,7 +76,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
         // Fetch profile data (including phone number for admins)
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email, phone_number, subscription_active, subscription_status")
+          .select("id, full_name, display_name, photo_url, bio, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_member, is_verified, car_year, car_make, car_model, id_image_url, email, phone_number, subscription_active, subscription_status, referral_code, referred_by_user_id")
           .eq("id", userId)
           .single();
 
@@ -92,6 +96,30 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
 
         if (profileData) {
           setProfile(profileData as any);
+          
+          // Fetch referral stats for admin
+          if (viewerAdminData) {
+            // Count referrals
+            const { count } = await supabase
+              .from("referrals")
+              .select("*", { count: "exact", head: true })
+              .eq("referrer_user_id", userId);
+            
+            // Get referrer name if referred
+            let referrerName = null;
+            if (profileData.referred_by_user_id) {
+              const { data: referrer } = await supabase
+                .from("profiles")
+                .select("full_name, display_name, email")
+                .eq("id", profileData.referred_by_user_id)
+                .single();
+              if (referrer) {
+                referrerName = referrer.full_name || referrer.display_name || referrer.email;
+              }
+            }
+            
+            setReferralStats({ count: count || 0, referrerName });
+          }
           
           // If admin and there's an ID image, get signed URL
           if (viewerAdminData && profileData.id_image_url) {
@@ -236,6 +264,34 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
                 {profile.car_make && `${profile.car_make} `}
                 {profile.car_model && profile.car_model}
               </p>
+            </Card>
+          )}
+
+          {/* Admin-only Referral Info */}
+          {viewerIsAdmin && (
+            <Card className="p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-4 w-4" />
+                <h4 className="font-semibold text-sm">Referral Information</h4>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Referred By:</span>
+                  <span className={referralStats.referrerName ? "text-primary" : "text-muted-foreground"}>
+                    {referralStats.referrerName || "Not referred by anyone"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Referrals:</span>
+                  <Badge variant="secondary">{referralStats.count}</Badge>
+                </div>
+                {profile.referral_code && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Referral Code:</span>
+                    <code className="text-xs bg-muted px-2 py-1 rounded">{profile.referral_code}</code>
+                  </div>
+                )}
+              </div>
             </Card>
           )}
 

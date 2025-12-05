@@ -38,6 +38,7 @@ const Updates = lazy(() => import("./pages/Updates"));
 const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
+const Referrals = lazy(() => import("./pages/Referrals"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -235,6 +236,14 @@ const App = () => (
             <Route
               path="/install-app"
               element={<InstallApp />}
+            />
+            <Route
+              path="/referrals"
+              element={
+                <ProtectedRoute>
+                  <Referrals />
+                </ProtectedRoute>
+              }
             />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

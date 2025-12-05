@@ -757,6 +757,9 @@ export type Database = {
           photo_url: string | null
           profile_zip: string | null
           profile_zip_updated_at: string | null
+          referral_code: string | null
+          referral_code_locked: boolean | null
+          referred_by_user_id: string | null
           rider_rating_avg: number | null
           rider_rating_count: number | null
           role_set_at: string | null
@@ -819,6 +822,9 @@ export type Database = {
           photo_url?: string | null
           profile_zip?: string | null
           profile_zip_updated_at?: string | null
+          referral_code?: string | null
+          referral_code_locked?: boolean | null
+          referred_by_user_id?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
           role_set_at?: string | null
@@ -881,6 +887,9 @@ export type Database = {
           photo_url?: string | null
           profile_zip?: string | null
           profile_zip_updated_at?: string | null
+          referral_code?: string | null
+          referral_code_locked?: boolean | null
+          referred_by_user_id?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
           role_set_at?: string | null
@@ -902,7 +911,54 @@ export type Database = {
           verification_welcome_dismissed?: boolean | null
           warning_count?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_user_id_fkey"
+            columns: ["referred_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          id: string
+          note: string | null
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          referred_user_id: string
+          referrer_user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          referred_user_id?: string
+          referrer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_user_id_fkey"
+            columns: ["referred_user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_user_id_fkey"
+            columns: ["referrer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ride_locations: {
         Row: {
@@ -1280,6 +1336,7 @@ export type Database = {
         }
         Returns: string
       }
+      generate_unique_referral_code: { Args: never; Returns: string }
       get_or_create_direct_chat: {
         Args: { _participant_1_id: string; _participant_2_id: string }
         Returns: string
@@ -1320,8 +1377,16 @@ export type Database = {
       is_verified_rider: { Args: { _user_id: string }; Returns: boolean }
       is_verified_user: { Args: { _user_id: string }; Returns: boolean }
       normalize_zip: { Args: { zip_input: string }; Returns: string }
+      process_referral: {
+        Args: { p_new_user_id: string; p_referral_code: string }
+        Returns: Json
+      }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
       repair_user_trip_counts: { Args: never; Returns: undefined }
+      set_referral_code: {
+        Args: { p_new_code: string; p_user_id: string }
+        Returns: Json
+      }
       update_cancellation_stats: {
         Args: { p_role: string; p_user_id: string }
         Returns: undefined
