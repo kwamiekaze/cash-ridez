@@ -175,8 +175,16 @@ export function NotificationBell() {
     // For driver_available notifications, go to the drivers tab in rider dashboard
     if (notification.type === 'driver_available') {
       navigate('/rider?tab=area');
+    } else if (notification.type === 'community_message' || notification.type === 'community_chat') {
+      // For community chat notifications, go directly to the chat page
+      navigate('/chat');
     } else if (notification.link) {
-      navigate(notification.link);
+      // If the link points to /community, redirect to /chat instead for chat-related notifications
+      if (notification.link === '/community') {
+        navigate('/chat');
+      } else {
+        navigate(notification.link);
+      }
     }
   };
 
