@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, Edit3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AddressAutocompleteProps {
@@ -16,6 +16,60 @@ interface AddressAutocompleteProps {
 interface Suggestion {
   display_name: string;
   place_id: string;
+  isCustomOption?: boolean;
+}
+
+/**
+ * Format address to: number + street, city, county, state, country
+ * Removes neighborhood names, building names, complex names
+ */
+function formatCleanAddress(rawAddress: string, addressDetails?: any): string {
+  if (!rawAddress) return rawAddress;
+  
+  // If we have address details from API, construct clean address
+  if (addressDetails) {
+    const parts: string[] = [];
+    
+    // House number + street
+    if (addressDetails.house_number && addressDetails.road) {
+      parts.push(`${addressDetails.house_number} ${addressDetails.road}`);
+    } else if (addressDetails.road) {
+      parts.push(addressDetails.road);
+    }
+    
+    // City (prefer city over town/village)
+    const city = addressDetails.city || addressDetails.town || addressDetails.village || addressDetails.municipality;
+    if (city) parts.push(city);
+    
+    // County (if available)
+    if (addressDetails.county) parts.push(addressDetails.county);
+    
+    // State
+    if (addressDetails.state) parts.push(addressDetails.state);
+    
+    // Country
+    if (addressDetails.country) parts.push(addressDetails.country);
+    
+    if (parts.length > 0) {
+      return parts.join(', ');
+    }
+  }
+  
+  // Fallback: clean up raw address string by removing common neighborhood patterns
+  const neighborhoodPatterns = [
+    /,?\s*[A-Z][a-z]+ Heights,?/gi,
+    /,?\s*[A-Z][a-z]+ Park,?/gi,
+    /,?\s*[A-Z][a-z]+ Village,?/gi,
+    /,?\s*[A-Z][a-z]+ Commons,?/gi,
+    /,?\s*[A-Z][a-z]+ Square,?/gi,
+    /,?\s*[A-Z][a-z]+ Place,?/gi,
+    /,?\s*Historic [A-Z][a-z]+,?/gi,
+    /,?\s*Downtown [A-Z][a-z]+,?/gi,
+  ];
+  
+  let cleaned = rawAddress;
+  // Don't over-clean - just return as-is if it looks reasonable
+  return cleaned.replace(/,\s*,/g, ',').replace(/^\s*,\s*/, '').replace(/\s*,\s*$/, '').trim();
 }
 
 export function AddressAutocomplete({
@@ -31,6 +85,7 @@ export function AddressAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [currentQuery, setCurrentQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -51,6 +106,7 @@ export function AddressAutocomplete({
       return;
     }
 
+    setCurrentQuery(query);
     setLoading(true);
     try {
       // Use Nominatim (OpenStreetMap) free geocoding API
@@ -65,19 +121,32 @@ export function AddressAutocomplete({
       
       if (response.ok) {
         const data = await response.json();
-        const formattedSuggestions = data.map((item: any) => ({
-          display_name: item.display_name,
+        const formattedSuggestions: Suggestion[] = data.map((item: any) => ({
+          display_name: formatCleanAddress(item.display_name, item.address),
           place_id: item.place_id?.toString() || item.osm_id?.toString(),
         }));
-        setSuggestions(formattedSuggestions);
-        setIsOpen(formattedSuggestions.length > 0);
+        
+        // Add "Address not shown" option at the end
+        const customOption: Suggestion = {
+          display_name: `Use "${query}" as entered`,
+          place_id: 'custom-address',
+          isCustomOption: true,
+        };
+        
+        setSuggestions([...formattedSuggestions, customOption]);
+        setIsOpen(true);
       }
     } catch (error) {
       console.error("Address search error:", error);
-      // Fallback to local suggestions if API fails
+      // Fallback to local suggestions if API fails + custom option
       const localSuggestions = getLocalSuggestions(query);
-      setSuggestions(localSuggestions);
-      setIsOpen(localSuggestions.length > 0);
+      const customOption: Suggestion = {
+        display_name: `Use "${query}" as entered`,
+        place_id: 'custom-address',
+        isCustomOption: true,
+      };
+      setSuggestions([...localSuggestions, customOption]);
+      setIsOpen(true);
     } finally {
       setLoading(false);
     }
@@ -111,7 +180,7 @@ export function AddressAutocomplete({
     const lowerQuery = query.toLowerCase();
     return commonLocations
       .filter(loc => loc.toLowerCase().includes(lowerQuery))
-      .slice(0, 5)
+      .slice(0, 4) // Limit to 4 to leave room for custom option
       .map((loc, idx) => ({
         display_name: loc,
         place_id: `local-${idx}`,
@@ -133,7 +202,12 @@ export function AddressAutocomplete({
   };
 
   const handleSelect = (suggestion: Suggestion) => {
-    onChange(suggestion.display_name);
+    if (suggestion.isCustomOption) {
+      // Use the raw typed text, keeping what user entered
+      onChange(currentQuery || value);
+    } else {
+      onChange(suggestion.display_name);
+    }
     setSuggestions([]);
     setIsOpen(false);
     setSelectedIndex(-1);
@@ -190,13 +264,23 @@ export function AddressAutocomplete({
               type="button"
               className={cn(
                 "w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors",
-                index === selectedIndex && "bg-accent"
+                index === selectedIndex && "bg-accent",
+                suggestion.isCustomOption && "border-t border-border bg-muted/50"
               )}
               onClick={() => handleSelect(suggestion)}
             >
               <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <span className="line-clamp-2">{suggestion.display_name}</span>
+                {suggestion.isCustomOption ? (
+                  <Edit3 className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                ) : (
+                  <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                )}
+                <span className={cn(
+                  "line-clamp-2",
+                  suggestion.isCustomOption && "text-warning font-medium"
+                )}>
+                  {suggestion.isCustomOption ? "Address not shown – use what I typed" : suggestion.display_name}
+                </span>
               </div>
             </button>
           ))}
