@@ -19,6 +19,74 @@ interface Suggestion {
   isCustomOption?: boolean;
 }
 
+// List of US states and their abbreviations (excluding Georgia)
+const NON_GA_STATE_PATTERNS = [
+  // State abbreviations (2 letters)
+  /\bAL\b/i, /\bAK\b/i, /\bAZ\b/i, /\bAR\b/i, /\bCA\b/i, /\bCO\b/i, /\bCT\b/i, /\bDE\b/i,
+  /\bFL\b/i, /\bHI\b/i, /\bID\b/i, /\bIL\b/i, /\bIN\b/i, /\bIA\b/i, /\bKS\b/i, /\bKY\b/i,
+  /\bLA\b/i, /\bME\b/i, /\bMD\b/i, /\bMA\b/i, /\bMI\b/i, /\bMN\b/i, /\bMS\b/i, /\bMO\b/i,
+  /\bMT\b/i, /\bNE\b/i, /\bNV\b/i, /\bNH\b/i, /\bNJ\b/i, /\bNM\b/i, /\bNY\b/i, /\bNC\b/i,
+  /\bND\b/i, /\bOH\b/i, /\bOK\b/i, /\bOR\b/i, /\bPA\b/i, /\bRI\b/i, /\bSC\b/i, /\bSD\b/i,
+  /\bTN\b/i, /\bTX\b/i, /\bUT\b/i, /\bVT\b/i, /\bVA\b/i, /\bWA\b/i, /\bWV\b/i, /\bWI\b/i, /\bWY\b/i,
+  /\bDC\b/i,
+  // Full state names
+  /alabama/i, /alaska/i, /arizona/i, /arkansas/i, /california/i, /colorado/i, /connecticut/i,
+  /delaware/i, /florida/i, /hawaii/i, /idaho/i, /illinois/i, /indiana/i, /iowa/i, /kansas/i,
+  /kentucky/i, /louisiana/i, /maine/i, /maryland/i, /massachusetts/i, /michigan/i, /minnesota/i,
+  /mississippi/i, /missouri/i, /montana/i, /nebraska/i, /nevada/i, /new hampshire/i, /new jersey/i,
+  /new mexico/i, /new york/i, /north carolina/i, /north dakota/i, /ohio/i, /oklahoma/i, /oregon/i,
+  /pennsylvania/i, /rhode island/i, /south carolina/i, /south dakota/i, /tennessee/i, /texas/i,
+  /utah/i, /vermont/i, /virginia/i, /washington/i, /west virginia/i, /wisconsin/i, /wyoming/i,
+];
+
+// Georgia ZIP code prefixes (30xxx, 31xxx, 398xx, 399xx)
+const GA_ZIP_PREFIXES = ['30', '31', '398', '399'];
+
+/**
+ * Check if query explicitly mentions a non-Georgia state
+ */
+function isNonGeorgiaQuery(query: string): boolean {
+  // Check for non-GA state patterns
+  for (const pattern of NON_GA_STATE_PATTERNS) {
+    if (pattern.test(query)) {
+      return true;
+    }
+  }
+  
+  // Check for ZIP codes that are clearly not in Georgia
+  const zipMatch = query.match(/\b(\d{5})\b/);
+  if (zipMatch) {
+    const zip = zipMatch[1];
+    const isGaZip = GA_ZIP_PREFIXES.some(prefix => zip.startsWith(prefix));
+    if (!isGaZip) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if an address result is in Georgia
+ */
+function isGeorgiaAddress(address: any): boolean {
+  if (!address) return false;
+  
+  // Check state field
+  const state = address.state || address['ISO3166-2-lvl4'] || '';
+  if (state.toLowerCase().includes('georgia') || state.toUpperCase() === 'GA') {
+    return true;
+  }
+  
+  // Check if display_name contains Georgia
+  const displayName = address.display_name || '';
+  if (/\bGeorgia\b/i.test(displayName) || /\bGA\b/.test(displayName)) {
+    return true;
+  }
+  
+  return false;
+}
+
 /**
  * Format address to: number + street, city, county, state, country
  * Removes neighborhood names, building names, complex names
@@ -56,19 +124,7 @@ function formatCleanAddress(rawAddress: string, addressDetails?: any): string {
   }
   
   // Fallback: clean up raw address string by removing common neighborhood patterns
-  const neighborhoodPatterns = [
-    /,?\s*[A-Z][a-z]+ Heights,?/gi,
-    /,?\s*[A-Z][a-z]+ Park,?/gi,
-    /,?\s*[A-Z][a-z]+ Village,?/gi,
-    /,?\s*[A-Z][a-z]+ Commons,?/gi,
-    /,?\s*[A-Z][a-z]+ Square,?/gi,
-    /,?\s*[A-Z][a-z]+ Place,?/gi,
-    /,?\s*Historic [A-Z][a-z]+,?/gi,
-    /,?\s*Downtown [A-Z][a-z]+,?/gi,
-  ];
-  
   let cleaned = rawAddress;
-  // Don't over-clean - just return as-is if it looks reasonable
   return cleaned.replace(/,\s*,/g, ',').replace(/^\s*,\s*/, '').replace(/\s*,\s*$/, '').trim();
 }
 
@@ -108,10 +164,30 @@ export function AddressAutocomplete({
 
     setCurrentQuery(query);
     setLoading(true);
+    
+    // Determine if we should restrict to Georgia
+    const restrictToGeorgia = !isNonGeorgiaQuery(query);
+    
     try {
+      // Build the search query - add Georgia context for local searches
+      let searchQuery = query;
+      let viewbox = '';
+      let bounded = '';
+      
+      if (restrictToGeorgia) {
+        // Add Georgia to query if not already present
+        if (!/georgia/i.test(query) && !/\bGA\b/.test(query)) {
+          searchQuery = `${query}, Georgia`;
+        }
+        // Georgia bounding box (approximate)
+        // SW corner: 30.35, -85.60 | NE corner: 35.00, -80.75
+        viewbox = '&viewbox=-85.60,30.35,-80.75,35.00';
+        bounded = '&bounded=1';
+      }
+      
       // Use Nominatim (OpenStreetMap) free geocoding API
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&q=${encodeURIComponent(searchQuery)}&limit=8&addressdetails=1${viewbox}${bounded}`,
         {
           headers: {
             'User-Agent': 'CashRidez/1.0'
@@ -120,11 +196,25 @@ export function AddressAutocomplete({
       );
       
       if (response.ok) {
-        const data = await response.json();
-        const formattedSuggestions: Suggestion[] = data.map((item: any) => ({
-          display_name: formatCleanAddress(item.display_name, item.address),
-          place_id: item.place_id?.toString() || item.osm_id?.toString(),
-        }));
+        let data = await response.json();
+        
+        // Filter results to Georgia only if we're in restricted mode
+        if (restrictToGeorgia) {
+          data = data.filter((item: any) => {
+            const addr = item.address || {};
+            const state = addr.state || '';
+            return state.toLowerCase().includes('georgia') || 
+                   state.toUpperCase() === 'GA' ||
+                   /\bGeorgia\b/i.test(item.display_name);
+          });
+        }
+        
+        const formattedSuggestions: Suggestion[] = data
+          .slice(0, 5) // Limit to 5 results
+          .map((item: any) => ({
+            display_name: formatCleanAddress(item.display_name, item.address),
+            place_id: item.place_id?.toString() || item.osm_id?.toString(),
+          }));
         
         // Add "Address not shown" option at the end
         const customOption: Suggestion = {
@@ -155,26 +245,36 @@ export function AddressAutocomplete({
   // Fallback local suggestions for common Georgia locations
   const getLocalSuggestions = (query: string): Suggestion[] => {
     const commonLocations = [
-      "Atlanta, GA, USA",
-      "Hartsfield-Jackson Atlanta International Airport, Atlanta, GA, USA",
-      "Mercedes-Benz Stadium, Atlanta, GA, USA",
-      "Georgia State Capitol, Atlanta, GA, USA",
-      "Emory University, Atlanta, GA, USA",
-      "Georgia Tech, Atlanta, GA, USA",
-      "Piedmont Park, Atlanta, GA, USA",
-      "Lenox Square Mall, Atlanta, GA, USA",
-      "Buckhead, Atlanta, GA, USA",
-      "Midtown Atlanta, GA, USA",
-      "Decatur, GA, USA",
-      "Marietta, GA, USA",
-      "Sandy Springs, GA, USA",
-      "Alpharetta, GA, USA",
-      "Dunwoody, GA, USA",
-      "Roswell, GA, USA",
-      "Johns Creek, GA, USA",
-      "Brookhaven, GA, USA",
-      "Chamblee, GA, USA",
-      "Doraville, GA, USA",
+      "Atlanta, Fulton County, Georgia, USA",
+      "Hartsfield-Jackson Atlanta International Airport, Atlanta, Georgia, USA",
+      "Mercedes-Benz Stadium, Atlanta, Georgia, USA",
+      "Georgia State Capitol, Atlanta, Georgia, USA",
+      "Emory University, Atlanta, Georgia, USA",
+      "Georgia Tech, Atlanta, Georgia, USA",
+      "Piedmont Park, Atlanta, Georgia, USA",
+      "Lenox Square Mall, Atlanta, Georgia, USA",
+      "Buckhead, Atlanta, Georgia, USA",
+      "Midtown, Atlanta, Georgia, USA",
+      "Decatur, DeKalb County, Georgia, USA",
+      "Marietta, Cobb County, Georgia, USA",
+      "Sandy Springs, Fulton County, Georgia, USA",
+      "Alpharetta, Fulton County, Georgia, USA",
+      "Dunwoody, DeKalb County, Georgia, USA",
+      "Roswell, Fulton County, Georgia, USA",
+      "Johns Creek, Fulton County, Georgia, USA",
+      "Brookhaven, DeKalb County, Georgia, USA",
+      "Chamblee, DeKalb County, Georgia, USA",
+      "Doraville, DeKalb County, Georgia, USA",
+      "Newnan, Coweta County, Georgia, USA",
+      "Fairburn, Fulton County, Georgia, USA",
+      "Fayetteville, Fayette County, Georgia, USA",
+      "Peachtree City, Fayette County, Georgia, USA",
+      "Stockbridge, Henry County, Georgia, USA",
+      "McDonough, Henry County, Georgia, USA",
+      "Lawrenceville, Gwinnett County, Georgia, USA",
+      "Duluth, Gwinnett County, Georgia, USA",
+      "Suwanee, Gwinnett County, Georgia, USA",
+      "Snellville, Gwinnett County, Georgia, USA",
     ];
 
     const lowerQuery = query.toLowerCase();
