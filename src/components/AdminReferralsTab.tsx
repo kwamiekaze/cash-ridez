@@ -122,12 +122,13 @@ export function AdminReferralsTab() {
     const referredIds = referrals.map(r => r.referred_user_id);
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, display_name, full_name, email, photo_url, is_verified, subscription_active, created_at")
+      .select("id, display_name, full_name, email, photo_url, is_verified, subscription_active, created_at, completed_trips_count, is_rider, is_driver")
       .in("id", referredIds);
 
     if (profiles) {
       const mappedProfiles = profiles.map(p => ({
         ...p,
+        completed_trips_count: p.completed_trips_count || 0,
         referral_date: referrals.find(r => r.referred_user_id === p.id)?.created_at
       }));
       setReferredUserDetails(prev => ({ ...prev, [referrerId]: mappedProfiles }));
@@ -368,9 +369,20 @@ export function AdminReferralsTab() {
                                       <p className="text-sm font-medium">
                                         {referred.full_name || referred.display_name || "User"}
                                       </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {referred.email}
-                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-xs text-muted-foreground">
+                                          {referred.email}
+                                        </p>
+                                        <span className="text-xs text-primary font-medium">
+                                          • {referred.completed_trips_count || 0} trips
+                                        </span>
+                                        {referred.is_rider && (
+                                          <Badge variant="outline" className="text-xs py-0 h-4">Rider</Badge>
+                                        )}
+                                        {referred.is_driver && (
+                                          <Badge variant="outline" className="text-xs py-0 h-4">Driver</Badge>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
