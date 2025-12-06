@@ -11,7 +11,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { MapBackground } from "@/components/MapBackground";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
+import { SplashScreen } from "@/components/SplashScreen";
+
 const Auth = () => {
+  const [showSplash, setShowSplash] = useState(true);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
@@ -86,6 +89,10 @@ const Auth = () => {
   //     setIsLoading(false);
   //   }
   // };
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} duration={2500} />;
+  }
+
   return <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-background via-background to-accent/5">
       <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
       

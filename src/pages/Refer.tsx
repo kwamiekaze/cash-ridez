@@ -1,11 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Users, DollarSign, Gift, Car, Star, ArrowRight, CheckCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { SplashScreen } from "@/components/SplashScreen";
 
 const Refer = () => {
   const navigate = useNavigate();
+  const [showSplash, setShowSplash] = useState(true);
 
   // Set page-specific meta tags for SEO
   useEffect(() => {
@@ -107,6 +109,10 @@ const Refer = () => {
       }
     }
   };
+
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} duration={2500} />;
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
