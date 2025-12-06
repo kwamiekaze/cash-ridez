@@ -55,7 +55,7 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [chatRooms, setChatRooms] = useState<Array<{ id: string; name: string }>>([]);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
-  const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null }>({ count: 0, referrerName: null });
+  const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null; totalReferredTrips: number }>({ count: 0, referrerName: null, totalReferredTrips: 0 });
 
   useEffect(() => {
     if (!userId || !open || !user) return;
@@ -99,14 +99,16 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
           
           // Fetch referral stats for admin
           if (viewerAdminData) {
-            // Count referrals
-            const { count } = await supabase
+            // Get referrals
+            const { data: referrals } = await supabase
               .from("referrals")
-              .select("*", { count: "exact", head: true })
+              .select("referred_user_id")
               .eq("referrer_user_id", userId);
             
             // Get referrer name if referred
             let referrerName = null;
+            let totalReferredTrips = 0;
+            
             if (profileData.referred_by_user_id) {
               const { data: referrer } = await supabase
                 .from("profiles")
@@ -118,7 +120,20 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
               }
             }
             
-            setReferralStats({ count: count || 0, referrerName });
+            // Calculate total trips from referred users
+            if (referrals && referrals.length > 0) {
+              const referredIds = referrals.map(r => r.referred_user_id);
+              const { data: referredProfiles } = await supabase
+                .from("profiles")
+                .select("completed_trips_count")
+                .in("id", referredIds);
+              
+              if (referredProfiles) {
+                totalReferredTrips = referredProfiles.reduce((sum, p) => sum + (p.completed_trips_count || 0), 0);
+              }
+            }
+            
+            setReferralStats({ count: referrals?.length || 0, referrerName, totalReferredTrips });
           }
           
           // If admin and there's an ID image, get signed URL
@@ -284,6 +299,10 @@ export function UserProfileModal({ userId, open, onOpenChange }: UserProfileModa
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Referrals:</span>
                   <Badge variant="secondary">{referralStats.count}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Trips by Referrals:</span>
+                  <Badge variant="secondary" className="bg-primary/20 text-primary">{referralStats.totalReferredTrips}</Badge>
                 </div>
                 {profile.referral_code && (
                   <div className="flex justify-between items-center">

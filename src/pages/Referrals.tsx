@@ -21,6 +21,9 @@ interface ReferredUser {
   is_verified: boolean;
   subscription_active: boolean;
   created_at: string;
+  completed_trips_count: number;
+  is_rider: boolean;
+  is_driver: boolean;
 }
 
 const Referrals = () => {
@@ -75,13 +78,16 @@ const Referrals = () => {
         
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, is_verified, subscription_active, created_at")
+          .select("id, display_name, full_name, photo_url, is_verified, subscription_active, created_at, completed_trips_count, is_rider, is_driver")
           .in("id", userIds);
 
         if (profiles) {
           // Map profiles with referral dates
           const mappedUsers = profiles.map(p => ({
             ...p,
+            completed_trips_count: p.completed_trips_count || 0,
+            is_rider: p.is_rider || false,
+            is_driver: p.is_driver || false,
             created_at: referrals.find(r => r.referred_user_id === p.id)?.created_at || p.created_at
           }));
           setReferredUsers(mappedUsers);
@@ -294,12 +300,26 @@ const Referrals = () => {
                         <p className="font-medium">
                           {referredUser.full_name || referredUser.display_name || "User"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Joined {format(new Date(referredUser.created_at), "MMM d, yyyy")}
-                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>Joined {format(new Date(referredUser.created_at), "MMM d, yyyy")}</span>
+                          <span>•</span>
+                          <span className="text-primary font-medium">
+                            {referredUser.completed_trips_count} trip{referredUser.completed_trips_count !== 1 ? "s" : ""} completed
+                          </span>
+                        </div>
+                        {(referredUser.is_rider || referredUser.is_driver) && (
+                          <div className="flex items-center gap-1 mt-1">
+                            {referredUser.is_rider && (
+                              <Badge variant="outline" className="text-xs py-0 h-5">Rider</Badge>
+                            )}
+                            {referredUser.is_driver && (
+                              <Badge variant="outline" className="text-xs py-0 h-5">Driver</Badge>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end gap-1">
                       {referredUser.is_verified && (
                         <Badge variant="outline" className="border-green-500 text-green-500 text-xs">
                           Verified

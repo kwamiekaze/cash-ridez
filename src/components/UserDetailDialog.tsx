@@ -47,7 +47,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   });
   const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
   const [idPreviewOpen, setIdPreviewOpen] = useState(false);
-  const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null; referralCode: string | null }>({ count: 0, referrerName: null, referralCode: null });
+  const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null; referralCode: string | null; totalReferredTrips: number }>({ count: 0, referrerName: null, referralCode: null, totalReferredTrips: 0 });
 
   useEffect(() => {
     if (userId && open) {
@@ -84,12 +84,14 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
       });
       
       // Fetch referral stats
-      const { count } = await supabase
+      const { data: referrals } = await supabase
         .from("referrals")
-        .select("*", { count: "exact", head: true })
+        .select("referred_user_id")
         .eq("referrer_user_id", userId);
       
       let referrerName = null;
+      let totalReferredTrips = 0;
+      
       if (data.referred_by_user_id) {
         const { data: referrer } = await supabase
           .from("profiles")
@@ -101,7 +103,25 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         }
       }
       
-      setReferralStats({ count: count || 0, referrerName, referralCode: data.referral_code });
+      // Calculate total trips from referred users
+      if (referrals && referrals.length > 0) {
+        const referredIds = referrals.map(r => r.referred_user_id);
+        const { data: referredProfiles } = await supabase
+          .from("profiles")
+          .select("completed_trips_count")
+          .in("id", referredIds);
+        
+        if (referredProfiles) {
+          totalReferredTrips = referredProfiles.reduce((sum, p) => sum + (p.completed_trips_count || 0), 0);
+        }
+      }
+      
+      setReferralStats({ 
+        count: referrals?.length || 0, 
+        referrerName, 
+        referralCode: data.referral_code,
+        totalReferredTrips
+      });
     } catch (error: any) {
       toast.error("Failed to fetch user details");
       console.error(error);
@@ -247,6 +267,10 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Referrals:</span>
                 <Badge variant="secondary">{referralStats.count}</Badge>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Trips by Referrals:</span>
+                <Badge variant="secondary" className="bg-primary/20 text-primary">{referralStats.totalReferredTrips}</Badge>
               </div>
               {referralStats.referralCode && (
                 <div className="flex justify-between items-center">
