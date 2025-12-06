@@ -39,6 +39,7 @@ const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
+const Refer = lazy(() => import("./pages/Refer"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -236,6 +237,10 @@ const App = () => (
             <Route
               path="/install-app"
               element={<InstallApp />}
+            />
+            <Route
+              path="/refer"
+              element={<Refer />}
             />
             <Route
               path="/referrals"
