@@ -180,11 +180,11 @@ export function SystemMessageDialog({ open, onOpenChange, onSuccess }: SystemMes
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Enter your message..."
               rows={6}
-              maxLength={1000}
+              maxLength={10000}
               required
             />
             <p className="text-xs text-muted-foreground text-right">
-              {message.length}/1000 characters
+              {message.length}/10000 characters
             </p>
           </div>
 
