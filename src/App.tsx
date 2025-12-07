@@ -41,6 +41,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
 const Refer = lazy(() => import("./pages/Refer"));
+const LiveMap = lazy(() => import("./pages/LiveMap"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -249,6 +250,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Referrals />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/live-map"
+              element={
+                <ProtectedRoute>
+                  <LiveMap />
                 </ProtectedRoute>
               }
             />
