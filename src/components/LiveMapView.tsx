@@ -1019,11 +1019,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               Cash Ridez Connect map always uses approximate locations, not precise locations. Base map data © OpenStreetMap contributors.
             </div>
             
-            {/* Show Me on Map button - bottom right */}
+            {/* Show Me on Map button - top right */}
             <Button
               variant="secondary"
               size="icon"
-              className="absolute bottom-3 right-3 z-[1000] h-10 w-10 rounded-full shadow-lg"
+              className="absolute top-3 right-3 z-[9999] h-10 w-10 rounded-full shadow-lg"
               onClick={handleCenterOnMe}
               title="Show Me on the Map"
             >

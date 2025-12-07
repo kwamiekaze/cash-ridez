@@ -193,15 +193,15 @@ All colors MUST be HSL.
   width: 92%;
   max-width: 600px;
   padding: 6px 14px;
-  background: rgba(0, 0, 0, 0.78);
+  background: rgba(0, 0, 0, 0.96);
   border-radius: 22px;
   font-size: 10px;
   color: #facc15;
   text-align: center;
   line-height: 1.25;
-  z-index: 9999;
+  z-index: 9998;
   pointer-events: none;
-  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.75);
 }
 
 /* 📱 Mobile-first refinement (very small screens) */
@@ -212,6 +212,8 @@ All colors MUST be HSL.
     font-size: 9px;
     padding: 5px 10px;
     bottom: 6px;
+    background: rgba(0, 0, 0, 0.96);
+    box-shadow: 0 0 14px rgba(0, 0, 0, 0.75);
   }
 }
 
@@ -222,5 +224,7 @@ All colors MUST be HSL.
     font-size: 11px;
     padding: 8px 18px;
     bottom: 8px;
+    background: rgba(0, 0, 0, 0.96);
+    box-shadow: 0 0 14px rgba(0, 0, 0, 0.75);
   }
 }
