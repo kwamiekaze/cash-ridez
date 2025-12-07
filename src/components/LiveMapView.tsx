@@ -589,7 +589,10 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           scrollWheelZoom: true,
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        // Configurable tile URL with fallback to dark CARTO tiles
+        const tileUrl = import.meta.env.VITE_MAP_TILE_URL || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        
+        L.tileLayer(tileUrl, {
           attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">© OSM</a> · <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
           maxZoom: 19,
         }).addTo(map);
@@ -1002,23 +1005,33 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          <div 
-            ref={mapRef} 
-            className="h-[400px] w-full rounded-lg border border-border"
-            role="application"
-            aria-label="Live community map showing trip requests"
-          />
-          
-          {/* Show Me on Map button - bottom right */}
-          <Button
-            variant="secondary"
-            size="icon"
-            className="absolute bottom-3 right-3 z-[1000] h-10 w-10 rounded-full shadow-lg"
-            onClick={handleCenterOnMe}
-            title="Show Me on the Map"
-          >
-            <Crosshair className="h-5 w-5" />
-          </Button>
+          {/* Map wrapper with disclaimer overlay */}
+          <div className="relative">
+            <div 
+              ref={mapRef} 
+              className="h-[400px] w-full rounded-lg border border-border"
+              role="application"
+              aria-label="Live community map showing trip requests"
+            />
+            
+            {/* Disclaimer overlay - covers Leaflet/OSM logo area */}
+            <div 
+              className="absolute bottom-1 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 rounded-full text-[10px] text-primary z-[1000] pointer-events-none text-center max-w-[90%]"
+            >
+              Cash Ridez Connect map always uses approximate locations, not precise locations. Base map data © OpenStreetMap contributors.
+            </div>
+            
+            {/* Show Me on Map button - bottom right */}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="absolute bottom-3 right-3 z-[1000] h-10 w-10 rounded-full shadow-lg"
+              onClick={handleCenterOnMe}
+              title="Show Me on the Map"
+            >
+              <Crosshair className="h-5 w-5" />
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
