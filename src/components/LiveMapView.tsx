@@ -1015,9 +1015,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             />
             
             {/* Disclaimer overlay - covers Leaflet/OSM logo area */}
-            <div 
-              className="absolute bottom-1 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/80 rounded-full text-[10px] text-primary z-[1000] pointer-events-none text-center max-w-[90%]"
-            >
+            <div className="cr-map-disclaimer">
               Cash Ridez Connect map always uses approximate locations, not precise locations. Base map data © OpenStreetMap contributors.
             </div>
             
