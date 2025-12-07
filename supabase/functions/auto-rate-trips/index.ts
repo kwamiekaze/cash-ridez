@@ -19,14 +19,14 @@ serve(async (req) => {
     console.log('Starting auto-rating check...');
 
     // Find trips where one party has rated but the other hasn't
-    // and 24 hours have passed since the first rating
+    // and 24 hours have passed since the trip was marked completed or since the first rating
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    // Find trips where rider rated but driver hasn't, and 24h passed
+    // Find completed trips where rider rated but driver hasn't, and 24h passed
     const { data: driverNeedsRating, error: driverError } = await supabase
       .from('ride_requests')
       .select('id, rider_id, assigned_driver_id, updated_at')
-      .eq('status', 'assigned')
+      .in('status', ['assigned', 'completed'])
       .not('rider_rating', 'is', null)
       .is('driver_rating', null)
       .lt('updated_at', twentyFourHoursAgo);
@@ -37,7 +37,8 @@ serve(async (req) => {
       console.log(`Found ${driverNeedsRating.length} trips where driver needs auto-rating`);
       
       for (const trip of driverNeedsRating) {
-        // Give driver 5 stars and mark trip as completed
+        // Driver hasn't rated the rider, so auto-give the rider 5 stars
+        // driver_rating = rating the driver gives to the rider
         const { error: updateError } = await supabase
           .from('ride_requests')
           .update({
@@ -48,18 +49,18 @@ serve(async (req) => {
           .eq('id', trip.id);
 
         if (updateError) {
-          console.error(`Error auto-rating driver for trip ${trip.id}:`, updateError);
+          console.error(`Error auto-rating for trip ${trip.id}:`, updateError);
         } else {
-          console.log(`Auto-rated driver 5 stars for trip ${trip.id}`);
+          console.log(`Auto-rated driver->rider 5 stars for trip ${trip.id}`);
         }
       }
     }
 
-    // Find trips where driver rated but rider hasn't, and 24h passed
+    // Find completed trips where driver rated but rider hasn't, and 24h passed
     const { data: riderNeedsRating, error: riderError } = await supabase
       .from('ride_requests')
       .select('id, rider_id, assigned_driver_id, updated_at')
-      .eq('status', 'assigned')
+      .in('status', ['assigned', 'completed'])
       .not('driver_rating', 'is', null)
       .is('rider_rating', null)
       .lt('updated_at', twentyFourHoursAgo);
@@ -70,7 +71,8 @@ serve(async (req) => {
       console.log(`Found ${riderNeedsRating.length} trips where rider needs auto-rating`);
       
       for (const trip of riderNeedsRating) {
-        // Give rider 5 stars and mark trip as completed
+        // Rider hasn't rated the driver, so auto-give the driver 5 stars
+        // rider_rating = rating the rider gives to the driver
         const { error: updateError } = await supabase
           .from('ride_requests')
           .update({
@@ -81,9 +83,9 @@ serve(async (req) => {
           .eq('id', trip.id);
 
         if (updateError) {
-          console.error(`Error auto-rating rider for trip ${trip.id}:`, updateError);
+          console.error(`Error auto-rating for trip ${trip.id}:`, updateError);
         } else {
-          console.log(`Auto-rated rider 5 stars for trip ${trip.id}`);
+          console.log(`Auto-rated rider->driver 5 stars for trip ${trip.id}`);
         }
       }
     }

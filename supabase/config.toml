@@ -44,3 +44,6 @@ verify_jwt = true
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.auto-rate-trips]
+verify_jwt = false
