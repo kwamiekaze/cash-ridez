@@ -393,13 +393,22 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       }
 
       // For NON-ADMIN users (drivers and riders): fetch online users (location updated within 60 minutes)
+      // Also ALWAYS include the current user so they can see themselves
       if (!isAdmin && user) {
+        // First, get all online users with recent location
         const { data: onlineProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
           .gte("location_updated_at", sixtyMinutesAgo);
+
+        // Also fetch the current user's profile separately to ensure they always see themselves
+        const { data: ownProfile } = await supabase
+          .from("profiles")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year")
+          .eq("id", user.id)
+          .single();
 
         // Get all driver user IDs for role detection
         const { data: driverStatuses } = await supabase
@@ -414,33 +423,42 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .eq("role", "admin");
         const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
 
-        if (onlineProfiles) {
-          const users: AllMapUser[] = onlineProfiles
-            .filter(p => {
-              // Exclude admins from non-admin view unless showAdminOnPublicMap is true
-              if (adminIds.has(p.id) && !showAdminOnPublicMap) return false;
-              return true;
-            })
-            .map(p => ({
-              id: p.id,
-              display_name: p.display_name,
-              full_name: p.full_name,
-              photo_url: p.photo_url,
-              current_lat: p.current_lat,
-              current_lng: p.current_lng,
-              location_updated_at: p.location_updated_at,
-              is_verified: p.is_verified,
-              subscription_active: p.subscription_active,
-              active_role: p.active_role,
-              car_make: p.car_make,
-              car_model: p.car_model,
-              car_year: p.car_year,
-              isAdmin: adminIds.has(p.id),
-              isDriver: driverIds.has(p.id) || p.active_role === 'driver',
-              isRider: p.active_role === 'rider',
-            }));
-          setOnlineUsers(users);
+        // Combine online profiles with current user (ensuring no duplicates)
+        const allProfiles = onlineProfiles || [];
+        const profileIds = new Set(allProfiles.map(p => p.id));
+        
+        // Add current user if they have location data but weren't in the online query
+        if (ownProfile && ownProfile.current_lat && ownProfile.current_lng && !profileIds.has(ownProfile.id)) {
+          allProfiles.push(ownProfile);
         }
+
+        const users: AllMapUser[] = allProfiles
+          .filter(p => {
+            // Exclude admins from non-admin view unless showAdminOnPublicMap is true
+            // But ALWAYS include the current user
+            if (p.id === user.id) return true;
+            if (adminIds.has(p.id) && !showAdminOnPublicMap) return false;
+            return true;
+          })
+          .map(p => ({
+            id: p.id,
+            display_name: p.display_name,
+            full_name: p.full_name,
+            photo_url: p.photo_url,
+            current_lat: p.current_lat,
+            current_lng: p.current_lng,
+            location_updated_at: p.location_updated_at,
+            is_verified: p.is_verified,
+            subscription_active: p.subscription_active,
+            active_role: p.active_role,
+            car_make: p.car_make,
+            car_model: p.car_model,
+            car_year: p.car_year,
+            isAdmin: adminIds.has(p.id),
+            isDriver: driverIds.has(p.id) || p.active_role === 'driver',
+            isRider: p.active_role === 'rider',
+          }));
+        setOnlineUsers(users);
       }
 
       if (isDriver || isAdmin) {
