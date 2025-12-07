@@ -1005,11 +1005,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          {/* Map wrapper with disclaimer overlay */}
-          <div className="relative">
+          {/* Map wrapper with disclaimer overlay - styled as a polished card */}
+          <div className="live-map-card">
             <div 
               ref={mapRef} 
-              className="h-[400px] w-full rounded-lg border border-border"
+              className="h-[400px] w-full"
               role="application"
               aria-label="Live community map showing trip requests"
             />

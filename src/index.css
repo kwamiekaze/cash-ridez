@@ -184,6 +184,15 @@ All colors MUST be HSL.
   }
 }
 
+/* Live Map Card Container */
+.live-map-card {
+  position: relative;
+  border-radius: 24px;
+  border: 2px solid hsl(var(--primary));
+  background: #000000;
+  overflow: hidden;
+}
+
 /* Live Map Disclaimer Overlay */
 .cr-map-disclaimer {
   position: absolute;
@@ -196,9 +205,8 @@ All colors MUST be HSL.
   text-align: center;
   font-size: 11px;
   line-height: 1.35;
-  border-bottom-left-radius: 14px;
-  border-bottom-right-radius: 14px;
-  z-index: 999999;
+  border-radius: 0;
+  z-index: 10;
   pointer-events: none;
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.9);
   display: block;
