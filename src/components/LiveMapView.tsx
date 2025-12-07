@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair, Users } from "lucide-react";
+import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair, Users, Headphones } from "lucide-react";
+import FloatingSupport from "./FloatingSupport";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -179,23 +180,16 @@ const createAvatarDivIcon = (
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
     rider: '/assets/map/rider-circle-icon.png',
-    admin: '/assets/map/admin-crown-icon.png',
+    admin: '/assets/map/driver-car-icon.png', // Admin uses same as driver, no crown
   };
 
   // Get status styling (only apply for admin view)
   const status = isAdminView ? getOnlineStatus(locationUpdatedAt || null) : { isOnline: false, isOffline: false, opacity: 1, borderColor: '#FACC15' };
   
   const size = 48;
-  const borderWidth = variant === 'admin' ? 3 : 2;
-  const borderColor = isAdminView ? status.borderColor : (variant === 'admin' ? '#FFD700' : '#FACC15');
+  const borderWidth = 2;
+  const borderColor = isAdminView ? status.borderColor : '#FACC15';
   const opacity = isAdminView ? status.opacity : 1;
-
-  // Crown overlay for admin
-  const crownOverlay = variant === 'admin' 
-    ? `<img src="/assets/map/admin-crown-icon.png" 
-         style="position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));"
-         onerror="this.style.display='none'" />`
-    : '';
 
   // Online indicator dot for admin view
   const onlineIndicator = isAdminView && status.isOnline 
@@ -204,29 +198,7 @@ const createAvatarDivIcon = (
 
   // If no avatar, use fallback icon with transparent styling
   if (!avatarUrl) {
-    const html = `
-      <div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};">
-        <div style="
-          width:${size}px;
-          height:${size}px;
-          border-radius:50%;
-          border:${borderWidth}px solid ${borderColor};
-          background:transparent;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          box-shadow:0 2px 8px rgba(0,0,0,0.4);
-          overflow:hidden;
-        ">
-          <img 
-            src="${fallbackIcons[variant]}" 
-            style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;"
-          />
-        </div>
-        ${crownOverlay}
-        ${onlineIndicator}
-      </div>
-    `;
+    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div>${onlineIndicator}</div>`;
 
     return L.divIcon({
       html,
@@ -238,25 +210,7 @@ const createAvatarDivIcon = (
   }
 
   // Create divIcon with avatar
-  const html = `
-    <div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};">
-      <img 
-        src="${avatarUrl}" 
-        style="
-          width:${size}px;
-          height:${size}px;
-          border-radius:50%;
-          border:${borderWidth}px solid ${borderColor};
-          object-fit:cover;
-          background-color:#374151;
-          box-shadow:0 2px 8px rgba(0,0,0,0.4);
-        "
-        onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;\\'><img src=\\'${fallbackIcons[variant]}\\' style=\\'width:${size - 8}px;height:${size - 8}px;object-fit:contain;\\'/></div>${crownOverlay}${onlineIndicator}';"
-      />
-      ${crownOverlay}
-      ${onlineIndicator}
-    </div>
-  `;
+  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:0 2px 8px rgba(0,0,0,0.4);" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" />${onlineIndicator}</div>`;
 
   return L.divIcon({
     html,
@@ -1075,23 +1029,29 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             aria-label="Live community map showing trip requests"
           />
           
-          {/* CashRidez disclaimer */}
-          <div className="absolute bottom-12 left-2 right-2 z-[1000] pointer-events-none">
-            <p className="text-xs text-yellow-400/80 font-medium text-center">
-              Cash Ridez Connect map always uses approximate locations and not precise locations.
-            </p>
-          </div>
-          
-          {/* Show Me on Map button */}
+          {/* Show Me on Map button - top right */}
           <Button
             variant="secondary"
             size="icon"
-            className="absolute bottom-6 right-6 z-[1000] h-10 w-10 rounded-full shadow-lg"
+            className="absolute top-2 right-2 z-[1000] h-10 w-10 rounded-full shadow-lg"
             onClick={handleCenterOnMe}
             title="Show Me on the Map"
           >
             <Crosshair className="h-5 w-5" />
           </Button>
+          
+          {/* Small support button over attribution */}
+          <button
+            className="absolute bottom-1 right-1 z-[1000] w-6 h-6 rounded-full bg-transparent flex items-center justify-center hover:bg-primary/20 transition-colors"
+            onClick={() => {
+              const supportBtn = document.querySelector('[data-floating-support]') as HTMLButtonElement;
+              if (supportBtn) supportBtn.click();
+            }}
+            title="Support"
+            aria-label="Support"
+          >
+            <Headphones className="h-4 w-4 text-primary" />
+          </button>
         </CardContent>
       </Card>
 
