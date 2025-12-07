@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +28,14 @@ interface Driver {
     car_model: string | null;
     car_year: string | null;
   };
+}
+
+interface AdminLocation {
+  user_id: string;
+  lat: number;
+  lng: number;
+  display_name: string | null;
+  full_name: string | null;
 }
 
 const parseApproxGeo = (geo: unknown): { lat: number; lng: number } | null => {
@@ -62,6 +72,8 @@ interface UserProfile {
   active_role: string | null;
   current_lat: number | null;
   current_lng: number | null;
+  display_name: string | null;
+  full_name: string | null;
 }
 
 interface LiveMapViewProps {
@@ -108,6 +120,8 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdminOnPublicMap, setShowAdminOnPublicMap] = useState(false);
+  const [adminLocations, setAdminLocations] = useState<AdminLocation[]>([]);
 
   // Check if user is admin
   useEffect(() => {
@@ -124,13 +138,30 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     checkAdmin();
   }, [user]);
 
+  // Fetch admin visibility setting
+  useEffect(() => {
+    const fetchAdminVisibility = async () => {
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "map_settings")
+        .maybeSingle();
+      
+      if (data?.value && typeof data.value === 'object') {
+        const settings = data.value as Record<string, unknown>;
+        setShowAdminOnPublicMap(settings.show_admin_on_public_map === true);
+      }
+    };
+    fetchAdminVisibility();
+  }, []);
+
   // Fetch user profile
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("id, active_role, current_lat, current_lng")
+        .select("id, active_role, current_lat, current_lng, display_name, full_name")
         .eq("id", user.id)
         .single();
       if (data) {
@@ -156,6 +187,36 @@ export function LiveMapView({ className }: LiveMapViewProps) {
 
   const isDriver = userProfile?.active_role === 'driver';
   const isRider = userProfile?.active_role === 'rider';
+
+  // Toggle admin visibility setting
+  const handleToggleAdminVisibility = async (checked: boolean) => {
+    if (!isAdmin) return;
+    
+    try {
+      await supabase
+        .from("app_settings")
+        .update({ 
+          value: { show_admin_on_public_map: checked },
+          updated_at: new Date().toISOString()
+        })
+        .eq("key", "map_settings");
+      
+      setShowAdminOnPublicMap(checked);
+      toast({
+        title: checked ? "Admin visible on map" : "Admin hidden from map",
+        description: checked 
+          ? "Drivers and riders can now see your location."
+          : "Only admins can see your location.",
+      });
+    } catch (error) {
+      console.error("Error updating admin visibility:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update visibility setting.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Fetch map data based on role
   const fetchMapData = useCallback(async () => {
@@ -270,11 +331,44 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       } else {
         setDrivers([]);
       }
+
+      // Fetch admin locations (for admins viewing other admins, or for all users if visibility is on)
+      if (isAdmin || showAdminOnPublicMap) {
+        const { data: adminRoles } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+
+        if (adminRoles && adminRoles.length > 0) {
+          const adminIds = adminRoles.map(r => r.user_id);
+          const { data: adminProfiles } = await supabase
+            .from("profiles")
+            .select("id, current_lat, current_lng, display_name, full_name")
+            .in("id", adminIds)
+            .not("current_lat", "is", null)
+            .not("current_lng", "is", null);
+
+          if (adminProfiles) {
+            const locations: AdminLocation[] = adminProfiles
+              .filter(p => p.current_lat && p.current_lng)
+              .map(p => ({
+                user_id: p.id,
+                lat: p.current_lat!,
+                lng: p.current_lng!,
+                display_name: p.display_name,
+                full_name: p.full_name,
+              }));
+            setAdminLocations(locations);
+          }
+        }
+      } else {
+        setAdminLocations([]);
+      }
     } catch (err: any) {
       console.error("Error fetching map data:", err);
       setError("Failed to load map data");
     }
-  }, [user, isDriver, isRider, isAdmin]);
+  }, [user, isDriver, isRider, isAdmin, showAdminOnPublicMap]);
 
   // Initialize map
   useEffect(() => {
@@ -370,6 +464,13 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       popupAnchor: [0, -40],
     });
 
+    const adminIcon = L.icon({
+      iconUrl: '/assets/map/admin-crown-icon.png',
+      iconSize: [44, 44],
+      iconAnchor: [22, 44],
+      popupAnchor: [0, -44],
+    });
+
     // Add driver markers (only for the current driver's own pin)
     if (isDriver) {
       drivers.forEach((driver) => {
@@ -438,7 +539,34 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         }
       });
     }
-  }, [drivers, trips, showTrips, user, isDriver, isRider]);
+
+    // Add admin crown markers
+    // Admins always see all admin crowns; non-admins only see if showAdminOnPublicMap is true
+    if (isAdmin || showAdminOnPublicMap) {
+      adminLocations.forEach((admin) => {
+        const jittered = getJitteredCoords(admin.lat, admin.lng, admin.user_id);
+        const name = admin.full_name || admin.display_name || "Admin";
+        const isOwnAdmin = admin.user_id === user?.id;
+
+        const marker = L.marker([jittered.lat, jittered.lng], { icon: adminIcon })
+          .addTo(mapInstanceRef.current)
+          .bindPopup(`
+            <div class="p-3 min-w-[180px]">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="font-semibold">${name}</span>
+                <span class="text-yellow-500">👑</span>
+              </div>
+              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> Admin${isOwnAdmin ? ' (You)' : ''}</p>
+              <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
+            </div>
+          `);
+
+        if (isOwnAdmin && isAdmin) {
+          userMarkerRef.current = marker;
+        }
+      });
+    }
+  }, [drivers, trips, showTrips, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap]);
 
   // Refresh location
   const handleRefreshLocation = async () => {
@@ -511,6 +639,19 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   // Center on user
   const handleCenterOnMe = () => {
     if (!mapInstanceRef.current) return;
+
+    // For admins, use their profile location
+    if (isAdmin && adminLocations.length > 0) {
+      const ownAdmin = adminLocations.find(a => a.user_id === user?.id);
+      if (ownAdmin) {
+        const jittered = getJitteredCoords(ownAdmin.lat, ownAdmin.lng, ownAdmin.user_id);
+        mapInstanceRef.current.setView([jittered.lat, jittered.lng], 13, { animate: true });
+        if (userMarkerRef.current) {
+          userMarkerRef.current.openPopup();
+        }
+        return;
+      }
+    }
 
     // For drivers, use their driver status location
     if (isDriver && drivers.length > 0) {
@@ -585,7 +726,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                 Live Community Map
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {isDriver ? "View trip requests near you" : "See your active trip on the map"}
+                {isDriver ? "View trip requests near you" : isAdmin ? "Admin view - all drivers and trips" : "See your active trip on the map"}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -621,6 +762,22 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <Route className="h-4 w-4" />
               <span>Trip Requests ({trips.length})</span>
             </button>
+            
+            {/* Admin visibility toggle */}
+            {isAdmin && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-yellow-500/30 bg-yellow-500/10">
+                <img src="/assets/map/admin-crown-icon.png" alt="Admin" className="w-5 h-5" />
+                <Label htmlFor="admin-visibility" className="text-xs cursor-pointer">
+                  Show to users
+                </Label>
+                <Switch
+                  id="admin-visibility"
+                  checked={showAdminOnPublicMap}
+                  onCheckedChange={handleToggleAdminVisibility}
+                  className="scale-75"
+                />
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="relative pt-0">
@@ -631,10 +788,17 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           )}
           <div 
             ref={mapRef} 
-            className="h-[420px] w-full rounded-lg border border-border"
+            className="h-[400px] w-full rounded-lg border border-border"
             role="application"
             aria-label="Live community map showing trip requests"
           />
+          
+          {/* CashRidez disclaimer */}
+          <div className="absolute bottom-12 left-2 right-2 z-[1000] pointer-events-none">
+            <p className="text-xs text-yellow-400/80 font-medium text-center">
+              Cash Ridez Connect map always uses approximate locations and not precise locations.
+            </p>
+          </div>
           
           {/* Show Me on Map button */}
           <Button
