@@ -183,3 +183,44 @@ All colors MUST be HSL.
     transform: translateY(-10px);
   }
 }
+
+/* Live Map Disclaimer Overlay */
+.cr-map-disclaimer {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 92%;
+  max-width: 600px;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.78);
+  border-radius: 22px;
+  font-size: 10px;
+  color: #facc15;
+  text-align: center;
+  line-height: 1.25;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+}
+
+/* 📱 Mobile-first refinement (very small screens) */
+@media (max-width: 480px) {
+  .cr-map-disclaimer {
+    width: 96%;
+    max-width: 360px;
+    font-size: 9px;
+    padding: 5px 10px;
+    bottom: 6px;
+  }
+}
+
+/* 💻 Larger tablets & desktop screens */
+@media (min-width: 768px) {
+  .cr-map-disclaimer {
+    max-width: 700px;
+    font-size: 11px;
+    padding: 8px 18px;
+    bottom: 8px;
+  }
+}
