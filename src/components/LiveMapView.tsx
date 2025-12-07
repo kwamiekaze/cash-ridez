@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair, Users, Headphones } from "lucide-react";
+import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair, Users } from "lucide-react";
 import FloatingSupport from "./FloatingSupport";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1029,29 +1029,16 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             aria-label="Live community map showing trip requests"
           />
           
-          {/* Show Me on Map button - top right */}
+          {/* Show Me on Map button - bottom right */}
           <Button
             variant="secondary"
             size="icon"
-            className="absolute top-2 right-2 z-[1000] h-10 w-10 rounded-full shadow-lg"
+            className="absolute bottom-3 right-3 z-[1000] h-10 w-10 rounded-full shadow-lg"
             onClick={handleCenterOnMe}
             title="Show Me on the Map"
           >
             <Crosshair className="h-5 w-5" />
           </Button>
-          
-          {/* Small support button over attribution */}
-          <button
-            className="absolute bottom-1 right-1 z-[1000] w-6 h-6 rounded-full bg-transparent flex items-center justify-center hover:bg-primary/20 transition-colors"
-            onClick={() => {
-              const supportBtn = document.querySelector('[data-floating-support]') as HTMLButtonElement;
-              if (supportBtn) supportBtn.click();
-            }}
-            title="Support"
-            aria-label="Support"
-          >
-            <Headphones className="h-4 w-4 text-primary" />
-          </button>
         </CardContent>
       </Card>
 
