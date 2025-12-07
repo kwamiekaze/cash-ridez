@@ -828,6 +828,7 @@ export type Database = {
           id: string
           id_image_url: string | null
           is_driver: boolean | null
+          is_map_visible: boolean | null
           is_member: boolean | null
           is_rider: boolean | null
           is_verified: boolean | null
@@ -896,6 +897,7 @@ export type Database = {
           id: string
           id_image_url?: string | null
           is_driver?: boolean | null
+          is_map_visible?: boolean | null
           is_member?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null
@@ -964,6 +966,7 @@ export type Database = {
           id?: string
           id_image_url?: string | null
           is_driver?: boolean | null
+          is_map_visible?: boolean | null
           is_member?: boolean | null
           is_rider?: boolean | null
           is_verified?: boolean | null

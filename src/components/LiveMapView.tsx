@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair, Users } from "lucide-react";
+import { MapPin, Loader2, Navigation, RefreshCw, Crosshair, Users, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { LocationConsentDialog } from "./LocationConsentDialog";
 import { AdminMapUserInfoPanel } from "./AdminMapUserInfoPanel";
-import { format } from "date-fns";
+
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -73,6 +73,7 @@ interface AllMapUser {
   car_make?: string | null;
   car_model?: string | null;
   car_year?: string | null;
+  is_map_visible?: boolean | null;
   isAdmin?: boolean;
   isDriver?: boolean;
   isRider?: boolean;
@@ -87,32 +88,6 @@ const parseApproxGeo = (geo: unknown): { lat: number; lng: number } | null => {
   return null;
 };
 
-interface TripRequest {
-  id: string;
-  pickup_lat: number;
-  pickup_lng: number;
-  pickup_zip: string;
-  pickup_address: string;
-  dropoff_address: string;
-  dropoff_zip: string;
-  pickup_time: string;
-  price_offer: number | null;
-  estimated_competitor_fare_mid: number | null;
-  rider_id: string;
-  rider?: {
-    display_name: string | null;
-    full_name: string | null;
-    photo_url: string | null;
-    rider_rating_avg: number | null;
-    location_updated_at?: string | null;
-    is_verified?: boolean | null;
-    verification_status?: string | null;
-    email?: string | null;
-    phone_number?: string | null;
-    subscription_active?: boolean | null;
-    active_role?: string | null;
-  };
-}
 
 interface UserProfile {
   id: string;
@@ -230,11 +205,10 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [trips, setTrips] = useState<TripRequest[]>([]);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [showTrips, setShowTrips] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isMapVisible, setIsMapVisible] = useState(true); // User's own visibility toggle
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminOnPublicMap, setShowAdminOnPublicMap] = useState(false);
@@ -276,17 +250,18 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     fetchAdminVisibility();
   }, []);
 
-  // Fetch user profile
+  // Fetch user profile including visibility setting
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("id, active_role, current_lat, current_lng, display_name, full_name")
+        .select("id, active_role, current_lat, current_lng, display_name, full_name, is_map_visible")
         .eq("id", user.id)
         .single();
       if (data) {
         setUserProfile(data);
+        setIsMapVisible(data.is_map_visible !== false); // Default to true if null
         if (data.current_lat && data.current_lng) {
           setUserLocation({ lat: data.current_lat, lng: data.current_lng });
         }
@@ -339,6 +314,33 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     }
   };
 
+  // Toggle user's own map visibility
+  const handleToggleVisibility = async (checked: boolean) => {
+    if (!user) return;
+    
+    try {
+      await supabase
+        .from("profiles")
+        .update({ is_map_visible: checked })
+        .eq("id", user.id);
+      
+      setIsMapVisible(checked);
+      toast({
+        title: checked ? "You're now visible" : "You're now invisible",
+        description: checked 
+          ? "Other users can see you on the map."
+          : "You're hidden from other users (admins can still see you).",
+      });
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update visibility setting.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Fetch map data based on role
   const fetchMapData = useCallback(async () => {
     try {
@@ -346,10 +348,10 @@ export function LiveMapView({ className }: LiveMapViewProps) {
 
       // For admin: fetch ALL users with location data (no time filter)
       if (isAdmin) {
-        // Get all users with location data
+        // Get all users with location data (admins see everyone, including invisible users)
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year, is_map_visible")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null);
 
@@ -384,6 +386,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             car_make: p.car_make,
             car_model: p.car_model,
             car_year: p.car_year,
+            is_map_visible: p.is_map_visible,
             isAdmin: adminIds.has(p.id),
             isDriver: driverIds.has(p.id) || p.active_role === 'driver',
             isRider: p.active_role === 'rider',
@@ -393,20 +396,21 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       }
 
       // For NON-ADMIN users (drivers and riders): fetch online users (location updated within 60 minutes)
-      // Also ALWAYS include the current user so they can see themselves
+      // Also filter by is_map_visible = true for other users, but ALWAYS include the current user
       if (!isAdmin && user) {
-        // First, get all online users with recent location
+        // First, get all online users with recent location AND visibility enabled
         const { data: onlineProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
-          .gte("location_updated_at", sixtyMinutesAgo);
+          .gte("location_updated_at", sixtyMinutesAgo)
+          .eq("is_map_visible", true); // Only fetch users who are visible
 
         // Also fetch the current user's profile separately to ensure they always see themselves
         const { data: ownProfile } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible")
           .eq("id", user.id)
           .single();
 
@@ -428,15 +432,16 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         const profileIds = new Set(allProfiles.map(p => p.id));
         
         // Add current user if they have location data but weren't in the online query
+        // (user always sees themselves regardless of their visibility setting)
         if (ownProfile && ownProfile.current_lat && ownProfile.current_lng && !profileIds.has(ownProfile.id)) {
           allProfiles.push(ownProfile);
         }
 
         const users: AllMapUser[] = allProfiles
           .filter(p => {
-            // Exclude admins from non-admin view unless showAdminOnPublicMap is true
-            // But ALWAYS include the current user
+            // ALWAYS include the current user (they always see themselves)
             if (p.id === user.id) return true;
+            // Exclude admins from non-admin view unless showAdminOnPublicMap is true
             if (adminIds.has(p.id) && !showAdminOnPublicMap) return false;
             return true;
           })
@@ -454,6 +459,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             car_make: p.car_make,
             car_model: p.car_model,
             car_year: p.car_year,
+            is_map_visible: p.is_map_visible,
             isAdmin: adminIds.has(p.id),
             isDriver: driverIds.has(p.id) || p.active_role === 'driver',
             isRider: p.active_role === 'rider',
@@ -461,83 +467,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         setOnlineUsers(users);
       }
 
-      if (isDriver || isAdmin) {
-        const { data: tripData, error: tripError } = await supabase
-          .from("ride_requests")
-          .select(`
-            id,
-            pickup_lat,
-            pickup_lng,
-            pickup_zip,
-            pickup_address,
-            dropoff_address,
-            dropoff_zip,
-            pickup_time,
-            price_offer,
-            estimated_competitor_fare_mid,
-            rider_id
-          `)
-          .eq("status", "open")
-          .order("created_at", { ascending: false })
-          .limit(50);
-
-        if (tripError) throw tripError;
-
-        if (tripData && tripData.length > 0) {
-          const riderIds = tripData.map(t => t.rider_id);
-          const { data: riderProfiles } = await supabase
-            .from("profiles")
-            .select("id, display_name, full_name, photo_url, rider_rating_avg, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role")
-            .in("id", riderIds);
-
-          const enrichedTrips = tripData.map(trip => ({
-            ...trip,
-            rider: riderProfiles?.find(p => p.id === trip.rider_id),
-          }));
-          setTrips(enrichedTrips);
-        } else {
-          setTrips([]);
-        }
-      } else if (isRider && user) {
-        const { data: tripData, error: tripError } = await supabase
-          .from("ride_requests")
-          .select(`
-            id,
-            pickup_lat,
-            pickup_lng,
-            pickup_zip,
-            pickup_address,
-            dropoff_address,
-            dropoff_zip,
-            pickup_time,
-            price_offer,
-            estimated_competitor_fare_mid,
-            rider_id
-          `)
-          .eq("rider_id", user.id)
-          .eq("status", "open")
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (tripError) throw tripError;
-
-        if (tripData && tripData.length > 0) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id, display_name, full_name, photo_url, rider_rating_avg, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role")
-            .eq("id", user.id)
-            .single();
-
-          const enrichedTrips = tripData.map(trip => ({
-            ...trip,
-            rider: profile || undefined,
-          }));
-          setTrips(enrichedTrips);
-        } else {
-          setTrips([]);
-        }
-      }
-
+      // Fetch driver status for the current user if they're a driver
       if (isDriver && user) {
         const { data: driverData } = await supabase
           .from("driver_status")
@@ -819,45 +749,6 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       });
     }
 
-    // NON-ADMIN: Add trip markers for drivers/riders
-    if (showTrips && !isAdmin) {
-      trips.forEach((trip) => {
-        if (!trip.pickup_lat || !trip.pickup_lng) return;
-
-        const jittered = getJitteredCoords(trip.pickup_lat, trip.pickup_lng, trip.id);
-        const riderName = trip.rider?.full_name || trip.rider?.display_name || "Rider";
-        const pickupCity = trip.pickup_address.split(',').slice(-3, -2)[0]?.trim() || trip.pickup_zip;
-        const dropoffCity = trip.dropoff_address.split(',').slice(-3, -2)[0]?.trim() || trip.dropoff_zip;
-        const pickupTime = format(new Date(trip.pickup_time), "MMM d, h:mm a");
-        const savings = trip.estimated_competitor_fare_mid && trip.price_offer 
-          ? Math.round(trip.estimated_competitor_fare_mid - trip.price_offer)
-          : null;
-
-        const isOwnTrip = trip.rider_id === user?.id;
-        const tripLabel = isOwnTrip ? "Your Trip Request" : `${riderName}'s Trip Request`;
-
-        const icon = createAvatarDivIcon(L, trip.rider?.photo_url, 'rider', trip.rider?.location_updated_at, false);
-
-        const marker = L.marker([jittered.lat, jittered.lng], { icon })
-          .addTo(mapInstanceRef.current)
-          .bindPopup(`
-            <div class="p-3 min-w-[220px]">
-              <div class="font-semibold mb-2">${tripLabel}</div>
-              <p class="text-xs mb-1"><strong>From:</strong> ${pickupCity}</p>
-              <p class="text-xs mb-1"><strong>To:</strong> ${dropoffCity}</p>
-              <p class="text-xs mb-1"><strong>When:</strong> ${pickupTime}</p>
-              ${trip.price_offer ? `<p class="text-xs mb-1"><strong>Offer:</strong> $${trip.price_offer}</p>` : ''}
-              ${savings && savings > 0 ? `<p class="text-xs text-emerald-600 mb-2">💰 Save $${savings} vs rideshare</p>` : ''}
-              <a href="/trip/${trip.id}" class="text-xs text-blue-500 hover:underline">View Trip Details →</a>
-            </div>
-          `);
-
-        if (isOwnTrip && isRider) {
-          userMarkerRef.current = marker;
-        }
-      });
-    }
-
     // NON-ADMIN: Add admin crown markers when visible to public
     if (!isAdmin && showAdminOnPublicMap) {
       adminLocations.forEach((admin) => {
@@ -880,7 +771,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           `);
       });
     }
-  }, [drivers, trips, showTrips, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers]);
+  }, [drivers, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers]);
 
   // Refresh location
   const handleRefreshLocation = async () => {
@@ -980,19 +871,6 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       }
     }
 
-    // Fallback: check trips for rider's own trip location
-    if (isRider && trips.length > 0) {
-      const ownTrip = trips.find(t => t.rider_id === user?.id);
-      if (ownTrip && ownTrip.pickup_lat && ownTrip.pickup_lng) {
-        const jittered = getJitteredCoords(ownTrip.pickup_lat, ownTrip.pickup_lng, ownTrip.id);
-        mapInstanceRef.current.setView([jittered.lat, jittered.lng], 13, { animate: true });
-        if (userMarkerRef.current) {
-          userMarkerRef.current.openPopup();
-        }
-        return;
-      }
-    }
-
     if (userLocation) {
       mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 13, { animate: true });
       return;
@@ -1009,9 +887,10 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     setRefreshing(true);
     await fetchMapData();
     setRefreshing(false);
+    const count = isAdmin ? allMapUsers.length : onlineUsers.length;
     toast({
       title: "Map refreshed",
-      description: `Showing ${trips.length} trip request${trips.length !== 1 ? 's' : ''}.`,
+      description: `Showing ${count} user${count !== 1 ? 's' : ''} on the map.`,
     });
   };
 
@@ -1078,15 +957,26 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               </div>
             )}
             
+            {/* Visibility toggle for all users */}
             <button
-              onClick={() => setShowTrips(!showTrips)}
+              onClick={() => handleToggleVisibility(!isMapVisible)}
               className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${
-                showTrips ? 'border-primary bg-primary/10' : 'border-border opacity-50'
+                isMapVisible 
+                  ? 'border-emerald-500/50 bg-emerald-500/10' 
+                  : 'border-muted-foreground/30 bg-muted/20'
               }`}
             >
-              <img src="/assets/map/rider-circle-icon.png" alt="Trip" className="w-5 h-5" />
-              <Route className="h-4 w-4" />
-              <span>Trip Requests ({trips.length})</span>
+              {isMapVisible ? (
+                <>
+                  <Eye className="h-4 w-4 text-emerald-400" />
+                  <span className="text-emerald-400">Visible</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Invisible</span>
+                </>
+              )}
             </button>
             
             {/* Admin visibility toggle */}
