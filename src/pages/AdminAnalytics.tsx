@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Car, DollarSign, TrendingUp, Activity, CheckCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Car, Activity, CheckCircle, Eye, UserCheck } from "lucide-react";
 import { MapBackground } from "@/components/MapBackground";
+import { PageViewsAnalytics } from "@/components/admin/PageViewsAnalytics";
+import { VisitorActivityLog } from "@/components/admin/VisitorActivityLog";
+import { ActiveVisitorsCard } from "@/components/admin/ActiveVisitorsCard";
 
 interface AnalyticsStats {
   totalUsers: number;
@@ -29,6 +33,7 @@ export default function AdminAnalytics() {
     avgRating: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     fetchAnalytics();
@@ -109,27 +114,12 @@ export default function AdminAnalytics() {
       description: `${stats.completedTrips} completed`,
       color: "text-yellow-500",
     },
-    {
-      title: "Active Trips",
-      value: stats.activeTrips,
-      icon: TrendingUp,
-      description: "Currently in progress",
-      color: "text-orange-500",
-    },
-    {
-      title: "Average Rating",
-      value: stats.avgRating.toFixed(1),
-      icon: CheckCircle,
-      description: "Overall platform rating",
-      color: "text-pink-500",
-    },
   ];
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
-        <div className="text-center relative z-10">
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading analytics...</p>
         </div>
@@ -138,94 +128,118 @@ export default function AdminAnalytics() {
   }
 
   return (
-    <div className="min-h-screen relative">
-      <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
-      
-      <div className="container mx-auto p-6 relative z-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">Platform overview and key metrics</p>
-        </div>
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3 bg-card/50 backdrop-blur-sm border border-border/50">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Activity className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="traffic" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Eye className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Page Views</span>
+          </TabsTrigger>
+          <TabsTrigger value="visitors" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <UserCheck className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Visitor Activity</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-          {statCards.map((stat) => (
-            <Card key={stat.title} className="bg-card/95 backdrop-blur">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+        <TabsContent value="overview" className="space-y-6 mt-6">
+          {/* Active Visitors Card */}
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="md:col-span-1">
+              <ActiveVisitorsCard onViewAll={() => setActiveTab("visitors")} />
+            </div>
+            <div className="md:col-span-2 grid gap-4 grid-cols-2">
+              {statCards.slice(0, 4).map((stat) => (
+                <Card key={stat.title} className="bg-card/95 backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </CardTitle>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {stat.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="bg-card/95 backdrop-blur">
+              <CardHeader>
+                <CardTitle>Trip Statistics</CardTitle>
+                <CardDescription>Breakdown of all trips</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.description}
-                </p>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                  <span className="font-semibold text-green-500">{stats.completedTrips}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Active</span>
+                  <span className="font-semibold text-blue-500">{stats.activeTrips}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Cancelled</span>
+                  <span className="font-semibold text-red-500">{stats.cancelledTrips}</span>
+                </div>
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <span className="text-sm font-medium">Completion Rate</span>
+                  <span className="font-bold text-lg">
+                    {stats.totalTrips > 0 
+                      ? ((stats.completedTrips / stats.totalTrips) * 100).toFixed(1) 
+                      : 0}%
+                  </span>
+                </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="bg-card/95 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Trip Statistics</CardTitle>
-              <CardDescription>Breakdown of all trips</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Completed</span>
-                <span className="font-semibold text-green-500">{stats.completedTrips}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Active</span>
-                <span className="font-semibold text-blue-500">{stats.activeTrips}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Cancelled</span>
-                <span className="font-semibold text-red-500">{stats.cancelledTrips}</span>
-              </div>
-              <div className="flex justify-between items-center pt-4 border-t">
-                <span className="text-sm font-medium">Completion Rate</span>
-                <span className="font-bold text-lg">
-                  {stats.totalTrips > 0 
-                    ? ((stats.completedTrips / stats.totalTrips) * 100).toFixed(1) 
-                    : 0}%
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="bg-card/95 backdrop-blur">
+              <CardHeader>
+                <CardTitle>User Overview</CardTitle>
+                <CardDescription>User engagement metrics</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Drivers</span>
+                  <span className="font-semibold">{stats.totalDrivers}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Riders</span>
+                  <span className="font-semibold">{stats.totalRiders}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Verified Users</span>
+                  <span className="font-semibold text-green-500">{stats.verifiedUsers}</span>
+                </div>
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <span className="text-sm font-medium">Verification Rate</span>
+                  <span className="font-bold text-lg">
+                    {stats.totalUsers > 0 
+                      ? ((stats.verifiedUsers / stats.totalUsers) * 100).toFixed(1) 
+                      : 0}%
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
-          <Card className="bg-card/95 backdrop-blur">
-            <CardHeader>
-              <CardTitle>User Overview</CardTitle>
-              <CardDescription>User engagement metrics</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Drivers</span>
-                <span className="font-semibold">{stats.totalDrivers}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Riders</span>
-                <span className="font-semibold">{stats.totalRiders}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Verified Users</span>
-                <span className="font-semibold text-green-500">{stats.verifiedUsers}</span>
-              </div>
-              <div className="flex justify-between items-center pt-4 border-t">
-                <span className="text-sm font-medium">Verification Rate</span>
-                <span className="font-bold text-lg">
-                  {stats.totalUsers > 0 
-                    ? ((stats.verifiedUsers / stats.totalUsers) * 100).toFixed(1) 
-                    : 0}%
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        <TabsContent value="traffic" className="mt-6">
+          <PageViewsAnalytics />
+        </TabsContent>
+
+        <TabsContent value="visitors" className="mt-6">
+          <VisitorActivityLog />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
