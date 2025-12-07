@@ -69,8 +69,10 @@ const TripActionDialog = ({
         updates.status = "completed";
         updates[userRole === "rider" ? "rider_completed" : "driver_completed"] = true;
         
-        // Auto-rate the OTHER party as 5 stars when marking complete
-        updates[userRole === "rider" ? "driver_rating" : "rider_rating"] = 5;
+        // Auto-rate: rider rates driver (rider_rating), driver rates rider (driver_rating)
+        // rider_rating = rating the rider gives to the driver
+        // driver_rating = rating the driver gives to the rider
+        updates[userRole === "rider" ? "rider_rating" : "driver_rating"] = 5;
 
         // Get current user ID from auth
         const { data: { user } } = await supabase.auth.getUser();
@@ -192,7 +194,7 @@ const TripActionDialog = ({
         {action === "complete" && (
           <div className="bg-muted/50 p-4 rounded-lg">
             <p className="text-sm text-muted-foreground">
-              Once you mark this trip as complete, the other party will automatically receive a 5-star rating from you. Both you and the other user will be able to request or accept new trips immediately.
+              Once you mark this trip as complete, you will automatically give the {userRole === "rider" ? "driver" : "rider"} a 5-star rating. Both you and the other user will be able to request or accept new trips immediately.
             </p>
           </div>
         )}
