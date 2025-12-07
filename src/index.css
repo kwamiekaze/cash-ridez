@@ -187,44 +187,31 @@ All colors MUST be HSL.
 /* Live Map Disclaimer Overlay */
 .cr-map-disclaimer {
   position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 92%;
-  max-width: 600px;
-  padding: 6px 14px;
-  background: rgba(0, 0, 0, 0.96);
-  border-radius: 22px;
-  font-size: 10px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.98);
   color: #facc15;
   text-align: center;
-  line-height: 1.25;
-  z-index: 9998;
+  font-size: 11px;
+  line-height: 1.35;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
+  z-index: 999999;
   pointer-events: none;
-  box-shadow: 0 0 14px rgba(0, 0, 0, 0.75);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.9);
+  display: block;
 }
 
-/* 📱 Mobile-first refinement (very small screens) */
-@media (max-width: 480px) {
-  .cr-map-disclaimer {
-    width: 96%;
-    max-width: 360px;
-    font-size: 9px;
-    padding: 5px 10px;
-    bottom: 6px;
-    background: rgba(0, 0, 0, 0.96);
-    box-shadow: 0 0 14px rgba(0, 0, 0, 0.75);
-  }
+/* Hide Leaflet attribution completely */
+.leaflet-control-attribution,
+.leaflet-control-attribution a {
+  pointer-events: none !important;
+  opacity: 0 !important;
 }
 
-/* 💻 Larger tablets & desktop screens */
-@media (min-width: 768px) {
-  .cr-map-disclaimer {
-    max-width: 700px;
-    font-size: 11px;
-    padding: 8px 18px;
-    bottom: 8px;
-    background: rgba(0, 0, 0, 0.96);
-    box-shadow: 0 0 14px rgba(0, 0, 0, 0.75);
-  }
+/* Ensure map container allows full overlay coverage */
+.leaflet-container {
+  overflow: hidden;
 }
