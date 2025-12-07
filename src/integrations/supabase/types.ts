@@ -715,6 +715,65 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          email_snapshot: string | null
+          full_name_snapshot: string | null
+          id: string
+          is_subscribed: boolean | null
+          page_label: string
+          path: string
+          referrer: string | null
+          role_snapshot: string | null
+          subscription_status_snapshot: string | null
+          user_id: string | null
+          user_identifier_snapshot: string | null
+          verification_status_snapshot: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          email_snapshot?: string | null
+          full_name_snapshot?: string | null
+          id?: string
+          is_subscribed?: boolean | null
+          page_label: string
+          path: string
+          referrer?: string | null
+          role_snapshot?: string | null
+          subscription_status_snapshot?: string | null
+          user_id?: string | null
+          user_identifier_snapshot?: string | null
+          verification_status_snapshot?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          email_snapshot?: string | null
+          full_name_snapshot?: string | null
+          id?: string
+          is_subscribed?: boolean | null
+          page_label?: string
+          path?: string
+          referrer?: string | null
+          role_snapshot?: string | null
+          subscription_status_snapshot?: string | null
+          user_id?: string | null
+          user_identifier_snapshot?: string | null
+          verification_status_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active_assigned_ride_id: string | null
