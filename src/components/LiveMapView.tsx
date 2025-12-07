@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MapPin, Loader2, Navigation, RefreshCw, Route, Crosshair, Users } from "lucide-react";
-import FloatingSupport from "./FloatingSupport";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -241,6 +240,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [showAdminOnPublicMap, setShowAdminOnPublicMap] = useState(false);
   const [adminLocations, setAdminLocations] = useState<AdminLocation[]>([]);
   const [allMapUsers, setAllMapUsers] = useState<AllMapUser[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<AllMapUser[]>([]); // For non-admin shared visibility
   const [selectedUser, setSelectedUser] = useState<AllMapUser | null>(null);
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
 
@@ -342,7 +342,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   // Fetch map data based on role
   const fetchMapData = useCallback(async () => {
     try {
-      // For admin: fetch ALL users with location data
+      const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+      // For admin: fetch ALL users with location data (no time filter)
       if (isAdmin) {
         // Get all users with location data
         const { data: allProfiles } = await supabase
@@ -387,6 +389,57 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             isRider: p.active_role === 'rider',
           }));
           setAllMapUsers(users);
+        }
+      }
+
+      // For NON-ADMIN users (drivers and riders): fetch online users (location updated within 60 minutes)
+      if (!isAdmin && user) {
+        const { data: onlineProfiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year")
+          .not("current_lat", "is", null)
+          .not("current_lng", "is", null)
+          .gte("location_updated_at", sixtyMinutesAgo);
+
+        // Get all driver user IDs for role detection
+        const { data: driverStatuses } = await supabase
+          .from("driver_status")
+          .select("user_id");
+        const driverIds = new Set(driverStatuses?.map(d => d.user_id) || []);
+
+        // Get admin IDs to exclude from non-admin view (unless showAdminOnPublicMap is true)
+        const { data: adminRoles } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+        const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
+
+        if (onlineProfiles) {
+          const users: AllMapUser[] = onlineProfiles
+            .filter(p => {
+              // Exclude admins from non-admin view unless showAdminOnPublicMap is true
+              if (adminIds.has(p.id) && !showAdminOnPublicMap) return false;
+              return true;
+            })
+            .map(p => ({
+              id: p.id,
+              display_name: p.display_name,
+              full_name: p.full_name,
+              photo_url: p.photo_url,
+              current_lat: p.current_lat,
+              current_lng: p.current_lng,
+              location_updated_at: p.location_updated_at,
+              is_verified: p.is_verified,
+              subscription_active: p.subscription_active,
+              active_role: p.active_role,
+              car_make: p.car_make,
+              car_model: p.car_model,
+              car_year: p.car_year,
+              isAdmin: adminIds.has(p.id),
+              isDriver: driverIds.has(p.id) || p.active_role === 'driver',
+              isRider: p.active_role === 'rider',
+            }));
+          setOnlineUsers(users);
         }
       }
 
@@ -703,22 +756,30 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       };
     }
 
-    // NON-ADMIN: Add driver markers (only for the current driver's own pin)
-    if (isDriver && !isAdmin) {
-      drivers.forEach((driver) => {
-        if (driver.user_id !== user?.id) return;
+    // NON-ADMIN: Show all online users (drivers and riders who have location updated within 60 min)
+    if (!isAdmin && onlineUsers.length > 0) {
+      onlineUsers.forEach((mapUser) => {
+        if (!mapUser.current_lat || !mapUser.current_lng) return;
+
+        const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
+        const name = mapUser.full_name || mapUser.display_name || "User";
+        const isPremium = mapUser.subscription_active;
+        const isOwnUser = mapUser.id === user?.id;
         
-        const geo = parseApproxGeo(driver.approx_geo);
-        if (!geo) return;
+        // Determine variant
+        let variant: 'driver' | 'rider' | 'admin' = 'rider';
+        if (mapUser.isAdmin) variant = 'admin';
+        else if (mapUser.isDriver) variant = 'driver';
 
-        const jittered = getJitteredCoords(geo.lat, geo.lng, driver.user_id);
-        const name = driver.profile?.full_name || driver.profile?.display_name || "You";
-        const isPremium = driver.profile?.subscription_active;
-        const carInfo = [driver.profile?.car_year, driver.profile?.car_make, driver.profile?.car_model]
-          .filter(Boolean).join(" ");
+        // Use subtle status styling for non-admins (no timestamps shown)
+        const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false);
 
-        const icon = createAvatarDivIcon(L, driver.profile?.photo_url, 'driver', driver.profile?.location_updated_at, false);
+        const roleLabel = mapUser.isAdmin ? 'Admin' : mapUser.isDriver ? 'Driver' : 'Rider';
+        const carInfo = mapUser.isDriver 
+          ? [mapUser.car_year, mapUser.car_make, mapUser.car_model].filter(Boolean).join(" ")
+          : '';
 
+        // For non-admins: simple popup without timestamps
         const marker = L.marker([jittered.lat, jittered.lng], { icon })
           .addTo(mapInstanceRef.current)
           .bindPopup(`
@@ -726,14 +787,17 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <div class="flex items-center gap-2 mb-2">
                 <span class="font-semibold">${name}</span>
                 ${isPremium ? '<span class="text-yellow-500">👑</span>' : ''}
+                ${isOwnUser ? '<span class="text-xs text-gray-500">(You)</span>' : ''}
               </div>
-              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> Driver (You)</p>
+              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabel}</p>
               ${carInfo ? `<p class="text-xs text-gray-600 mb-1"><strong>Vehicle:</strong> ${carInfo}</p>` : ''}
-              <p class="text-xs text-gray-400 italic">📍 Your approximate location</p>
+              <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
             </div>
           `);
 
-        userMarkerRef.current = marker;
+        if (isOwnUser) {
+          userMarkerRef.current = marker;
+        }
       });
     }
 
@@ -798,7 +862,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           `);
       });
     }
-  }, [drivers, trips, showTrips, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers]);
+  }, [drivers, trips, showTrips, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers]);
 
   // Refresh location
   const handleRefreshLocation = async () => {
@@ -872,10 +936,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const handleCenterOnMe = () => {
     if (!mapInstanceRef.current) return;
 
-    if (isAdmin && adminLocations.length > 0) {
-      const ownAdmin = adminLocations.find(a => a.user_id === user?.id);
-      if (ownAdmin) {
-        const jittered = getJitteredCoords(ownAdmin.lat, ownAdmin.lng, ownAdmin.user_id);
+    // Admin view: find self in allMapUsers
+    if (isAdmin && allMapUsers.length > 0) {
+      const ownUser = allMapUsers.find(u => u.id === user?.id);
+      if (ownUser && ownUser.current_lat && ownUser.current_lng) {
+        const jittered = getJitteredCoords(ownUser.current_lat, ownUser.current_lng, ownUser.id);
         mapInstanceRef.current.setView([jittered.lat, jittered.lng], 13, { animate: true });
         if (userMarkerRef.current) {
           userMarkerRef.current.openPopup();
@@ -884,21 +949,20 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       }
     }
 
-    if (isDriver && drivers.length > 0) {
-      const ownDriver = drivers.find(d => d.user_id === user?.id);
-      if (ownDriver) {
-        const geo = parseApproxGeo(ownDriver.approx_geo);
-        if (geo) {
-          const jittered = getJitteredCoords(geo.lat, geo.lng, ownDriver.user_id);
-          mapInstanceRef.current.setView([jittered.lat, jittered.lng], 13, { animate: true });
-          if (userMarkerRef.current) {
-            userMarkerRef.current.openPopup();
-          }
-          return;
+    // Non-admin: find self in onlineUsers
+    if (!isAdmin && onlineUsers.length > 0) {
+      const ownUser = onlineUsers.find(u => u.id === user?.id);
+      if (ownUser && ownUser.current_lat && ownUser.current_lng) {
+        const jittered = getJitteredCoords(ownUser.current_lat, ownUser.current_lng, ownUser.id);
+        mapInstanceRef.current.setView([jittered.lat, jittered.lng], 13, { animate: true });
+        if (userMarkerRef.current) {
+          userMarkerRef.current.openPopup();
         }
+        return;
       }
     }
 
+    // Fallback: check trips for rider's own trip location
     if (isRider && trips.length > 0) {
       const ownTrip = trips.find(t => t.rider_id === user?.id);
       if (ownTrip && ownTrip.pickup_lat && ownTrip.pickup_lng) {
@@ -954,7 +1018,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                 Live Community Map
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {isDriver ? "View trip requests near you" : isAdmin ? "Admin view - all drivers and trips" : "See your active trip on the map"}
+                {isAdmin ? "Admin view - all users and trips" : "See online users and trip requests in your community"}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -985,6 +1049,14 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
                 <Users className="h-4 w-4 text-emerald-400" />
                 <span className="text-emerald-400">All Users ({allMapUsers.length})</span>
+              </div>
+            )}
+
+            {/* Non-admin: show online users count */}
+            {!isAdmin && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+                <Users className="h-4 w-4 text-emerald-400" />
+                <span className="text-emerald-400">Online ({onlineUsers.length})</span>
               </div>
             )}
             

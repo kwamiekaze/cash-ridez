@@ -5,7 +5,7 @@ import AppHeader from "@/components/AppHeader";
 import { LiveMapView } from "@/components/LiveMapView";
 import { MapBackground } from "@/components/MapBackground";
 import { DashboardCar } from "@/components/DashboardCar";
-import FloatingSupport from "@/components/FloatingSupport";
+// FloatingSupport intentionally removed from Live Map page
 
 const LiveMap = () => {
   const { user, loading } = useAuth();
@@ -44,8 +44,6 @@ const LiveMap = () => {
           <LiveMapView className="w-full" />
         </div>
       </div>
-
-      <FloatingSupport />
     </div>
   );
 };
