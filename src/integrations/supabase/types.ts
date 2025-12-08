@@ -834,6 +834,9 @@ export type Database = {
           is_verified: boolean | null
           location_sharing_enabled: boolean | null
           location_updated_at: string | null
+          map_history_cleared_at: string | null
+          map_history_cleared_by: string | null
+          map_history_hidden_from_public: boolean | null
           notification_preferences: Json | null
           notify_new_driver: boolean | null
           paused: boolean | null
@@ -903,6 +906,9 @@ export type Database = {
           is_verified?: boolean | null
           location_sharing_enabled?: boolean | null
           location_updated_at?: string | null
+          map_history_cleared_at?: string | null
+          map_history_cleared_by?: string | null
+          map_history_hidden_from_public?: boolean | null
           notification_preferences?: Json | null
           notify_new_driver?: boolean | null
           paused?: boolean | null
@@ -972,6 +978,9 @@ export type Database = {
           is_verified?: boolean | null
           location_sharing_enabled?: boolean | null
           location_updated_at?: string | null
+          map_history_cleared_at?: string | null
+          map_history_cleared_by?: string | null
+          map_history_hidden_from_public?: boolean | null
           notification_preferences?: Json | null
           notify_new_driver?: boolean | null
           paused?: boolean | null

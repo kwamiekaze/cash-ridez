@@ -254,13 +254,10 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Public map route - accessible without login */}
             <Route
               path="/map"
-              element={
-                <ProtectedRoute>
-                  <LiveMap />
-                </ProtectedRoute>
-              }
+              element={<LiveMap />}
             />
             {/* Redirect old /live-map route to /map */}
             <Route
