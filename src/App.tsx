@@ -2,14 +2,15 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
+import { FloatingUpdatePin } from "./components/FloatingUpdatePin";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -51,6 +52,20 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Global floating update pin wrapper - only shows on non-map pages for signed-in users
+const GlobalFloatingUpdatePin = () => {
+  const { user } = useAuth();
+  const location = useLocation();
+  
+  // Don't show on map page (has its own update button) or public pages
+  const isMapPage = location.pathname === '/map' || location.pathname === '/live-map';
+  const isPublicPage = ['/', '/auth', '/refer', '/terms', '/privacy', '/install-app', '/reset-password'].includes(location.pathname);
+  
+  if (!user || isMapPage || isPublicPage) return null;
+  
+  return <FloatingUpdatePin />;
+};
+
 // Defer non-critical UI until idle
 const DeferMount = ({ children }: { children: React.ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -91,6 +106,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <PageViewTracker />
+          <GlobalFloatingUpdatePin />
           <DeferMount>
             <NotificationPermissionDialog />
           </DeferMount>

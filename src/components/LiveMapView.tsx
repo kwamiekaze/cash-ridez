@@ -1073,10 +1073,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                     : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
                 }`}
               >
-                Online Now ({isAdmin ? allMapUsers.filter(u => {
-                  const status = getOnlineStatus(u.location_updated_at || null);
-                  return status.isOnline || !status.isOffline;
-                }).length : onlineUsers.length})
+                Online
               </button>
               <button
                 onClick={() => setUserFilter('all')}
@@ -1086,25 +1083,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                     : 'bg-transparent text-muted-foreground hover:bg-muted/20'
                 }`}
               >
-                Recently Online ({isAdmin ? (() => {
-                  // Count users based on current time range filter for admin
-                  const getAdminTimeFilterCutoff = (): Date | null => {
-                    const now = Date.now();
-                    switch (adminTimeRange) {
-                      case 'all': return null;
-                      case 'month': return new Date(now - 30 * 24 * 60 * 60 * 1000);
-                      case 'week': return new Date(now - 7 * 24 * 60 * 60 * 1000);
-                      case '72h': return new Date(now - 72 * 60 * 60 * 1000);
-                      case '24h': return new Date(now - 24 * 60 * 60 * 1000);
-                      case '5h': return new Date(now - 5 * 60 * 60 * 1000);
-                      case '1h': return new Date(now - 60 * 60 * 1000);
-                      default: return null;
-                    }
-                  };
-                  const cutoff = getAdminTimeFilterCutoff();
-                  if (!cutoff) return allMapUsers.length;
-                  return allMapUsers.filter(u => u.location_updated_at && new Date(u.location_updated_at) >= cutoff).length;
-                })() : allUsersForNonAdmin.length})
+                Recently Online
               </button>
             </div>
 
