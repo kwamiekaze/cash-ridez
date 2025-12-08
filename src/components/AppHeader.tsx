@@ -127,6 +127,10 @@ const AppHeader = ({
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/map")} className="cursor-pointer text-emerald-400">
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Map
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/history")} className="cursor-pointer">
                   <History className="mr-2 h-4 w-4" />
                   History
@@ -134,10 +138,6 @@ const AppHeader = ({
                 <DropdownMenuItem onClick={() => navigate("/referrals")} className="cursor-pointer">
                   <Users className="mr-2 h-4 w-4" />
                   Referrals
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/map")} className="cursor-pointer text-emerald-400">
-                  <MapPin className="mr-2 h-4 w-4" />
-                  Map
                 </DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
                     <Shield className="mr-2 h-4 w-4" />

@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Menu, X, User, CreditCard, HelpCircle, Moon, Sun, LogOut, Download, MapPin } from 'lucide-react';
+import { Menu, X, User, CreditCard, HelpCircle, Moon, Sun, LogOut, Download, MapPin, History } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SportsCar } from './SportsCar';
@@ -145,19 +145,27 @@ export function Navigation() {
                     </Button>
                     <Button 
                       variant="ghost" 
-                      onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} 
-                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Subscription
-                    </Button>
-                    <Button 
-                      variant="ghost" 
                       onClick={() => { navigate('/map'); setIsMenuOpen(false); }} 
                       className="w-full justify-start text-emerald-400 hover:text-emerald-300 transition-all duration-300 hover:scale-105"
                     >
                       <MapPin className="mr-2 h-4 w-4" />
                       Map
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { navigate('/history'); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <History className="mr-2 h-4 w-4" />
+                      History
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => { navigate('/subscription'); setIsMenuOpen(false); }} 
+                      className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Subscription
                     </Button>
                     <Button 
                       variant="ghost" 
