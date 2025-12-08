@@ -1,17 +1,59 @@
-import { useState } from "react";
-import { MapPin, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MapPin, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { canUserUpdateMapPin } from "@/lib/mapPermissions";
 
 export function FloatingUpdatePin() {
   const { user } = useAuth();
   const [updating, setUpdating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [profile, setProfile] = useState<{ is_verified?: boolean; verification_status?: string } | null>(null);
+
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      setIsAdmin(!!data);
+    };
+    checkAdmin();
+  }, [user]);
+
+  // Fetch user verification status
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("is_verified, verification_status")
+        .eq("id", user.id)
+        .single();
+      if (data) {
+        setProfile(data);
+      }
+    };
+    fetchProfile();
+  }, [user]);
+
+  const canUpdatePin = canUserUpdateMapPin(profile, isAdmin);
 
   const handleUpdatePin = async () => {
     if (!user) {
       toast.error("Please sign in to update your pin");
+      return;
+    }
+
+    // Check verification status before allowing update
+    if (!canUpdatePin) {
+      toast.error("ID verification required to update your pin. Complete your verification in the Profile tab to appear on the map.");
       return;
     }
 
@@ -80,6 +122,11 @@ export function FloatingUpdatePin() {
   };
 
   if (!user) return null;
+
+  // Hide the button entirely for non-verified users (they'll see notice on map page)
+  if (!canUpdatePin) {
+    return null;
+  }
 
   return (
     <Button
