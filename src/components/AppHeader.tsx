@@ -135,9 +135,9 @@ const AppHeader = ({
                   <Users className="mr-2 h-4 w-4" />
                   Referrals
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/live-map")} className="cursor-pointer text-emerald-400">
+                <DropdownMenuItem onClick={() => navigate("/map")} className="cursor-pointer text-emerald-400">
                   <MapPin className="mr-2 h-4 w-4" />
-                  Live Map
+                  Map
                 </DropdownMenuItem>
                 {isAdmin && <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
                     <Shield className="mr-2 h-4 w-4" />
