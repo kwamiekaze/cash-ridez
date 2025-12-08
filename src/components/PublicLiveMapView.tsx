@@ -320,7 +320,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
                   : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
               }`}
             >
-              Online Now ({onlineUsers.length})
+              Online
             </button>
             <button
               onClick={() => setUserFilter('all')}
@@ -330,7 +330,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
                   : 'bg-transparent text-muted-foreground hover:bg-muted/20'
               }`}
             >
-              Recently Online ({allUsers24h.length})
+              Recently Online
             </button>
           </div>
         </div>

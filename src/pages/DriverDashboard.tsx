@@ -412,7 +412,7 @@ const DriverDashboard = () => {
             {filteredOpenRequests.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
-                  {searchQuery ? "No trips match your search" : "No open trip requests available"}
+                  {searchQuery ? "No trips match your search" : "No trip requests nearby. Update your pin in the Map tab to explore trip opportunities in your area."}
                 </CardContent>
               </Card>
             ) : (
