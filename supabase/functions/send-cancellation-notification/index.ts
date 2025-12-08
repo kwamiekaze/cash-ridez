@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { sendEmail } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY") as string);
 
@@ -83,37 +84,41 @@ const handler = async (req: Request): Promise<Response> => {
       <p><em>This is an automated notification from CashRidez.</em></p>
     `;
 
-    // Send emails in parallel
-    const emailPromises = [];
+    // Send emails using shared utility
+    const results = [];
 
     // Email to other user
-    emailPromises.push(
-      resend.emails.send({
-        from: "CashRidez <onboarding@resend.dev>",
-        to: [otherUserEmail],
-        subject: "Trip Cancelled",
-        html: userEmailHtml,
-      })
-    );
+    const userResult = await sendEmail(resend, {
+      to: [otherUserEmail],
+      subject: "Trip Cancelled",
+      html: userEmailHtml,
+    });
+    results.push(userResult);
 
     // Emails to admins (including the static email)
     const allAdminEmails = [...new Set([...adminEmails, "cashridezconnect@gmail.com"])];
     
     for (const adminEmail of allAdminEmails) {
-      emailPromises.push(
-        resend.emails.send({
-          from: "CashRidez Notifications <onboarding@resend.dev>",
-          to: [adminEmail],
-          subject: `Trip Cancellation Report - ${rideId.substring(0, 8)}`,
-          html: adminEmailHtml,
-        })
-      );
+      const adminResult = await sendEmail(resend, {
+        to: [adminEmail],
+        subject: `Trip Cancellation Report - ${rideId.substring(0, 8)}`,
+        html: adminEmailHtml,
+      });
+      results.push(adminResult);
     }
 
-    const results = await Promise.all(emailPromises);
-    console.log("Cancellation notification emails sent:", results);
+    const successCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
+    const fallbackActive = results.some(r => r.fallbackActive);
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    console.log(`Cancellation notification emails: ${successCount} sent, ${failedCount} failed`);
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      emailsSent: successCount,
+      emailsFailed: failedCount,
+      fallbackActive 
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

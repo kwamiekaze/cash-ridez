@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { sendEmail } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -69,17 +70,16 @@ const handler = async (req: Request): Promise<Response> => {
         </div>
       `;
 
-    const emailResponse = await resend.emails.send({
-      from: "CashRidez <noreply@cashridez.com>",
+    const result = await sendEmail(resend, {
       to: [userEmail],
       subject,
       html,
     });
 
-    console.log("Status notification sent successfully:", emailResponse);
+    console.log("Status notification result:", result);
 
     return new Response(
-      JSON.stringify({ success: true, emailResponse }),
+      JSON.stringify({ success: result.success, fallbackActive: result.fallbackActive }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },

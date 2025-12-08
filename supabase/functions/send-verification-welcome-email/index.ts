@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { sendEmail, getEmailSystemStatus } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -18,9 +19,6 @@ interface QueuedEmail {
   is_driver: boolean;
   is_rider: boolean;
 }
-
-// Use verified domain for production emails
-const FROM_EMAIL = "CashRidez <noreply@cashridez.com>";
 
 // Determine primary role: Driver takes priority, fallback to Rider
 function getPrimaryRole(isDriver: boolean, isRider: boolean): "driver" | "rider" {
@@ -139,7 +137,12 @@ function getRiderEmailHtml(firstName: string): string {
   `;
 }
 
-function getTestEmailHtml(): string {
+function getTestEmailHtml(systemStatus: any): string {
+  const statusColor = systemStatus.fallbackActive ? "#f59e0b" : "#10b981";
+  const statusText = systemStatus.fallbackActive 
+    ? "⚠️ Temporary sender fallback active. Domain verification still pending."
+    : "✅ Primary domain verified and active.";
+    
   return `
 <!DOCTYPE html>
 <html>
@@ -157,10 +160,19 @@ function getTestEmailHtml(): string {
   
   <p style="font-size: 16px;">If you received this email, the email delivery system is working correctly.</p>
 
+  <div style="background: ${systemStatus.fallbackActive ? '#fef3c7' : '#f0fdf4'}; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColor};">
+    <p style="margin: 0; font-size: 14px; color: ${statusColor};">
+      ${statusText}
+    </p>
+  </div>
+
   <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 20px 0;">
     <p style="margin: 0; font-size: 14px; color: #666;">
       <strong>Timestamp:</strong> ${new Date().toISOString()}<br>
-      <strong>Environment:</strong> Production
+      <strong>Environment:</strong> Production<br>
+      <strong>Current Sender:</strong> ${systemStatus.currentSender}<br>
+      <strong>Domain Verified:</strong> ${systemStatus.domainVerified ? 'Yes' : 'No'}<br>
+      <strong>Fallback Active:</strong> ${systemStatus.fallbackActive ? 'Yes' : 'No'}
     </p>
   </div>
 
@@ -176,10 +188,13 @@ async function processQueuedEmail(
   supabase: any,
   queueItem: QueuedEmail,
   isTest: boolean = false
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; fallbackActive?: boolean }> {
   const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
   
   console.log(`Processing email for user ${user_id}, email: ${user_email}, isTest: ${isTest}`);
+
+  // Get system status for test emails
+  const systemStatus = await getEmailSystemStatus(resend);
 
   // Determine primary role
   const primaryRole = getPrimaryRole(is_driver, is_rider);
@@ -209,7 +224,7 @@ async function processQueuedEmail(
           .eq("id", id);
       }
       
-      return { success: true };
+      return { success: true, fallbackActive: systemStatus.fallbackActive };
     }
   }
 
@@ -221,7 +236,15 @@ async function processQueuedEmail(
       email_type: emailType,
       recipient_email: user_email,
       status: "pending",
-      metadata: { first_name, is_driver, is_rider, primaryRole, isTest }
+      metadata: { 
+        first_name, 
+        is_driver, 
+        is_rider, 
+        primaryRole, 
+        isTest,
+        fallbackActive: systemStatus.fallbackActive,
+        senderUsed: systemStatus.currentSender
+      }
     })
     .select("id")
     .single();
@@ -239,7 +262,7 @@ async function processQueuedEmail(
   
   if (isTest) {
     subject = "[CashRidez] Email Test – Production";
-    html = getTestEmailHtml();
+    html = getTestEmailHtml(systemStatus);
   } else {
     subject = primaryRole === "driver"
       ? "🚗 You're Verified! Your Driver Profile Is Now Active on CashRidez"
@@ -249,42 +272,37 @@ async function processQueuedEmail(
       : getRiderEmailHtml(displayName);
   }
 
-  // Send email with retry
-  let emailSent = false;
-  let lastError: Error | null = null;
-  let providerResponse: string | null = null;
-
+  // Send email using shared utility with retry
+  let result = { success: false, error: "", senderUsed: "", fallbackActive: false };
+  
   for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      console.log(`Sending email attempt ${attempt} to ${user_email}`);
-      
-      const emailResponse = await resend.emails.send({
-        from: FROM_EMAIL,
-        to: [user_email],
-        subject: subject,
-        html: html,
-      });
-
-      console.log(`Email response on attempt ${attempt}:`, JSON.stringify(emailResponse));
-      
-      // Check if there's an error in the response
-      if (emailResponse.error) {
-        throw new Error(emailResponse.error.message || JSON.stringify(emailResponse.error));
-      }
-      
-      providerResponse = JSON.stringify(emailResponse);
-      emailSent = true;
-      console.log(`Email sent successfully on attempt ${attempt}`);
+    console.log(`Sending email attempt ${attempt} to ${user_email}`);
+    
+    const sendResult = await sendEmail(resend, {
+      to: [user_email],
+      subject,
+      html,
+    });
+    
+    if (sendResult.success) {
+      result = { 
+        success: true, 
+        error: "", 
+        senderUsed: sendResult.senderUsed,
+        fallbackActive: sendResult.fallbackActive 
+      };
       break;
-    } catch (error: any) {
-      console.error(`Email send attempt ${attempt} failed:`, error);
-      lastError = error;
-      providerResponse = error.message || JSON.stringify(error);
-      
-      if (attempt < 3) {
-        // Wait before retry (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-      }
+    }
+    
+    result = {
+      success: false,
+      error: sendResult.error || "Unknown error",
+      senderUsed: sendResult.senderUsed,
+      fallbackActive: sendResult.fallbackActive
+    };
+    
+    if (attempt < 3) {
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
     }
   }
 
@@ -293,9 +311,18 @@ async function processQueuedEmail(
     await supabase
       .from("email_logs")
       .update({
-        status: emailSent ? "success" : "failed",
-        error_message: emailSent ? null : (lastError?.message || providerResponse),
-        timestamp_sent: new Date().toISOString()
+        status: result.success ? "success" : "failed",
+        error_message: result.success ? null : result.error,
+        timestamp_sent: new Date().toISOString(),
+        metadata: {
+          first_name,
+          is_driver,
+          is_rider,
+          primaryRole,
+          isTest,
+          fallbackActive: result.fallbackActive,
+          senderUsed: result.senderUsed
+        }
       })
       .eq("id", logId);
   }
@@ -305,15 +332,15 @@ async function processQueuedEmail(
     await supabase
       .from("verification_email_queue")
       .update({ 
-        status: emailSent ? "sent" : "failed", 
+        status: result.success ? "sent" : "failed", 
         processed_at: new Date().toISOString() 
       })
       .eq("id", id);
   }
 
-  return emailSent 
-    ? { success: true } 
-    : { success: false, error: lastError?.message || providerResponse || "Unknown error" };
+  return result.success 
+    ? { success: true, fallbackActive: result.fallbackActive } 
+    : { success: false, error: result.error, fallbackActive: result.fallbackActive };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -334,6 +361,18 @@ const handler = async (req: Request): Promise<Response> => {
       body = await req.json();
     } catch {
       // Empty body = process queue
+    }
+
+    // Handle status check request
+    if (body.action === "status") {
+      const status = await getEmailSystemStatus(resend);
+      return new Response(
+        JSON.stringify(status),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
     }
 
     // If userId is provided, process single user directly
@@ -378,8 +417,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!queueItems || queueItems.length === 0) {
       console.log("No pending emails in queue");
+      const status = await getEmailSystemStatus(resend);
       return new Response(
-        JSON.stringify({ success: true, processed: 0 }),
+        JSON.stringify({ success: true, processed: 0, ...status }),
         {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -402,6 +442,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const successCount = results.filter(r => r.success).length;
     const failedCount = results.filter(r => !r.success).length;
+    const fallbackActive = results.some(r => r.fallbackActive);
 
     console.log(`Processed ${successCount} emails successfully, ${failedCount} failed`);
 
@@ -410,7 +451,8 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, 
         processed: queueItems.length,
         successful: successCount,
-        failed: failedCount
+        failed: failedCount,
+        fallbackActive
       }),
       {
         status: 200,
