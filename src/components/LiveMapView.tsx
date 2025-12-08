@@ -503,15 +503,16 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       // For NON-ADMIN users (drivers and riders): fetch online users (location updated within 60 minutes)
       // Also filter by is_map_visible = true for other users, but ALWAYS include the current user
       if (!isAdmin && user) {
-        // First, get all online users with recent location AND visibility enabled AND not hidden history
+        // First, get all online users with recent location AND visibility enabled (or NULL = visible) AND not hidden history
         const { data: onlineProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
           .gte("location_updated_at", sixtyMinutesAgo)
-          .eq("is_map_visible", true)
-          .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false"); // Only fetch users without hidden history
+          // Treat NULL as visible: is_map_visible = true OR is_map_visible IS NULL
+          .or("is_map_visible.eq.true,is_map_visible.is.null")
+          .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
 
         // Fetch ALL users with any location data (for "All Users" filter - within last 24 hours for normal users)
         // Also filter out users with hidden history
@@ -522,7 +523,8 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
           .gte("location_updated_at", twentyFourHoursAgo)
-          .eq("is_map_visible", true)
+          // Treat NULL as visible
+          .or("is_map_visible.eq.true,is_map_visible.is.null")
           .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
 
         // Also fetch the current user's profile separately to ensure they always see themselves
