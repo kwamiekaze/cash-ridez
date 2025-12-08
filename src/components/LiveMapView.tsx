@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Loader2, Navigation, RefreshCw, Crosshair, Users, Eye, EyeOff, Clock } from "lucide-react";
+import { MapPin, Loader2, Navigation, RefreshCw, Crosshair, Users, Eye, EyeOff, Clock, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { LocationConsentDialog } from "./LocationConsentDialog";
 import { AdminMapUserInfoPanel } from "./AdminMapUserInfoPanel";
+import { canUserUpdateMapPin } from "@/lib/mapPermissions";
 
 
 // Leaflet imports (lazy loaded)
@@ -122,6 +123,8 @@ interface UserProfile {
   current_lng: number | null;
   display_name: string | null;
   full_name: string | null;
+  is_verified?: boolean | null;
+  verification_status?: string | null;
 }
 
 interface LiveMapViewProps {
@@ -300,13 +303,13 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     fetchAdminVisibility();
   }, []);
 
-  // Fetch user profile including visibility setting and subscription status
+  // Fetch user profile including visibility setting, subscription status, and verification status
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("id, active_role, current_lat, current_lng, display_name, full_name, is_map_visible, subscription_active, subscription_status")
+        .select("id, active_role, current_lat, current_lng, display_name, full_name, is_map_visible, subscription_active, subscription_status, is_verified, verification_status")
         .eq("id", user.id)
         .single();
       if (data) {
@@ -337,6 +340,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
 
   const isDriver = userProfile?.active_role === 'driver';
   const isRider = userProfile?.active_role === 'rider';
+  
+  // Check if user can update their map pin (only verified users and admins)
+  const canUpdatePin = canUserUpdateMapPin(userProfile, isAdmin);
 
   // Toggle admin visibility setting
   const handleToggleAdminVisibility = async (checked: boolean) => {
@@ -935,9 +941,20 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     }
   }, [drivers, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers, userFilter, allUsersForNonAdmin, adminTimeRange]);
 
-  // Refresh location
+  // Refresh location - only allowed for verified users and admins
   const handleRefreshLocation = async () => {
     if (!user) return;
+    
+    // Check verification status before allowing pin update
+    if (!canUpdatePin) {
+      toast({
+        title: "Verification required",
+        description: "ID verification required to update your pin. Complete your verification in the Profile tab to appear on the map.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setRefreshing(true);
 
     const consent = localStorage.getItem("location_consent");
@@ -1085,15 +1102,22 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefreshLocation}
-                disabled={refreshing}
-              >
-                <Navigation className="h-4 w-4 mr-1" />
-                Update My Pin
-              </Button>
+              {canUpdatePin ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshLocation}
+                  disabled={refreshing}
+                >
+                  <Navigation className="h-4 w-4 mr-1" />
+                  Update My Pin
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-warning/10 border border-warning/20 text-warning text-xs">
+                  <ShieldAlert className="h-4 w-4" />
+                  <span>Verify ID to update pin</span>
+                </div>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -1104,6 +1128,21 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               </Button>
             </div>
           </div>
+          
+          {/* Verification notice for non-verified users */}
+          {!canUpdatePin && (
+            <div className="mt-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-warning font-medium">ID verification required</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Complete your verification in the Profile tab to update your pin and appear on the map.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
