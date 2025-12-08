@@ -212,22 +212,30 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     try {
       const firstName = user.full_name?.split(' ')[0] || user.display_name || 'there';
       
-      const { error } = await supabase.functions.invoke("send-verification-welcome-email", {
+      const { data, error } = await supabase.functions.invoke("send-verification-welcome-email", {
         body: {
           userId: user.id,
           userEmail: user.email,
           firstName,
           isDriver: user.is_driver || false,
           isRider: user.is_rider || false,
+          forceResend: true, // Always force resend when clicking the button
         },
       });
 
       if (error) throw error;
 
-      toast.success("Welcome email sent successfully");
+      // Check response for actual success
+      if (data?.success) {
+        toast.success("Welcome email sent successfully");
+      } else if (data?.error) {
+        toast.error(`Failed: ${data.error}`);
+      } else {
+        toast.error("Failed to send email - unknown error");
+      }
     } catch (error: any) {
       console.error("Error sending welcome email:", error);
-      toast.error("Failed to send welcome email");
+      toast.error(`Failed to send welcome email: ${error.message || 'Unknown error'}`);
     } finally {
       setSendingEmail(false);
     }
