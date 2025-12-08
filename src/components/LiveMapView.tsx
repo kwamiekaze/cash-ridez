@@ -1073,7 +1073,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                     : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
                 }`}
               >
-                Online ({isAdmin ? allMapUsers.filter(u => {
+                Online Now ({isAdmin ? allMapUsers.filter(u => {
                   const status = getOnlineStatus(u.location_updated_at || null);
                   return status.isOnline || !status.isOffline;
                 }).length : onlineUsers.length})
@@ -1086,7 +1086,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                     : 'bg-transparent text-muted-foreground hover:bg-muted/20'
                 }`}
               >
-                All Users ({isAdmin ? (() => {
+                Recently Online ({isAdmin ? (() => {
                   // Count users based on current time range filter for admin
                   const getAdminTimeFilterCutoff = (): Date | null => {
                     const now = Date.now();
