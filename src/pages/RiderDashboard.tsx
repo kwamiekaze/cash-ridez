@@ -18,7 +18,7 @@ import TripActionDialog from "@/components/TripActionDialog";
 import { AvailableDriversList } from "@/components/AvailableDriversList";
 import { TripLimitGate } from "@/components/TripLimitGate";
 import { MapBackground } from "@/components/MapBackground";
-import { CommunityChat } from "@/components/CommunityChat";
+// CommunityChat removed - replaced with Map tab navigation
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
@@ -30,7 +30,7 @@ const RiderDashboard = () => {
   const location = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "chat">("open");
+  const [activeTab, setActiveTab] = useState<"open" | "assigned" | "completed" | "map">("open");
   const [requests, setRequests] = useState<any[]>([]);
   const [initialTabSet, setInitialTabSet] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
@@ -44,7 +44,7 @@ const RiderDashboard = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
-    if (tabParam && ['open', 'assigned', 'completed', 'chat'].includes(tabParam)) {
+    if (tabParam && ['open', 'assigned', 'completed', 'map'].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [location.search]);
@@ -462,12 +462,18 @@ const RiderDashboard = () => {
         </div>
 
         {/* Trips Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "open" | "assigned" | "completed" | "chat")} className="w-full">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          if (value === "map") {
+            navigate("/map");
+            return;
+          }
+          setActiveTab(value as "open" | "assigned" | "completed" | "map");
+        }} className="w-full">
           <TabsList className="grid w-full grid-cols-4 gap-1">
             <TabsTrigger value="open" className="text-xs sm:text-sm">Open</TabsTrigger>
             <TabsTrigger value="assigned" className="text-xs sm:text-sm">Connected</TabsTrigger>
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
-            <TabsTrigger value="chat" className="text-xs sm:text-sm">💬 Chat</TabsTrigger>
+            <TabsTrigger value="map" className="text-xs sm:text-sm">📍 Map</TabsTrigger>
           </TabsList>
 
           <TabsContent value="open" className="mt-6 space-y-4">
@@ -689,9 +695,7 @@ const RiderDashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="chat" className="mt-6 space-y-6">
-            <CommunityChat />
-          </TabsContent>
+          {/* Map tab navigates directly to /map page */}
         </Tabs>
 
       </div>
@@ -707,7 +711,7 @@ const RiderDashboard = () => {
         />
       )}
       
-      {activeTab !== "chat" && (
+      {activeTab !== "map" && (
         <>
           <FloatingSupport />
           <FloatingChat />

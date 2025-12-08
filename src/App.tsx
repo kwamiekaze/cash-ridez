@@ -42,6 +42,7 @@ const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
 const Refer = lazy(() => import("./pages/Refer"));
 const LiveMap = lazy(() => import("./pages/LiveMap"));
+import { Navigate } from "react-router-dom";
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -254,12 +255,17 @@ const App = () => (
               }
             />
             <Route
-              path="/live-map"
+              path="/map"
               element={
                 <ProtectedRoute>
                   <LiveMap />
                 </ProtectedRoute>
               }
+            />
+            {/* Redirect old /live-map route to /map */}
+            <Route
+              path="/live-map"
+              element={<Navigate to="/map" replace />}
             />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

@@ -14,7 +14,7 @@ import { UserChip } from "@/components/UserChip";
 import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
 import { MapBackground } from "@/components/MapBackground";
-import { CommunityChat } from "@/components/CommunityChat";
+// CommunityChat removed - replaced with Map tab navigation
 import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
@@ -347,12 +347,18 @@ const DriverDashboard = () => {
             <h1 className="text-2xl font-bold">My Trips</h1>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={(value) => {
+            if (value === "map") {
+              navigate("/map");
+              return;
+            }
+            setActiveTab(value);
+          }} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="open">Open</TabsTrigger>
               <TabsTrigger value="connected">Connected</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
-              <TabsTrigger value="chat">💬 Chat</TabsTrigger>
+              <TabsTrigger value="map">📍 Map</TabsTrigger>
             </TabsList>
 
           <TabsContent value="open" className="space-y-4">
@@ -438,13 +444,11 @@ const DriverDashboard = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="chat" className="space-y-4">
-            <CommunityChat />
-          </TabsContent>
+          {/* Map tab navigates directly to /map page */}
         </Tabs>
         </div>
         
-        {activeTab !== "chat" && (
+        {activeTab !== "map" && (
           <>
             <FloatingSupport />
             <FloatingChat />

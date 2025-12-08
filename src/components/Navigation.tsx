@@ -18,12 +18,8 @@ export function Navigation() {
     href: '#how-it-works',
     color: 'text-white'
   }, {
-    label: 'Live Map',
-    href: '/live-map',
-    color: 'text-emerald-400'
-  }, {
-    label: 'Community',
-    href: '/community',
+    label: 'Map',
+    href: '/map',
     color: 'text-emerald-400'
   }, {
     label: 'Support',
@@ -157,11 +153,11 @@ export function Navigation() {
                     </Button>
                     <Button 
                       variant="ghost" 
-                      onClick={() => { navigate('/live-map'); setIsMenuOpen(false); }} 
+                      onClick={() => { navigate('/map'); setIsMenuOpen(false); }} 
                       className="w-full justify-start text-emerald-400 hover:text-emerald-300 transition-all duration-300 hover:scale-105"
                     >
                       <MapPin className="mr-2 h-4 w-4" />
-                      Live Map
+                      Map
                     </Button>
                     <Button 
                       variant="ghost" 
