@@ -81,15 +81,15 @@ export function FloatingUpdatePin() {
     <Button
       onClick={handleUpdatePin}
       disabled={updating}
-      className="fixed bottom-24 right-4 z-40 h-12 px-4 rounded-full shadow-lg bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-black font-semibold"
+      size="icon"
+      className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
       title="Update My Pin"
     >
       {updating ? (
-        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        <Loader2 className="h-6 w-6 animate-spin" />
       ) : (
-        <MapPin className="h-5 w-5 mr-2" />
+        <MapPin className="h-6 w-6" />
       )}
-      Update Pin
     </Button>
   );
 }
