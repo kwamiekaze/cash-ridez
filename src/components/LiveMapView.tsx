@@ -75,9 +75,33 @@ interface AllMapUser {
   car_year?: string | null;
   is_map_visible?: boolean | null;
   isAdmin?: boolean;
-  isDriver?: boolean;
-  isRider?: boolean;
+  isDriver?: boolean;  // From profiles.is_driver
+  isRider?: boolean;   // From profiles.is_rider
 }
+
+// Helper to derive display role label based on actual roles
+const getRoleLabel = (user: AllMapUser, isViewerAdmin: boolean = false): string => {
+  // Admins always show as "Admin" to non-admin viewers
+  if (user.isAdmin && !isViewerAdmin) {
+    return 'Admin';
+  }
+  
+  // For admins or when viewing own role, show full roles
+  const roles: string[] = [];
+  if (user.isAdmin) roles.push('Admin');
+  if (user.isDriver) roles.push('Driver');
+  if (user.isRider) roles.push('Rider');
+  
+  if (roles.length === 0) return 'User';
+  return roles.join(' & ');
+};
+
+// Helper to determine marker variant based on roles
+const getMarkerVariant = (user: AllMapUser): 'driver' | 'rider' | 'admin' => {
+  if (user.isAdmin) return 'admin';
+  if (user.isDriver) return 'driver';
+  return 'rider';
+};
 
 const parseApproxGeo = (geo: unknown): { lat: number; lng: number } | null => {
   if (!geo || typeof geo !== 'object') return null;
@@ -215,8 +239,10 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [adminLocations, setAdminLocations] = useState<AdminLocation[]>([]);
   const [allMapUsers, setAllMapUsers] = useState<AllMapUser[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<AllMapUser[]>([]); // For non-admin shared visibility
+  const [allUsersForNonAdmin, setAllUsersForNonAdmin] = useState<AllMapUser[]>([]); // All users who have ever updated pin (for non-admin filter)
   const [selectedUser, setSelectedUser] = useState<AllMapUser | null>(null);
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
+  const [userFilter, setUserFilter] = useState<'online' | 'all'>('online'); // Filter between online vs all users
 
   // Check if user is admin
   useEffect(() => {
@@ -351,7 +377,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         // Get all users with location data (admins see everyone, including invisible users)
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year, is_map_visible")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null);
 
@@ -361,12 +387,6 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .select("user_id")
           .eq("role", "admin");
         const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
-
-        // Get all driver user IDs  
-        const { data: driverStatuses } = await supabase
-          .from("driver_status")
-          .select("user_id");
-        const driverIds = new Set(driverStatuses?.map(d => d.user_id) || []);
 
         if (allProfiles) {
           const users: AllMapUser[] = allProfiles.map(p => ({
@@ -388,8 +408,8 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             car_year: p.car_year,
             is_map_visible: p.is_map_visible,
             isAdmin: adminIds.has(p.id),
-            isDriver: driverIds.has(p.id) || p.active_role === 'driver',
-            isRider: p.active_role === 'rider',
+            isDriver: (p as any).is_driver === true,  // Use actual is_driver field
+            isRider: (p as any).is_rider === true,    // Use actual is_rider field
           }));
           setAllMapUsers(users);
         }
@@ -401,24 +421,28 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         // First, get all online users with recent location AND visibility enabled
         const { data: onlineProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
           .gte("location_updated_at", sixtyMinutesAgo)
           .eq("is_map_visible", true); // Only fetch users who are visible
 
+        // Fetch ALL users with any location data (for "All Users" filter - within last 90 days)
+        const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+        const { data: allVisibleProfiles } = await supabase
+          .from("profiles")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
+          .not("current_lat", "is", null)
+          .not("current_lng", "is", null)
+          .gte("location_updated_at", ninetyDaysAgo)
+          .eq("is_map_visible", true);
+
         // Also fetch the current user's profile separately to ensure they always see themselves
         const { data: ownProfile } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
           .eq("id", user.id)
           .single();
-
-        // Get all driver user IDs for role detection
-        const { data: driverStatuses } = await supabase
-          .from("driver_status")
-          .select("user_id");
-        const driverIds = new Set(driverStatuses?.map(d => d.user_id) || []);
 
         // Get admin IDs to exclude from non-admin view (unless showAdminOnPublicMap is true)
         const { data: adminRoles } = await supabase
@@ -427,44 +451,62 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .eq("role", "admin");
         const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
 
-        // Combine online profiles with current user (ensuring no duplicates)
-        const allProfiles = onlineProfiles || [];
-        const profileIds = new Set(allProfiles.map(p => p.id));
+        // Helper to map profile to AllMapUser
+        const mapProfileToUser = (p: any): AllMapUser => ({
+          id: p.id,
+          display_name: p.display_name,
+          full_name: p.full_name,
+          photo_url: p.photo_url,
+          current_lat: p.current_lat,
+          current_lng: p.current_lng,
+          location_updated_at: p.location_updated_at,
+          is_verified: p.is_verified,
+          subscription_active: p.subscription_active,
+          active_role: p.active_role,
+          car_make: p.car_make,
+          car_model: p.car_model,
+          car_year: p.car_year,
+          is_map_visible: p.is_map_visible,
+          isAdmin: adminIds.has(p.id),
+          isDriver: p.is_driver === true,  // Use actual is_driver field
+          isRider: p.is_rider === true,    // Use actual is_rider field
+        });
+
+        // Process online users
+        const onlineProfilesList = onlineProfiles || [];
+        const onlineProfileIds = new Set(onlineProfilesList.map(p => p.id));
         
         // Add current user if they have location data but weren't in the online query
-        // (user always sees themselves regardless of their visibility setting)
-        if (ownProfile && ownProfile.current_lat && ownProfile.current_lng && !profileIds.has(ownProfile.id)) {
-          allProfiles.push(ownProfile);
+        if (ownProfile && ownProfile.current_lat && ownProfile.current_lng && !onlineProfileIds.has(ownProfile.id)) {
+          onlineProfilesList.push(ownProfile);
         }
 
-        const users: AllMapUser[] = allProfiles
+        const onlineUsersList: AllMapUser[] = onlineProfilesList
           .filter(p => {
-            // ALWAYS include the current user (they always see themselves)
             if (p.id === user.id) return true;
-            // Exclude admins from non-admin view unless showAdminOnPublicMap is true
             if (adminIds.has(p.id) && !showAdminOnPublicMap) return false;
             return true;
           })
-          .map(p => ({
-            id: p.id,
-            display_name: p.display_name,
-            full_name: p.full_name,
-            photo_url: p.photo_url,
-            current_lat: p.current_lat,
-            current_lng: p.current_lng,
-            location_updated_at: p.location_updated_at,
-            is_verified: p.is_verified,
-            subscription_active: p.subscription_active,
-            active_role: p.active_role,
-            car_make: p.car_make,
-            car_model: p.car_model,
-            car_year: p.car_year,
-            is_map_visible: p.is_map_visible,
-            isAdmin: adminIds.has(p.id),
-            isDriver: driverIds.has(p.id) || p.active_role === 'driver',
-            isRider: p.active_role === 'rider',
-          }));
-        setOnlineUsers(users);
+          .map(mapProfileToUser);
+        setOnlineUsers(onlineUsersList);
+
+        // Process all users (for "All Users" filter)
+        const allProfilesList = allVisibleProfiles || [];
+        const allProfileIds = new Set(allProfilesList.map(p => p.id));
+        
+        // Add current user if not in list
+        if (ownProfile && ownProfile.current_lat && ownProfile.current_lng && !allProfileIds.has(ownProfile.id)) {
+          allProfilesList.push(ownProfile);
+        }
+
+        const allUsersList: AllMapUser[] = allProfilesList
+          .filter(p => {
+            if (p.id === user.id) return true;
+            if (adminIds.has(p.id) && !showAdminOnPublicMap) return false;
+            return true;
+          })
+          .map(mapProfileToUser);
+        setAllUsersForNonAdmin(allUsersList);
       }
 
       // Fetch driver status for the current user if they're a driver
@@ -645,9 +687,17 @@ export function LiveMapView({ className }: LiveMapViewProps) {
 
     userMarkerRef.current = null;
 
-    // ADMIN VIEW: Show ALL users with location data
+    // ADMIN VIEW: Show users based on filter (online or all)
     if (isAdmin && allMapUsers.length > 0) {
-      allMapUsers.forEach((mapUser) => {
+      // Filter users based on userFilter setting
+      const usersToShow = userFilter === 'online' 
+        ? allMapUsers.filter(u => {
+            const status = getOnlineStatus(u.location_updated_at || null);
+            return status.isOnline || !status.isOffline; // Within 60 minutes
+          })
+        : allMapUsers;
+
+      usersToShow.forEach((mapUser) => {
         if (!mapUser.current_lat || !mapUser.current_lng) return;
 
         const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -655,17 +705,13 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         const isPremium = mapUser.subscription_active;
         const isOwnUser = mapUser.id === user?.id;
         
-        // Determine variant
-        let variant: 'driver' | 'rider' | 'admin' = 'rider';
-        if (mapUser.isAdmin) variant = 'admin';
-        else if (mapUser.isDriver) variant = 'driver';
+        // Determine variant using helper
+        const variant = getMarkerVariant(mapUser);
 
         const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, true);
 
-        const roleLabels = [];
-        if (mapUser.isAdmin) roleLabels.push('Admin');
-        if (mapUser.isDriver) roleLabels.push('Driver');
-        if (mapUser.isRider) roleLabels.push('Rider');
+        // Admin sees full role labels for all users
+        const roleLabel = getRoleLabel(mapUser, true);
 
         const marker = L.marker([jittered.lat, jittered.lng], { icon })
           .addTo(mapInstanceRef.current)
@@ -676,7 +722,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                 ${isPremium ? '<span class="text-yellow-500">👑</span>' : ''}
                 ${isOwnUser ? '<span class="text-xs text-gray-500">(You)</span>' : ''}
               </div>
-              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabels.join(', ') || 'User'}</p>
+              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabel}</p>
               <p class="text-xs text-gray-600 mb-2"><strong>Status:</strong> ${mapUser.is_verified ? '✅ Verified' : '⏳ Pending'}</p>
               <button 
                 onclick="window.dispatchEvent(new CustomEvent('admin-user-click', { detail: '${mapUser.id}' }))"
@@ -707,49 +753,52 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       };
     }
 
-    // NON-ADMIN: Show all online users (drivers and riders who have location updated within 60 min)
-    if (!isAdmin && onlineUsers.length > 0) {
-      onlineUsers.forEach((mapUser) => {
-        if (!mapUser.current_lat || !mapUser.current_lng) return;
+    // NON-ADMIN: Show users based on filter (online or all)
+    if (!isAdmin) {
+      const usersToShow = userFilter === 'online' ? onlineUsers : allUsersForNonAdmin;
+      
+      if (usersToShow.length > 0) {
+        usersToShow.forEach((mapUser) => {
+          if (!mapUser.current_lat || !mapUser.current_lng) return;
 
-        const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
-        const name = mapUser.full_name || mapUser.display_name || "User";
-        const isPremium = mapUser.subscription_active;
-        const isOwnUser = mapUser.id === user?.id;
-        
-        // Determine variant
-        let variant: 'driver' | 'rider' | 'admin' = 'rider';
-        if (mapUser.isAdmin) variant = 'admin';
-        else if (mapUser.isDriver) variant = 'driver';
+          const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
+          const name = mapUser.full_name || mapUser.display_name || "User";
+          const isPremium = mapUser.subscription_active;
+          const isOwnUser = mapUser.id === user?.id;
+          
+          // Determine variant using helper
+          const variant = getMarkerVariant(mapUser);
 
-        // Use subtle status styling for non-admins (no timestamps shown)
-        const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false);
+          // Use subtle status styling for non-admins (no timestamps shown)
+          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false);
 
-        const roleLabel = mapUser.isAdmin ? 'Admin' : mapUser.isDriver ? 'Driver' : 'Rider';
-        const carInfo = mapUser.isDriver 
-          ? [mapUser.car_year, mapUser.car_make, mapUser.car_model].filter(Boolean).join(" ")
-          : '';
+          // Non-admins see "Admin" for admin users, full role labels for others
+          const roleLabel = getRoleLabel(mapUser, false);
+          const carInfo = mapUser.isDriver 
+            ? [mapUser.car_year, mapUser.car_make, mapUser.car_model].filter(Boolean).join(" ")
+            : '';
 
-        // For non-admins: simple popup without timestamps
-        const marker = L.marker([jittered.lat, jittered.lng], { icon })
-          .addTo(mapInstanceRef.current)
-          .bindPopup(`
-            <div class="p-3 min-w-[200px]">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="font-semibold">${name}</span>
-                ${isPremium ? '<span class="text-yellow-500">👑</span>' : ''}
-                ${isOwnUser ? '<span class="text-xs text-gray-500">(You)</span>' : ''}
+          // For non-admins: simple popup without timestamps
+          const marker = L.marker([jittered.lat, jittered.lng], { icon })
+            .addTo(mapInstanceRef.current)
+            .bindPopup(`
+              <div class="p-3 min-w-[200px]">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="font-semibold">${name}</span>
+                  ${isPremium ? '<span class="text-yellow-500">👑</span>' : ''}
+                  ${isOwnUser ? '<span class="text-xs text-gray-500">(You)</span>' : ''}
+                </div>
+                <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabel}</p>
+                ${carInfo ? `<p class="text-xs text-gray-600 mb-1"><strong>Vehicle:</strong> ${carInfo}</p>` : ''}
+                <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
               </div>
-              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabel}</p>
-              ${carInfo ? `<p class="text-xs text-gray-600 mb-1"><strong>Vehicle:</strong> ${carInfo}</p>` : ''}
-              <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
-            </div>
-          `);
+            `);
 
-        if (isOwnUser) {
-          userMarkerRef.current = marker;
-        }
-      });
+          if (isOwnUser) {
+            userMarkerRef.current = marker;
+          }
+        });
+      }
     }
 
     // NON-ADMIN: Add admin crown markers when visible to public
@@ -774,7 +823,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           `);
       });
     }
-  }, [drivers, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers]);
+  }, [drivers, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers, userFilter, allUsersForNonAdmin]);
 
   // Refresh location
   const handleRefreshLocation = async () => {
@@ -944,21 +993,32 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
-            {/* Admin: show all users count */}
-            {isAdmin && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                <Users className="h-4 w-4 text-emerald-400" />
-                <span className="text-emerald-400">All Users ({allMapUsers.length})</span>
-              </div>
-            )}
-
-            {/* Non-admin: show online users count */}
-            {!isAdmin && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-                <Users className="h-4 w-4 text-emerald-400" />
-                <span className="text-emerald-400">Online ({onlineUsers.length})</span>
-              </div>
-            )}
+            {/* User filter: All Users vs Online Users */}
+            <div className="flex items-center rounded-full border border-border overflow-hidden">
+              <button
+                onClick={() => setUserFilter('online')}
+                className={`px-3 py-1 text-xs transition-colors ${
+                  userFilter === 'online'
+                    ? 'bg-emerald-500/20 text-emerald-400 border-r border-border'
+                    : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
+                }`}
+              >
+                Online ({isAdmin ? allMapUsers.filter(u => {
+                  const status = getOnlineStatus(u.location_updated_at || null);
+                  return status.isOnline || !status.isOffline;
+                }).length : onlineUsers.length})
+              </button>
+              <button
+                onClick={() => setUserFilter('all')}
+                className={`px-3 py-1 text-xs transition-colors ${
+                  userFilter === 'all'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-transparent text-muted-foreground hover:bg-muted/20'
+                }`}
+              >
+                All Users ({isAdmin ? allMapUsers.length : allUsersForNonAdmin.length})
+              </button>
+            </div>
             
             {/* Visibility toggle for all users */}
             <button
