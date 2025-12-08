@@ -63,11 +63,12 @@ const getJitteredCoords = (lat: number, lng: number, id: string, jitterMiles = 0
   };
 };
 
-// Create avatar-based divIcon
+// Create avatar-based divIcon with first-letter fallback
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
-  variant: 'driver' | 'rider' | 'admin'
+  variant: 'driver' | 'rider' | 'admin',
+  userName?: string | null
 ): any => {
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
@@ -79,7 +80,25 @@ const createAvatarDivIcon = (
   const borderWidth = 2;
   const borderColor = '#FACC15';
 
+  // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
+    // Try to get first letter from user's name
+    const firstLetter = userName?.trim()?.charAt(0)?.toUpperCase() || '';
+    
+    if (firstLetter) {
+      // Show letter-based avatar with gold styling
+      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div></div>`;
+      
+      return L.divIcon({
+        html,
+        className: 'map-avatar-icon',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
+        popupAnchor: [0, -size],
+      });
+    }
+    
+    // No name available, use fallback icon
     const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div></div>`;
 
     return L.divIcon({
@@ -272,7 +291,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       const firstName = fullName.split(' ')[0];
       
       const variant = getMarkerVariant(mapUser);
-      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant);
+      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName);
 
       // Public popup: first name only, no roles, no stats, no timestamps
       L.marker([jittered.lat, jittered.lng], { icon })
