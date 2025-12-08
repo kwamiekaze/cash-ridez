@@ -10,12 +10,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface VerificationWelcomeRequest {
-  userId: string;
-  userEmail: string;
-  firstName: string;
-  isDriver: boolean;
-  isRider: boolean;
+interface QueuedEmail {
+  id: string;
+  user_id: string;
+  user_email: string;
+  first_name: string | null;
+  is_driver: boolean;
+  is_rider: boolean;
 }
 
 // Determine primary role: Driver takes priority, fallback to Rider
@@ -135,6 +136,120 @@ function getRiderEmailHtml(firstName: string): string {
   `;
 }
 
+async function processQueuedEmail(
+  supabase: any,
+  queueItem: QueuedEmail
+): Promise<{ success: boolean; error?: string }> {
+  const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
+  
+  console.log(`Processing queued email for user ${user_id}, email: ${user_email}`);
+
+  // Determine primary role
+  const primaryRole = getPrimaryRole(is_driver, is_rider);
+  const emailType = primaryRole === "driver" 
+    ? "verification_welcome_driver" 
+    : "verification_welcome_rider";
+
+  // Check for existing successful email in email_logs (prevent duplicates)
+  const { data: existingLog } = await supabase
+    .from("email_logs")
+    .select("id")
+    .eq("user_id", user_id)
+    .eq("email_type", emailType)
+    .eq("status", "success")
+    .maybeSingle();
+
+  if (existingLog) {
+    console.log(`Email already sent to user ${user_id} for type ${emailType}, marking as processed`);
+    
+    // Mark queue item as processed (already sent)
+    await supabase
+      .from("verification_email_queue")
+      .update({ status: "already_sent", processed_at: new Date().toISOString() })
+      .eq("id", id);
+    
+    return { success: true };
+  }
+
+  // Create pending log entry
+  const { data: logEntry } = await supabase
+    .from("email_logs")
+    .insert({
+      user_id,
+      email_type: emailType,
+      recipient_email: user_email,
+      status: "pending",
+      metadata: { first_name, is_driver, is_rider, primaryRole }
+    })
+    .select("id")
+    .single();
+
+  const logId = logEntry?.id;
+  const displayName = first_name || "there";
+
+  // Prepare email content
+  const subject = primaryRole === "driver"
+    ? "🚗 You're Verified! Your Driver Profile Is Now Active on CashRidez"
+    : "🎉 You're Verified — Welcome to CashRidez!";
+
+  const html = primaryRole === "driver"
+    ? getDriverEmailHtml(displayName)
+    : getRiderEmailHtml(displayName);
+
+  // Send email with retry
+  let emailSent = false;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      console.log(`Sending email attempt ${attempt} to ${user_email}`);
+      
+      const emailResponse = await resend.emails.send({
+        from: "CashRidez <noreply@cashridez.com>",
+        to: [user_email],
+        subject: subject,
+        html: html,
+      });
+
+      console.log(`Email sent successfully on attempt ${attempt}:`, emailResponse);
+      emailSent = true;
+      break;
+    } catch (error: any) {
+      console.error(`Email send attempt ${attempt} failed:`, error);
+      lastError = error;
+      
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  // Update log entry
+  if (logId) {
+    await supabase
+      .from("email_logs")
+      .update({
+        status: emailSent ? "success" : "failed",
+        error_message: emailSent ? null : lastError?.message,
+        timestamp_sent: new Date().toISOString()
+      })
+      .eq("id", logId);
+  }
+
+  // Update queue item
+  await supabase
+    .from("verification_email_queue")
+    .update({ 
+      status: emailSent ? "sent" : "failed", 
+      processed_at: new Date().toISOString() 
+    })
+    .eq("id", id);
+
+  return emailSent 
+    ? { success: true } 
+    : { success: false, error: lastError?.message };
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -142,44 +257,63 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { userId, userEmail, firstName, isDriver, isRider }: VerificationWelcomeRequest = await req.json();
-
-    console.log(`Processing verification welcome email for user ${userId}, email: ${userEmail}, isDriver: ${isDriver}, isRider: ${isRider}`);
-
     // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Determine primary role
-    const primaryRole = getPrimaryRole(isDriver, isRider);
-    const emailType = primaryRole === "driver" 
-      ? "verification_welcome_driver" 
-      : "verification_welcome_rider";
-
-    console.log(`Determined primary role: ${primaryRole}, email type: ${emailType}`);
-
-    // Check for existing successful email of this type (prevent duplicates)
-    const { data: existingLog, error: checkError } = await supabase
-      .from("email_logs")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("email_type", emailType)
-      .eq("status", "success")
-      .maybeSingle();
-
-    if (checkError) {
-      console.error("Error checking for existing email log:", checkError);
+    // Check if this is a direct call with user data or a queue processing call
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      // Empty body = process queue
     }
 
-    if (existingLog) {
-      console.log(`Email already sent to user ${userId} for type ${emailType}, skipping duplicate`);
+    // If userId is provided, process single user directly
+    if (body.userId) {
+      const { userId, userEmail, firstName, isDriver, isRider } = body;
+      
+      console.log(`Direct call for user ${userId}`);
+      
+      const result = await processQueuedEmail(supabase, {
+        id: 'direct-' + userId,
+        user_id: userId,
+        user_email: userEmail,
+        first_name: firstName,
+        is_driver: isDriver ?? false,
+        is_rider: isRider ?? false
+      });
+
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          skipped: true,
-          message: "Email already sent previously" 
-        }),
+        JSON.stringify(result),
+        {
+          status: result.success ? 200 : 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    // Otherwise, process the queue
+    console.log("Processing verification email queue...");
+
+    // Fetch pending queue items
+    const { data: queueItems, error: fetchError } = await supabase
+      .from("verification_email_queue")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .limit(10);
+
+    if (fetchError) {
+      console.error("Error fetching queue:", fetchError);
+      throw fetchError;
+    }
+
+    if (!queueItems || queueItems.length === 0) {
+      console.log("No pending emails in queue");
+      return new Response(
+        JSON.stringify({ success: true, processed: 0 }),
         {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -187,95 +321,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create pending log entry
-    const { data: logEntry, error: logError } = await supabase
-      .from("email_logs")
-      .insert({
-        user_id: userId,
-        email_type: emailType,
-        recipient_email: userEmail,
-        status: "pending",
-        metadata: { firstName, isDriver, isRider, primaryRole }
-      })
-      .select("id")
-      .single();
+    console.log(`Found ${queueItems.length} pending emails to process`);
 
-    if (logError) {
-      console.error("Error creating email log:", logError);
-      // Continue anyway - logging shouldn't block email sending
-    }
+    // Process each queued email
+    const results = await Promise.all(
+      queueItems.map((item: QueuedEmail) => processQueuedEmail(supabase, item))
+    );
 
-    const logId = logEntry?.id;
+    const successCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
 
-    // Prepare email content based on role
-    const subject = primaryRole === "driver"
-      ? "🚗 You're Verified! Your Driver Profile Is Now Active on CashRidez"
-      : "🎉 You're Verified — Welcome to CashRidez!";
-
-    const html = primaryRole === "driver"
-      ? getDriverEmailHtml(firstName || "there")
-      : getRiderEmailHtml(firstName || "there");
-
-    // Send email with retry
-    let emailSent = false;
-    let lastError: Error | null = null;
-
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        console.log(`Sending email attempt ${attempt} to ${userEmail}`);
-        
-        const emailResponse = await resend.emails.send({
-          from: "CashRidez <noreply@cashridez.com>",
-          to: [userEmail],
-          subject: subject,
-          html: html,
-        });
-
-        console.log(`Email sent successfully on attempt ${attempt}:`, emailResponse);
-        emailSent = true;
-        break;
-      } catch (error: any) {
-        console.error(`Email send attempt ${attempt} failed:`, error);
-        lastError = error;
-        
-        if (attempt < 2) {
-          // Wait 1 second before retry
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    }
-
-    // Update log entry with result
-    if (logId) {
-      await supabase
-        .from("email_logs")
-        .update({
-          status: emailSent ? "success" : "failed",
-          error_message: emailSent ? null : lastError?.message,
-          timestamp_sent: new Date().toISOString()
-        })
-        .eq("id", logId);
-    }
-
-    if (!emailSent) {
-      console.error("Failed to send email after retries:", lastError);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: lastError?.message || "Failed to send email" 
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
-    }
+    console.log(`Processed ${successCount} emails successfully, ${failedCount} failed`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        emailType,
-        primaryRole
+        processed: queueItems.length,
+        successful: successCount,
+        failed: failedCount
       }),
       {
         status: 200,
