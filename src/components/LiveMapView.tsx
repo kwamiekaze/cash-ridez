@@ -850,17 +850,16 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             ? [mapUser.car_year, mapUser.car_make, mapUser.car_model].filter(Boolean).join(" ")
             : '';
 
-          // For non-admins: simple popup without timestamps
+          // For non-admins: simple popup WITHOUT roles, WITHOUT crown icons
+          // Hide roles from drivers and riders per user requirement
           const marker = L.marker([jittered.lat, jittered.lng], { icon })
             .addTo(mapInstanceRef.current)
             .bindPopup(`
               <div class="p-3 min-w-[200px]">
                 <div class="flex items-center gap-2 mb-2">
                   <span class="font-semibold">${name}</span>
-                  ${isPremium ? '<span class="text-yellow-500">👑</span>' : ''}
                   ${isOwnUser ? '<span class="text-xs text-gray-500">(You)</span>' : ''}
                 </div>
-                <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabel}</p>
                 ${carInfo ? `<p class="text-xs text-gray-600 mb-1"><strong>Vehicle:</strong> ${carInfo}</p>` : ''}
                 <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
               </div>
@@ -881,15 +880,14 @@ export function LiveMapView({ className }: LiveMapViewProps) {
 
         const icon = createAvatarDivIcon(L, admin.photo_url, 'admin', admin.location_updated_at, false);
 
+        // Non-admins viewing admin markers: hide role and crown per user requirement
         L.marker([jittered.lat, jittered.lng], { icon })
           .addTo(mapInstanceRef.current)
           .bindPopup(`
             <div class="p-3 min-w-[180px]">
-              <div class="flex items-center gap-2 mb-2">
+              <div class="mb-2">
                 <span class="font-semibold">${name}</span>
-                <span class="text-yellow-500">👑</span>
               </div>
-              <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> Admin</p>
               <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
             </div>
           `);
