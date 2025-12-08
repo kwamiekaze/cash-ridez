@@ -371,7 +371,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           ? "Other users can see you on the map."
           : isAdmin 
             ? "You're hidden from other users and your history is now hidden from public view."
-            : "You're hidden from other users (admins can still see you).",
+            : "You're hidden from other users",
       });
     } catch (error) {
       console.error("Error updating visibility:", error);
