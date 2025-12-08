@@ -47,3 +47,12 @@ verify_jwt = false
 
 [functions.auto-rate-trips]
 verify_jwt = false
+
+[functions.send-verification-welcome-email]
+verify_jwt = false
+
+[functions.send-new-trip-notification]
+verify_jwt = true
+
+[functions.send-driver-available-notification]
+verify_jwt = true

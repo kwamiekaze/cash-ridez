@@ -644,6 +644,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string | null
+          status: string
+          timestamp_sent: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string | null
+          status?: string
+          timestamp_sent?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string | null
+          status?: string
+          timestamp_sent?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       kyc_submissions: {
         Row: {
           back_image_url: string | null
