@@ -145,7 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate("/auth");
   };
 
-  // Subscribe to profile verification changes to show welcome dialog
+  // Subscribe to profile verification changes to show welcome dialog and trigger welcome email
   useEffect(() => {
     if (!user) return;
 
@@ -167,6 +167,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Show welcome dialog when user becomes verified (and hasn't dismissed it)
           if (oldStatus !== 'approved' && newStatus === 'approved' && !wasDismissed) {
             setShowWelcomeDialog(true);
+            
+            // Trigger welcome email via edge function (backup to database trigger)
+            try {
+              const firstName = payload.new.full_name?.split(' ')[0] || payload.new.display_name || 'there';
+              await supabase.functions.invoke('send-verification-welcome-email', {
+                body: {
+                  userId: user.id,
+                  userEmail: payload.new.email,
+                  firstName,
+                  isDriver: payload.new.is_driver ?? false,
+                  isRider: payload.new.is_rider ?? false
+                }
+              });
+              console.log('Verification welcome email triggered');
+            } catch (emailError) {
+              console.error('Failed to trigger welcome email:', emailError);
+              // Non-blocking - email will be sent via queue if this fails
+            }
           }
         }
       )

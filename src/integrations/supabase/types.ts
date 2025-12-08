@@ -1518,6 +1518,42 @@ export type Database = {
         }
         Relationships: []
       }
+      verification_email_queue: {
+        Row: {
+          created_at: string
+          first_name: string | null
+          id: string
+          is_driver: boolean | null
+          is_rider: boolean | null
+          processed_at: string | null
+          status: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_driver?: boolean | null
+          is_rider?: boolean | null
+          processed_at?: string | null
+          status?: string
+          user_email: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          is_driver?: boolean | null
+          is_rider?: boolean | null
+          processed_at?: string | null
+          status?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       public_map_presence: {
