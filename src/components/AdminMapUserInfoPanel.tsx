@@ -53,9 +53,9 @@ const getVisibilityDebugInfo = (user: MapUserInfo): { visible: boolean; reasons:
     }
   }
   
-  // Check hidden history
+  // Check hidden history (temporary - cleared when user updates pin)
   if (user.map_history_hidden_from_public) {
-    reasons.push("Map history hidden by admin");
+    reasons.push("Temporarily cleared by admin (will reappear after user updates pin)");
   }
   
   // Check last update time
@@ -189,8 +189,8 @@ export function AdminMapUserInfoPanel({ user, open, onOpenChange, onHistoryClear
       if (error) throw error;
 
       toast({
-        title: "Map history cleared",
-        description: `${name}'s historical map visibility has been hidden from public users.`,
+        title: "User cleared from map",
+        description: `${name} is now hidden until they update their pin again.`,
       });
       
       onHistoryCleared?.();
@@ -332,10 +332,10 @@ export function AdminMapUserInfoPanel({ user, open, onOpenChange, onHistoryClear
               className="w-full text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
             >
               <Trash2 className="h-4 w-4 mr-2" />
-              {clearing ? "Clearing..." : "Clear this user's map history (public)"}
+              {clearing ? "Clearing..." : "Clear from map (temporary)"}
             </Button>
             <p className="text-xs text-muted-foreground mt-2 text-center">
-              This hides their historical location from non-admin users.
+              Hides user until they update their pin again.
             </p>
           </div>
         </div>
