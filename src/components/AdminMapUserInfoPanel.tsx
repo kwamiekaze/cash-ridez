@@ -30,7 +30,51 @@ interface MapUserInfo {
   isDriver?: boolean;
   isRider?: boolean;
   map_history_hidden_from_public?: boolean | null;
+  is_map_visible?: boolean | null;
 }
+
+// Helper to determine visibility debug reasons
+const getVisibilityDebugInfo = (user: MapUserInfo): { visible: boolean; reasons: string[] } => {
+  const reasons: string[] = [];
+  
+  // Check location
+  if (!user.current_lat || !user.current_lng) {
+    reasons.push("No pin location recorded");
+  }
+  
+  // Check visibility toggle
+  if (user.is_map_visible === false) {
+    if (user.subscription_active) {
+      reasons.push("Visibility toggled off by user (subscriber)");
+    } else if (user.isAdmin) {
+      reasons.push("Visibility toggled off by admin");
+    } else {
+      reasons.push("Visibility incorrectly set to off (non-subscriber - should be fixed)");
+    }
+  }
+  
+  // Check hidden history
+  if (user.map_history_hidden_from_public) {
+    reasons.push("Map history hidden by admin");
+  }
+  
+  // Check last update time
+  if (user.location_updated_at) {
+    const now = new Date();
+    const lastUpdate = new Date(user.location_updated_at);
+    const diffHours = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60);
+    if (diffHours > 24) {
+      reasons.push(`Last pin update was ${Math.floor(diffHours)} hours ago`);
+    }
+  } else {
+    reasons.push("Never updated their pin");
+  }
+  
+  const visible = reasons.length === 0 || 
+    (reasons.every(r => r.includes("hours ago") || r.includes("Never updated")));
+  
+  return { visible, reasons };
+};
 
 interface AdminMapUserInfoPanelProps {
   user: MapUserInfo | null;
@@ -245,13 +289,37 @@ export function AdminMapUserInfoPanel({ user, open, onOpenChange, onHistoryClear
               </div>
             )}
 
-            {/* Map history status */}
-            {user.map_history_hidden_from_public && (
-              <div className="flex items-center gap-2 text-xs text-amber-400">
-                <Shield className="h-3 w-3" />
-                <span>Map history hidden from public</span>
-              </div>
-            )}
+            {/* Map Visibility Debug Info (Admin Only) */}
+            {(() => {
+              const debugInfo = getVisibilityDebugInfo(user);
+              return (
+                <div className="space-y-2 mt-3 p-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      debugInfo.visible ? 'bg-emerald-500' : 'bg-red-500'
+                    }`} />
+                    <span className="text-xs font-medium">
+                      Map Visibility: {debugInfo.visible ? 'Visible' : 'Hidden'}
+                    </span>
+                  </div>
+                  {debugInfo.reasons.length > 0 && (
+                    <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                      {debugInfo.reasons.map((reason, i) => (
+                        <li key={i} className="flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3 text-amber-400" />
+                          {reason}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {user.is_map_visible === false && !user.subscription_active && !user.isAdmin && (
+                    <p className="text-xs text-red-400 mt-2">
+                      ⚠️ Bug detected: Non-subscriber has visibility off. This should auto-fix on next update.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Admin Actions */}
