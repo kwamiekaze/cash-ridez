@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { sendEmail } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -98,17 +99,20 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "CashRidez <noreply@cashridez.com>",
+    const result = await sendEmail(resend, {
       to: [recipientEmail],
       subject,
       html: htmlContent,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("Email result:", result);
 
-    return new Response(JSON.stringify({ success: true, emailResponse }), {
-      status: 200,
+    return new Response(JSON.stringify({ 
+      success: result.success, 
+      fallbackActive: result.fallbackActive,
+      error: result.error 
+    }), {
+      status: result.success ? 200 : 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
@@ -121,4 +125,3 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
-

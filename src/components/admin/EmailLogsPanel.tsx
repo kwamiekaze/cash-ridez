@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Mail, Send, AlertCircle, CheckCircle2 } from "lucide-react";
+import { RefreshCw, Mail, Send, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -31,12 +31,20 @@ interface QueueItem {
   processed_at: string | null;
 }
 
+interface EmailSystemStatus {
+  domainVerified: boolean;
+  currentSender: string;
+  fallbackActive: boolean;
+  cacheAge: number;
+}
+
 export function EmailLogsPanel() {
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<EmailSystemStatus | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -58,6 +66,19 @@ export function EmailLogsPanel() {
       .limit(50);
     
     setQueueItems(queue || []);
+    
+    // Fetch system status
+    try {
+      const { data: status } = await supabase.functions.invoke('send-verification-welcome-email', {
+        body: { action: "status" }
+      });
+      if (status) {
+        setSystemStatus(status);
+      }
+    } catch (err) {
+      console.error("Failed to fetch email system status:", err);
+    }
+    
     setLoading(false);
   };
 
@@ -153,6 +174,27 @@ export function EmailLogsPanel() {
 
   return (
     <div className="space-y-4">
+      {/* Fallback Status Banner */}
+      {systemStatus?.fallbackActive && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium">Temporary sender fallback active. Domain verification still pending.</p>
+            <p className="text-xs text-yellow-400/70">Using: {systemStatus.currentSender}</p>
+          </div>
+        </div>
+      )}
+      
+      {systemStatus && !systemStatus.fallbackActive && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium">Domain verified. Using primary sender.</p>
+            <p className="text-xs text-green-400/70">{systemStatus.currentSender}</p>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2">
           <Button 

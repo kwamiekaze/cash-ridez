@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { sendEmail } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -120,29 +121,32 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     `;
 
-    // Send both emails
-    const [riderEmailResponse, driverEmailResponse] = await Promise.all([
-      resend.emails.send({
-        from: "CashRidez <noreply@cashridez.com>",
+    // Send both emails using shared utility
+    const [riderResult, driverResult] = await Promise.all([
+      sendEmail(resend, {
         to: [riderEmail],
         subject: "🚗 Your Ride Has Been Accepted!",
         html: riderHtml,
       }),
-      resend.emails.send({
-        from: "CashRidez <noreply@cashridez.com>",
+      sendEmail(resend, {
         to: [driverEmail],
         subject: "🚗 Ride Confirmation - Contact Information Shared",
         html: driverHtml,
       }),
     ]);
 
-    console.log("Ride accepted notifications sent successfully");
+    console.log("Ride accepted notifications sent:", { 
+      riderSuccess: riderResult.success, 
+      driverSuccess: driverResult.success,
+      fallbackActive: riderResult.fallbackActive || driverResult.fallbackActive
+    });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        riderEmailResponse, 
-        driverEmailResponse 
+        riderEmailSent: riderResult.success,
+        driverEmailSent: driverResult.success,
+        fallbackActive: riderResult.fallbackActive || driverResult.fallbackActive
       }),
       {
         status: 200,

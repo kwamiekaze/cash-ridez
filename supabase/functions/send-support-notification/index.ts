@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import { sendEmail } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -79,30 +80,31 @@ const handler = async (req: Request): Promise<Response> => {
       <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from Cash Ridez.</p>
     `;
 
-    // Send emails to all recipients
-    const emailPromises = allRecipients.map(recipientEmail =>
-      resend.emails.send({
-        from: "Cash Ridez Support <onboarding@resend.dev>",
-        to: [recipientEmail],
-        replyTo: email,
-        subject: `Support Request from ${fullName} - Cash Ridez`,
-        html: emailHtml,
-      })
+    // Send emails to all recipients using shared utility
+    const results = await Promise.all(
+      allRecipients.map(recipientEmail =>
+        sendEmail(resend, {
+          to: [recipientEmail],
+          subject: `Support Request from ${fullName} - Cash Ridez`,
+          html: emailHtml,
+          replyTo: email,
+        })
+      )
     );
-
-    const results = await Promise.allSettled(emailPromises);
     
-    const successCount = results.filter(r => r.status === "fulfilled").length;
-    const failedCount = results.filter(r => r.status === "rejected").length;
+    const successCount = results.filter(r => r.success).length;
+    const failedCount = results.filter(r => !r.success).length;
+    const fallbackActive = results.some(r => r.fallbackActive);
 
-    console.log(`Sent ${successCount} emails successfully, ${failedCount} failed`);
+    console.log(`Sent ${successCount} emails successfully, ${failedCount} failed, fallback: ${fallbackActive}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         emailsSent: successCount,
         emailsFailed: failedCount,
-        recipients: allRecipients.length
+        recipients: allRecipients.length,
+        fallbackActive
       }),
       {
         status: 200,

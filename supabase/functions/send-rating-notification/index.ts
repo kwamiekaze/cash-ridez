@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { sendEmail } from "../_shared/email-sender.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -85,9 +86,9 @@ const handler = async (req: Request): Promise<Response> => {
       <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from CashRidez.</p>
     `;
 
+    let emailResult = { success: false, fallbackActive: false };
     if (ratedUser.email) {
-      await resend.emails.send({
-        from: "CashRidez <noreply@cashridez.com>",
+      emailResult = await sendEmail(resend, {
         to: [ratedUser.email],
         subject: `You received a ${rating}-star rating from ${raterName}`,
         html: emailHtml,
@@ -95,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, emailSent: emailResult.success, fallbackActive: emailResult.fallbackActive }),
       {
         status: 200,
         headers: {
