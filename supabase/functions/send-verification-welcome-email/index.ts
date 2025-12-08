@@ -187,11 +187,12 @@ function getTestEmailHtml(systemStatus: any): string {
 async function processQueuedEmail(
   supabase: any,
   queueItem: QueuedEmail,
-  isTest: boolean = false
-): Promise<{ success: boolean; error?: string; fallbackActive?: boolean }> {
+  isTest: boolean = false,
+  forceResend: boolean = false
+): Promise<{ success: boolean; error?: string; fallbackActive?: boolean; skipped?: boolean }> {
   const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
   
-  console.log(`Processing email for user ${user_id}, email: ${user_email}, isTest: ${isTest}`);
+  console.log(`Processing email for user ${user_id}, email: ${user_email}, isTest: ${isTest}, forceResend: ${forceResend}`);
 
   // Get system status for test emails
   const systemStatus = await getEmailSystemStatus(resend);
@@ -202,8 +203,8 @@ async function processQueuedEmail(
     ? "email_test" 
     : (primaryRole === "driver" ? "verification_welcome_driver" : "verification_welcome_rider");
 
-  // Skip duplicate check for test emails
-  if (!isTest) {
+  // Skip duplicate check for test emails AND force resend
+  if (!isTest && !forceResend) {
     // Check for existing successful email in email_logs (prevent duplicates)
     const { data: existingLog } = await supabase
       .from("email_logs")
@@ -224,7 +225,8 @@ async function processQueuedEmail(
           .eq("id", id);
       }
       
-      return { success: true, fallbackActive: systemStatus.fallbackActive };
+      // Return skipped: true so caller knows email wasn't actually sent
+      return { success: false, skipped: true, error: "Email already sent to this user", fallbackActive: systemStatus.fallbackActive };
     }
   }
 
@@ -377,9 +379,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // If userId is provided, process single user directly
     if (body.userId) {
-      const { userId, userEmail, firstName, isDriver, isRider, isTest } = body;
+      const { userId, userEmail, firstName, isDriver, isRider, isTest, forceResend } = body;
       
-      console.log(`Direct call for user ${userId}, isTest: ${isTest}`);
+      console.log(`Direct call for user ${userId}, isTest: ${isTest}, forceResend: ${forceResend}`);
       
       const result = await processQueuedEmail(supabase, {
         id: isTest ? 'test-' + userId : 'direct-' + userId,
@@ -388,7 +390,18 @@ const handler = async (req: Request): Promise<Response> => {
         first_name: firstName,
         is_driver: isDriver ?? false,
         is_rider: isRider ?? false
-      }, isTest);
+      }, isTest, forceResend ?? false);
+
+      // If skipped due to duplicate, return 200 but with clear message
+      if (result.skipped) {
+        return new Response(
+          JSON.stringify({ success: false, error: result.error, skipped: true, fallbackActive: result.fallbackActive }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
 
       return new Response(
         JSON.stringify(result),
