@@ -78,6 +78,7 @@ interface AllMapUser {
   isAdmin?: boolean;
   isDriver?: boolean;  // From profiles.is_driver
   isRider?: boolean;   // From profiles.is_rider
+  map_history_hidden_from_public?: boolean | null;
 }
 
 // Helper to derive display role label based on actual roles
@@ -344,13 +345,23 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   };
 
   // Toggle user's own map visibility
+  // When an admin toggles to invisible, also hide their history from public
   const handleToggleVisibility = async (checked: boolean) => {
     if (!user) return;
     
     try {
+      const updateData: any = { is_map_visible: checked };
+      
+      // If admin is going invisible, also hide their history from public
+      if (isAdmin && !checked) {
+        updateData.map_history_hidden_from_public = true;
+        updateData.map_history_cleared_at = new Date().toISOString();
+        updateData.map_history_cleared_by = user.id;
+      }
+      
       await supabase
         .from("profiles")
-        .update({ is_map_visible: checked })
+        .update(updateData)
         .eq("id", user.id);
       
       setIsMapVisible(checked);
@@ -358,13 +369,45 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         title: checked ? "You're now visible" : "You're now invisible",
         description: checked 
           ? "Other users can see you on the map."
-          : "You're hidden from other users (admins can still see you).",
+          : isAdmin 
+            ? "You're hidden from other users and your history is now hidden from public view."
+            : "You're hidden from other users (admins can still see you).",
       });
     } catch (error) {
       console.error("Error updating visibility:", error);
       toast({
         title: "Error",
         description: "Failed to update visibility setting.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Admin: Clear own map visibility history
+  const handleClearOwnHistory = async () => {
+    if (!user || !isAdmin) return;
+    
+    try {
+      await supabase
+        .from("profiles")
+        .update({
+          map_history_hidden_from_public: true,
+          map_history_cleared_at: new Date().toISOString(),
+          map_history_cleared_by: user.id,
+        })
+        .eq("id", user.id);
+      
+      toast({
+        title: "History cleared",
+        description: "Your map visibility history is now hidden from public users.",
+      });
+      
+      await fetchMapData();
+    } catch (error) {
+      console.error("Error clearing own history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear history.",
         variant: "destructive",
       });
     }
@@ -380,7 +423,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         // Get all users with location data (admins see everyone, including invisible users)
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null);
 
@@ -413,6 +456,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             isAdmin: adminIds.has(p.id),
             isDriver: (p as any).is_driver === true,  // Use actual is_driver field
             isRider: (p as any).is_rider === true,    // Use actual is_rider field
+            map_history_hidden_from_public: (p as any).map_history_hidden_from_public,
           }));
           setAllMapUsers(users);
         }
@@ -421,29 +465,32 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       // For NON-ADMIN users (drivers and riders): fetch online users (location updated within 60 minutes)
       // Also filter by is_map_visible = true for other users, but ALWAYS include the current user
       if (!isAdmin && user) {
-        // First, get all online users with recent location AND visibility enabled
+        // First, get all online users with recent location AND visibility enabled AND not hidden history
         const { data: onlineProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
           .gte("location_updated_at", sixtyMinutesAgo)
-          .eq("is_map_visible", true); // Only fetch users who are visible
+          .eq("is_map_visible", true)
+          .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false"); // Only fetch users without hidden history
 
         // Fetch ALL users with any location data (for "All Users" filter - within last 24 hours for normal users)
+        // Also filter out users with hidden history
         const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data: allVisibleProfiles } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
           .gte("location_updated_at", twentyFourHoursAgo)
-          .eq("is_map_visible", true);
+          .eq("is_map_visible", true)
+          .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
 
         // Also fetch the current user's profile separately to ensure they always see themselves
         const { data: ownProfile } = await supabase
           .from("profiles")
-          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
+          .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .eq("id", user.id)
           .single();
 
@@ -473,6 +520,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           isAdmin: adminIds.has(p.id),
           isDriver: p.is_driver === true,  // Use actual is_driver field
           isRider: p.is_rider === true,    // Use actual is_rider field
+          map_history_hidden_from_public: p.map_history_hidden_from_public,
         });
 
         // Process online users
@@ -1118,6 +1166,18 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                 />
               </div>
             )}
+
+            {/* Admin: Clear own visibility history */}
+            {isAdmin && (
+              <button
+                onClick={handleClearOwnHistory}
+                className="flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-xs text-amber-400"
+                title="Hide your historical map locations from non-admin users"
+              >
+                <EyeOff className="h-3 w-3" />
+                Clear my history
+              </button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="relative pt-0">
@@ -1169,6 +1229,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           user={selectedUser}
           open={showUserInfoPanel}
           onOpenChange={setShowUserInfoPanel}
+          onHistoryCleared={fetchMapData}
         />
       )}
     </>

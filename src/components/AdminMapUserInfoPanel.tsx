@@ -2,7 +2,12 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Crown, MapPin, Clock, Shield, User, Car, Route, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Crown, MapPin, Clock, Shield, User, Car, Route, CheckCircle, XCircle, AlertCircle, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface MapUserInfo {
   id: string;
@@ -24,15 +29,21 @@ interface MapUserInfo {
   isAdmin?: boolean;
   isDriver?: boolean;
   isRider?: boolean;
+  map_history_hidden_from_public?: boolean | null;
 }
 
 interface AdminMapUserInfoPanelProps {
   user: MapUserInfo | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onHistoryCleared?: () => void;
 }
 
-export function AdminMapUserInfoPanel({ user, open, onOpenChange }: AdminMapUserInfoPanelProps) {
+export function AdminMapUserInfoPanel({ user, open, onOpenChange, onHistoryCleared }: AdminMapUserInfoPanelProps) {
+  const { user: authUser } = useAuth();
+  const { toast } = useToast();
+  const [clearing, setClearing] = useState(false);
+
   if (!user) return null;
 
   const name = user.full_name || user.display_name || "Unknown User";
@@ -116,8 +127,42 @@ export function AdminMapUserInfoPanel({ user, open, onOpenChange }: AdminMapUser
     return { status: "offline", label: "Offline" };
   };
 
-  const onlineInfo = getOnlineStatus();
+  // Clear user's map visibility history (admin action)
+  const handleClearUserHistory = async () => {
+    if (!authUser) return;
+    
+    setClearing(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          map_history_hidden_from_public: true,
+          map_history_cleared_at: new Date().toISOString(),
+          map_history_cleared_by: authUser.id,
+        })
+        .eq("id", user.id);
 
+      if (error) throw error;
+
+      toast({
+        title: "Map history cleared",
+        description: `${name}'s historical map visibility has been hidden from public users.`,
+      });
+      
+      onHistoryCleared?.();
+    } catch (error) {
+      console.error("Error clearing user map history:", error);
+      toast({
+        title: "Error",
+        description: "Failed to clear map history.",
+        variant: "destructive",
+      });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const onlineInfo = getOnlineStatus();
   const carInfo = [user.car_year, user.car_make, user.car_model].filter(Boolean).join(" ");
 
   return (
@@ -199,6 +244,31 @@ export function AdminMapUserInfoPanel({ user, open, onOpenChange }: AdminMapUser
                 <span>Approx. coordinates: {user.current_lat.toFixed(2)}, {user.current_lng.toFixed(2)}</span>
               </div>
             )}
+
+            {/* Map history status */}
+            {user.map_history_hidden_from_public && (
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <Shield className="h-3 w-3" />
+                <span>Map history hidden from public</span>
+              </div>
+            )}
+          </div>
+
+          {/* Admin Actions */}
+          <div className="border-t border-border pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearUserHistory}
+              disabled={clearing}
+              className="w-full text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {clearing ? "Clearing..." : "Clear this user's map history (public)"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              This hides their historical location from non-admin users.
+            </p>
           </div>
         </div>
       </DialogContent>
