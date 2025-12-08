@@ -170,12 +170,14 @@ const getOnlineStatus = (locationUpdatedAt: string | null): { isOnline: boolean;
 };
 
 // Helper to create avatar-based divIcon with transparent background and status styling
+// Includes first-letter fallback when no profile photo exists
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
   variant: 'driver' | 'rider' | 'admin',
   locationUpdatedAt?: string | null,
-  isAdminView: boolean = false
+  isAdminView: boolean = false,
+  userName?: string | null
 ): any => {
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
@@ -196,8 +198,25 @@ const createAvatarDivIcon = (
     ? `<div style="position:absolute;top:0;right:0;width:12px;height:12px;background:#10B981;border-radius:50%;border:2px solid #1a1a2e;"></div>`
     : '';
 
-  // If no avatar, use fallback icon with transparent styling
+  // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
+    // Try to get first letter from user's name
+    const firstLetter = userName?.trim()?.charAt(0)?.toUpperCase() || '';
+    
+    if (firstLetter) {
+      // Show letter-based avatar with gold styling
+      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div>${onlineIndicator}</div>`;
+      
+      return L.divIcon({
+        html,
+        className: 'map-avatar-icon',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
+        popupAnchor: [0, -size],
+      });
+    }
+    
+    // No name available, use fallback icon
     const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div>${onlineIndicator}</div>`;
 
     return L.divIcon({
@@ -233,6 +252,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isMapVisible, setIsMapVisible] = useState(true); // User's own visibility toggle
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -280,18 +300,22 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     fetchAdminVisibility();
   }, []);
 
-  // Fetch user profile including visibility setting
+  // Fetch user profile including visibility setting and subscription status
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("id, active_role, current_lat, current_lng, display_name, full_name, is_map_visible")
+        .select("id, active_role, current_lat, current_lng, display_name, full_name, is_map_visible, subscription_active, subscription_status")
         .eq("id", user.id)
         .single();
       if (data) {
         setUserProfile(data);
         setIsMapVisible(data.is_map_visible !== false); // Default to true if null
+        // Check if user has active subscription
+        const hasActiveSubscription = data.subscription_active === true && 
+          (data.subscription_status === 'active' || data.subscription_status === 'trialing');
+        setIsSubscribed(hasActiveSubscription);
         if (data.current_lat && data.current_lng) {
           setUserLocation({ lat: data.current_lat, lng: data.current_lng });
         }
@@ -345,9 +369,20 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   };
 
   // Toggle user's own map visibility
+  // Only subscribed users or admins can toggle visibility
   // When an admin toggles to invisible, also hide their history from public
   const handleToggleVisibility = async (checked: boolean) => {
     if (!user) return;
+    
+    // Only allow toggle for subscribed users or admins
+    if (!isSubscribed && !isAdmin) {
+      toast({
+        title: "Subscription required",
+        description: "Subscribe to unlock the ability to toggle your map visibility.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       const updateData: any = { is_map_visible: checked };
@@ -382,6 +417,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       });
     }
   };
+  
+  // Check if user can toggle visibility (subscribed or admin)
+  const canToggleVisibility = isSubscribed || isAdmin;
 
   // Admin: Clear own map visibility history
   const handleClearOwnHistory = async () => {
@@ -780,7 +818,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         // Determine variant using helper
         const variant = getMarkerVariant(mapUser);
 
-        const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, true);
+        const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, true, name);
 
         // Admin sees full role labels for all users
         const roleLabel = getRoleLabel(mapUser, true);
@@ -842,7 +880,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           const variant = getMarkerVariant(mapUser);
 
           // Use subtle status styling for non-admins (no timestamps shown)
-          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false);
+          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false, name);
 
           // Non-admins see "Admin" for admin users, full role labels for others
           const roleLabel = getRoleLabel(mapUser, false);
@@ -1106,27 +1144,37 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               </Select>
             )}
             
-            {/* Visibility toggle for all users */}
-            <button
-              onClick={() => handleToggleVisibility(!isMapVisible)}
-              className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${
-                isMapVisible 
-                  ? 'border-emerald-500/50 bg-emerald-500/10' 
-                  : 'border-muted-foreground/30 bg-muted/20'
-              }`}
-            >
-              {isMapVisible ? (
-                <>
-                  <Eye className="h-4 w-4 text-emerald-400" />
-                  <span className="text-emerald-400">Visible</span>
-                </>
-              ) : (
-                <>
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Invisible</span>
-                </>
-              )}
-            </button>
+            {/* Visibility toggle - only for subscribed users or admins */}
+            {canToggleVisibility ? (
+              <button
+                onClick={() => handleToggleVisibility(!isMapVisible)}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full border transition-colors ${
+                  isMapVisible 
+                    ? 'border-emerald-500/50 bg-emerald-500/10' 
+                    : 'border-muted-foreground/30 bg-muted/20'
+                }`}
+              >
+                {isMapVisible ? (
+                  <>
+                    <Eye className="h-4 w-4 text-emerald-400" />
+                    <span className="text-emerald-400">Visible</span>
+                  </>
+                ) : (
+                  <>
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Invisible</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <div 
+                className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/50 bg-emerald-500/10 opacity-60 cursor-not-allowed"
+                title="Subscribe to toggle visibility"
+              >
+                <Eye className="h-4 w-4 text-emerald-400" />
+                <span className="text-emerald-400">Visible</span>
+              </div>
+            )}
             
             {/* Admin visibility toggle */}
             {isAdmin && (
