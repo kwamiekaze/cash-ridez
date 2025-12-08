@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MapPin, Loader2, Navigation, RefreshCw, Crosshair, Users, Eye, EyeOff } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, Loader2, Navigation, RefreshCw, Crosshair, Users, Eye, EyeOff, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -243,6 +244,8 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [selectedUser, setSelectedUser] = useState<AllMapUser | null>(null);
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
   const [userFilter, setUserFilter] = useState<'online' | 'all'>('online'); // Filter between online vs all users
+  // Admin time range filter for "All Users" mode
+  const [adminTimeRange, setAdminTimeRange] = useState<'all' | 'month' | 'week' | '72h' | '24h' | '5h' | '1h'>('24h');
 
   // Check if user is admin
   useEffect(() => {
@@ -427,14 +430,14 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .gte("location_updated_at", sixtyMinutesAgo)
           .eq("is_map_visible", true); // Only fetch users who are visible
 
-        // Fetch ALL users with any location data (for "All Users" filter - within last 90 days)
-        const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+        // Fetch ALL users with any location data (for "All Users" filter - within last 24 hours for normal users)
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data: allVisibleProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
-          .gte("location_updated_at", ninetyDaysAgo)
+          .gte("location_updated_at", twentyFourHoursAgo)
           .eq("is_map_visible", true);
 
         // Also fetch the current user's profile separately to ensure they always see themselves
@@ -687,15 +690,36 @@ export function LiveMapView({ className }: LiveMapViewProps) {
 
     userMarkerRef.current = null;
 
-    // ADMIN VIEW: Show users based on filter (online or all)
+    // ADMIN VIEW: Show users based on filter (online or all with time range)
     if (isAdmin && allMapUsers.length > 0) {
+      // Helper to get time filter cutoff for admin
+      const getAdminTimeFilterCutoff = (): Date | null => {
+        const now = Date.now();
+        switch (adminTimeRange) {
+          case 'all': return null; // No time filter
+          case 'month': return new Date(now - 30 * 24 * 60 * 60 * 1000);
+          case 'week': return new Date(now - 7 * 24 * 60 * 60 * 1000);
+          case '72h': return new Date(now - 72 * 60 * 60 * 1000);
+          case '24h': return new Date(now - 24 * 60 * 60 * 1000);
+          case '5h': return new Date(now - 5 * 60 * 60 * 1000);
+          case '1h': return new Date(now - 60 * 60 * 1000);
+          default: return null;
+        }
+      };
+
       // Filter users based on userFilter setting
       const usersToShow = userFilter === 'online' 
         ? allMapUsers.filter(u => {
             const status = getOnlineStatus(u.location_updated_at || null);
             return status.isOnline || !status.isOffline; // Within 60 minutes
           })
-        : allMapUsers;
+        : allMapUsers.filter(u => {
+            // Apply time range filter for "All Users" mode
+            const cutoff = getAdminTimeFilterCutoff();
+            if (!cutoff) return true; // "all" time - show everyone
+            if (!u.location_updated_at) return false;
+            return new Date(u.location_updated_at) >= cutoff;
+          });
 
       usersToShow.forEach((mapUser) => {
         if (!mapUser.current_lat || !mapUser.current_lng) return;
@@ -823,7 +847,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           `);
       });
     }
-  }, [drivers, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers, userFilter, allUsersForNonAdmin]);
+  }, [drivers, user, isDriver, isRider, isAdmin, adminLocations, showAdminOnPublicMap, allMapUsers, onlineUsers, userFilter, allUsersForNonAdmin, adminTimeRange]);
 
   // Refresh location
   const handleRefreshLocation = async () => {
@@ -1016,9 +1040,46 @@ export function LiveMapView({ className }: LiveMapViewProps) {
                     : 'bg-transparent text-muted-foreground hover:bg-muted/20'
                 }`}
               >
-                All Users ({isAdmin ? allMapUsers.length : allUsersForNonAdmin.length})
+                All Users ({isAdmin ? (() => {
+                  // Count users based on current time range filter for admin
+                  const getAdminTimeFilterCutoff = (): Date | null => {
+                    const now = Date.now();
+                    switch (adminTimeRange) {
+                      case 'all': return null;
+                      case 'month': return new Date(now - 30 * 24 * 60 * 60 * 1000);
+                      case 'week': return new Date(now - 7 * 24 * 60 * 60 * 1000);
+                      case '72h': return new Date(now - 72 * 60 * 60 * 1000);
+                      case '24h': return new Date(now - 24 * 60 * 60 * 1000);
+                      case '5h': return new Date(now - 5 * 60 * 60 * 1000);
+                      case '1h': return new Date(now - 60 * 60 * 1000);
+                      default: return null;
+                    }
+                  };
+                  const cutoff = getAdminTimeFilterCutoff();
+                  if (!cutoff) return allMapUsers.length;
+                  return allMapUsers.filter(u => u.location_updated_at && new Date(u.location_updated_at) >= cutoff).length;
+                })() : allUsersForNonAdmin.length})
               </button>
             </div>
+
+            {/* Admin time range dropdown - only shown when "All Users" filter is active */}
+            {isAdmin && userFilter === 'all' && (
+              <Select value={adminTimeRange} onValueChange={(v) => setAdminTimeRange(v as any)}>
+                <SelectTrigger className="w-[140px] h-8 text-xs border-border">
+                  <Clock className="h-3 w-3 mr-1" />
+                  <SelectValue placeholder="Time range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">Past 1 hour</SelectItem>
+                  <SelectItem value="5h">Past 5 hours</SelectItem>
+                  <SelectItem value="24h">Past 24 hours</SelectItem>
+                  <SelectItem value="72h">Past 72 hours</SelectItem>
+                  <SelectItem value="week">Past week</SelectItem>
+                  <SelectItem value="month">Past month</SelectItem>
+                  <SelectItem value="all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             
             {/* Visibility toggle for all users */}
             <button
