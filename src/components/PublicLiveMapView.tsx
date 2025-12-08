@@ -132,15 +132,18 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<PublicMapUser[]>([]);
-  const [allUsers24h, setAllUsers24h] = useState<PublicMapUser[]>([]);
+  // Recently online = 72 hour window
+  const [allUsers72h, setAllUsers72h] = useState<PublicMapUser[]>([]);
   const [userFilter, setUserFilter] = useState<'online' | 'all'>('online');
 
   // Fetch public map data from the public_map_presence view
   // This view is accessible to anonymous users and contains only safe, filtered data
+  // Fetch public map data from the public_map_presence view
+  // "Recently Online" = 72 hours window for better map coverage
   const fetchPublicMapData = useCallback(async () => {
     try {
       const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
       // Query the public view for online users (within 60 minutes)
       const { data: onlineData, error: onlineError } = await supabase
@@ -152,14 +155,14 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
         console.error("Error fetching online users:", onlineError);
       }
 
-      // Query the public view for all users within 24 hours
-      const { data: allData24h, error: allError } = await supabase
+      // Query the public view for "Recently Online" users (within 72 hours)
+      const { data: allData72h, error: allError } = await supabase
         .from("public_map_presence" as any)
         .select("*")
-        .gte("location_updated_at", twentyFourHoursAgo);
+        .gte("location_updated_at", seventyTwoHoursAgo);
 
       if (allError) {
-        console.error("Error fetching 24h users:", allError);
+        console.error("Error fetching 72h users:", allError);
       }
 
       // Map view results to PublicMapUser
@@ -178,7 +181,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       });
 
       setOnlineUsers((onlineData || []).map(mapViewData));
-      setAllUsers24h((allData24h || []).map(mapViewData));
+      setAllUsers72h((allData72h || []).map(mapViewData));
     } catch (err) {
       console.error("Error fetching public map data:", err);
       setError("Failed to load map data");
@@ -279,7 +282,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       }
     });
 
-    const usersToShow = userFilter === 'online' ? onlineUsers : allUsers24h;
+    const usersToShow = userFilter === 'online' ? onlineUsers : allUsers72h;
 
     usersToShow.forEach((mapUser) => {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
@@ -306,7 +309,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
           </div>
         `);
     });
-  }, [userFilter, onlineUsers, allUsers24h]);
+  }, [userFilter, onlineUsers, allUsers72h]);
 
   // Center on Georgia
   const handleCenterOnGeorgia = () => {

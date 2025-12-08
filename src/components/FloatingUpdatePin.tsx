@@ -30,12 +30,16 @@ export function FloatingUpdatePin() {
         const { latitude, longitude } = position.coords;
 
         try {
+          // When user updates pin, clear any admin-issued "clear from map" flag
+          // This makes "clear from map" a temporary hide until next pin update
           const { error } = await supabase
             .from("profiles")
             .update({
               current_lat: latitude,
               current_lng: longitude,
               location_updated_at: new Date().toISOString(),
+              // Clear the hidden flag - user re-appears after updating their pin
+              map_history_hidden_from_public: false,
             })
             .eq("id", user.id);
 

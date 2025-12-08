@@ -514,15 +514,15 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .or("is_map_visible.eq.true,is_map_visible.is.null")
           .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
 
-        // Fetch ALL users with any location data (for "All Users" filter - within last 24 hours for normal users)
+        // Fetch ALL users with any location data (for "All Users" filter - within last 72 hours for normal users)
         // Also filter out users with hidden history
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
         const { data: allVisibleProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
-          .gte("location_updated_at", twentyFourHoursAgo)
+          .gte("location_updated_at", seventyTwoHoursAgo)
           // Treat NULL as visible
           .or("is_map_visible.eq.true,is_map_visible.is.null")
           .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
@@ -954,12 +954,16 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         const approxLng = Math.round(longitude * 100) / 100;
 
         try {
+          // When user updates pin, clear any admin-issued "clear from map" flag
+          // This makes "clear from map" a temporary hide until next pin update
           await supabase
             .from("profiles")
             .update({
               current_lat: latitude,
               current_lng: longitude,
               location_updated_at: new Date().toISOString(),
+              // Clear the hidden flag - user re-appears after updating their pin
+              map_history_hidden_from_public: false,
             })
             .eq("id", user.id);
 
