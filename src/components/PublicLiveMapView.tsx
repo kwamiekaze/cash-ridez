@@ -266,21 +266,23 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
 
       const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
-      const name = mapUser.full_name || mapUser.display_name || "User";
-      const isPremium = mapUser.subscription_active;
+      
+      // Extract first name only for public visitors (privacy-focused)
+      const fullName = mapUser.full_name || mapUser.display_name || "Member";
+      const firstName = fullName.split(' ')[0];
+      
       const variant = getMarkerVariant(mapUser);
       const icon = createAvatarDivIcon(L, mapUser.photo_url, variant);
-      const roleLabel = getRoleLabel(mapUser);
 
+      // Public popup: first name only, no roles, no stats, no timestamps
       L.marker([jittered.lat, jittered.lng], { icon })
         .addTo(mapInstanceRef.current)
         .bindPopup(`
           <div class="p-3 min-w-[180px]">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="font-semibold">${name}</span>
-              ${isPremium ? '<span class="text-yellow-500">👑</span>' : ''}
+            <div class="mb-2">
+              <span class="font-semibold text-base">${firstName}</span>
             </div>
-            <p class="text-xs text-gray-600 mb-1"><strong>Role:</strong> ${roleLabel}</p>
+            <p class="text-xs text-gray-500 mb-1">Cash Ridez community member</p>
             <p class="text-xs text-gray-400 italic">📍 Approximate location</p>
           </div>
         `);
