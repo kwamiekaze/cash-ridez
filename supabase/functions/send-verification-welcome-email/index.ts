@@ -19,6 +19,9 @@ interface QueuedEmail {
   is_rider: boolean;
 }
 
+// Use verified domain for production emails
+const FROM_EMAIL = "CashRidez <noreply@cashridez.com>";
+
 // Determine primary role: Driver takes priority, fallback to Rider
 function getPrimaryRole(isDriver: boolean, isRider: boolean): "driver" | "rider" {
   if (isDriver) return "driver";
@@ -136,118 +139,181 @@ function getRiderEmailHtml(firstName: string): string {
   `;
 }
 
+function getTestEmailHtml(): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #000 0%, #1a1a1a 100%); padding: 30px; border-radius: 12px; margin-bottom: 20px;">
+    <h1 style="color: #facc15; margin: 0; font-size: 24px;">✅ Email Test Successful</h1>
+    <p style="color: #fff; margin: 10px 0 0 0; font-size: 16px;">CashRidez Email System is Working</p>
+  </div>
+
+  <p style="font-size: 16px;">This is a test email from the CashRidez admin panel.</p>
+  
+  <p style="font-size: 16px;">If you received this email, the email delivery system is working correctly.</p>
+
+  <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 20px 0;">
+    <p style="margin: 0; font-size: 14px; color: #666;">
+      <strong>Timestamp:</strong> ${new Date().toISOString()}<br>
+      <strong>Environment:</strong> Production
+    </p>
+  </div>
+
+  <div style="background: #000; color: #facc15; padding: 20px; border-radius: 8px; margin-top: 30px; text-align: center;">
+    <p style="margin: 0; font-size: 14px; color: #fff;">— CashRidez Team</p>
+  </div>
+</body>
+</html>
+  `;
+}
+
 async function processQueuedEmail(
   supabase: any,
-  queueItem: QueuedEmail
+  queueItem: QueuedEmail,
+  isTest: boolean = false
 ): Promise<{ success: boolean; error?: string }> {
   const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
   
-  console.log(`Processing queued email for user ${user_id}, email: ${user_email}`);
+  console.log(`Processing email for user ${user_id}, email: ${user_email}, isTest: ${isTest}`);
 
   // Determine primary role
   const primaryRole = getPrimaryRole(is_driver, is_rider);
-  const emailType = primaryRole === "driver" 
-    ? "verification_welcome_driver" 
-    : "verification_welcome_rider";
+  const emailType = isTest 
+    ? "email_test" 
+    : (primaryRole === "driver" ? "verification_welcome_driver" : "verification_welcome_rider");
 
-  // Check for existing successful email in email_logs (prevent duplicates)
-  const { data: existingLog } = await supabase
-    .from("email_logs")
-    .select("id")
-    .eq("user_id", user_id)
-    .eq("email_type", emailType)
-    .eq("status", "success")
-    .maybeSingle();
+  // Skip duplicate check for test emails
+  if (!isTest) {
+    // Check for existing successful email in email_logs (prevent duplicates)
+    const { data: existingLog } = await supabase
+      .from("email_logs")
+      .select("id")
+      .eq("user_id", user_id)
+      .eq("email_type", emailType)
+      .eq("status", "success")
+      .maybeSingle();
 
-  if (existingLog) {
-    console.log(`Email already sent to user ${user_id} for type ${emailType}, marking as processed`);
-    
-    // Mark queue item as processed (already sent)
-    await supabase
-      .from("verification_email_queue")
-      .update({ status: "already_sent", processed_at: new Date().toISOString() })
-      .eq("id", id);
-    
-    return { success: true };
+    if (existingLog) {
+      console.log(`Email already sent to user ${user_id} for type ${emailType}, marking as processed`);
+      
+      // Mark queue item as processed (already sent) - only for non-direct calls
+      if (!id.startsWith('direct-')) {
+        await supabase
+          .from("verification_email_queue")
+          .update({ status: "already_sent", processed_at: new Date().toISOString() })
+          .eq("id", id);
+      }
+      
+      return { success: true };
+    }
   }
 
   // Create pending log entry
-  const { data: logEntry } = await supabase
+  const { data: logEntry, error: logError } = await supabase
     .from("email_logs")
     .insert({
       user_id,
       email_type: emailType,
       recipient_email: user_email,
       status: "pending",
-      metadata: { first_name, is_driver, is_rider, primaryRole }
+      metadata: { first_name, is_driver, is_rider, primaryRole, isTest }
     })
     .select("id")
     .single();
+
+  if (logError) {
+    console.error("Failed to create log entry:", logError);
+  }
 
   const logId = logEntry?.id;
   const displayName = first_name || "there";
 
   // Prepare email content
-  const subject = primaryRole === "driver"
-    ? "🚗 You're Verified! Your Driver Profile Is Now Active on CashRidez"
-    : "🎉 You're Verified — Welcome to CashRidez!";
-
-  const html = primaryRole === "driver"
-    ? getDriverEmailHtml(displayName)
-    : getRiderEmailHtml(displayName);
+  let subject: string;
+  let html: string;
+  
+  if (isTest) {
+    subject = "[CashRidez] Email Test – Production";
+    html = getTestEmailHtml();
+  } else {
+    subject = primaryRole === "driver"
+      ? "🚗 You're Verified! Your Driver Profile Is Now Active on CashRidez"
+      : "🎉 You're Verified — Welcome to CashRidez!";
+    html = primaryRole === "driver"
+      ? getDriverEmailHtml(displayName)
+      : getRiderEmailHtml(displayName);
+  }
 
   // Send email with retry
   let emailSent = false;
   let lastError: Error | null = null;
+  let providerResponse: string | null = null;
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       console.log(`Sending email attempt ${attempt} to ${user_email}`);
       
       const emailResponse = await resend.emails.send({
-        from: "CashRidez <noreply@cashridez.com>",
+        from: FROM_EMAIL,
         to: [user_email],
         subject: subject,
         html: html,
       });
 
-      console.log(`Email sent successfully on attempt ${attempt}:`, emailResponse);
+      console.log(`Email response on attempt ${attempt}:`, JSON.stringify(emailResponse));
+      
+      // Check if there's an error in the response
+      if (emailResponse.error) {
+        throw new Error(emailResponse.error.message || JSON.stringify(emailResponse.error));
+      }
+      
+      providerResponse = JSON.stringify(emailResponse);
       emailSent = true;
+      console.log(`Email sent successfully on attempt ${attempt}`);
       break;
     } catch (error: any) {
       console.error(`Email send attempt ${attempt} failed:`, error);
       lastError = error;
+      providerResponse = error.message || JSON.stringify(error);
       
-      if (attempt < 2) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      if (attempt < 3) {
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
       }
     }
   }
 
-  // Update log entry
+  // Update log entry with result
   if (logId) {
     await supabase
       .from("email_logs")
       .update({
         status: emailSent ? "success" : "failed",
-        error_message: emailSent ? null : lastError?.message,
+        error_message: emailSent ? null : (lastError?.message || providerResponse),
         timestamp_sent: new Date().toISOString()
       })
       .eq("id", logId);
   }
 
-  // Update queue item
-  await supabase
-    .from("verification_email_queue")
-    .update({ 
-      status: emailSent ? "sent" : "failed", 
-      processed_at: new Date().toISOString() 
-    })
-    .eq("id", id);
+  // Update queue item - only for non-direct calls
+  if (!id.startsWith('direct-') && !id.startsWith('test-')) {
+    await supabase
+      .from("verification_email_queue")
+      .update({ 
+        status: emailSent ? "sent" : "failed", 
+        processed_at: new Date().toISOString() 
+      })
+      .eq("id", id);
+  }
 
   return emailSent 
     ? { success: true } 
-    : { success: false, error: lastError?.message };
+    : { success: false, error: lastError?.message || providerResponse || "Unknown error" };
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -272,18 +338,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     // If userId is provided, process single user directly
     if (body.userId) {
-      const { userId, userEmail, firstName, isDriver, isRider } = body;
+      const { userId, userEmail, firstName, isDriver, isRider, isTest } = body;
       
-      console.log(`Direct call for user ${userId}`);
+      console.log(`Direct call for user ${userId}, isTest: ${isTest}`);
       
       const result = await processQueuedEmail(supabase, {
-        id: 'direct-' + userId,
+        id: isTest ? 'test-' + userId : 'direct-' + userId,
         user_id: userId,
         user_email: userEmail,
         first_name: firstName,
         is_driver: isDriver ?? false,
         is_rider: isRider ?? false
-      });
+      }, isTest);
 
       return new Response(
         JSON.stringify(result),
@@ -323,10 +389,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${queueItems.length} pending emails to process`);
 
-    // Process each queued email
-    const results = await Promise.all(
-      queueItems.map((item: QueuedEmail) => processQueuedEmail(supabase, item))
-    );
+    // Process each queued email sequentially to avoid rate limits
+    const results = [];
+    for (const item of queueItems) {
+      const result = await processQueuedEmail(supabase, item);
+      results.push(result);
+      // Small delay between emails to avoid rate limiting
+      if (queueItems.indexOf(item) < queueItems.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
 
     const successCount = results.filter(r => r.success).length;
     const failedCount = results.filter(r => !r.success).length;

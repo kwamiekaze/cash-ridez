@@ -12,7 +12,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search, Gift } from "lucide-react";
+import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search, Gift, Mail } from "lucide-react";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/input";
 import FloatingSupport from "@/components/FloatingSupport";
@@ -22,6 +22,7 @@ import { SystemMessageDialog } from "@/components/SystemMessageDialog";
 import { AdminChatRooms } from "@/components/AdminChatRooms";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import { AdminReferralsTab } from "@/components/AdminReferralsTab";
+import { EmailLogsPanel } from "@/components/admin/EmailLogsPanel";
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -92,6 +93,7 @@ const AdminDashboard = () => {
     { id: "referrals", label: "Referrals", icon: Gift },
     { id: "rides", label: "Rides", icon: Car },
     { id: "analytics", label: "Analytics", icon: BarChart },
+    { id: "emails", label: "Email Logs", icon: Mail },
     { id: "community", label: "Chat/Community", icon: MessageSquare },
     { id: "rooms", label: "Chat Rooms", icon: Users },
     { id: "messages", label: "System Messages", icon: Megaphone },
@@ -283,6 +285,16 @@ const AdminDashboard = () => {
                 transition={{ delay: 0.1 }}
               >
                 <AdminAnalytics />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="emails" className="space-y-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <EmailLogsPanel />
               </motion.div>
             </TabsContent>
 
