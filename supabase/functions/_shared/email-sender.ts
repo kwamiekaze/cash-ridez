@@ -6,8 +6,9 @@ import { Resend } from "https://esm.sh/resend@4.0.0";
 
 // Email sender addresses in priority order
 const VERIFIED_SENDER = "CashRidez <support@cashridez.com>";
-const FALLBACK_SENDER_1 = "CashRidez <noreply@cashridezconnect.onresend.com>";
-const FALLBACK_SENDER_2 = "CashRidez <onboarding@resend.dev>";
+// updates.cashridez.com is verified in Resend - use this as fallback
+const FALLBACK_SENDER_1 = "CashRidez <noreply@updates.cashridez.com>";
+const FALLBACK_SENDER_2 = "CashRidez <support@updates.cashridez.com>";
 
 // Cache for domain verification status (TTL: 30 minutes)
 let domainVerifiedCache: boolean | null = null;
@@ -56,13 +57,26 @@ export async function isDomainVerified(resend: Resend): Promise<boolean> {
       return false;
     }
     
+    console.log("[EmailSender] Domains response:", JSON.stringify(domains));
+    
+    // Handle various response structures from Resend API
+    // The API might return { data: [...] } or directly [...]
+    const domainList = Array.isArray(domains) 
+      ? domains 
+      : (domains?.data && Array.isArray(domains.data)) 
+        ? domains.data 
+        : [];
+    
     // Look for verified cashridez.com domain
-    const cashRidezDomain = domains?.data?.find(
+    const cashRidezDomain = domainList.find(
       (d: any) => d.name === "cashridez.com" && d.status === "verified"
     );
     
     const isVerified = !!cashRidezDomain;
     console.log(`[EmailSender] Domain cashridez.com verified: ${isVerified}`);
+    if (cashRidezDomain) {
+      console.log(`[EmailSender] Domain details: ${JSON.stringify(cashRidezDomain)}`);
+    }
     
     // Cache the result
     domainVerifiedCache = isVerified;
@@ -95,7 +109,7 @@ export async function getSenderEmail(resend: Resend): Promise<{ sender: string; 
 
 /**
  * Send an email with automatic fallback handling
- * Tries the primary sender first, then falls back if needed
+ * ALWAYS tries fallback senders on failure to ensure delivery
  */
 export async function sendEmail(
   resend: Resend,
@@ -104,129 +118,102 @@ export async function sendEmail(
 ): Promise<EmailSendResult> {
   const { to, subject, html, replyTo } = options;
   
-  // Determine which sender to use
-  let senderInfo: { sender: string; fallbackActive: boolean };
+  // Build the list of senders to try in order
+  const sendersToTry: string[] = [];
   
   if (forceFallback) {
-    senderInfo = { sender: FALLBACK_SENDER_1, fallbackActive: true };
+    // Skip primary, go straight to fallbacks
+    sendersToTry.push(FALLBACK_SENDER_1, FALLBACK_SENDER_2);
   } else {
-    senderInfo = await getSenderEmail(resend);
+    // Check domain verification status first
+    const isVerified = await isDomainVerified(resend);
+    
+    if (isVerified) {
+      // Try primary first, then fallbacks if it fails
+      sendersToTry.push(VERIFIED_SENDER, FALLBACK_SENDER_1, FALLBACK_SENDER_2);
+    } else {
+      // Domain not verified, skip primary entirely
+      console.log("[EmailSender] Domain not verified, skipping primary sender");
+      sendersToTry.push(FALLBACK_SENDER_1, FALLBACK_SENDER_2);
+    }
   }
   
-  console.log(`[EmailSender] Sending email to ${to.join(", ")} using sender: ${senderInfo.sender}`);
+  let lastError: string = "";
   
-  // Try sending with primary/determined sender
-  try {
-    const emailPayload: any = {
-      from: senderInfo.sender,
-      to,
-      subject,
-      html,
-    };
+  // Try each sender in order until one succeeds
+  for (let i = 0; i < sendersToTry.length; i++) {
+    const currentSender = sendersToTry[i];
+    const isFallback = currentSender !== VERIFIED_SENDER;
     
-    if (replyTo) {
-      emailPayload.replyTo = replyTo;
-    }
+    console.log(`[EmailSender] Attempt ${i + 1}/${sendersToTry.length}: Sending to ${to.join(", ")} using sender: ${currentSender}`);
     
-    const response = await resend.emails.send(emailPayload);
-    
-    if (response.error) {
-      throw new Error(response.error.message || JSON.stringify(response.error));
-    }
-    
-    console.log(`[EmailSender] Email sent successfully:`, response);
-    
-    return {
-      success: true,
-      data: response,
-      senderUsed: senderInfo.sender,
-      fallbackActive: senderInfo.fallbackActive,
-    };
-  } catch (primaryError: any) {
-    console.error(`[EmailSender] Primary send failed:`, primaryError);
-    
-    // If we weren't already using fallback, try the fallback sender
-    if (!senderInfo.fallbackActive) {
-      console.log("[EmailSender] Attempting fallback sender...");
+    try {
+      const emailPayload: any = {
+        from: currentSender,
+        to,
+        subject,
+        html,
+      };
       
-      try {
-        const emailPayload: any = {
-          from: FALLBACK_SENDER_1,
-          to,
-          subject,
-          html,
-        };
+      if (replyTo) {
+        emailPayload.replyTo = replyTo;
+      }
+      
+      const response = await resend.emails.send(emailPayload);
+      
+      if (response.error) {
+        const errorMsg = response.error.message || JSON.stringify(response.error);
+        console.error(`[EmailSender] Send failed with sender ${currentSender}:`, errorMsg);
+        lastError = errorMsg;
         
-        if (replyTo) {
-          emailPayload.replyTo = replyTo;
+        // If this was the primary sender and it failed with domain error, invalidate cache
+        if (currentSender === VERIFIED_SENDER && 
+            (errorMsg.includes("not verified") || errorMsg.includes("domain"))) {
+          console.log("[EmailSender] Primary sender domain error, invalidating cache");
+          domainVerifiedCache = false;
+          domainCacheTime = Date.now();
         }
         
-        const fallbackResponse = await resend.emails.send(emailPayload);
-        
-        if (fallbackResponse.error) {
-          throw new Error(fallbackResponse.error.message || JSON.stringify(fallbackResponse.error));
-        }
-        
-        console.log(`[EmailSender] Fallback send succeeded:`, fallbackResponse);
-        
-        // Invalidate cache since primary failed
+        // Continue to next sender
+        continue;
+      }
+      
+      console.log(`[EmailSender] Email sent successfully with sender ${currentSender}:`, response);
+      
+      return {
+        success: true,
+        data: response,
+        senderUsed: currentSender,
+        fallbackActive: isFallback,
+      };
+      
+    } catch (err: any) {
+      const errorMsg = err.message || String(err);
+      console.error(`[EmailSender] Exception with sender ${currentSender}:`, errorMsg);
+      lastError = errorMsg;
+      
+      // If domain-related error, invalidate cache
+      if (currentSender === VERIFIED_SENDER && 
+          (errorMsg.includes("not verified") || errorMsg.includes("domain"))) {
+        console.log("[EmailSender] Primary sender domain exception, invalidating cache");
         domainVerifiedCache = false;
         domainCacheTime = Date.now();
-        
-        return {
-          success: true,
-          data: fallbackResponse,
-          senderUsed: FALLBACK_SENDER_1,
-          fallbackActive: true,
-        };
-      } catch (fallbackError: any) {
-        console.error(`[EmailSender] Fallback send also failed:`, fallbackError);
-        
-        // Try the last resort sender (onboarding@resend.dev)
-        try {
-          const emailPayload: any = {
-            from: FALLBACK_SENDER_2,
-            to,
-            subject,
-            html,
-          };
-          
-          if (replyTo) {
-            emailPayload.replyTo = replyTo;
-          }
-          
-          const lastResortResponse = await resend.emails.send(emailPayload);
-          
-          if (lastResortResponse.error) {
-            throw new Error(lastResortResponse.error.message || JSON.stringify(lastResortResponse.error));
-          }
-          
-          console.log(`[EmailSender] Last resort send succeeded:`, lastResortResponse);
-          
-          return {
-            success: true,
-            data: lastResortResponse,
-            senderUsed: FALLBACK_SENDER_2,
-            fallbackActive: true,
-          };
-        } catch (lastResortError: any) {
-          return {
-            success: false,
-            error: `All senders failed. Primary: ${primaryError.message}, Fallback: ${fallbackError.message}, LastResort: ${lastResortError.message}`,
-            senderUsed: "none",
-            fallbackActive: true,
-          };
-        }
       }
+      
+      // Continue to next sender
+      continue;
     }
-    
-    return {
-      success: false,
-      error: primaryError.message,
-      senderUsed: senderInfo.sender,
-      fallbackActive: senderInfo.fallbackActive,
-    };
   }
+  
+  // All senders failed
+  console.error(`[EmailSender] All senders failed. Last error: ${lastError}`);
+  
+  return {
+    success: false,
+    error: `All senders failed. Last error: ${lastError}`,
+    senderUsed: "none",
+    fallbackActive: true,
+  };
 }
 
 /**
