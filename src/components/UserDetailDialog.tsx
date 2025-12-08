@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Users } from "lucide-react";
+import { ExternalLink, Users, Mail } from "lucide-react";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 
@@ -32,6 +32,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     display_name: "",
@@ -204,6 +205,34 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     }
   };
 
+  const handleResendWelcomeEmail = async () => {
+    if (!userId || !user) return;
+
+    setSendingEmail(true);
+    try {
+      const firstName = user.full_name?.split(' ')[0] || user.display_name || 'there';
+      
+      const { error } = await supabase.functions.invoke("send-verification-welcome-email", {
+        body: {
+          userId: user.id,
+          userEmail: user.email,
+          firstName,
+          isDriver: user.is_driver || false,
+          isRider: user.is_rider || false,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Welcome email sent successfully");
+    } catch (error: any) {
+      console.error("Error sending welcome email:", error);
+      toast.error("Failed to send welcome email");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   if (!user) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -319,6 +348,25 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                   </Button>
                 )}
               </div>
+            </Card>
+          )}
+
+          {/* Admin Email Actions */}
+          {user.verification_status === "approved" && (
+            <Card className="p-4">
+              <Label className="text-sm font-medium mb-2 block">Email Actions</Label>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendWelcomeEmail}
+                disabled={sendingEmail}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                {sendingEmail ? "Sending..." : "Resend Welcome Email"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Send the verification welcome email again to this user
+              </p>
             </Card>
           )}
 
