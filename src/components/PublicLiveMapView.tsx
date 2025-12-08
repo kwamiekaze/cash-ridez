@@ -116,56 +116,50 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   const [allUsers24h, setAllUsers24h] = useState<PublicMapUser[]>([]);
   const [userFilter, setUserFilter] = useState<'online' | 'all'>('online');
 
-  // Fetch public map data
+  // Fetch public map data from the public_map_presence view
+  // This view is accessible to anonymous users and contains only safe, filtered data
   const fetchPublicMapData = useCallback(async () => {
     try {
       const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-      // Fetch online users (within 60 minutes, visible, not hidden history)
-      const { data: onlineProfiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, subscription_active, is_driver, is_rider")
-        .not("current_lat", "is", null)
-        .not("current_lng", "is", null)
-        .gte("location_updated_at", sixtyMinutesAgo)
-        .eq("is_map_visible", true)
-        .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
+      // Query the public view for online users (within 60 minutes)
+      const { data: onlineData, error: onlineError } = await supabase
+        .from("public_map_presence" as any)
+        .select("*")
+        .gte("location_updated_at", sixtyMinutesAgo);
 
-      // Fetch all users within 24 hours
-      const { data: allProfiles24h } = await supabase
-        .from("profiles")
-        .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, subscription_active, is_driver, is_rider")
-        .not("current_lat", "is", null)
-        .not("current_lng", "is", null)
-        .gte("location_updated_at", twentyFourHoursAgo)
-        .eq("is_map_visible", true)
-        .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
+      if (onlineError) {
+        console.error("Error fetching online users:", onlineError);
+      }
 
-      // Get admin IDs to mark them
-      const { data: adminRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin");
-      const adminIds = new Set(adminRoles?.map(r => r.user_id) || []);
+      // Query the public view for all users within 24 hours
+      const { data: allData24h, error: allError } = await supabase
+        .from("public_map_presence" as any)
+        .select("*")
+        .gte("location_updated_at", twentyFourHoursAgo);
 
-      // Map profiles to users
-      const mapProfile = (p: any): PublicMapUser => ({
-        id: p.id,
-        display_name: p.display_name,
-        full_name: p.full_name,
-        photo_url: p.photo_url,
-        current_lat: p.current_lat,
-        current_lng: p.current_lng,
-        location_updated_at: p.location_updated_at,
-        subscription_active: p.subscription_active,
-        isAdmin: adminIds.has(p.id),
-        isDriver: p.is_driver === true,
-        isRider: p.is_rider === true,
+      if (allError) {
+        console.error("Error fetching 24h users:", allError);
+      }
+
+      // Map view results to PublicMapUser
+      const mapViewData = (row: any): PublicMapUser => ({
+        id: row.user_id,
+        display_name: row.display_name,
+        full_name: row.full_name,
+        photo_url: row.photo_url,
+        current_lat: row.current_lat,
+        current_lng: row.current_lng,
+        location_updated_at: row.location_updated_at,
+        subscription_active: row.subscription_active,
+        isAdmin: row.is_admin === true,
+        isDriver: row.is_driver === true,
+        isRider: row.is_rider === true,
       });
 
-      setOnlineUsers((onlineProfiles || []).map(mapProfile));
-      setAllUsers24h((allProfiles24h || []).map(mapProfile));
+      setOnlineUsers((onlineData || []).map(mapViewData));
+      setAllUsers24h((allData24h || []).map(mapViewData));
     } catch (err) {
       console.error("Error fetching public map data:", err);
       setError("Failed to load map data");

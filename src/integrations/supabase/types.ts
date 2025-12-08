@@ -110,6 +110,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "billing_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       calls: {
@@ -167,8 +174,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "calls_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "calls_initiated_by_user_id_fkey"
             columns: ["initiated_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_initiated_by_user_id_fkey"
+            columns: ["initiated_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "calls_rider_id_fkey"
+            columns: ["rider_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -177,8 +205,8 @@ export type Database = {
             foreignKeyName: "calls_rider_id_fkey"
             columns: ["rider_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "calls_trip_id_fkey"
@@ -737,6 +765,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notifications_related_user_id_fkey"
+            columns: ["related_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       page_views: {
@@ -795,6 +830,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "page_views_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -1023,6 +1065,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_referred_by_user_id_fkey"
+            columns: ["referred_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       referrals: {
@@ -1056,11 +1105,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "referrals_referred_user_id_fkey"
+            columns: ["referred_user_id"]
+            isOneToOne: true
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "referrals_referrer_user_id_fkey"
             columns: ["referrer_user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_user_id_fkey"
+            columns: ["referrer_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -1362,6 +1425,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_message_flags_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
         ]
       }
       user_public_stats: {
@@ -1414,7 +1484,24 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_map_presence: {
+        Row: {
+          current_lat: number | null
+          current_lng: number | null
+          display_name: string | null
+          full_name: string | null
+          is_admin: boolean | null
+          is_driver: boolean | null
+          is_map_visible: boolean | null
+          is_rider: boolean | null
+          location_updated_at: string | null
+          map_history_hidden_from_public: boolean | null
+          photo_url: string | null
+          subscription_active: boolean | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_ride_atomic: {
