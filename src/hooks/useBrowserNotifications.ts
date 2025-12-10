@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { playNotificationSound as playSound } from './useNotificationSound';
 
 export function useBrowserNotifications() {
   const { user } = useAuth();
@@ -21,6 +22,11 @@ export function useBrowserNotifications() {
     }
 
     try {
+      // Unlock audio on permission request (user gesture)
+      if (typeof (window as any).unlockNotificationSound === 'function') {
+        (window as any).unlockNotificationSound();
+      }
+      
       const result = await Notification.requestPermission();
       setPermission(result);
       return result === 'granted';
@@ -30,8 +36,10 @@ export function useBrowserNotifications() {
     }
   };
 
-  const showNotification = (title: string, options?: NotificationOptions) => {
+  const showNotification = useCallback((title: string, options?: NotificationOptions) => {
     if (!isSupported || permission !== 'granted') {
+      // Still play sound even if notifications not allowed
+      playNotificationSound();
       return;
     }
 
@@ -39,28 +47,34 @@ export function useBrowserNotifications() {
       const notification = new Notification(title, {
         icon: '/icon.png',
         badge: '/icon.png',
+        tag: 'cashridez-' + Date.now(), // Unique tag to allow multiple notifications
+        silent: false, // Ensure not silent
         ...options,
       });
 
       // Play notification sound
       playNotificationSound();
 
+      // Auto-close after 5 seconds
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+
       return notification;
     } catch (error) {
       console.error('Error showing notification:', error);
+      // Still play sound on error
+      playNotificationSound();
     }
-  };
+  }, [isSupported, permission]);
 
-  const playNotificationSound = () => {
+  const playNotificationSound = useCallback(() => {
     try {
-      // Use the global custom notification sound
-      if (typeof (window as any).playNotificationSound === 'function') {
-        (window as any).playNotificationSound();
-      }
+      playSound();
     } catch (error) {
       console.error('Error playing notification sound:', error);
     }
-  };
+  }, []);
 
   // Listen for new notifications
   useEffect(() => {

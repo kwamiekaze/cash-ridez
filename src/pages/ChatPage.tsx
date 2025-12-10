@@ -14,6 +14,7 @@ import { useReadReceipts } from "@/hooks/useReadReceipts";
 import { useAuth } from "@/contexts/AuthContext";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { PremiumCrown } from "@/components/PremiumCrown";
+import { playNotificationSound } from "@/hooks/useNotificationSound";
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,9 +64,12 @@ export default function ChatPage() {
           const newMsg = payload.new;
           setMessages(prev => [...prev, newMsg]);
           scrollToBottom();
-          // Mark as read if it's not our message
-          if (newMsg.sender_id !== currentUserId && readReceiptsEnabled) {
-            markAsRead(newMsg.id);
+          // Play sound and mark as read if it's not our message
+          if (newMsg.sender_id !== currentUserId) {
+            playNotificationSound();
+            if (readReceiptsEnabled) {
+              markAsRead(newMsg.id);
+            }
           }
         }
       )

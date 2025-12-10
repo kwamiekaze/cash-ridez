@@ -10,6 +10,7 @@ import { Send, Loader2, Edit2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { PremiumCrown } from "@/components/PremiumCrown";
+import { playNotificationSound } from "@/hooks/useNotificationSound";
 
 interface DirectMessageDialogProps {
   otherUserId: string;
@@ -154,7 +155,12 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
             filter: `chat_id=eq.${chatIdData}`,
           },
           (payload) => {
-            setMessages((prev) => [...prev, payload.new as DirectMessage]);
+            const newMsg = payload.new as DirectMessage;
+            // Play sound for messages from other users
+            if (newMsg.sender_id !== user?.id) {
+              playNotificationSound();
+            }
+            setMessages((prev) => [...prev, newMsg]);
           }
         )
         .subscribe();

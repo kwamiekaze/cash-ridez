@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MapPin, Star, Clock, Calendar } from "lucide-react";
 import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
 import { useNavigate } from "react-router-dom";
+import { playNotificationSound } from "@/hooks/useNotificationSound";
 
 export const AvailableRidersList = () => {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export const AvailableRidersList = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pageSize] = useState(30);
+  const prevRiderCountRef = useRef(0);
 
   useEffect(() => {
     if (user) {
@@ -32,7 +34,26 @@ export const AvailableRidersList = () => {
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
+            schema: 'public',
+            table: 'ride_requests',
+          },
+          (payload: any) => {
+            // Play sound for new trip requests (not from current user)
+            if (payload.new?.rider_id !== user?.id) {
+              playNotificationSound();
+            }
+            if (refreshTimer) clearTimeout(refreshTimer);
+            refreshTimer = setTimeout(() => {
+              loadOnlineRiders();
+              refreshTimer = null;
+            }, 3000); // 3 second debounce to reduce load
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
             schema: 'public',
             table: 'ride_requests',
           },
@@ -41,7 +62,7 @@ export const AvailableRidersList = () => {
             refreshTimer = setTimeout(() => {
               loadOnlineRiders();
               refreshTimer = null;
-            }, 3000); // 3 second debounce to reduce load
+            }, 3000);
           }
         )
         .subscribe();

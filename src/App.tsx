@@ -11,6 +11,7 @@ import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
 import { FloatingUpdatePin } from "./components/FloatingUpdatePin";
+import { useNotificationSound } from "./hooks/useNotificationSound";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -66,6 +67,12 @@ const GlobalFloatingUpdatePin = () => {
   return <FloatingUpdatePin />;
 };
 
+// Initialize notification sound system globally
+const NotificationSoundInitializer = () => {
+  useNotificationSound();
+  return null;
+};
+
 // Defer non-critical UI until idle
 const DeferMount = ({ children }: { children: React.ReactNode }) => {
   const [mounted, setMounted] = useState(false);
@@ -103,6 +110,7 @@ const App = () => (
         }}
       >
         <AuthProvider>
+          <NotificationSoundInitializer />
           <Toaster />
           <Sonner />
           <PageViewTracker />
