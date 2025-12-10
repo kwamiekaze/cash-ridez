@@ -1,13 +1,14 @@
 // Service Worker for CashRidez PWA
-const CACHE_NAME = 'cashridez-v1';
+const CACHE_NAME = 'cashridez-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.png'
+  '/icon.png',
+  '/sounds/notification.mp3'
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets including notification sound
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -68,5 +69,103 @@ self.addEventListener('fetch', (event) => {
         });
       })
     );
+  }
+});
+
+// Push event - handle incoming push notifications
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push received:', event);
+  
+  let data = {
+    title: 'CashRidez',
+    body: 'You have a new notification',
+    icon: '/icon.png',
+    badge: '/icon.png',
+    tag: 'cashridez-notification',
+    data: {}
+  };
+
+  try {
+    if (event.data) {
+      const payload = event.data.json();
+      data = {
+        title: payload.title || data.title,
+        body: payload.body || payload.message || data.body,
+        icon: payload.icon || data.icon,
+        badge: payload.badge || data.badge,
+        tag: payload.tag || data.tag,
+        data: payload.data || payload
+      };
+    }
+  } catch (e) {
+    console.error('[SW] Error parsing push data:', e);
+  }
+
+  const options = {
+    body: data.body,
+    icon: data.icon,
+    badge: data.badge,
+    tag: data.tag,
+    data: data.data,
+    vibrate: [200, 100, 200],
+    requireInteraction: false,
+    actions: [
+      { action: 'open', title: 'Open' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options).then(() => {
+      // Notify all clients to play sound
+      return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: 'PLAY_NOTIFICATION_SOUND',
+            data: data
+          });
+        });
+      });
+    })
+  );
+});
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.notification.tag);
+  event.notification.close();
+
+  const data = event.notification.data || {};
+  const link = data.link || '/';
+
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Try to focus an existing window
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.focus();
+          client.postMessage({
+            type: 'NOTIFICATION_CLICKED',
+            link: link
+          });
+          return;
+        }
+      }
+      // Open new window if none exists
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(link);
+      }
+    })
+  );
+});
+
+// Message event - handle messages from main thread
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });

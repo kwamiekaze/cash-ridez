@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { playNotificationSound } from '@/hooks/useNotificationSound';
 
 interface ActiveRide {
   id: string;
@@ -31,6 +32,7 @@ export function FloatingChat({ inChatTab = false }: FloatingChatProps) {
   const [open, setOpen] = useState(false);
   const [activeRides, setActiveRides] = useState<ActiveRide[]>([]);
   const [totalUnread, setTotalUnread] = useState(0);
+  const prevUnreadRef = useRef(0);
 
   useEffect(() => {
     if (!user) return;
@@ -59,7 +61,11 @@ export function FloatingChat({ inChatTab = false }: FloatingChatProps) {
           schema: 'public',
           table: 'ride_messages',
         },
-        () => {
+        (payload: any) => {
+          // Play sound for new messages from other users
+          if (payload.new?.sender_id !== user?.id) {
+            playNotificationSound();
+          }
           fetchActiveRides();
         }
       )

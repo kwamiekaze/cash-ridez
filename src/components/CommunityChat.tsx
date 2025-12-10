@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PremiumCrown } from "@/components/PremiumCrown";
+import { playNotificationSound } from "@/hooks/useNotificationSound";
 
 interface Message {
   id: string;
@@ -148,6 +149,11 @@ export function CommunityChat() {
         },
         async (payload) => {
           const newMsg = payload.new as Message;
+          
+          // Play sound for messages from other users
+          if (newMsg.user_id !== user?.id) {
+            playNotificationSound();
+          }
           
           // Fetch sender profile with subscription status
           const { data: profile } = await supabase
