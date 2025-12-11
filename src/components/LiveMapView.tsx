@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LocationConsentDialog } from "./LocationConsentDialog";
 import { AdminMapUserInfoPanel } from "./AdminMapUserInfoPanel";
 import { canUserUpdateMapPin } from "@/lib/mapPermissions";
-
+import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -174,6 +174,7 @@ const getOnlineStatus = (locationUpdatedAt: string | null): { isOnline: boolean;
 
 // Helper to create avatar-based divIcon with transparent background and status styling
 // Includes first-letter fallback when no profile photo exists
+// Updated to use 72h ring coloring for non-admin views
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
@@ -188,18 +189,30 @@ const createAvatarDivIcon = (
     admin: '/assets/map/driver-car-icon.png', // Admin uses same as driver, no crown
   };
 
-  // Get status styling (only apply for admin view)
-  const status = isAdminView ? getOnlineStatus(locationUpdatedAt || null) : { isOnline: false, isOffline: false, opacity: 1, borderColor: '#FACC15' };
+  // Admin view uses detailed status styling, non-admin uses 72h ring coloring
+  let borderColor: string;
+  let opacity: number;
+  let onlineIndicator = '';
+  
+  if (isAdminView) {
+    // Admin view: detailed online status (green/yellow/grey with opacity)
+    const status = getOnlineStatus(locationUpdatedAt || null);
+    borderColor = status.borderColor;
+    opacity = status.opacity;
+    
+    // Online indicator dot for admin view
+    if (status.isOnline) {
+      onlineIndicator = `<div style="position:absolute;top:0;right:0;width:12px;height:12px;background:#10B981;border-radius:50%;border:2px solid #1a1a2e;"></div>`;
+    }
+  } else {
+    // Non-admin view: 72h ring coloring (gold for active, grey for stale)
+    const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
+    borderColor = getRingColor(ringStatus);
+    opacity = 1; // No opacity change for non-admins
+  }
   
   const size = 48;
   const borderWidth = 2;
-  const borderColor = isAdminView ? status.borderColor : '#FACC15';
-  const opacity = isAdminView ? status.opacity : 1;
-
-  // Online indicator dot for admin view
-  const onlineIndicator = isAdminView && status.isOnline 
-    ? `<div style="position:absolute;top:0;right:0;width:12px;height:12px;background:#10B981;border-radius:50%;border:2px solid #1a1a2e;"></div>`
-    : '';
 
   // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
@@ -207,7 +220,7 @@ const createAvatarDivIcon = (
     const firstLetter = userName?.trim()?.charAt(0)?.toUpperCase() || '';
     
     if (firstLetter) {
-      // Show letter-based avatar with gold styling
+      // Show letter-based avatar with ring color
       const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div>${onlineIndicator}</div>`;
       
       return L.divIcon({
@@ -871,9 +884,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       };
     }
 
-    // NON-ADMIN: Show users based on filter (online or all)
+    // NON-ADMIN: Always show all users within 72h (no filter buttons for non-admins)
+    // Ring color indicates recency: gold = active within 72h, grey = older
     if (!isAdmin) {
-      const usersToShow = userFilter === 'online' ? onlineUsers : allUsersForNonAdmin;
+      // Always show all users for non-admins (filter buttons removed)
+      const usersToShow = allUsersForNonAdmin;
       
       if (usersToShow.length > 0) {
         usersToShow.forEach((mapUser) => {
@@ -1144,31 +1159,33 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             </div>
           )}
           
-          {/* Legend */}
+          {/* Legend / Filters */}
           <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
-            {/* User filter: All Users vs Online Users */}
-            <div className="flex items-center rounded-full border border-border overflow-hidden">
-              <button
-                onClick={() => setUserFilter('online')}
-                className={`px-3 py-1 text-xs transition-colors ${
-                  userFilter === 'online'
-                    ? 'bg-emerald-500/20 text-emerald-400 border-r border-border'
-                    : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
-                }`}
-              >
-                Online
-              </button>
-              <button
-                onClick={() => setUserFilter('all')}
-                className={`px-3 py-1 text-xs transition-colors ${
-                  userFilter === 'all'
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-transparent text-muted-foreground hover:bg-muted/20'
-                }`}
-              >
-                Recently Online
-              </button>
-            </div>
+            {/* User filter: Only shown for ADMINS - removed for non-admin users */}
+            {isAdmin && (
+              <div className="flex items-center rounded-full border border-border overflow-hidden">
+                <button
+                  onClick={() => setUserFilter('online')}
+                  className={`px-3 py-1 text-xs transition-colors ${
+                    userFilter === 'online'
+                      ? 'bg-emerald-500/20 text-emerald-400 border-r border-border'
+                      : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
+                  }`}
+                >
+                  Online
+                </button>
+                <button
+                  onClick={() => setUserFilter('all')}
+                  className={`px-3 py-1 text-xs transition-colors ${
+                    userFilter === 'all'
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-transparent text-muted-foreground hover:bg-muted/20'
+                  }`}
+                >
+                  Recently Online
+                </button>
+              </div>
+            )}
 
             {/* Admin time range dropdown - only shown when "All Users" filter is active */}
             {isAdmin && userFilter === 'all' && (
