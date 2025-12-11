@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -20,18 +21,6 @@ interface PublicMapUser {
   isDriver?: boolean;
   isRider?: boolean;
 }
-
-// Helper to derive display role label
-const getRoleLabel = (user: PublicMapUser): string => {
-  if (user.isAdmin) return 'Admin';
-  
-  const roles: string[] = [];
-  if (user.isDriver) roles.push('Driver');
-  if (user.isRider) roles.push('Rider');
-  
-  if (roles.length === 0) return 'User';
-  return roles.join(' & ');
-};
 
 // Helper to determine marker variant
 const getMarkerVariant = (user: PublicMapUser): 'driver' | 'rider' | 'admin' => {
@@ -63,12 +52,13 @@ const getJitteredCoords = (lat: number, lng: number, id: string, jitterMiles = 0
   };
 };
 
-// Create avatar-based divIcon with first-letter fallback
+// Create avatar-based divIcon with first-letter fallback and 72h ring coloring
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
   variant: 'driver' | 'rider' | 'admin',
-  userName?: string | null
+  userName?: string | null,
+  locationUpdatedAt?: string | null
 ): any => {
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
@@ -78,15 +68,16 @@ const createAvatarDivIcon = (
 
   const size = 48;
   const borderWidth = 2;
-  const borderColor = '#FACC15';
+  
+  // 72-hour ring coloring: gold for active, grey for stale
+  const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
+  const borderColor = getRingColor(ringStatus);
 
   // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
-    // Try to get first letter from user's name
     const firstLetter = userName?.trim()?.charAt(0)?.toUpperCase() || '';
     
     if (firstLetter) {
-      // Show letter-based avatar with gold styling
       const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div></div>`;
       
       return L.divIcon({
@@ -98,7 +89,6 @@ const createAvatarDivIcon = (
       });
     }
     
-    // No name available, use fallback icon
     const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div></div>`;
 
     return L.divIcon({
@@ -125,37 +115,26 @@ interface PublicLiveMapViewProps {
   className?: string;
 }
 
+/**
+ * PublicLiveMapView - Anonymous visitor view of the live map
+ * Shows all users within 72 hours with NO filter buttons (removed per user request)
+ * Ring color indicates recency: gold = active within 72h, grey = older
+ */
 export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [onlineUsers, setOnlineUsers] = useState<PublicMapUser[]>([]);
-  // Recently online = 72 hour window
+  // Public view: always show all users within 72h (no filter buttons)
   const [allUsers72h, setAllUsers72h] = useState<PublicMapUser[]>([]);
-  const [userFilter, setUserFilter] = useState<'online' | 'all'>('online');
 
-  // Fetch public map data from the public_map_presence view
-  // This view is accessible to anonymous users and contains only safe, filtered data
-  // Fetch public map data from the public_map_presence view
-  // "Recently Online" = 72 hours window for better map coverage
+  // Fetch public map data - always get 72h window
   const fetchPublicMapData = useCallback(async () => {
     try {
-      const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
-      // Query the public view for online users (within 60 minutes)
-      const { data: onlineData, error: onlineError } = await supabase
-        .from("public_map_presence" as any)
-        .select("*")
-        .gte("location_updated_at", sixtyMinutesAgo);
-
-      if (onlineError) {
-        console.error("Error fetching online users:", onlineError);
-      }
-
-      // Query the public view for "Recently Online" users (within 72 hours)
+      // Query the public view for all users within 72 hours
       const { data: allData72h, error: allError } = await supabase
         .from("public_map_presence" as any)
         .select("*")
@@ -180,7 +159,6 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
         isRider: row.is_rider === true,
       });
 
-      setOnlineUsers((onlineData || []).map(mapViewData));
       setAllUsers72h((allData72h || []).map(mapViewData));
     } catch (err) {
       console.error("Error fetching public map data:", err);
@@ -271,7 +249,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
     }
   }, [fetchPublicMapData]);
 
-  // Update markers
+  // Update markers - always show all 72h users with ring coloring
   useEffect(() => {
     if (!mapInstanceRef.current || !L) return;
 
@@ -282,9 +260,8 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       }
     });
 
-    const usersToShow = userFilter === 'online' ? onlineUsers : allUsers72h;
-
-    usersToShow.forEach((mapUser) => {
+    // Show all users within 72h - ring color indicates recency
+    allUsers72h.forEach((mapUser) => {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
 
       const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -294,7 +271,8 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       const firstName = fullName.split(' ')[0];
       
       const variant = getMarkerVariant(mapUser);
-      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName);
+      // Pass locationUpdatedAt for 72h ring coloring
+      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at);
 
       // Public popup: first name only, no roles, no stats, no timestamps
       L.marker([jittered.lat, jittered.lng], { icon })
@@ -309,7 +287,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
           </div>
         `);
     });
-  }, [userFilter, onlineUsers, allUsers72h]);
+  }, [allUsers72h]);
 
   // Center on Georgia
   const handleCenterOnGeorgia = () => {
@@ -331,32 +309,8 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   return (
     <Card className={className}>
       <CardContent className="p-0">
-        {/* Filter bar */}
-        <div className="flex items-center gap-3 p-4 pb-2">
-          <div className="flex items-center rounded-full border border-border overflow-hidden">
-            <button
-              onClick={() => setUserFilter('online')}
-              className={`px-3 py-1.5 text-xs transition-colors ${
-                userFilter === 'online'
-                  ? 'bg-emerald-500/20 text-emerald-400 border-r border-border'
-                  : 'bg-transparent text-muted-foreground hover:bg-muted/20 border-r border-border'
-              }`}
-            >
-              Online
-            </button>
-            <button
-              onClick={() => setUserFilter('all')}
-              className={`px-3 py-1.5 text-xs transition-colors ${
-                userFilter === 'all'
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-transparent text-muted-foreground hover:bg-muted/20'
-              }`}
-            >
-              Recently Online
-            </button>
-          </div>
-        </div>
-
+        {/* No filter buttons for public view - all users shown with ring coloring */}
+        
         {/* Map wrapper */}
         <div className="relative">
           {loading && (
@@ -364,7 +318,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          <div className="live-map-card mx-4 mb-4">
+          <div className="live-map-card mx-4 my-4">
             <div 
               ref={mapRef} 
               className="h-[400px] w-full"

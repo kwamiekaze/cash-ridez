@@ -189,7 +189,17 @@ export function CommunityChat() {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !canSendMessage) return;
+    if (!newMessage.trim() || !user) return;
+
+    // Block non-admin users from posting to community chat
+    if (!isAdmin) {
+      toast({
+        title: "Community chat temporarily unavailable",
+        description: "Please download the latest version of the CashRidez app for updates.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setSending(true);
     const { error } = await supabase
@@ -487,7 +497,15 @@ export function CommunityChat() {
       </ScrollArea>
 
       <form onSubmit={handleSend} className="p-4 border-t border-border">
-        {!canSendMessage && !isSubscribed && (
+        {/* Community chat locked for non-admins */}
+        {!isAdmin && (
+          <div className="mb-3 p-3 bg-muted/50 border border-border rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              Community chat is temporarily unavailable. Please download the latest version of the CashRidez app for updates.
+            </p>
+          </div>
+        )}
+        {isAdmin && !canSendMessage && !isSubscribed && (
           <div className="mb-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-sm text-yellow-600 dark:text-yellow-400">
               You've reached your free message limit. Subscribe to continue chatting!
@@ -498,11 +516,11 @@ export function CommunityChat() {
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={canSendMessage ? "Type a message..." : "Subscribe to send messages"}
-            disabled={sending || !canSendMessage}
+            placeholder={isAdmin ? "Type a message..." : "Community chat temporarily unavailable"}
+            disabled={sending || !isAdmin}
             maxLength={isAdmin ? 1000 : 500}
           />
-          <Button type="submit" disabled={!newMessage.trim() || sending || !canSendMessage}>
+          <Button type="submit" disabled={!newMessage.trim() || sending || !isAdmin}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
