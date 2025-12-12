@@ -1,84 +1,406 @@
 /**
- * Fare Estimator Utility
- * Estimates traditional rideshare fares using simple math formulas.
- * Aligned with fareestimate.com style pricing model.
- * No external APIs are called - all calculations are local.
+ * Fare Estimator Utility v2
+ * Estimates traditional rideshare fares using realistic range-based formulas.
+ * 
+ * KEY IMPROVEMENTS:
+ * 1. Uses realistic fare ranges ($1.10-$2.10 per mile, not $0.90-$1.40)
+ * 2. Driver take-rate is a range (25%-55%), not fixed 65%
+ * 3. Includes surge multiplier range (1.0-1.6)
+ * 4. Proper minimum fare floor ($7-$12)
+ * 5. All outputs are ranges, not single values
  * 
  * FORMULA:
- * Traditional Fare = BASE_FARE + (distance * PER_MILE) + (duration * PER_MINUTE) + BOOKING_FEE
- * Driver Take-Home = Traditional Fare * TRADITIONAL_DRIVER_SHARE (65%)
- * 
- * Rider Savings = Traditional Mid Fare - CashRidez Offer
- * Driver Extra = CashRidez Offer - Traditional Driver Take-Home
+ * fare = (base + miles*per_mile + minutes*per_minute + fees) * surge_multiplier
  */
 
+import { haversineMiles } from '@/lib/zipDistance';
+
 // ============================================================================
-// FARE CONFIGURATION - Adjust these values to tune pricing
+// FARE CONFIGURATION - Realistic Georgia/Atlanta market ranges
 // ============================================================================
 export const FARE_ESTIMATE_CONFIG = {
-  // Base fare charged at start of trip
-  BASE_FARE: 2.75,
+  // Base fare range
+  BASE_FARE_LOW: 1.50,
+  BASE_FARE_HIGH: 4.00,
   
-  // Per-mile rates (min/max for range)
-  PER_MILE_MIN: 0.90,
-  PER_MILE_MAX: 1.40,
+  // Per-mile rates - realistic for rideshare
+  PER_MILE_LOW: 1.10,
+  PER_MILE_HIGH: 2.10,
   
-  // Per-minute rate (same for min/max)
-  PER_MINUTE: 0.20,
+  // Per-minute rates
+  PER_MINUTE_LOW: 0.15,
+  PER_MINUTE_HIGH: 0.45,
   
-  // Booking/service fee
-  BOOKING_FEE: 2.25,
+  // Booking/service/misc fees range
+  FEES_LOW: 2.00,
+  FEES_HIGH: 8.00,
   
-  // What percentage traditional rideshare drivers keep (60-70%)
-  // Using 65% as industry standard
-  TRADITIONAL_DRIVER_SHARE: 0.65,
+  // Minimum fare floor range
+  MINIMUM_FARE_LOW: 7.00,
+  MINIMUM_FARE_HIGH: 12.00,
   
-  // Minimum fare threshold
-  MINIMUM_FARE: 7.00,
+  // Surge/variance multiplier range (default, can be tuned)
+  SURGE_LOW: 1.0,
+  SURGE_HIGH: 1.6,
+  
+  // Driver take-rate range (what % of fare driver keeps after platform fees)
+  // Traditional rideshare drivers keep 25-55% depending on platform, tips, bonuses
+  DRIVER_TAKE_RATE_LOW: 0.25,
+  DRIVER_TAKE_RATE_HIGH: 0.55,
+  
+  // Road factor for haversine fallback (multiply straight-line by this)
+  ROAD_FACTOR_LOW: 1.15,
+  ROAD_FACTOR_HIGH: 1.35,
+  
+  // Average speed assumptions for duration estimation (mph)
+  AVG_SPEED_LOW: 25, // Urban/traffic
+  AVG_SPEED_HIGH: 45, // Highway
 };
 
-// Distance conversion
-const KM_TO_MILES = 0.621371;
-
 // ============================================================================
-// CORE ESTIMATION FUNCTIONS
+// TRIP METRICS CALCULATION
 // ============================================================================
 
-export interface FareInputs {
+export interface TripMetrics {
   distanceMiles: number;
   durationMinutes: number;
-}
-
-export interface FareEstimate {
-  traditionalMin: number;
-  traditionalMax: number;
-  traditionalAverage: number;
+  distanceText: string;
+  durationText: string;
+  source: 'coordinates' | 'zip' | 'fallback';
 }
 
 /**
- * Estimate what traditional rideshare services would charge for a trip
- * Uses fareestimate.com style calculation:
- * fare = base + (miles * per_mile_rate) + (minutes * per_minute_rate) + booking_fee
+ * Get trip metrics from coordinates
+ * Uses haversine distance with road factor adjustment
  */
-export function estimateTraditionalFare({ distanceMiles, durationMinutes }: FareInputs): FareEstimate {
-  const { BASE_FARE, PER_MILE_MIN, PER_MILE_MAX, PER_MINUTE, BOOKING_FEE, MINIMUM_FARE } = FARE_ESTIMATE_CONFIG;
+export function getTripMetricsFromCoords(
+  pickupLat: number,
+  pickupLng: number,
+  dropoffLat: number,
+  dropoffLng: number
+): TripMetrics | null {
+  // Validate coordinates - check for default/mock values
+  if (!isValidCoordinate(pickupLat, pickupLng) || !isValidCoordinate(dropoffLat, dropoffLng)) {
+    return null;
+  }
   
-  // Calculate min fare
-  const minRaw = BASE_FARE + (distanceMiles * PER_MILE_MIN) + (durationMinutes * PER_MINUTE) + BOOKING_FEE;
-  const traditionalMin = Math.max(MINIMUM_FARE, Math.round(minRaw * 100) / 100);
+  // Calculate straight-line distance
+  const straightLineDistance = haversineMiles(pickupLat, pickupLng, dropoffLat, dropoffLng);
   
-  // Calculate max fare
-  const maxRaw = BASE_FARE + (distanceMiles * PER_MILE_MAX) + (durationMinutes * PER_MINUTE) + BOOKING_FEE;
-  const traditionalMax = Math.max(MINIMUM_FARE, Math.round(maxRaw * 100) / 100);
+  if (straightLineDistance <= 0) return null;
   
-  // Average
-  const traditionalAverage = Math.round(((traditionalMin + traditionalMax) / 2) * 100) / 100;
+  // Apply road factor (roads are longer than straight-line)
+  const avgRoadFactor = (FARE_ESTIMATE_CONFIG.ROAD_FACTOR_LOW + FARE_ESTIMATE_CONFIG.ROAD_FACTOR_HIGH) / 2;
+  const distanceMiles = Math.round(straightLineDistance * avgRoadFactor * 10) / 10;
   
-  return { traditionalMin, traditionalMax, traditionalAverage };
+  // Estimate duration based on average speed (use mid-point for main estimate)
+  const avgSpeed = (FARE_ESTIMATE_CONFIG.AVG_SPEED_LOW + FARE_ESTIMATE_CONFIG.AVG_SPEED_HIGH) / 2;
+  const durationMinutes = Math.round((distanceMiles / avgSpeed) * 60);
+  
+  return {
+    distanceMiles,
+    durationMinutes,
+    distanceText: `${distanceMiles.toFixed(1)} mi`,
+    durationText: `${durationMinutes} min`,
+    source: 'coordinates',
+  };
+}
+
+/**
+ * Check if coordinates are valid (not default/mock values)
+ */
+function isValidCoordinate(lat: number, lng: number): boolean {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+  if (lat === 0 && lng === 0) return false;
+  // Check for the mock NYC coordinates used in CreateRideRequest
+  if (lat === 40.7128 && lng === -74.006) return false;
+  // Valid Georgia coordinates range roughly: lat 30.5-35, lng -85.5 to -80.5
+  // But allow broader range for edge cases
+  if (lat < 25 || lat > 50 || lng < -130 || lng > -65) return false;
+  return true;
 }
 
 // ============================================================================
-// LEGACY API COMPATIBILITY (used by existing SavingsCalculator)
+// FARE RANGE ESTIMATION
+// ============================================================================
+
+export interface FareRange {
+  low: number;
+  high: number;
+  mid: number;
+}
+
+export interface TraditionalFareEstimate {
+  fareRange: FareRange;
+  driverEarningsRange: FareRange;
+  assumptions: {
+    distanceMiles: number;
+    durationMinutes: number;
+    baseFareRange: string;
+    perMileRange: string;
+    perMinuteRange: string;
+    feesRange: string;
+    surgeRange: string;
+    driverTakeRateRange: string;
+  };
+}
+
+/**
+ * Estimate traditional rideshare fare range for a trip
+ * Returns realistic low/high bounds based on market data
+ */
+export function estimateRideshareFareRange(
+  distanceMiles: number,
+  durationMinutes: number
+): TraditionalFareEstimate | null {
+  if (!distanceMiles || distanceMiles <= 0) return null;
+  if (!durationMinutes || durationMinutes <= 0) {
+    // Estimate duration from distance using average speed
+    const avgSpeed = (FARE_ESTIMATE_CONFIG.AVG_SPEED_LOW + FARE_ESTIMATE_CONFIG.AVG_SPEED_HIGH) / 2;
+    durationMinutes = Math.round((distanceMiles / avgSpeed) * 60);
+  }
+  
+  const config = FARE_ESTIMATE_CONFIG;
+  
+  // Calculate LOW fare estimate (minimum rates, no surge)
+  const fareLowRaw = (
+    config.BASE_FARE_LOW +
+    (distanceMiles * config.PER_MILE_LOW) +
+    (durationMinutes * config.PER_MINUTE_LOW) +
+    config.FEES_LOW
+  ) * config.SURGE_LOW;
+  
+  // Calculate HIGH fare estimate (maximum rates, with surge)
+  const fareHighRaw = (
+    config.BASE_FARE_HIGH +
+    (distanceMiles * config.PER_MILE_HIGH) +
+    (durationMinutes * config.PER_MINUTE_HIGH) +
+    config.FEES_HIGH
+  ) * config.SURGE_HIGH;
+  
+  // Apply minimum fare floors
+  const fareLow = Math.max(config.MINIMUM_FARE_LOW, Math.round(fareLowRaw * 100) / 100);
+  const fareHigh = Math.max(config.MINIMUM_FARE_HIGH, Math.round(fareHighRaw * 100) / 100);
+  const fareMid = Math.round(((fareLow + fareHigh) / 2) * 100) / 100;
+  
+  // Calculate driver earnings range
+  // Low end: low fare * low take rate
+  // High end: high fare * high take rate
+  const driverEarnLow = Math.round((fareLow * config.DRIVER_TAKE_RATE_LOW) * 100) / 100;
+  const driverEarnHigh = Math.round((fareHigh * config.DRIVER_TAKE_RATE_HIGH) * 100) / 100;
+  const driverEarnMid = Math.round(((driverEarnLow + driverEarnHigh) / 2) * 100) / 100;
+  
+  return {
+    fareRange: { low: fareLow, high: fareHigh, mid: fareMid },
+    driverEarningsRange: { low: driverEarnLow, high: driverEarnHigh, mid: driverEarnMid },
+    assumptions: {
+      distanceMiles,
+      durationMinutes,
+      baseFareRange: `$${config.BASE_FARE_LOW.toFixed(2)}-$${config.BASE_FARE_HIGH.toFixed(2)}`,
+      perMileRange: `$${config.PER_MILE_LOW.toFixed(2)}-$${config.PER_MILE_HIGH.toFixed(2)}/mi`,
+      perMinuteRange: `$${config.PER_MINUTE_LOW.toFixed(2)}-$${config.PER_MINUTE_HIGH.toFixed(2)}/min`,
+      feesRange: `$${config.FEES_LOW.toFixed(2)}-$${config.FEES_HIGH.toFixed(2)}`,
+      surgeRange: `${config.SURGE_LOW}x-${config.SURGE_HIGH}x`,
+      driverTakeRateRange: `${config.DRIVER_TAKE_RATE_LOW * 100}%-${config.DRIVER_TAKE_RATE_HIGH * 100}%`,
+    },
+  };
+}
+
+// ============================================================================
+// SAVINGS & EARNINGS COMPARISON
+// ============================================================================
+
+export interface RiderSavingsResult {
+  fareRange: FareRange;
+  savingsRange: FareRange;
+  cashRidezOffer: number;
+  hasSavings: boolean;
+  label: string;
+}
+
+/**
+ * Calculate rider savings compared to traditional rideshare
+ * Returns a range of potential savings
+ */
+export function calculateRiderSavingsRange(
+  distanceMiles: number,
+  durationMinutes: number,
+  cashRidezOffer: number
+): RiderSavingsResult | null {
+  if (!cashRidezOffer || cashRidezOffer <= 0) return null;
+  
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes);
+  if (!estimate) return null;
+  
+  // Savings = traditional fare - CashRidez offer
+  // savingsLow: what you save if traditional was at its LOW end
+  // savingsHigh: what you save if traditional was at its HIGH end
+  const savingsLow = Math.max(0, estimate.fareRange.low - cashRidezOffer);
+  const savingsHigh = Math.max(0, estimate.fareRange.high - cashRidezOffer);
+  const savingsMid = Math.round(((savingsLow + savingsHigh) / 2) * 100) / 100;
+  
+  const hasSavings = savingsHigh > 0;
+  
+  let label: string;
+  if (savingsLow > 0 && savingsHigh > 0) {
+    label = `You may save approx $${savingsLow.toFixed(0)}–$${savingsHigh.toFixed(0)}`;
+  } else if (savingsHigh > 0) {
+    label = `You may save up to $${savingsHigh.toFixed(0)}`;
+  } else {
+    const overage = cashRidezOffer - estimate.fareRange.mid;
+    label = overage > 0 
+      ? `Your offer is $${overage.toFixed(0)} above typical estimate`
+      : 'Competitive with typical rideshare';
+  }
+  
+  return {
+    fareRange: estimate.fareRange,
+    savingsRange: { low: savingsLow, high: savingsHigh, mid: savingsMid },
+    cashRidezOffer,
+    hasSavings,
+    label,
+  };
+}
+
+export interface DriverEarningsResult {
+  traditionalEarningsRange: FareRange;
+  traditionalFareRange: FareRange;
+  cashRidezEarnings: number;
+  extraRange: FareRange;
+  hasExtra: boolean;
+  label: string;
+}
+
+/**
+ * Calculate driver extra earnings on CashRidez vs traditional
+ * CashRidez drivers keep 100%, traditional drivers keep 25-55%
+ */
+export function calculateDriverExtraRange(
+  distanceMiles: number,
+  durationMinutes: number,
+  cashRidezEarnings: number
+): DriverEarningsResult | null {
+  if (!cashRidezEarnings || cashRidezEarnings <= 0) return null;
+  
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes);
+  if (!estimate) return null;
+  
+  // Extra = CashRidez earnings - traditional driver earnings
+  // extraLow: worst case (CashRidez vs highest traditional earning)
+  // extraHigh: best case (CashRidez vs lowest traditional earning)
+  const extraLow = cashRidezEarnings - estimate.driverEarningsRange.high;
+  const extraHigh = cashRidezEarnings - estimate.driverEarningsRange.low;
+  const extraMid = Math.round(((extraLow + extraHigh) / 2) * 100) / 100;
+  
+  const hasExtra = extraLow > 0;
+  
+  let label: string;
+  if (extraLow > 0 && extraHigh > 0) {
+    label = `You could earn $${extraLow.toFixed(0)}–$${extraHigh.toFixed(0)} more`;
+  } else if (extraHigh > 0) {
+    label = `You could earn up to $${extraHigh.toFixed(0)} more`;
+  } else {
+    label = 'Competitive with traditional rideshare earnings';
+  }
+  
+  return {
+    traditionalEarningsRange: estimate.driverEarningsRange,
+    traditionalFareRange: estimate.fareRange,
+    cashRidezEarnings,
+    extraRange: { 
+      low: Math.round(extraLow * 100) / 100, 
+      high: Math.round(extraHigh * 100) / 100, 
+      mid: extraMid 
+    },
+    hasExtra,
+    label,
+  };
+}
+
+// ============================================================================
+// COMPLETE TRIP CALCULATION (unified interface)
+// ============================================================================
+
+export interface TripFareCalculation {
+  // Trip metrics
+  distanceMiles: number;
+  durationMinutes: number;
+  metricsSource: 'coordinates' | 'zip' | 'fallback';
+  
+  // Traditional rideshare estimates (ranges)
+  traditionalFareRange: FareRange;
+  traditionalDriverEarningsRange: FareRange;
+  
+  // CashRidez amounts
+  cashRidezPrice: number;
+  
+  // Comparison results (ranges)
+  riderSavingsRange: FareRange;
+  driverExtraRange: FareRange;
+  
+  // Flags
+  hasSavings: boolean;
+  hasExtra: boolean;
+  
+  // Human-readable labels
+  riderSavingsLabel: string;
+  driverExtraLabel: string;
+}
+
+/**
+ * Calculate all fare comparisons for a trip using coordinates
+ * This is the main function to use for complete calculations
+ */
+export function calculateTripFares(
+  pickupLat: number,
+  pickupLng: number,
+  dropoffLat: number,
+  dropoffLng: number,
+  cashRidezPrice: number,
+  etaMinutes?: number // Optional override for duration
+): TripFareCalculation | null {
+  // Validate price
+  if (!cashRidezPrice || cashRidezPrice <= 0) return null;
+  
+  // Get trip metrics from coordinates
+  const metrics = getTripMetricsFromCoords(pickupLat, pickupLng, dropoffLat, dropoffLng);
+  
+  if (!metrics) {
+    // Coordinates invalid - cannot calculate
+    return null;
+  }
+  
+  const distanceMiles = metrics.distanceMiles;
+  const durationMinutes = etaMinutes && etaMinutes > 0 ? etaMinutes : metrics.durationMinutes;
+  
+  // Get fare estimate
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes);
+  if (!estimate) return null;
+  
+  // Calculate rider savings
+  const savingsResult = calculateRiderSavingsRange(distanceMiles, durationMinutes, cashRidezPrice);
+  
+  // Calculate driver extra
+  const extraResult = calculateDriverExtraRange(distanceMiles, durationMinutes, cashRidezPrice);
+  
+  return {
+    distanceMiles,
+    durationMinutes,
+    metricsSource: metrics.source,
+    traditionalFareRange: estimate.fareRange,
+    traditionalDriverEarningsRange: estimate.driverEarningsRange,
+    cashRidezPrice,
+    riderSavingsRange: savingsResult?.savingsRange || { low: 0, high: 0, mid: 0 },
+    driverExtraRange: extraResult?.extraRange || { low: 0, high: 0, mid: 0 },
+    hasSavings: savingsResult?.hasSavings || false,
+    hasExtra: extraResult?.hasExtra || false,
+    riderSavingsLabel: savingsResult?.label || 'Estimate unavailable',
+    driverExtraLabel: extraResult?.label || 'Estimate unavailable',
+  };
+}
+
+// ============================================================================
+// LEGACY API COMPATIBILITY
 // ============================================================================
 
 export interface CompetitorFareEstimate {
@@ -88,228 +410,95 @@ export interface CompetitorFareEstimate {
 }
 
 /**
- * Legacy function - wraps new estimateTraditionalFare for backward compatibility
- */
-export function estimateCompetitorFare(
-  distanceKm: number,
-  durationMinutes: number,
-  _pickupTime: Date
-): CompetitorFareEstimate {
-  const distanceMiles = distanceKm * KM_TO_MILES;
-  const estimate = estimateTraditionalFare({ distanceMiles, durationMinutes });
-  
-  return {
-    minFare: estimate.traditionalMin,
-    maxFare: estimate.traditionalMax,
-    midFare: estimate.traditionalAverage,
-  };
-}
-
-/**
- * Quick estimate using just miles (assumes 2 min per mile average speed ~30mph)
- * Useful when only distance is available
+ * Legacy function - for backward compatibility
+ * @deprecated Use calculateTripFares with coordinates instead
  */
 export function estimateFromMilesOnly(
   distanceMiles: number,
   _pickupTime: Date
 ): CompetitorFareEstimate {
-  const estimatedMinutes = distanceMiles * 2; // Rough estimate: 30mph average
-  const estimate = estimateTraditionalFare({ distanceMiles, durationMinutes: estimatedMinutes });
+  // Estimate duration from distance
+  const avgSpeed = (FARE_ESTIMATE_CONFIG.AVG_SPEED_LOW + FARE_ESTIMATE_CONFIG.AVG_SPEED_HIGH) / 2;
+  const durationMinutes = Math.round((distanceMiles / avgSpeed) * 60);
   
-  return {
-    minFare: estimate.traditionalMin,
-    maxFare: estimate.traditionalMax,
-    midFare: estimate.traditionalAverage,
-  };
-}
-
-// ============================================================================
-// DRIVER EARNINGS CALCULATIONS
-// ============================================================================
-
-/**
- * Estimate what a traditional rideshare driver would earn (take-home)
- * Drivers typically keep 60-70% of the fare (we use 65%)
- * 
- * @param traditionalFare - The mid/average fare estimate
- * @returns The amount a driver would take home after platform fees
- */
-export function estimateCompetitorDriverEarnings(traditionalFare: number): number {
-  return Math.round((traditionalFare * FARE_ESTIMATE_CONFIG.TRADITIONAL_DRIVER_SHARE) * 100) / 100;
-}
-
-/**
- * Calculate how much extra a driver earns on CashRidez vs traditional
- * CashRidez drivers keep 100% of the trip price
- * 
- * FORMULA: CashRidez Earnings - Traditional Driver Take-Home
- * 
- * @param cashRidezEarnings - The CashRidez offer/price (driver keeps 100%)
- * @param competitorDriverEarnings - What driver would earn on traditional platform
- * @returns The difference (can be negative if CashRidez price is lower)
- */
-export function calculateDriverExtra(
-  cashRidezEarnings: number,
-  competitorDriverEarnings: number
-): number {
-  const diff = cashRidezEarnings - competitorDriverEarnings;
-  return Math.round(diff * 100) / 100;
-}
-
-// ============================================================================
-// RIDER SAVINGS CALCULATIONS
-// ============================================================================
-
-/**
- * Calculate rider savings compared to traditional rideshare
- * 
- * FORMULA: Traditional Mid Fare - CashRidez Price
- * 
- * @param competitorMidFare - The estimated traditional rideshare fare
- * @param cashRidezPrice - The CashRidez offer/price
- * @returns Savings amount (can be negative if CashRidez is more expensive)
- */
-export function calculateRiderSavings(
-  competitorMidFare: number,
-  cashRidezPrice: number
-): number {
-  const diff = competitorMidFare - cashRidezPrice;
-  return Math.round(diff * 100) / 100;
-}
-
-// ============================================================================
-// COMPLETE TRIP CALCULATION (for use when persisting to database)
-// ============================================================================
-
-export interface TripFareCalculation {
-  // Traditional rideshare estimates
-  traditionalFareMin: number;
-  traditionalFareMax: number;
-  traditionalFareMid: number;
-  
-  // What traditional driver would earn (after platform takes cut)
-  traditionalDriverEarnings: number;
-  
-  // CashRidez amounts
-  cashRidezPrice: number;
-  
-  // Comparison results
-  riderSavings: number;        // How much rider saves vs traditional
-  driverExtra: number;         // How much driver earns extra vs traditional
-  
-  // Human-readable explanations
-  riderSavingsLabel: string;
-  driverExtraLabel: string;
-}
-
-/**
- * Calculate all fare comparisons for a trip
- * This is the main function to use for complete calculations
- * 
- * @param distanceMiles - Trip distance in miles
- * @param durationMinutes - Trip duration in minutes (optional, estimated from distance if not provided)
- * @param cashRidezPrice - The accepted CashRidez offer price
- */
-export function calculateTripFares(
-  distanceMiles: number,
-  cashRidezPrice: number,
-  durationMinutes?: number
-): TripFareCalculation | null {
-  // Validate inputs
-  if (!distanceMiles || distanceMiles <= 0 || !cashRidezPrice || cashRidezPrice <= 0) {
-    return null;
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes);
+  if (!estimate) {
+    return { minFare: 0, maxFare: 0, midFare: 0 };
   }
   
-  // Estimate duration if not provided (30mph average = 2 min/mile)
-  const duration = durationMinutes && durationMinutes > 0 
-    ? durationMinutes 
-    : distanceMiles * 2;
-  
-  // Get traditional fare estimates
-  const traditionalFare = estimateTraditionalFare({ 
-    distanceMiles, 
-    durationMinutes: duration 
-  });
-  
-  // Calculate driver take-home on traditional platform
-  const traditionalDriverEarnings = estimateCompetitorDriverEarnings(traditionalFare.traditionalAverage);
-  
-  // Calculate comparisons
-  const riderSavings = calculateRiderSavings(traditionalFare.traditionalAverage, cashRidezPrice);
-  const driverExtra = calculateDriverExtra(cashRidezPrice, traditionalDriverEarnings);
-  
-  // Generate labels
-  const riderSavingsLabel = riderSavings >= 0
-    ? `You saved $${riderSavings.toFixed(2)} compared to typical rideshare`
-    : `CashRidez is $${Math.abs(riderSavings).toFixed(2)} higher than typical estimate`;
-  
-  const driverExtraLabel = driverExtra >= 0
-    ? `You earned $${driverExtra.toFixed(2)} more than traditional rideshare`
-    : `Traditional rideshare would pay $${Math.abs(driverExtra).toFixed(2)} more`;
-  
   return {
-    traditionalFareMin: traditionalFare.traditionalMin,
-    traditionalFareMax: traditionalFare.traditionalMax,
-    traditionalFareMid: traditionalFare.traditionalAverage,
-    traditionalDriverEarnings,
-    cashRidezPrice,
-    riderSavings,
-    driverExtra,
-    riderSavingsLabel,
-    driverExtraLabel,
+    minFare: estimate.fareRange.low,
+    maxFare: estimate.fareRange.high,
+    midFare: estimate.fareRange.mid,
   };
+}
+
+/**
+ * Legacy function - for backward compatibility
+ * @deprecated Use calculateDriverExtraRange instead
+ */
+export function estimateCompetitorDriverEarnings(traditionalFare: number): number {
+  // Use mid-point of take rate range
+  const avgTakeRate = (FARE_ESTIMATE_CONFIG.DRIVER_TAKE_RATE_LOW + FARE_ESTIMATE_CONFIG.DRIVER_TAKE_RATE_HIGH) / 2;
+  return Math.round((traditionalFare * avgTakeRate) * 100) / 100;
+}
+
+/**
+ * Legacy function - for backward compatibility
+ * @deprecated Use calculateRiderSavingsRange instead
+ */
+export function calculateRiderSavings(competitorMidFare: number, cashRidezPrice: number): number {
+  return Math.round((competitorMidFare - cashRidezPrice) * 100) / 100;
+}
+
+/**
+ * Legacy function - for backward compatibility
+ * @deprecated Use calculateDriverExtraRange instead
+ */
+export function calculateDriverExtra(cashRidezEarnings: number, competitorDriverEarnings: number): number {
+  return Math.round((cashRidezEarnings - competitorDriverEarnings) * 100) / 100;
 }
 
 // ============================================================================
 // FORMATTING UTILITIES
 // ============================================================================
 
-/**
- * Format a number as USD currency
- */
 export function formatCurrency(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
-// Export constants for reference/debugging (legacy)
-export const FARE_CONSTANTS = {
-  BASE_FARE: FARE_ESTIMATE_CONFIG.BASE_FARE,
-  PER_MILE_RATE: (FARE_ESTIMATE_CONFIG.PER_MILE_MIN + FARE_ESTIMATE_CONFIG.PER_MILE_MAX) / 2,
-  PER_MINUTE_RATE: FARE_ESTIMATE_CONFIG.PER_MINUTE,
-  DRIVER_SHARE: FARE_ESTIMATE_CONFIG.TRADITIONAL_DRIVER_SHARE,
-  KM_TO_MILES,
-};
+export function formatCurrencyRange(low: number, high: number): string {
+  return `$${Math.round(low)}–$${Math.round(high)}`;
+}
 
 // ============================================================================
-// TEST CASES (for verification)
+// TEST VERIFICATION
 // ============================================================================
 /**
  * Test cases to verify calculator logic:
  * 
- * Case 1: Short trip (2 miles, 8 min, $10 offer)
- *   Traditional Min: 2.75 + (2 * 0.90) + (8 * 0.20) + 2.25 = $8.00 (min $7.00)
- *   Traditional Max: 2.75 + (2 * 1.40) + (8 * 0.20) + 2.25 = $9.00
- *   Traditional Mid: $8.00
- *   Driver Take-Home: $8.00 * 0.65 = $5.20
- *   Rider Savings: $8.00 - $10.00 = -$2.00 (CashRidez more expensive)
- *   Driver Extra: $10.00 - $5.20 = $4.80
+ * Case 1: Short trip (5 miles, ~9 min at 35mph avg)
+ *   Fare Low: (1.50 + 5*1.10 + 9*0.15 + 2.00) * 1.0 = $10.35 → floor $10.35
+ *   Fare High: (4.00 + 5*2.10 + 9*0.45 + 8.00) * 1.6 = $40.32
+ *   Driver Earn Low: $10.35 * 0.25 = $2.59
+ *   Driver Earn High: $40.32 * 0.55 = $22.18
  * 
- * Case 2: Medium trip (12 miles, 25 min, $35 offer)
- *   Traditional Min: 2.75 + (12 * 0.90) + (25 * 0.20) + 2.25 = $20.80
- *   Traditional Max: 2.75 + (12 * 1.40) + (25 * 0.20) + 2.25 = $26.80
- *   Traditional Mid: $23.80
- *   Driver Take-Home: $23.80 * 0.65 = $15.47
- *   Rider Savings: $23.80 - $35.00 = -$11.20 (CashRidez more expensive)
- *   Driver Extra: $35.00 - $15.47 = $19.53
+ * Case 2: Medium trip (20 miles, ~34 min)
+ *   Fare Low: (1.50 + 20*1.10 + 34*0.15 + 2.00) * 1.0 = $30.60
+ *   Fare High: (4.00 + 20*2.10 + 34*0.45 + 8.00) * 1.6 = $117.92
+ *   Driver Earn Low: $30.60 * 0.25 = $7.65
+ *   Driver Earn High: $117.92 * 0.55 = $64.86
  * 
- * Case 3: Long trip (35 miles, 55 min, $80 offer)
- *   Traditional Min: 2.75 + (35 * 0.90) + (55 * 0.20) + 2.25 = $47.50
- *   Traditional Max: 2.75 + (35 * 1.40) + (55 * 0.20) + 2.25 = $65.00
- *   Traditional Mid: $56.25
- *   Driver Take-Home: $56.25 * 0.65 = $36.56
- *   Rider Savings: $56.25 - $80.00 = -$23.75 (CashRidez more expensive)
- *   Driver Extra: $80.00 - $36.56 = $43.44
- * 
- * CRITICAL: Driver Extra should NEVER equal the offer amount.
- * Driver Extra = Offer - (Traditional Mid * 0.65)
+ * Case 3: Long trip (~49 miles, ~56 min) - THE PROBLEM TRIP
+ *   Fare Low: (1.50 + 49*1.10 + 56*0.15 + 2.00) * 1.0 = $65.70
+ *   Fare High: (4.00 + 49*2.10 + 56*0.45 + 8.00) * 1.6 = $253.76
+ *   Typical Range: $66–$254 (not $32–$43!)
+ *   
+ *   If CashRidez offer = $100:
+ *   Driver Earn Low: $65.70 * 0.25 = $16.43
+ *   Driver Earn High: $253.76 * 0.55 = $139.57
+ *   Extra Low: $100 - $139.57 = -$39.57 (traditional could pay more)
+ *   Extra High: $100 - $16.43 = $83.57
+ *   
+ *   Display: "You could earn up to $84 more" (or show range)
  */

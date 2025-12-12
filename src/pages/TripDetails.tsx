@@ -19,7 +19,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { useSubscription } from "@/hooks/useSubscription";
 import { TripCompletedSavings, SavingsCalculator } from "@/components/SavingsCalculator";
-import { estimateFromMilesOnly, estimateCompetitorDriverEarnings, calculateTripFares, formatCurrency } from "@/utils/fareEstimator";
+import { calculateTripFares, formatCurrency, formatCurrencyRange } from "@/utils/fareEstimator";
 import { AddressLink } from "@/components/AddressLink";
 
 export default function TripDetails() {
@@ -1157,23 +1157,41 @@ export default function TripDetails() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Driver Earnings Calculator - uses shared logic */}
+              {/* Driver Earnings Calculator - uses shared logic with coordinates */}
               {request.price_offer && (() => {
-                // Calculate using distance if available, otherwise estimate from ZIP
-                const distanceMiles = request.eta_minutes ? request.eta_minutes / 2 : 10; // Fallback to 10 miles
-                const fareCalc = calculateTripFares(distanceMiles, request.price_offer);
-                if (!fareCalc) return null;
+                const fareCalc = calculateTripFares(
+                  request.pickup_lat,
+                  request.pickup_lng,
+                  request.dropoff_lat,
+                  request.dropoff_lng,
+                  request.price_offer,
+                  request.eta_minutes || undefined
+                );
+                
+                if (!fareCalc) {
+                  return (
+                    <div className="mb-4 text-sm text-muted-foreground italic">
+                      We couldn't calculate a route yet — please confirm pickup & dropoff.
+                    </div>
+                  );
+                }
                 
                 return (
                   <div className="mb-4 bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4">
                     <div className="flex items-start gap-2">
                       <span className="text-2xl">💰</span>
-                      <div>
+                      <div className="space-y-1">
                         <p className="text-base font-bold text-foreground">
-                          If you accept this trip, you're on track to earn about {formatCurrency(Math.max(0, fareCalc.driverExtra))} more than traditional rideshare.
+                          {fareCalc.hasExtra 
+                            ? `You could earn ${formatCurrencyRange(fareCalc.driverExtraRange.low, fareCalc.driverExtraRange.high)} more than traditional rideshare.`
+                            : 'Competitive with traditional rideshare driver earnings.'
+                          }
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Typical rideshare driver earnings: ~{formatCurrency(fareCalc.traditionalDriverEarnings)} | CashRidez: {formatCurrency(request.price_offer)} (100%)
+                          Typical rideshare driver earnings (estimated): {formatCurrencyRange(fareCalc.traditionalDriverEarningsRange.low, fareCalc.traditionalDriverEarningsRange.high)}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          CashRidez: {formatCurrency(request.price_offer)} (100%)
                         </p>
                       </div>
                     </div>

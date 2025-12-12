@@ -144,14 +144,13 @@ END:VCARD`;
     return Math.max(5, Math.min(50, avgLength * 0.3)); // 5-50 miles range
   }, [formData.pickupAddress, formData.dropoffAddress]);
 
-  // Calculate fare estimates for saving to database
+  // Calculate fare estimates for saving to database using new range-based API
   const fareEstimates = useMemo(() => {
     if (!estimatedDistance || !formData.priceOffer) return null;
     const price = parseFloat(formData.priceOffer);
     if (isNaN(price) || price <= 0) return null;
     
-    const pickupTime = formData.pickupTime ? new Date(formData.pickupTime) : new Date();
-    const estimate = estimateFromMilesOnly(estimatedDistance, pickupTime);
+    const estimate = estimateFromMilesOnly(estimatedDistance, new Date());
     const driverEarnings = estimateCompetitorDriverEarnings(estimate.midFare);
     
     return {
@@ -160,7 +159,7 @@ END:VCARD`;
       mid: estimate.midFare,
       driverEarnings,
     };
-  }, [estimatedDistance, formData.priceOffer, formData.pickupTime]);
+  }, [estimatedDistance, formData.priceOffer]);
 
   const geocodeAddress = async (address: string) => {
     // Mock geocoding - in production, use Google Maps or Mapbox API
@@ -624,7 +623,6 @@ END:VCARD`;
             {estimatedDistance && (
               <SavingsCalculator
                 distanceMiles={estimatedDistance}
-                pickupTime={formData.pickupTime ? new Date(formData.pickupTime) : new Date()}
                 userPrice={parseFloat(formData.priceOffer) || 0}
                 mode="rider"
                 variant="full"
