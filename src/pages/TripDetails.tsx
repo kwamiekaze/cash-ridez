@@ -1188,7 +1188,7 @@ export default function TripDetails() {
                           }
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Typical rideshare driver earnings (estimated): {formatCurrencyRange(fareCalc.traditionalDriverEarningsRange.low, fareCalc.traditionalDriverEarningsRange.high)}
+                          Typical rideshare driver earnings (estimated): {formatCurrencyRange(fareCalc.traditionalDriverPayoutRange.low, fareCalc.traditionalDriverPayoutRange.high)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           CashRidez: {formatCurrency(request.price_offer)} (100%)
