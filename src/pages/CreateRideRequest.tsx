@@ -624,6 +624,7 @@ END:VCARD`;
               <SavingsCalculator
                 distanceMiles={estimatedDistance}
                 userPrice={parseFloat(formData.priceOffer) || 0}
+                pickupTime={formData.pickupTime ? new Date(formData.pickupTime) : undefined}
                 mode="rider"
                 variant="full"
                 className="mt-4"

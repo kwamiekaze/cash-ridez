@@ -1165,7 +1165,8 @@ export default function TripDetails() {
                   request.dropoff_lat,
                   request.dropoff_lng,
                   request.price_offer,
-                  request.eta_minutes || undefined
+                  request.eta_minutes || undefined,
+                  request.pickup_time ? new Date(request.pickup_time) : undefined
                 );
                 
                 if (!fareCalc) {

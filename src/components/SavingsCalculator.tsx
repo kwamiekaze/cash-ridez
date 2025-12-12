@@ -6,8 +6,10 @@ import {
   getTripMetricsFromCoords,
   formatCurrency,
   formatCurrencyRange,
+  getSurgePeriod,
   GEORGIA_FARE_CONFIG,
   type FareRange,
+  type SurgePeriod,
 } from "@/utils/fareEstimator";
 
 interface SavingsCalculatorProps {
@@ -21,6 +23,8 @@ interface SavingsCalculatorProps {
   durationMinutes?: number;
   // The CashRidez offer/price
   userPrice?: number;
+  // Pickup time for time-of-day surge awareness
+  pickupTime?: Date;
   // Mode: rider sees savings, driver sees extra earnings
   mode: "rider" | "driver";
   // Display variant
@@ -28,10 +32,22 @@ interface SavingsCalculatorProps {
   className?: string;
 }
 
+// Map surge period to human-readable label
+function getSurgePeriodLabel(period: SurgePeriod): string {
+  switch (period) {
+    case 'rush_hour': return 'Rush Hour';
+    case 'late_night': return 'Late Night';
+    case 'weekend_day': return 'Weekend';
+    case 'off_peak':
+    default: return 'Standard';
+  }
+}
+
 /**
  * SavingsCalculator Component
  * Displays savings (for riders) or extra earnings (for drivers) compared to traditional rideshare
  * Uses Georgia/Metro Atlanta specific rates matching FareEstimate.com patterns
+ * Now with time-of-day surge awareness
  */
 export function SavingsCalculator({
   pickupLat,
@@ -41,6 +57,7 @@ export function SavingsCalculator({
   distanceMiles: providedDistance,
   durationMinutes: providedDuration,
   userPrice = 0,
+  pickupTime,
   mode,
   variant = "full",
   className = "",
@@ -70,13 +87,17 @@ export function SavingsCalculator({
       duration = Math.round((distance / avgSpeed) * 60) + 3;
     }
     
-    // Get fare estimate
-    const fareEstimate = estimateRideshareFareRange(distance, duration, config);
+    // Get fare estimate with time-of-day awareness
+    const fareEstimate = estimateRideshareFareRange(distance, duration, config, pickupTime);
     if (!fareEstimate) return null;
+
+    // Get surge period for display
+    const surgePeriod = getSurgePeriod(pickupTime);
+    const surgePeriodLabel = getSurgePeriodLabel(surgePeriod);
 
     if (mode === "rider") {
       const savingsResult = userPrice > 0 
-        ? calculateRiderSavingsRange(distance, duration, userPrice, config)
+        ? calculateRiderSavingsRange(distance, duration, userPrice, config, pickupTime)
         : null;
       
       return {
@@ -88,11 +109,13 @@ export function SavingsCalculator({
         hasPriceOffer: userPrice > 0,
         distanceMiles: distance,
         durationMinutes: duration,
+        surgePeriod,
+        surgePeriodLabel,
       };
     } else {
       // Driver mode
       const extraResult = userPrice > 0
-        ? calculateDriverExtraRange(distance, duration, userPrice, config)
+        ? calculateDriverExtraRange(distance, duration, userPrice, config, pickupTime)
         : null;
       
       return {
@@ -104,9 +127,11 @@ export function SavingsCalculator({
         hasPriceOffer: userPrice > 0,
         distanceMiles: distance,
         durationMinutes: duration,
+        surgePeriod,
+        surgePeriodLabel,
       };
     }
-  }, [pickupLat, pickupLng, dropoffLat, dropoffLng, providedDistance, providedDuration, userPrice, mode]);
+  }, [pickupLat, pickupLng, dropoffLat, dropoffLng, providedDistance, providedDuration, userPrice, pickupTime, mode]);
 
   if (!calculation) {
     return null;
