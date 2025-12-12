@@ -9,6 +9,7 @@ import { Loader2, MapPin, Star, Clock, Calendar } from "lucide-react";
 import { loadZipCentroids, zipDistanceMiles, isWithin25Miles, formatDistance } from "@/lib/zipDistance";
 import { useNavigate } from "react-router-dom";
 import { playNotificationSound } from "@/hooks/useNotificationSound";
+import { formatAddress } from "@/utils/addressFormatter";
 
 export const AvailableRidersList = () => {
   const { user } = useAuth();
@@ -398,8 +399,8 @@ export const AvailableRidersList = () => {
                           <div className="flex items-start gap-2">
                             <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="font-medium">From: {request.pickup_address}</p>
-                              <p className="text-muted-foreground">To: {request.dropoff_address}</p>
+                              <p className="font-medium">From: {formatAddress(request.pickup_address)}</p>
+                              <p className="text-muted-foreground">To: {formatAddress(request.dropoff_address)}</p>
                             </div>
                           </div>
                           

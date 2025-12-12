@@ -6,7 +6,7 @@ import { MapPin, Clock, DollarSign, CheckCircle, XCircle, Users } from "lucide-r
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
 import { UserChip } from "@/components/UserChip";
-
+import { formatAddress } from "@/utils/addressFormatter";
 interface TripCardProps {
   request: any;
   isCompleted?: boolean;
@@ -53,8 +53,8 @@ export const TripCard = memo(({ request, isCompleted, onComplete, onCancel, user
             <div className="flex items-start gap-2">
               <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium break-words">{request.pickup_address}</p>
-                <p className="text-sm text-muted-foreground break-words">To: {request.dropoff_address}</p>
+                <p className="text-sm font-medium break-words">{formatAddress(request.pickup_address)}</p>
+                <p className="text-sm text-muted-foreground break-words">To: {formatAddress(request.dropoff_address)}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
