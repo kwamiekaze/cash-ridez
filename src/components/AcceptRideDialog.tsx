@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { AddressLink } from "@/components/AddressLink";
 
 interface AcceptRideDialogProps {
   request: any;
@@ -137,12 +138,12 @@ const AcceptRideDialog = ({ request, open, onOpenChange, driverId }: AcceptRideD
 
         <div className="bg-muted/50 p-4 rounded-lg mb-4">
           <p className="text-sm font-medium mb-2">Ride Details:</p>
-          <p className="text-sm text-muted-foreground">
-            <strong>Pickup:</strong> {request.pickup_address}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            <strong>Dropoff:</strong> {request.dropoff_address}
-          </p>
+          <div className="text-sm text-muted-foreground">
+            <strong>Pickup:</strong> <AddressLink address={request.pickup_address} lat={request.pickup_lat} lng={request.pickup_lng} className="text-muted-foreground" />
+          </div>
+          <div className="text-sm text-muted-foreground">
+            <strong>Dropoff:</strong> <AddressLink address={request.dropoff_address} lat={request.dropoff_lat} lng={request.dropoff_lng} isDestination className="text-muted-foreground" />
+          </div>
           {request.price_offer && (
             <p className="text-sm text-primary font-semibold mt-2">
               Offered Price: ${request.price_offer}

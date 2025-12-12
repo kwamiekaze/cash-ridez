@@ -10,12 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { UserChip } from "@/components/UserChip";
+import { AddressLink } from "@/components/AddressLink";
 
 interface RideWithProfiles {
   id: string;
   status: string;
   pickup_address: string;
   dropoff_address: string;
+  pickup_lat?: number;
+  pickup_lng?: number;
+  dropoff_lat?: number;
+  dropoff_lng?: number;
   pickup_time: string;
   price_offer: number;
   created_at: string;
@@ -59,6 +64,10 @@ export function AdminRidesManagement() {
           status,
           pickup_address,
           dropoff_address,
+          pickup_lat,
+          pickup_lng,
+          dropoff_lat,
+          dropoff_lng,
           pickup_time,
           price_offer,
           created_at,
@@ -232,11 +241,22 @@ export function AdminRidesManagement() {
                   <TableCell className="min-w-[200px]">
                     <div className="flex items-start gap-1 text-xs max-w-[200px]">
                       <MapPin className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
-                      <div className="truncate">{ride.pickup_address}</div>
+                      <AddressLink 
+                        address={ride.pickup_address} 
+                        lat={ride.pickup_lat} 
+                        lng={ride.pickup_lng}
+                        className="truncate text-xs"
+                      />
                     </div>
                     <div className="flex items-start gap-1 text-xs max-w-[200px] mt-1">
                       <MapPin className="h-3 w-3 text-red-500 mt-0.5 flex-shrink-0" />
-                      <div className="truncate">{ride.dropoff_address}</div>
+                      <AddressLink 
+                        address={ride.dropoff_address} 
+                        lat={ride.dropoff_lat} 
+                        lng={ride.dropoff_lng}
+                        isDestination
+                        className="truncate text-xs"
+                      />
                     </div>
                   </TableCell>
                   <TableCell className="text-sm min-w-[150px]">
