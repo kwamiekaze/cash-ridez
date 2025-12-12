@@ -88,6 +88,18 @@ const queryClient = new QueryClient({
   },
 });
 
+// Redirect cashridez.map domain to cashridez.com/map
+const DomainRedirect = () => {
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    if (hostname === 'cashridez.map' || hostname === 'www.cashridez.map') {
+      const params = window.location.search;
+      window.location.replace(`https://cashridez.com/map${params}`);
+    }
+  }, []);
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" forcedTheme="dark">
@@ -98,6 +110,7 @@ const App = () => (
         }}
       >
         <AuthProvider>
+          <DomainRedirect />
           <NotificationSoundInitializer />
           <Toaster />
           <Sonner />
