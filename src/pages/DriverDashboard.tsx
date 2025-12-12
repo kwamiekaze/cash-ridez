@@ -20,6 +20,7 @@ import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
 import { useSubscription } from "@/hooks/useSubscription";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
+import { AddressLink } from "@/components/AddressLink";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -250,8 +251,8 @@ const DriverDashboard = () => {
                 <div className="flex items-start gap-2">
                   <MapPin className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium">From: {request.pickup_address}</p>
-                    <p className="text-muted-foreground">To: {request.dropoff_address}</p>
+                    <p className="font-medium">From: <AddressLink address={request.pickup_address} lat={request.pickup_lat} lng={request.pickup_lng} /></p>
+                    <p className="text-muted-foreground">To: <AddressLink address={request.dropoff_address} lat={request.dropoff_lat} lng={request.dropoff_lng} isDestination /></p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

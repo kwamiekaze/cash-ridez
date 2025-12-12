@@ -23,6 +23,7 @@ import FloatingSupport from "@/components/FloatingSupport";
 import { FloatingChat } from "@/components/FloatingChat";
 import { DashboardCar } from "@/components/DashboardCar";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
+import { AddressLink } from "@/components/AddressLink";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -509,14 +510,14 @@ const RiderDashboard = () => {
                           <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium">Pickup</p>
-                            <p className="text-sm text-muted-foreground break-words">{request.pickup_address}</p>
+                            <AddressLink address={request.pickup_address} lat={request.pickup_lat} lng={request.pickup_lng} className="text-sm text-muted-foreground" />
                           </div>
                         </div>
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium">Dropoff</p>
-                            <p className="text-sm text-muted-foreground break-words">{request.dropoff_address}</p>
+                            <AddressLink address={request.dropoff_address} lat={request.dropoff_lat} lng={request.dropoff_lng} isDestination className="text-sm text-muted-foreground" />
                           </div>
                         </div>
                       </div>
@@ -575,11 +576,11 @@ const RiderDashboard = () => {
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
-                          <p className="text-sm break-words flex-1 min-w-0">{request.pickup_address}</p>
+                          <AddressLink address={request.pickup_address} lat={request.pickup_lat} lng={request.pickup_lng} className="text-sm flex-1 min-w-0" />
                         </div>
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
-                          <p className="text-sm break-words flex-1 min-w-0">{request.dropoff_address}</p>
+                          <AddressLink address={request.dropoff_address} lat={request.dropoff_lat} lng={request.dropoff_lng} isDestination className="text-sm flex-1 min-w-0" />
                         </div>
                       </div>
                     </div>
@@ -669,11 +670,11 @@ const RiderDashboard = () => {
                       <div className="space-y-2">
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-success" />
-                          <p className="text-sm">{request.pickup_address}</p>
+                          <AddressLink address={request.pickup_address} lat={request.pickup_lat} lng={request.pickup_lng} className="text-sm" />
                         </div>
                         <div className="flex items-start gap-2">
                           <MapPin className="w-4 h-4 mt-1 text-destructive" />
-                          <p className="text-sm">{request.dropoff_address}</p>
+                          <AddressLink address={request.dropoff_address} lat={request.dropoff_lat} lng={request.dropoff_lng} isDestination className="text-sm" />
                         </div>
                       </div>
                       {request.rider_id === user?.id && request.driver_rating && (
