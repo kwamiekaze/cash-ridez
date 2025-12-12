@@ -19,7 +19,8 @@ import { MapBackground } from "@/components/MapBackground";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { useSubscription } from "@/hooks/useSubscription";
 import { TripCompletedSavings, SavingsCalculator } from "@/components/SavingsCalculator";
-import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
+import { estimateFromMilesOnly, estimateCompetitorDriverEarnings, calculateTripFares, formatCurrency } from "@/utils/fareEstimator";
+import { AddressLink } from "@/components/AddressLink";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -628,24 +629,25 @@ export default function TripDetails() {
               <MapPin className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium">Pickup Location</p>
-                <a 
-                  href={`geo:0,0?q=${encodeURIComponent(request.pickup_address)}`}
-                  className="text-sm text-primary hover:underline break-words"
-                >
-                  {request.pickup_address}
-                </a>
+                <AddressLink 
+                  address={request.pickup_address}
+                  lat={request.pickup_lat}
+                  lng={request.pickup_lng}
+                  className="text-sm"
+                />
               </div>
             </div>
             <div className="flex items-start gap-2">
               <MapPin className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-medium">Dropoff Location</p>
-                <a 
-                  href={`geo:0,0?q=${encodeURIComponent(request.dropoff_address)}`}
-                  className="text-sm text-primary hover:underline break-words"
-                >
-                  {request.dropoff_address}
-                </a>
+                <AddressLink 
+                  address={request.dropoff_address}
+                  lat={request.dropoff_lat}
+                  lng={request.dropoff_lng}
+                  isDestination={true}
+                  className="text-sm"
+                />
               </div>
             </div>
             {request.price_offer && (
@@ -1155,22 +1157,29 @@ export default function TripDetails() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Driver Earnings Calculator */}
-              {request.price_offer && request.estimated_competitor_driver_earnings && (
-                <div className="mb-4 bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4">
-                  <div className="flex items-start gap-2">
-                    <span className="text-2xl">💰</span>
-                    <div>
-                      <p className="text-base font-bold text-foreground">
-                        If you accept this trip, you're on track to earn about ${Math.max(0, request.price_offer - request.estimated_competitor_driver_earnings).toFixed(0)} more than traditional rideshare.
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Traditional rideshare driver earnings: ~${request.estimated_competitor_driver_earnings.toFixed(0)} | CashRidez: ${request.price_offer} (100%)
-                      </p>
+              {/* Driver Earnings Calculator - uses shared logic */}
+              {request.price_offer && (() => {
+                // Calculate using distance if available, otherwise estimate from ZIP
+                const distanceMiles = request.eta_minutes ? request.eta_minutes / 2 : 10; // Fallback to 10 miles
+                const fareCalc = calculateTripFares(distanceMiles, request.price_offer);
+                if (!fareCalc) return null;
+                
+                return (
+                  <div className="mb-4 bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <span className="text-2xl">💰</span>
+                      <div>
+                        <p className="text-base font-bold text-foreground">
+                          If you accept this trip, you're on track to earn about {formatCurrency(Math.max(0, fareCalc.driverExtra))} more than traditional rideshare.
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Typical rideshare driver earnings: ~{formatCurrency(fareCalc.traditionalDriverEarnings)} | CashRidez: {formatCurrency(request.price_offer)} (100%)
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               
               <form onSubmit={handleSubmitOffer} className="space-y-4">
                 {request.price_offer && (
