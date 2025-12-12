@@ -1037,7 +1037,13 @@ export default function TripDetails() {
                         </div>
                       </div>
                       {offer.message && (
-                        <p className="text-sm mb-3">{offer.message}</p>
+                        <p className="text-sm mb-3">
+                          {/* Convert "Accepting initial offer" to past tense for completed/assigned trips */}
+                          {offer.message.toLowerCase().includes('accepting initial offer') && 
+                           (request.status === 'completed' || request.status === 'assigned' || offer.status === 'accepted')
+                            ? 'Accepted rider\'s initial offer'
+                            : offer.message}
+                        </p>
                       )}
                       {offer.status === 'pending' && request.status === 'open' && (
                         <div className="flex gap-2 flex-wrap">
