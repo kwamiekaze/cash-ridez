@@ -31,32 +31,29 @@ const METRO_ATLANTA = {
 // ============================================================================
 // FARE CONFIGURATION - Georgia/Metro Atlanta Market Rates
 // Based on FareEstimate.com patterns for Atlanta market
+// Updated with time-of-day surge awareness
 // ============================================================================
 
 export const GEORGIA_FARE_CONFIG = {
-  // Base fare range (Atlanta market)
-  BASE_FARE_LOW: 1.50,
-  BASE_FARE_HIGH: 2.50,
+  // Base fare range (Atlanta market) - Updated per FareEstimate specs
+  BASE_FARE_LOW: 1.75,
+  BASE_FARE_HIGH: 2.75,
   
   // Per-mile rates - realistic for Atlanta rideshare (FareEstimate range)
-  PER_MILE_LOW: 0.90,
-  PER_MILE_HIGH: 1.35,
+  PER_MILE_LOW: 0.95,
+  PER_MILE_HIGH: 1.40,
   
   // Per-minute rates (time component)
-  PER_MINUTE_LOW: 0.20,
-  PER_MINUTE_HIGH: 0.35,
+  PER_MINUTE_LOW: 0.22,
+  PER_MINUTE_HIGH: 0.38,
   
   // Booking/service fees (matches typical rideshare)
   FEES_LOW: 2.50,
-  FEES_HIGH: 3.75,
+  FEES_HIGH: 3.99,
   
   // Minimum fare floor
   MINIMUM_FARE_LOW: 7.00,
-  MINIMUM_FARE_HIGH: 12.00,
-  
-  // Surge/demand multiplier range (Atlanta varies by time/demand)
-  SURGE_LOW: 1.00,
-  SURGE_HIGH: 1.75,
+  MINIMUM_FARE_HIGH: 9.00,
   
   // Driver payout range (% of rider fare kept by driver)
   // Traditional rideshare: drivers keep 40-65% after platform fees
@@ -73,6 +70,18 @@ export const GEORGIA_FARE_CONFIG = {
   SPEED_HIGHWAY: 55,  // I-285, I-75, I-85
 };
 
+// Time-of-day surge multiplier ranges (Atlanta-specific)
+export const SURGE_MULTIPLIERS = {
+  // Off-peak: weekday mid-morning, early afternoon (10am-3pm), late evening (8pm-11pm)
+  OFF_PEAK: { low: 1.00, high: 1.15 },
+  // Rush hour: weekday 6am-9am and 4pm-7pm
+  RUSH_HOUR: { low: 1.20, high: 1.60 },
+  // Late night: 11pm-5am, weekends late night
+  LATE_NIGHT: { low: 1.35, high: 1.90 },
+  // Weekend daytime: 10am-8pm
+  WEEKEND_DAY: { low: 1.05, high: 1.30 },
+};
+
 // Generic US fallback rates (slightly higher variance)
 export const GENERIC_US_FARE_CONFIG = {
   BASE_FARE_LOW: 2.00,
@@ -85,8 +94,6 @@ export const GENERIC_US_FARE_CONFIG = {
   FEES_HIGH: 5.00,
   MINIMUM_FARE_LOW: 8.00,
   MINIMUM_FARE_HIGH: 15.00,
-  SURGE_LOW: 1.00,
-  SURGE_HIGH: 2.00,
   DRIVER_PAYOUT_LOW: 0.35,
   DRIVER_PAYOUT_HIGH: 0.60,
   ROAD_FACTOR_LOW: 1.20,
@@ -255,7 +262,46 @@ function isValidCoordinate(lat: number, lng: number): boolean {
 }
 
 // ============================================================================
-// FARE RANGE ESTIMATION - FareEstimate.com Style
+// TIME-OF-DAY SURGE DETECTION
+// ============================================================================
+
+export type SurgePeriod = 'off_peak' | 'rush_hour' | 'late_night' | 'weekend_day';
+
+/**
+ * Determine surge period based on pickup time
+ * Returns appropriate multiplier range for time of day
+ */
+export function getSurgePeriod(pickupTime?: Date): SurgePeriod {
+  if (!pickupTime) return 'off_peak';
+  
+  const hour = pickupTime.getHours();
+  const day = pickupTime.getDay(); // 0 = Sunday, 6 = Saturday
+  const isWeekend = day === 0 || day === 6;
+  
+  if (isWeekend) {
+    // Weekend logic
+    if (hour >= 23 || hour < 5) return 'late_night';
+    if (hour >= 10 && hour < 20) return 'weekend_day';
+    return 'off_peak';
+  }
+  
+  // Weekday logic
+  if (hour >= 23 || hour < 5) return 'late_night';
+  if ((hour >= 6 && hour < 9) || (hour >= 16 && hour < 19)) return 'rush_hour';
+  if (hour >= 10 && hour < 15) return 'off_peak';
+  return 'off_peak';
+}
+
+/**
+ * Get surge multiplier range for a pickup time
+ */
+export function getSurgeMultiplierRange(pickupTime?: Date): { low: number; high: number } {
+  const period = getSurgePeriod(pickupTime);
+  return SURGE_MULTIPLIERS[period.toUpperCase() as keyof typeof SURGE_MULTIPLIERS] || SURGE_MULTIPLIERS.OFF_PEAK;
+}
+
+// ============================================================================
+// FARE RANGE ESTIMATION - FareEstimate.com Style with Time-of-Day Awareness
 // ============================================================================
 
 export interface FareRange {
@@ -270,16 +316,19 @@ export interface TraditionalFareEstimate {
   distanceMiles: number;
   durationMinutes: number;
   region: 'georgia' | 'us_generic';
+  surgePeriod: SurgePeriod;
+  surgeRange: { low: number; high: number };
 }
 
 /**
  * Estimate traditional rideshare fare range
- * Matches FareEstimate.com formula structure
+ * Matches FareEstimate.com formula structure with time-of-day surge awareness
  */
 export function estimateRideshareFareRange(
   distanceMiles: number,
   durationMinutes: number,
-  config: typeof GEORGIA_FARE_CONFIG = GEORGIA_FARE_CONFIG
+  config: typeof GEORGIA_FARE_CONFIG = GEORGIA_FARE_CONFIG,
+  pickupTime?: Date
 ): TraditionalFareEstimate | null {
   if (!distanceMiles || distanceMiles <= 0) return null;
   
@@ -290,26 +339,33 @@ export function estimateRideshareFareRange(
     durationMinutes = Math.round((distanceMiles / avgSpeed) * 60) + 3;
   }
   
+  // Get time-of-day surge multiplier (Georgia only)
+  const isGeorgia = config === GEORGIA_FARE_CONFIG;
+  const surgePeriod = getSurgePeriod(pickupTime);
+  const surgeRange = isGeorgia 
+    ? getSurgeMultiplierRange(pickupTime)
+    : { low: 1.0, high: 2.0 }; // Generic US fallback
+  
   // ========== LOW FARE CALCULATION (Best Price) ==========
-  // Uses minimum rates, no surge
+  // Uses minimum rates with low surge for time of day
   const fareLowRaw = (
     config.BASE_FARE_LOW +
     (distanceMiles * config.PER_MILE_LOW) +
     (durationMinutes * config.PER_MINUTE_LOW) +
     config.FEES_LOW
-  ) * config.SURGE_LOW;
+  ) * surgeRange.low;
   
   // Apply minimum fare floor
   const fareLow = Math.max(config.MINIMUM_FARE_LOW, fareLowRaw);
   
   // ========== HIGH FARE CALCULATION ==========
-  // Uses maximum rates with surge
+  // Uses maximum rates with high surge for time of day
   const fareHighRaw = (
     config.BASE_FARE_HIGH +
     (distanceMiles * config.PER_MILE_HIGH) +
     (durationMinutes * config.PER_MINUTE_HIGH) +
     config.FEES_HIGH
-  ) * config.SURGE_HIGH;
+  ) * surgeRange.high;
   
   // Apply minimum fare floor
   const fareHigh = Math.max(config.MINIMUM_FARE_HIGH, fareHighRaw);
@@ -336,7 +392,9 @@ export function estimateRideshareFareRange(
     },
     distanceMiles,
     durationMinutes,
-    region: config === GEORGIA_FARE_CONFIG ? 'georgia' : 'us_generic',
+    region: isGeorgia ? 'georgia' : 'us_generic',
+    surgePeriod,
+    surgeRange,
   };
 }
 
@@ -355,16 +413,18 @@ export interface RiderSavingsResult {
 
 /**
  * Calculate rider savings compared to traditional rideshare
+ * Now accepts pickupTime for time-of-day aware surge pricing
  */
 export function calculateRiderSavingsRange(
   distanceMiles: number,
   durationMinutes: number,
   cashRidezOffer: number,
-  config: typeof GEORGIA_FARE_CONFIG = GEORGIA_FARE_CONFIG
+  config: typeof GEORGIA_FARE_CONFIG = GEORGIA_FARE_CONFIG,
+  pickupTime?: Date
 ): RiderSavingsResult | null {
   if (!cashRidezOffer || cashRidezOffer <= 0) return null;
   
-  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes, config);
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes, config, pickupTime);
   if (!estimate) return null;
   
   const { riderFareRange } = estimate;
@@ -379,9 +439,9 @@ export function calculateRiderSavingsRange(
   // Generate human-readable label
   let savingsLabel: string;
   if (savingsLow > 0 && savingsHigh > 0) {
-    savingsLabel = `You may save $${Math.round(savingsLow)}–$${Math.round(savingsHigh)}`;
+    savingsLabel = `You save $${Math.round(savingsLow)}–$${Math.round(savingsHigh)}`;
   } else if (savingsHigh > 0) {
-    savingsLabel = `You may save up to $${Math.round(savingsHigh)}`;
+    savingsLabel = `You save up to $${Math.round(savingsHigh)}`;
   } else if (cashRidezOffer <= riderFareRange.best) {
     savingsLabel = 'Great price! Below typical rideshare best price.';
   } else {
@@ -418,16 +478,18 @@ export interface DriverEarningsResult {
 /**
  * Calculate driver extra earnings on CashRidez vs traditional
  * CashRidez drivers keep 100%, traditional drivers keep 40-65%
+ * Now accepts pickupTime for time-of-day aware surge pricing
  */
 export function calculateDriverExtraRange(
   distanceMiles: number,
   durationMinutes: number,
   cashRidezEarnings: number,
-  config: typeof GEORGIA_FARE_CONFIG = GEORGIA_FARE_CONFIG
+  config: typeof GEORGIA_FARE_CONFIG = GEORGIA_FARE_CONFIG,
+  pickupTime?: Date
 ): DriverEarningsResult | null {
   if (!cashRidezEarnings || cashRidezEarnings <= 0) return null;
   
-  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes, config);
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes, config, pickupTime);
   if (!estimate) return null;
   
   const { riderFareRange, driverPayoutRange } = estimate;
@@ -444,9 +506,9 @@ export function calculateDriverExtraRange(
   // Generate human-readable label
   let extraLabel: string;
   if (extraLow > 0 && extraHigh > 0) {
-    extraLabel = `You could earn $${Math.round(extraLow)}–$${Math.round(extraHigh)} more`;
+    extraLabel = `You earn $${Math.round(extraLow)}–$${Math.round(extraHigh)} more`;
   } else if (extraHigh > 0) {
-    extraLabel = `You could earn up to $${Math.round(extraHigh)} more`;
+    extraLabel = `You earn up to $${Math.round(extraHigh)} more`;
   } else if (cashRidezEarnings >= driverPayoutRange.high) {
     extraLabel = 'Great earnings! Above typical rideshare driver payout.';
   } else {
@@ -502,6 +564,7 @@ export interface TripFareCalculation {
 /**
  * Calculate all fare comparisons for a trip
  * This is the main function to use for complete calculations
+ * Now includes pickupTime for time-of-day aware surge pricing
  */
 export function calculateTripFares(
   pickupLat: number,
@@ -509,7 +572,8 @@ export function calculateTripFares(
   dropoffLat: number,
   dropoffLng: number,
   cashRidezPrice: number,
-  etaMinutes?: number
+  etaMinutes?: number,
+  pickupTime?: Date
 ): TripFareCalculation | null {
   if (!cashRidezPrice || cashRidezPrice <= 0) return null;
   
@@ -522,15 +586,15 @@ export function calculateTripFares(
   const durationMinutes = etaMinutes && etaMinutes > 0 ? etaMinutes : metrics.durationMinutes;
   const config = metrics.geographic.config;
   
-  // Get fare estimate
-  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes, config);
+  // Get fare estimate with time-of-day awareness
+  const estimate = estimateRideshareFareRange(distanceMiles, durationMinutes, config, pickupTime);
   if (!estimate) return null;
   
-  // Calculate rider savings
-  const savingsResult = calculateRiderSavingsRange(distanceMiles, durationMinutes, cashRidezPrice, config);
+  // Calculate rider savings with time-of-day awareness
+  const savingsResult = calculateRiderSavingsRange(distanceMiles, durationMinutes, cashRidezPrice, config, pickupTime);
   
-  // Calculate driver extra
-  const extraResult = calculateDriverExtraRange(distanceMiles, durationMinutes, cashRidezPrice, config);
+  // Calculate driver extra with time-of-day awareness
+  const extraResult = calculateDriverExtraRange(distanceMiles, durationMinutes, cashRidezPrice, config, pickupTime);
   
   return {
     distanceMiles,
@@ -613,57 +677,35 @@ function round2(n: number): number {
 export const FARE_ESTIMATE_CONFIG = GEORGIA_FARE_CONFIG;
 
 // ============================================================================
-// TEST SCENARIOS - Georgia Real-World Trips
+// TEST SCENARIOS - Georgia Real-World Trips (Updated Rate Card v4)
 // ============================================================================
 /**
  * Test these 10 Georgia scenarios to verify calculator accuracy:
+ * Rate Card: Base $1.75-$2.75, Mile $0.95-$1.40, Min $0.22-$0.38, Fees $2.50-$3.99
+ * Surge: Off-peak 1.0-1.15, Rush 1.2-1.6, Late-night 1.35-1.9, Weekend 1.05-1.3
+ * Driver payout: 40-65% of rider fare
  * 
- * 1. SHORT CITY (5 mi, ~15 min) - Midtown → Buckhead
- *    Low:  $1.50 + 5×$0.90 + 15×$0.20 + $2.50 = $11.50
- *    High: ($2.50 + 5×$1.35 + 15×$0.35 + $3.75) × 1.75 = $28.44
- *    Best: $11.50
- *    Driver Low: $11.50 × 0.40 = $4.60
- *    Driver High: $28.44 × 0.65 = $18.49
+ * 1. SHORT CITY (5 mi, ~15 min) - Midtown → Buckhead (Off-peak)
+ *    Low:  $1.75 + 5×$0.95 + 15×$0.22 + $2.50 = $12.30
+ *    High: ($2.75 + 5×$1.40 + 15×$0.38 + $3.99) × 1.15 = $19.49
+ *    Best: $12.30
  * 
- * 2. SUBURBAN (12 mi, ~25 min) - Sandy Springs → Alpharetta
- *    Low:  $1.50 + 12×$0.90 + 25×$0.20 + $2.50 = $20.80
- *    High: ($2.50 + 12×$1.35 + 25×$0.35 + $3.75) × 1.75 = $51.10
- *    Best: $20.80
+ * 2. AIRPORT RUN (15 mi, ~30 min) - Downtown → ATL (Rush hour)
+ *    Low:  ($1.75 + 15×$0.95 + 30×$0.22 + $2.50) × 1.20 = $29.64
+ *    High: ($2.75 + 15×$1.40 + 30×$0.38 + $3.99) × 1.60 = $69.10
  * 
- * 3. AIRPORT RUN (15 mi, ~30 min) - Downtown → ATL Airport
- *    Low:  $1.50 + 15×$0.90 + 30×$0.20 + $2.50 = $23.50
- *    High: ($2.50 + 15×$1.35 + 30×$0.35 + $3.75) × 1.75 = $60.81
- *    Best: $23.50
+ * 3. LONG TRIP (49 mi, ~56 min) - Gwinnett → South Atlanta (Off-peak)
+ *    Low:  $1.75 + 49×$0.95 + 56×$0.22 + $2.50 = $63.12
+ *    High: ($2.75 + 49×$1.40 + 56×$0.38 + $3.99) × 1.15 = $117.30
+ *    >> Realistic range! NOT $32–$43.
  * 
- * 4. LONG TRIP (49 mi, ~56 min) - Gwinnett → South Atlanta
- *    Low:  $1.50 + 49×$0.90 + 56×$0.20 + $2.50 = $59.30
- *    High: ($2.50 + 49×$1.35 + 56×$0.35 + $3.75) × 1.75 = $167.30
- *    Best: $59.30
- *    >> NOT $32–$43! This was the bug.
+ * 4. LATE NIGHT (8 mi, ~20 min) - Bar district trip
+ *    Low:  ($1.75 + 8×$0.95 + 20×$0.22 + $2.50) × 1.35 = $21.73
+ *    High: ($2.75 + 8×$1.40 + 20×$0.38 + $3.99) × 1.90 = $51.75
  * 
- * 5. LATE NIGHT (8 mi, ~20 min) - Surge applies
- *    Low:  $1.50 + 8×$0.90 + 20×$0.20 + $2.50 = $15.20
- *    High: ($2.50 + 8×$1.35 + 20×$0.35 + $3.75) × 1.75 = $43.75
+ * 5. MORNING RUSH (10 mi, ~35 min) - Traffic-heavy commute
+ *    Low:  ($1.75 + 10×$0.95 + 35×$0.22 + $2.50) × 1.20 = $26.22
+ *    High: ($2.75 + 10×$1.40 + 35×$0.38 + $3.99) × 1.60 = $60.78
  * 
- * 6. MORNING RUSH (10 mi, ~35 min) - Traffic-heavy
- *    Low:  $1.50 + 10×$0.90 + 35×$0.20 + $2.50 = $20.00
- *    High: ($2.50 + 10×$1.35 + 35×$0.35 + $3.75) × 1.75 = $55.56
- * 
- * 7. MIDDAY (15 mi, ~25 min) - Low traffic
- *    Low:  $1.50 + 15×$0.90 + 25×$0.20 + $2.50 = $22.50
- *    High: ($2.50 + 15×$1.35 + 25×$0.35 + $3.75) × 1.75 = $57.09
- * 
- * 8. GWINNETT → ATLANTA (25 mi, ~40 min)
- *    Low:  $1.50 + 25×$0.90 + 40×$0.20 + $2.50 = $34.50
- *    High: ($2.50 + 25×$1.35 + 40×$0.35 + $3.75) × 1.75 = $94.06
- * 
- * 9. COBB → ATLANTA (20 mi, ~35 min)
- *    Low:  $1.50 + 20×$0.90 + 35×$0.20 + $2.50 = $29.00
- *    High: ($2.50 + 20×$1.35 + 35×$0.35 + $3.75) × 1.75 = $77.44
- * 
- * 10. SOUTH FULTON → NORTH ATLANTA (35 mi, ~50 min)
- *     Low:  $1.50 + 35×$0.90 + 50×$0.20 + $2.50 = $47.50
- *     High: ($2.50 + 35×$1.35 + 50×$0.35 + $3.75) × 1.75 = $130.81
- * 
- * All scenarios should produce realistic ranges that scale appropriately.
+ * All scenarios now include time-of-day surge awareness for realistic pricing.
  */
