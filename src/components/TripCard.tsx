@@ -111,15 +111,16 @@ export const TripCard = memo(({ request, isCompleted, onComplete, onCancel, user
         {isCompleted && (
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex items-center gap-2 text-sm">
-              {(userRole === "rider" ? request.driver_rating : request.rider_rating) ? (
+              {/* Check if current user has rated - rider's rating is rider_rating, driver's rating is driver_rating */}
+              {(userRole === "rider" ? request.rider_rating : request.driver_rating) ? (
                 <div className="flex items-center gap-1">
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-green-600 font-medium">Rated</span>
+                  <span className="text-green-600 font-medium">You rated</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1">
-                  <XCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Not rated</span>
+                  <XCircle className="h-4 w-4 text-amber-500" />
+                  <span className="text-amber-500 font-medium">Rate now</span>
                 </div>
               )}
             </div>

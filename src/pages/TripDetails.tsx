@@ -432,17 +432,12 @@ export default function TripDetails() {
       }
 
       // Update the ride request with the rating AND mark as completed by this user
-      // Also update status to completed if both users have now marked complete
-      const otherCompletionField = isRider ? 'driver_completed' : 'rider_completed';
+      // When first rating is submitted, mark trip as 'completed' (other user can still rate within 24h)
       const updates: any = { 
         [updateField]: rating,
-        [completionField]: true
+        [completionField]: true,
+        status: 'completed' // Always mark as completed when a rating is submitted
       };
-      
-      // If other user already completed, mark trip as completed
-      if (request[otherCompletionField]) {
-        updates.status = 'completed';
-      }
 
       const { error: rideError } = await supabase
         .from('ride_requests')
@@ -452,7 +447,8 @@ export default function TripDetails() {
       if (rideError) throw rideError;
 
       // CRITICAL: Immediately update the rated user's profile for real-time reflection
-      // This ensures the rating shows immediately even before the trip is fully completed
+      // When rider rates driver: rider_rating affects driver's driver_rating_avg
+      // When driver rates rider: driver_rating affects rider's rider_rating_avg
       const { data: ratedUserProfile } = await supabase
         .from('profiles')
         .select('rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count')
@@ -460,21 +456,23 @@ export default function TripDetails() {
         .single();
 
       if (ratedUserProfile) {
-        const currentAvg = ratingType === 'rider' 
-          ? (ratedUserProfile.rider_rating_avg || 0) 
-          : (ratedUserProfile.driver_rating_avg || 0);
-        const currentCount = ratingType === 'rider'
-          ? (ratedUserProfile.rider_rating_count || 0)
-          : (ratedUserProfile.driver_rating_count || 0);
+        // If current user is rider, they're rating the driver -> update driver's driver_rating
+        // If current user is driver, they're rating the rider -> update rider's rider_rating
+        const currentAvg = isRider 
+          ? (ratedUserProfile.driver_rating_avg || 0) 
+          : (ratedUserProfile.rider_rating_avg || 0);
+        const currentCount = isRider
+          ? (ratedUserProfile.driver_rating_count || 0)
+          : (ratedUserProfile.rider_rating_count || 0);
         
         // Calculate new average
         const newCount = currentCount + 1;
         const newAvg = ((currentAvg * currentCount) + rating) / newCount;
         
         // Update profile directly for immediate reflection
-        const profileUpdate = ratingType === 'rider'
-          ? { rider_rating_avg: parseFloat(newAvg.toFixed(2)), rider_rating_count: newCount }
-          : { driver_rating_avg: parseFloat(newAvg.toFixed(2)), driver_rating_count: newCount };
+        const profileUpdate = isRider
+          ? { driver_rating_avg: parseFloat(newAvg.toFixed(2)), driver_rating_count: newCount }
+          : { rider_rating_avg: parseFloat(newAvg.toFixed(2)), rider_rating_count: newCount };
         
         await supabase
           .from('profiles')
@@ -503,8 +501,8 @@ export default function TripDetails() {
       setShowRatingDialog(false);
       
       toast({
-        title: "Rating Submitted",
-        description: "Profile rating updated! Trip marked as complete.",
+        title: "Thanks for your rating!",
+        description: `You gave ${rating} star${rating > 1 ? 's' : ''}. Trip completed.`,
       });
       
       // CRITICAL: Refresh ALL data immediately (this refetches trip + profiles)
