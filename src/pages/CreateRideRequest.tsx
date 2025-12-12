@@ -619,17 +619,7 @@ END:VCARD`;
               </div>
             </div>
 
-            {/* Savings Calculator - shows when addresses are entered */}
-            {estimatedDistance && (
-              <SavingsCalculator
-                distanceMiles={estimatedDistance}
-                userPrice={parseFloat(formData.priceOffer) || 0}
-                pickupTime={formData.pickupTime ? new Date(formData.pickupTime) : undefined}
-                mode="rider"
-                variant="full"
-                className="mt-4"
-              />
-            )}
+            {/* Calculator removed - only shown after trip acceptance per product requirement */}
 
             <Button type="submit" className="w-full bg-gradient-primary text-background font-semibold hover:opacity-90 transition-opacity" size="lg" disabled={isSubmitting}>
               {isSubmitting ? "Creating Request..." : "Create Trip Request"}

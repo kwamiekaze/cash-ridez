@@ -15,8 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { TripMap } from "@/components/TripMap";
 import { MapBackground } from "@/components/MapBackground";
 // CommunityChat removed - replaced with Map tab navigation
-import FloatingSupport from "@/components/FloatingSupport";
-import { FloatingChat } from "@/components/FloatingChat";
+// FloatingSupport and FloatingChat removed - now in AppHeader
 import { DashboardCar } from "@/components/DashboardCar";
 import { useSubscription } from "@/hooks/useSubscription";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
@@ -448,13 +447,8 @@ const DriverDashboard = () => {
           {/* Map tab navigates directly to /map page */}
         </Tabs>
         </div>
-        
-        {activeTab !== "map" && (
-          <>
-            <FloatingSupport />
-            <FloatingChat />
-          </>
-        )}
+
+        {/* Floating buttons removed - now in AppHeader */}
       </div>
     </div>
   );

@@ -1157,48 +1157,7 @@ export default function TripDetails() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Driver Earnings Calculator - uses shared logic with coordinates */}
-              {request.price_offer && (() => {
-                const fareCalc = calculateTripFares(
-                  request.pickup_lat,
-                  request.pickup_lng,
-                  request.dropoff_lat,
-                  request.dropoff_lng,
-                  request.price_offer,
-                  request.eta_minutes || undefined,
-                  request.pickup_time ? new Date(request.pickup_time) : undefined
-                );
-                
-                if (!fareCalc) {
-                  return (
-                    <div className="mb-4 text-sm text-muted-foreground italic">
-                      We couldn't calculate a route yet — please confirm pickup & dropoff.
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div className="mb-4 bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <span className="text-2xl">💰</span>
-                      <div className="space-y-1">
-                        <p className="text-base font-bold text-foreground">
-                          {fareCalc.hasExtra 
-                            ? `You could earn ${formatCurrencyRange(fareCalc.driverExtraRange.low, fareCalc.driverExtraRange.high)} more than traditional rideshare.`
-                            : 'Competitive with traditional rideshare driver earnings.'
-                          }
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Typical rideshare driver earnings (estimated): {formatCurrencyRange(fareCalc.traditionalDriverPayoutRange.low, fareCalc.traditionalDriverPayoutRange.high)}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          CashRidez: {formatCurrency(request.price_offer)} (100%)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Driver earnings calculator removed from offer stage - only shown after trip completion per product requirement */}
               
               <form onSubmit={handleSubmitOffer} className="space-y-4">
                 {request.price_offer && (

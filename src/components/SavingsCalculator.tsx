@@ -43,11 +43,24 @@ function getSurgePeriodLabel(period: SurgePeriod): string {
   }
 }
 
+// Format approximate range for advisory display
+function formatApproxRange(low: number, high: number): string {
+  // Round to reasonable increments to avoid false precision
+  const roundedLow = Math.round(low / 5) * 5;
+  const roundedHigh = Math.round(high / 5) * 5;
+  if (roundedLow === roundedHigh) {
+    return `around $${roundedLow}`;
+  }
+  return `$${roundedLow} – $${roundedHigh}`;
+}
+
 /**
  * SavingsCalculator Component
  * Displays savings (for riders) or extra earnings (for drivers) compared to traditional rideshare
  * Uses Georgia/Metro Atlanta specific rates matching FareEstimate.com patterns
  * Now with time-of-day surge awareness
+ * 
+ * IMPORTANT: This component should only appear AFTER trip acceptance (rider) or completion (driver)
  */
 export function SavingsCalculator({
   pickupLat,
@@ -142,7 +155,7 @@ export function SavingsCalculator({
       return (
         <div className={`flex items-center gap-1 text-success font-semibold ${className}`}>
           <span>💰</span>
-          <span>Save {formatCurrencyRange(calculation.savingsRange.low, calculation.savingsRange.high)}</span>
+          <span>Estimated savings: {formatApproxRange(calculation.savingsRange.low, calculation.savingsRange.high)}</span>
         </div>
       );
     }
@@ -150,14 +163,14 @@ export function SavingsCalculator({
       return (
         <div className={`flex items-center gap-1 text-success font-semibold ${className}`}>
           <span>💰</span>
-          <span>+{formatCurrencyRange(calculation.extraRange.low, calculation.extraRange.high)} extra</span>
+          <span>Estimated extra: {formatApproxRange(calculation.extraRange.low, calculation.extraRange.high)}</span>
         </div>
       );
     }
     return null;
   }
 
-  // Full variant
+  // Full variant - advisory, range-based messaging
   return (
     <div className={`bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4 ${className}`}>
       <div className="flex items-start gap-2">
@@ -169,23 +182,21 @@ export function SavingsCalculator({
                 <>
                   <p className="text-lg font-bold text-foreground">
                     {calculation.hasSavings 
-                      ? `You could save ${formatCurrencyRange(calculation.savingsRange.low, calculation.savingsRange.high)} compared to typical rideshare.`
+                      ? `Estimated savings: ${formatApproxRange(calculation.savingsRange.low, calculation.savingsRange.high)}`
                       : 'Competitive with typical rideshare pricing.'
                     }
                   </p>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <p>
-                      Typical rideshare apps may charge: <span className="font-medium">{formatCurrencyRange(calculation.fareRange.low, calculation.fareRange.high)}</span>
+                      Based on similar trips, traditional rideshare prices typically range between{' '}
+                      <span className="font-medium">{formatApproxRange(calculation.fareRange.low, calculation.fareRange.high)}</span>
                     </p>
                     <p>
-                      Best price: <span className="font-medium">{formatCurrency(calculation.bestPrice)}</span>
-                    </p>
-                    <p>
-                      Your CashRidez offer: <span className="font-semibold text-success">{formatCurrency(userPrice)}</span>
+                      Your CashRidez trip: <span className="font-semibold text-success">{formatCurrency(userPrice)}</span>
                     </p>
                     {calculation.hasSavings && (
-                      <p className="font-medium text-success">
-                        Estimated savings: {formatCurrencyRange(calculation.savingsRange.low, calculation.savingsRange.high)}
+                      <p className="text-xs italic text-muted-foreground/80">
+                        CashRidez helps riders often save on trips like this.
                       </p>
                     )}
                   </div>
@@ -193,38 +204,40 @@ export function SavingsCalculator({
               ) : (
                 <>
                   <p className="text-lg font-bold text-foreground">
-                    Typical rideshare apps may charge: {formatCurrencyRange(calculation.fareRange.low, calculation.fareRange.high)}
+                    Typical rideshare prices for similar trips
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Best price: <span className="font-medium">{formatCurrency(calculation.bestPrice)}</span>
+                    Most riders pay {formatApproxRange(calculation.fareRange.low, calculation.fareRange.high)} for trips like this.
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs italic text-muted-foreground/80">
                     With CashRidez, you can offer what feels fair and pay drivers directly.
                   </p>
                 </>
               )}
             </>
           ) : (
+            // Driver mode - only shown after completion, only if positive
             <>
               <p className="text-lg font-bold text-foreground">
                 {calculation.hasExtra && calculation.extraRange
-                  ? `You could earn ${formatCurrencyRange(calculation.extraRange.low, calculation.extraRange.high)} more than typical rideshare.`
+                  ? `You earned more than typical rideshare!`
                   : 'Competitive with typical rideshare driver earnings.'
                 }
               </p>
               <div className="text-sm text-muted-foreground space-y-1">
                 <p>
-                  Typical rideshare driver earnings (estimated): {calculation.driverPayoutRange 
-                    ? formatCurrencyRange(calculation.driverPayoutRange.low, calculation.driverPayoutRange.high)
+                  On trips like this, traditional rideshare drivers typically earn{' '}
+                  {calculation.driverPayoutRange 
+                    ? formatApproxRange(calculation.driverPayoutRange.low, calculation.driverPayoutRange.high)
                     : 'N/A'
                   }
                 </p>
                 <p>
-                  CashRidez: <span className="font-semibold text-success">{formatCurrency(userPrice)}</span> (100%)
+                  You earned on CashRidez: <span className="font-semibold text-success">{formatCurrency(userPrice)}</span>
                 </p>
                 {calculation.hasExtra && calculation.extraRange && (
                   <p className="font-medium text-success">
-                    Estimated difference: {formatCurrencyRange(calculation.extraRange.low, calculation.extraRange.high)}
+                    Estimated extra earnings: {formatApproxRange(calculation.extraRange.low, calculation.extraRange.high)}
                   </p>
                 )}
               </div>
@@ -244,9 +257,18 @@ interface LifetimeSavingsProps {
   className?: string;
 }
 
+// Generate approximate range from a single value (±15% for realistic variance)
+function approximateRange(value: number): { low: number; high: number } {
+  const variance = 0.15;
+  const low = Math.round(value * (1 - variance));
+  const high = Math.round(value * (1 + variance));
+  return { low, high };
+}
+
 /**
  * LifetimeSavings Component
- * Displays cumulative savings/earnings on profile pages
+ * Displays cumulative savings/earnings on profile pages and subscription upsells
+ * Uses approximate ranges to avoid false precision
  */
 export function LifetimeSavings({
   totalSavings = 0,
@@ -256,16 +278,20 @@ export function LifetimeSavings({
   className = "",
 }: LifetimeSavingsProps) {
   if (mode === "rider") {
+    if (totalSavings <= 0) return null;
+    
+    const savingsRange = approximateRange(totalSavings);
+    
     return (
       <div className={`bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4 ${className}`}>
         <div className="flex items-center gap-2">
           <span className="text-2xl">💰</span>
           <div>
             <p className="text-lg font-bold text-foreground">
-              You've saved {formatCurrency(totalSavings)} compared to typical rideshare on CashRidez
+              Estimated lifetime savings: {formatApproxRange(savingsRange.low, savingsRange.high)}
             </p>
             <p className="text-sm text-muted-foreground">
-              Keep stacking your savings with every trip!
+              So far, you've likely saved approximately this amount compared to traditional rideshare.
             </p>
           </div>
         </div>
@@ -273,6 +299,11 @@ export function LifetimeSavings({
     );
   }
 
+  // Driver mode
+  if (totalExtra <= 0 && totalEarnings <= 0) return null;
+  
+  const extraRange = totalExtra > 0 ? approximateRange(totalExtra) : null;
+  
   return (
     <div className={`bg-gradient-to-r from-warning/10 to-success/10 border border-warning/30 rounded-lg p-4 space-y-3 ${className}`}>
       <div className="flex items-center gap-2">
@@ -283,16 +314,18 @@ export function LifetimeSavings({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 pl-8">
-        <div>
-          <p className="text-base font-semibold text-success">
-            You've earned {formatCurrency(totalExtra)} more than typical rideshare across all completed trips 💰
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Keep 100% of your earnings on CashRidez!
-          </p>
+      {extraRange && (
+        <div className="flex items-center gap-2 pl-8">
+          <div>
+            <p className="text-base font-semibold text-success">
+              Estimated extra earnings: {formatApproxRange(extraRange.low, extraRange.high)} 💰
+            </p>
+            <p className="text-sm text-muted-foreground">
+              So far, you've earned approximately this much more than traditional rideshare drivers on similar trips.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -307,6 +340,8 @@ interface TripCompletedSavingsProps {
 /**
  * TripCompletedSavings Component
  * Shows savings/extra for a completed trip
+ * Uses approximate ranges to avoid false precision
+ * Only shows positive comparisons (no negative messaging for drivers)
  */
 export function TripCompletedSavings({
   savings = 0,
@@ -315,26 +350,36 @@ export function TripCompletedSavings({
   className = "",
 }: TripCompletedSavingsProps) {
   if (mode === "rider" && savings > 0) {
+    const savingsRange = approximateRange(savings);
     return (
       <div className={`bg-success/10 border border-success/30 rounded-lg p-3 ${className}`}>
         <p className="text-base font-semibold text-success flex items-center gap-2">
           <span>💰</span>
-          You saved {formatCurrency(savings)} compared to typical rideshare on this trip!
+          Estimated savings on this trip: {formatApproxRange(savingsRange.low, savingsRange.high)}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Based on typical rideshare pricing for similar trips.
         </p>
       </div>
     );
   }
 
+  // Driver mode - only show if actually earned more
   if (mode === "driver" && extra > 0) {
+    const extraRange = approximateRange(extra);
     return (
       <div className={`bg-success/10 border border-success/30 rounded-lg p-3 ${className}`}>
         <p className="text-base font-semibold text-success flex items-center gap-2">
           <span>💰</span>
-          You made {formatCurrency(extra)} more than typical rideshare on this trip!
+          You earned approximately {formatApproxRange(extraRange.low, extraRange.high)} more on this trip!
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Compared to typical rideshare driver earnings for similar trips.
         </p>
       </div>
     );
   }
 
+  // Don't show anything if no positive comparison
   return null;
 }

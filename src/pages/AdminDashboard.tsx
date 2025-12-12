@@ -15,8 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search, Gift, Mail } from "lucide-react";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/input";
-import FloatingSupport from "@/components/FloatingSupport";
-import { FloatingChat } from "@/components/FloatingChat";
+// FloatingSupport and FloatingChat removed - now in AppHeader
 import { UserDetailDialog } from "@/components/UserDetailDialog";
 import { SystemMessageDialog } from "@/components/SystemMessageDialog";
 import { AdminChatRooms } from "@/components/AdminChatRooms";
@@ -337,12 +336,7 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
 
-        {activeTab !== "community" && activeTab !== "rooms" && (
-          <>
-            <FloatingSupport />
-            <FloatingChat />
-          </>
-        )}
+        {/* Floating buttons removed - now in AppHeader */}
 
         {selectedUserId && (
           <UserDetailDialog
