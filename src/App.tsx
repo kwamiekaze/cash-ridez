@@ -10,7 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
-import { FloatingUpdatePin } from "./components/FloatingUpdatePin";
+
 import { useNotificationSound } from "./hooks/useNotificationSound";
 
 // Lazy load pages for better performance
@@ -53,19 +53,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Global floating update pin wrapper - only shows on non-map pages for signed-in users
-const GlobalFloatingUpdatePin = () => {
-  const { user } = useAuth();
-  const location = useLocation();
-  
-  // Don't show on map page (has its own update button) or public pages
-  const isMapPage = location.pathname === '/map' || location.pathname === '/live-map';
-  const isPublicPage = ['/', '/auth', '/refer', '/terms', '/privacy', '/install-app', '/reset-password'].includes(location.pathname);
-  
-  if (!user || isMapPage || isPublicPage) return null;
-  
-  return <FloatingUpdatePin />;
-};
+// Floating update pin removed - now in AppHeader for better UX
 
 // Initialize notification sound system globally
 const NotificationSoundInitializer = () => {
@@ -114,7 +102,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <PageViewTracker />
-          <GlobalFloatingUpdatePin />
+          
           <DeferMount>
             <NotificationPermissionDialog />
           </DeferMount>

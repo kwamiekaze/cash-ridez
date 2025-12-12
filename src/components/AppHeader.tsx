@@ -7,6 +7,8 @@ import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
+import { HeaderPinButton } from "./HeaderPinButton";
+import { HeaderSupportButton } from "./HeaderSupportButton";
 import { motion } from "motion/react";
 import { SportsCar } from "./SportsCar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -96,7 +98,9 @@ const AppHeader = ({
                     {profile.active_role}
                   </div>}
               </div>}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <HeaderSupportButton />
+              <HeaderPinButton />
               <ThemeToggle />
               <NotificationBell />
             </div>

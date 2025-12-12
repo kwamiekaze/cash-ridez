@@ -19,8 +19,7 @@ import { AvailableDriversList } from "@/components/AvailableDriversList";
 import { TripLimitGate } from "@/components/TripLimitGate";
 import { MapBackground } from "@/components/MapBackground";
 // CommunityChat removed - replaced with Map tab navigation
-import FloatingSupport from "@/components/FloatingSupport";
-import { FloatingChat } from "@/components/FloatingChat";
+// FloatingSupport and FloatingChat removed - now in AppHeader
 import { DashboardCar } from "@/components/DashboardCar";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { AddressLink } from "@/components/AddressLink";
@@ -711,13 +710,8 @@ const RiderDashboard = () => {
           onSuccess={handleSuccess}
         />
       )}
-      
-      {activeTab !== "map" && (
-        <>
-          <FloatingSupport />
-          <FloatingChat />
-        </>
-      )}
+
+      {/* Floating buttons removed - now in AppHeader */}
       </div>
     </div>
   );
