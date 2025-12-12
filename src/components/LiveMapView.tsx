@@ -388,16 +388,16 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   };
 
   // Toggle user's own map visibility
-  // Only subscribed users or admins can toggle visibility
+  // All ID-verified users (drivers, riders, admins) can toggle visibility
   // When an admin toggles to invisible, also hide their history from public
   const handleToggleVisibility = async (checked: boolean) => {
     if (!user) return;
     
-    // Only allow toggle for subscribed users or admins
-    if (!isSubscribed && !isAdmin) {
+    // Only allow toggle for verified users (includes admins)
+    if (!canUpdatePin) {
       toast({
-        title: "Subscription required",
-        description: "Subscribe to unlock the ability to toggle your map visibility.",
+        title: "Verification required",
+        description: "Complete ID verification to toggle your map visibility.",
         variant: "destructive",
       });
       return;
@@ -422,10 +422,8 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       toast({
         title: checked ? "You're now visible" : "You're now invisible",
         description: checked 
-          ? "Other users can see you on the map."
-          : isAdmin 
-            ? "You're hidden from other users and your history is now hidden from public view."
-            : "You're hidden from other users",
+          ? "Other users can see your approximate location on the map."
+          : "Other users can't see you on the map.",
       });
     } catch (error) {
       console.error("Error updating visibility:", error);
@@ -437,8 +435,8 @@ export function LiveMapView({ className }: LiveMapViewProps) {
     }
   };
   
-  // Check if user can toggle visibility (subscribed or admin)
-  const canToggleVisibility = isSubscribed || isAdmin;
+  // Check if user can toggle visibility (all verified users can)
+  const canToggleVisibility = canUpdatePin;
 
   // Admin: Clear own map visibility history
   const handleClearOwnHistory = async () => {
@@ -1231,7 +1229,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
             ) : (
               <div 
                 className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/50 bg-emerald-500/10 opacity-60 cursor-not-allowed"
-                title="Subscribe to toggle visibility"
+                title="Verify ID to toggle visibility"
               >
                 <Eye className="h-4 w-4 text-emerald-400" />
                 <span className="text-emerald-400">Visible</span>
