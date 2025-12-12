@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Star, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
+import { AddressLink } from "@/components/AddressLink";
 
 interface UserRatingsDisplayProps {
   userId: string;
@@ -18,6 +19,10 @@ interface Rating {
   rater_photo: string;
   pickup_address: string;
   dropoff_address: string;
+  pickup_lat?: number;
+  pickup_lng?: number;
+  dropoff_lat?: number;
+  dropoff_lng?: number;
 }
 
 export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayProps) {
@@ -43,6 +48,10 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
           created_at,
           pickup_address,
           dropoff_address,
+          pickup_lat,
+          pickup_lng,
+          dropoff_lat,
+          dropoff_lng,
           ${raterField}
         `)
         .eq(userField, userId)
@@ -69,6 +78,10 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
             rater_photo: profileData?.photo_url || "",
             pickup_address: rating.pickup_address,
             dropoff_address: rating.dropoff_address,
+            pickup_lat: rating.pickup_lat,
+            pickup_lng: rating.pickup_lng,
+            dropoff_lat: rating.dropoff_lat,
+            dropoff_lng: rating.dropoff_lng,
           };
         })
       );
@@ -134,8 +147,8 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
                   {format(new Date(rating.created_at), "MMM d, yyyy")}
                 </p>
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p className="truncate">From: {rating.pickup_address}</p>
-                  <p className="truncate">To: {rating.dropoff_address}</p>
+                  <div className="truncate">From: <AddressLink address={rating.pickup_address} lat={rating.pickup_lat} lng={rating.pickup_lng} className="text-muted-foreground text-xs" /></div>
+                  <div className="truncate">To: <AddressLink address={rating.dropoff_address} lat={rating.dropoff_lat} lng={rating.dropoff_lng} isDestination className="text-muted-foreground text-xs" /></div>
                 </div>
               </div>
             </div>

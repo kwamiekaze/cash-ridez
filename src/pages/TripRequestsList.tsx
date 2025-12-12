@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import TripActionDialog from "@/components/TripActionDialog";
 import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
+import { AddressLink } from "@/components/AddressLink";
 
 export default function TripRequestsList() {
   const navigate = useNavigate();
@@ -445,14 +446,25 @@ export default function TripRequestsList() {
               <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
               <div>
                 <p className="text-xs font-medium text-success">Pickup</p>
-                <p className="text-sm">{request.pickup_address}</p>
+                <AddressLink 
+                  address={request.pickup_address} 
+                  lat={request.pickup_lat} 
+                  lng={request.pickup_lng}
+                  className="text-sm"
+                />
               </div>
             </div>
             <div className="flex items-start gap-3 pl-2 border-l-2 border-destructive">
               <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
               <div>
                 <p className="text-xs font-medium text-destructive">Dropoff</p>
-                <p className="text-sm">{request.dropoff_address}</p>
+                <AddressLink 
+                  address={request.dropoff_address} 
+                  lat={request.dropoff_lat} 
+                  lng={request.dropoff_lng}
+                  isDestination
+                  className="text-sm"
+                />
               </div>
             </div>
           </div>

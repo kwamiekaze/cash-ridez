@@ -13,7 +13,7 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import StatusBadge from "@/components/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { formatAddress } from "@/utils/addressFormatter";
+import { AddressLink } from "@/components/AddressLink";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 
@@ -167,14 +167,25 @@ export default function TripHistory() {
               <MapPin className="w-4 h-4 mt-1 text-success flex-shrink-0" />
               <div>
                 <p className="text-xs font-medium text-success">Pickup</p>
-                <p className="text-sm">{formatAddress(trip.pickup_address)}</p>
+                <AddressLink 
+                  address={trip.pickup_address} 
+                  lat={trip.pickup_lat} 
+                  lng={trip.pickup_lng}
+                  className="text-sm"
+                />
               </div>
             </div>
             <div className="flex items-start gap-3 pl-2 border-l-2 border-destructive">
               <MapPin className="w-4 h-4 mt-1 text-destructive flex-shrink-0" />
               <div>
                 <p className="text-xs font-medium text-destructive">Dropoff</p>
-                <p className="text-sm">{formatAddress(trip.dropoff_address)}</p>
+                <AddressLink 
+                  address={trip.dropoff_address} 
+                  lat={trip.dropoff_lat} 
+                  lng={trip.dropoff_lng}
+                  isDestination
+                  className="text-sm"
+                />
               </div>
             </div>
           </div>

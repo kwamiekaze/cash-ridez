@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { PremiumCrown } from "@/components/PremiumCrown";
 import { playNotificationSound } from "@/hooks/useNotificationSound";
+import { AddressLink } from "@/components/AddressLink";
 
 export default function ChatPage() {
   const { id } = useParams<{ id: string }>();
@@ -355,9 +356,22 @@ export default function ChatPage() {
             <div className="flex-1">
               <h1 className="text-xl font-bold">Trip Chat</h1>
               {tripInfo && (
-                <p className="text-sm text-muted-foreground">
-                  {tripInfo.pickup_address} → {tripInfo.dropoff_address}
-                </p>
+                <div className="text-sm text-muted-foreground flex items-center gap-1 flex-wrap">
+                  <AddressLink 
+                    address={tripInfo.pickup_address} 
+                    lat={tripInfo.pickup_lat} 
+                    lng={tripInfo.pickup_lng}
+                    className="text-muted-foreground"
+                  /> 
+                  <span>→</span> 
+                  <AddressLink 
+                    address={tripInfo.dropoff_address} 
+                    lat={tripInfo.dropoff_lat} 
+                    lng={tripInfo.dropoff_lng}
+                    isDestination
+                    className="text-muted-foreground"
+                  />
+                </div>
               )}
             </div>
             {tripInfo && currentUserId && (
