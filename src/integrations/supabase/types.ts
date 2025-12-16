@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notification_settings: {
+        Row: {
+          admin_id: string
+          created_at: string
+          notify_channel: string
+          notify_on_new_visit: boolean
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          notify_channel?: string
+          notify_on_new_visit?: boolean
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          notify_channel?: string
+          notify_on_new_visit?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
