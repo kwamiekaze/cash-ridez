@@ -18,7 +18,6 @@ import { z } from "zod";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
-import { SavingsCalculator } from "@/components/SavingsCalculator";
 import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
 
 // Sanitize HTML and dangerous characters to prevent XSS

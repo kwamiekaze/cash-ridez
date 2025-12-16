@@ -18,7 +18,6 @@ import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { useSubscription } from "@/hooks/useSubscription";
-import { TripCompletedSavings, SavingsCalculator } from "@/components/SavingsCalculator";
 import { calculateTripFares, formatCurrency, formatCurrencyRange } from "@/utils/fareEstimator";
 import { AddressLink } from "@/components/AddressLink";
 
@@ -838,20 +837,6 @@ export default function TripDetails() {
                           : 'Thank you for rating! This trip is now complete.'}
                       </p>
                     </div>
-                    
-                    {/* Savings/Earnings display for completed trips */}
-                    {isRider && request.rider_savings_vs_competitor > 0 && (
-                      <TripCompletedSavings
-                        savings={request.rider_savings_vs_competitor}
-                        mode="rider"
-                      />
-                    )}
-                    {!isRider && request.driver_extra_vs_competitor > 0 && (
-                      <TripCompletedSavings
-                        extra={request.driver_extra_vs_competitor}
-                        mode="driver"
-                      />
-                    )}
                   </>
                 )}
               </>
