@@ -21,7 +21,7 @@ import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { MapBackground } from "@/components/MapBackground";
 import { PremiumCrown } from "@/components/PremiumCrown";
 import { PhoneNumberReminderDialog } from "@/components/PhoneNumberReminderDialog";
-import { LifetimeSavings } from "@/components/SavingsCalculator";
+
 
 const Profile = () => {
   const { user } = useAuth();
@@ -562,20 +562,6 @@ const Profile = () => {
         {/* Role-specific sections */}
         {user && (
           <div className="mt-6 space-y-6">
-            {/* Lifetime Savings/Earnings */}
-            {profile.is_rider && profile.total_rider_savings_vs_competitor > 0 && (
-              <LifetimeSavings
-                totalSavings={profile.total_rider_savings_vs_competitor}
-                mode="rider"
-              />
-            )}
-            {profile.is_driver && (profile.total_driver_earnings > 0 || profile.total_driver_extra_vs_competitor > 0) && (
-              <LifetimeSavings
-                totalEarnings={profile.total_driver_earnings}
-                totalExtra={profile.total_driver_extra_vs_competitor}
-                mode="driver"
-              />
-            )}
             
             {/* Individual Ratings Display */}
             {profile.is_rider && profile.rider_rating_count > 0 && (
