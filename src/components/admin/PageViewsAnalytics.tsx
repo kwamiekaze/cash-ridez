@@ -9,7 +9,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis } from "recharts";
 
 interface PageStats {
   page_label: string;
@@ -54,80 +54,147 @@ export function PageViewsAnalytics() {
       const sevenDaysAgo = subDays(now, 7).toISOString();
       const fourteenDaysAgo = subDays(now, 14).toISOString();
 
-      // Fetch all page views for calculations
-      const { data: allViews, error: allError } = await supabase
+      // Use COUNT queries instead of fetching all rows (avoids 1000 row limit)
+      // Total views - count all records
+      const { count: totalViews, error: totalError } = await supabase
         .from("page_views")
-        .select("id, created_at, user_id, path, page_label")
-        .order("created_at", { ascending: false });
+        .select("*", { count: "exact", head: true });
 
-      if (allError) throw allError;
+      if (totalError) throw totalError;
 
-      if (!allViews) {
-        setLoading(false);
-        return;
-      }
+      // Views today - count with date filter
+      const { count: viewsToday, error: todayError } = await supabase
+        .from("page_views")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", todayStart)
+        .lte("created_at", todayEnd);
 
-      // Calculate overview stats
-      const totalViews = allViews.length;
-      const viewsToday = allViews.filter(v => 
-        v.created_at >= todayStart && v.created_at <= todayEnd
-      ).length;
-      const views7Days = allViews.filter(v => 
-        v.created_at >= sevenDaysAgo
-      ).length;
-      const uniqueVisitors7Days = new Set(
-        allViews
-          .filter(v => v.created_at >= sevenDaysAgo && v.user_id)
-          .map(v => v.user_id)
-      ).size;
+      if (todayError) throw todayError;
+
+      // Views last 7 days - count with date filter
+      const { count: views7Days, error: weekError } = await supabase
+        .from("page_views")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", sevenDaysAgo);
+
+      if (weekError) throw weekError;
+
+      // Unique visitors last 7 days - fetch distinct user_ids only
+      const { data: uniqueUsers, error: uniqueError } = await supabase
+        .from("page_views")
+        .select("user_id")
+        .gte("created_at", sevenDaysAgo)
+        .not("user_id", "is", null);
+
+      if (uniqueError) throw uniqueError;
+
+      const uniqueVisitors7Days = new Set(uniqueUsers?.map(u => u.user_id)).size;
 
       setOverviewStats({
-        totalViews,
-        viewsToday,
-        views7Days,
+        totalViews: totalViews || 0,
+        viewsToday: viewsToday || 0,
+        views7Days: views7Days || 0,
         uniqueVisitors7Days,
       });
 
-      // Calculate page stats
-      const pageMap = new Map<string, PageStats>();
-      allViews.forEach(view => {
-        const key = view.path;
-        const existing = pageMap.get(key) || {
-          page_label: view.page_label,
-          path: view.path,
-          total_views: 0,
-          views_today: 0,
-          views_7_days: 0,
-        };
-        
-        existing.total_views++;
-        if (view.created_at >= todayStart && view.created_at <= todayEnd) {
-          existing.views_today++;
-        }
-        if (view.created_at >= sevenDaysAgo) {
-          existing.views_7_days++;
-        }
-        
-        pageMap.set(key, existing);
-      });
+      // Fetch page stats using aggregation approach
+      // First get all unique paths with counts
+      const { data: allPaths, error: pathsError } = await supabase
+        .from("page_views")
+        .select("path, page_label, created_at");
 
-      const sortedPageStats = Array.from(pageMap.values())
-        .sort((a, b) => b.total_views - a.total_views);
-      setPageStats(sortedPageStats);
+      if (pathsError) throw pathsError;
+
+      // If we hit the 1000 limit, we need a different approach for page stats
+      // Use RPC or paginated fetching for accurate per-page counts
+      if (allPaths && allPaths.length >= 1000) {
+        // Fetch unique paths first
+        const uniquePaths = [...new Set(allPaths.map(p => p.path))];
+        
+        // For each path, get accurate counts using COUNT queries
+        const pageStatsPromises = uniquePaths.map(async (path) => {
+          const [totalResult, todayResult, weekResult] = await Promise.all([
+            supabase
+              .from("page_views")
+              .select("*", { count: "exact", head: true })
+              .eq("path", path),
+            supabase
+              .from("page_views")
+              .select("*", { count: "exact", head: true })
+              .eq("path", path)
+              .gte("created_at", todayStart)
+              .lte("created_at", todayEnd),
+            supabase
+              .from("page_views")
+              .select("*", { count: "exact", head: true })
+              .eq("path", path)
+              .gte("created_at", sevenDaysAgo),
+          ]);
+
+          const pageLabel = allPaths.find(p => p.path === path)?.page_label || path;
+
+          return {
+            path,
+            page_label: pageLabel,
+            total_views: totalResult.count || 0,
+            views_today: todayResult.count || 0,
+            views_7_days: weekResult.count || 0,
+          };
+        });
+
+        const resolvedPageStats = await Promise.all(pageStatsPromises);
+        const sortedPageStats = resolvedPageStats.sort((a, b) => b.total_views - a.total_views);
+        setPageStats(sortedPageStats);
+      } else if (allPaths) {
+        // Under 1000 records - original client-side aggregation is fine
+        const pageMap = new Map<string, PageStats>();
+        allPaths.forEach(view => {
+          const key = view.path;
+          const existing = pageMap.get(key) || {
+            page_label: view.page_label,
+            path: view.path,
+            total_views: 0,
+            views_today: 0,
+            views_7_days: 0,
+          };
+          
+          existing.total_views++;
+          if (view.created_at >= todayStart && view.created_at <= todayEnd) {
+            existing.views_today++;
+          }
+          if (view.created_at >= sevenDaysAgo) {
+            existing.views_7_days++;
+          }
+          
+          pageMap.set(key, existing);
+        });
+
+        const sortedPageStats = Array.from(pageMap.values())
+          .sort((a, b) => b.total_views - a.total_views);
+        setPageStats(sortedPageStats);
+      }
 
       // Calculate daily stats for chart (last 14 days)
+      // Fetch with date filter to stay under 1000 limit for recent data
+      const { data: recentViews, error: recentError } = await supabase
+        .from("page_views")
+        .select("created_at")
+        .gte("created_at", fourteenDaysAgo);
+
+      if (recentError) throw recentError;
+
       const dailyMap = new Map<string, number>();
       for (let i = 0; i < 14; i++) {
         const date = format(subDays(now, i), "yyyy-MM-dd");
         dailyMap.set(date, 0);
       }
 
-      allViews
-        .filter(v => v.created_at >= fourteenDaysAgo)
-        .forEach(view => {
-          const date = format(new Date(view.created_at), "yyyy-MM-dd");
+      recentViews?.forEach(view => {
+        const date = format(new Date(view.created_at), "yyyy-MM-dd");
+        if (dailyMap.has(date)) {
           dailyMap.set(date, (dailyMap.get(date) || 0) + 1);
-        });
+        }
+      });
 
       const chartData = Array.from(dailyMap.entries())
         .map(([date, views]) => ({ date, views }))
@@ -279,9 +346,9 @@ export function PageViewsAnalytics() {
                     <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
                       {page.path}
                     </TableCell>
-                    <TableCell className="text-right">{page.total_views}</TableCell>
-                    <TableCell className="text-right">{page.views_today}</TableCell>
-                    <TableCell className="text-right">{page.views_7_days}</TableCell>
+                    <TableCell className="text-right">{page.total_views.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{page.views_today.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">{page.views_7_days.toLocaleString()}</TableCell>
                   </TableRow>
                 ))}
                 {pageStats.length === 0 && (
