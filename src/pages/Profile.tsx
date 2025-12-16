@@ -21,6 +21,7 @@ import { ChangePasswordForm } from "@/components/ChangePasswordForm";
 import { MapBackground } from "@/components/MapBackground";
 import { PremiumCrown } from "@/components/PremiumCrown";
 import { PhoneNumberReminderDialog } from "@/components/PhoneNumberReminderDialog";
+import { AdminVisitAlertToggle } from "@/components/AdminVisitAlertToggle";
 
 
 const Profile = () => {
@@ -573,6 +574,9 @@ const Profile = () => {
             
             {/* Notification Preferences */}
             <NotificationPreferences />
+
+            {/* Admin Visit Alerts - only visible to admins */}
+            <AdminVisitAlertToggle />
 
             {/* Change Password */}
             <ChangePasswordForm />
