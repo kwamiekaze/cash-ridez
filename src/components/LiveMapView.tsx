@@ -174,7 +174,7 @@ const getOnlineStatus = (locationUpdatedAt: string | null): { isOnline: boolean;
 
 // Helper to create avatar-based divIcon with transparent background and status styling
 // Includes first-letter fallback when no profile photo exists
-// Updated to use 72h ring coloring for non-admin views
+// Updated to use 7-day ring coloring for non-admin views
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
@@ -205,7 +205,7 @@ const createAvatarDivIcon = (
       onlineIndicator = `<div style="position:absolute;top:0;right:0;width:12px;height:12px;background:#10B981;border-radius:50%;border:2px solid #1a1a2e;"></div>`;
     }
   } else {
-    // Non-admin view: 72h ring coloring (gold for active, grey for stale)
+    // Non-admin view: 7-day ring coloring (gold for active, grey for stale)
     const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
     borderColor = getRingColor(ringStatus);
     opacity = 1; // No opacity change for non-admins
@@ -517,10 +517,10 @@ export function LiveMapView({ className }: LiveMapViewProps) {
         }
       }
 
-      // For NON-ADMIN users (drivers and riders): fetch online users (location updated within 60 minutes)
-      // Also filter by is_map_visible = true for other users, but ALWAYS include the current user
+      // For NON-ADMIN users (drivers and riders): fetch ALL users with location data (no time filter)
+      // Ring color will indicate recency. Filter by is_map_visible = true for other users, but ALWAYS include the current user
       if (!isAdmin && user) {
-        // First, get all online users with recent location AND visibility enabled (or NULL = visible) AND not hidden history
+        // First, get online users (recent location within 60 min) for "Online Now" filter
         const { data: onlineProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
@@ -531,15 +531,13 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .or("is_map_visible.eq.true,is_map_visible.is.null")
           .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
 
-        // Fetch ALL users with any location data (for "All Users" filter - within last 72 hours for normal users)
-        // Also filter out users with hidden history
-        const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+        // Fetch ALL users with any location data (no time filter - show everyone permanently)
+        // Ring color will indicate if they're active (within 7 days) or stale (grey)
         const { data: allVisibleProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
           .not("current_lng", "is", null)
-          .gte("location_updated_at", seventyTwoHoursAgo)
           // Treat NULL as visible
           .or("is_map_visible.eq.true,is_map_visible.is.null")
           .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
@@ -598,7 +596,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .map(mapProfileToUser);
         setOnlineUsers(onlineUsersList);
 
-        // Process all users (for "All Users" filter)
+        // Process all users (for "All Users" filter) - now shows ALL users permanently
         const allProfilesList = allVisibleProfiles || [];
         const allProfileIds = new Set(allProfilesList.map(p => p.id));
         
