@@ -3,15 +3,15 @@
  * Helper functions for map marker styling based on user activity recency
  */
 
-// 72-hour cutoff in milliseconds
-const SEVENTY_TWO_HOURS_MS = 72 * 60 * 60 * 1000;
+// 7-day cutoff in milliseconds (1 week)
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Determines the ring status for a map marker based on location_updated_at timestamp.
  * Used for non-admin views to show activity recency via ring color.
  * 
  * @param locationUpdatedAt - ISO timestamp of last location update
- * @returns 'active' if within 72 hours, 'stale' if older
+ * @returns 'active' if within 7 days, 'stale' if older
  */
 export function getMapPresenceRingStatus(locationUpdatedAt: string | null | undefined): 'active' | 'stale' {
   if (!locationUpdatedAt) {
@@ -22,8 +22,8 @@ export function getMapPresenceRingStatus(locationUpdatedAt: string | null | unde
   const lastUpdate = new Date(locationUpdatedAt).getTime();
   const diffMs = now - lastUpdate;
   
-  // Active within last 72 hours = gold ring, older = grey ring
-  return diffMs <= SEVENTY_TWO_HOURS_MS ? 'active' : 'stale';
+  // Active within last 7 days = gold ring, older = grey ring
+  return diffMs <= ONE_WEEK_MS ? 'active' : 'stale';
 }
 
 /**

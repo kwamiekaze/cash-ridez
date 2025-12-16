@@ -52,7 +52,7 @@ const getJitteredCoords = (lat: number, lng: number, id: string, jitterMiles = 0
   };
 };
 
-// Create avatar-based divIcon with first-letter fallback and 72h ring coloring
+// Create avatar-based divIcon with first-letter fallback and 7-day ring coloring
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
@@ -69,7 +69,7 @@ const createAvatarDivIcon = (
   const size = 48;
   const borderWidth = 2;
   
-  // 72-hour ring coloring: gold for active, grey for stale
+  // 7-day ring coloring: gold for active, grey for stale
   const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
   const borderColor = getRingColor(ringStatus);
 
@@ -117,8 +117,8 @@ interface PublicLiveMapViewProps {
 
 /**
  * PublicLiveMapView - Anonymous visitor view of the live map
- * Shows all users within 72 hours with NO filter buttons (removed per user request)
- * Ring color indicates recency: gold = active within 72h, grey = older
+ * Shows ALL users with location data permanently (unless they toggled invisible)
+ * Ring color indicates recency: gold = active within 7 days, grey = older
  */
 export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -126,22 +126,22 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Public view: always show all users within 72h (no filter buttons)
-  const [allUsers72h, setAllUsers72h] = useState<PublicMapUser[]>([]);
+  // Public view: show ALL users with location data
+  const [allUsers, setAllUsers] = useState<PublicMapUser[]>([]);
 
-  // Fetch public map data - always get 72h window
+  // Fetch public map data - get ALL users with location (no time filter)
   const fetchPublicMapData = useCallback(async () => {
     try {
-      const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
-
-      // Query the public view for all users within 72 hours
-      const { data: allData72h, error: allError } = await supabase
+      // Query the public view for ALL users with location data (no time filter)
+      // The view already filters by is_map_visible and map_history_hidden_from_public
+      const { data: allData, error: allError } = await supabase
         .from("public_map_presence" as any)
         .select("*")
-        .gte("location_updated_at", seventyTwoHoursAgo);
+        .not("current_lat", "is", null)
+        .not("current_lng", "is", null);
 
       if (allError) {
-        console.error("Error fetching 72h users:", allError);
+        console.error("Error fetching users:", allError);
       }
 
       // Map view results to PublicMapUser
@@ -159,7 +159,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
         isRider: row.is_rider === true,
       });
 
-      setAllUsers72h((allData72h || []).map(mapViewData));
+      setAllUsers((allData || []).map(mapViewData));
     } catch (err) {
       console.error("Error fetching public map data:", err);
       setError("Failed to load map data");
@@ -249,7 +249,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
     }
   }, [fetchPublicMapData]);
 
-  // Update markers - always show all 72h users with ring coloring
+  // Update markers - show ALL users with ring coloring based on 7-day recency
   useEffect(() => {
     if (!mapInstanceRef.current || !L) return;
 
@@ -260,8 +260,8 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       }
     });
 
-    // Show all users within 72h - ring color indicates recency
-    allUsers72h.forEach((mapUser) => {
+    // Show ALL users - ring color indicates recency (gold = within 7 days, grey = older)
+    allUsers.forEach((mapUser) => {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
 
       const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -271,7 +271,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       const firstName = fullName.split(' ')[0];
       
       const variant = getMarkerVariant(mapUser);
-      // Pass locationUpdatedAt for 72h ring coloring
+      // Pass locationUpdatedAt for 7-day ring coloring
       const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at);
 
       // Public popup: first name only, no roles, no stats, no timestamps
@@ -287,7 +287,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
           </div>
         `);
     });
-  }, [allUsers72h]);
+  }, [allUsers]);
 
   // Center on Georgia
   const handleCenterOnGeorgia = () => {
