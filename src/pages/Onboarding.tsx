@@ -35,6 +35,14 @@ const Onboarding = () => {
         if (profileData.is_verified || profileData.verification_status === "approved") {
           setIsVerified(true);
         }
+        // Pre-populate role from existing profile data for resubmissions
+        if (profileData.active_role === 'driver' || profileData.active_role === 'rider') {
+          setSelectedRole(profileData.active_role);
+        } else if (profileData.is_driver) {
+          setSelectedRole('driver');
+        } else if (profileData.is_rider) {
+          setSelectedRole('rider');
+        }
       }
       setLoading(false);
     };
@@ -45,14 +53,18 @@ const Onboarding = () => {
       const file = e.target.files[0];
       if (file.size > 5 * 1024 * 1024) {
         toast.error("File size must be less than 5MB");
+        e.target.value = ''; // Reset input to allow re-selection
         return;
       }
       if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
         toast.error("Only JPG, PNG, and WebP images are allowed");
+        e.target.value = ''; // Reset input to allow re-selection
         return;
       }
       setIdFile(file);
     }
+    // Reset input value to allow selecting the same file again
+    e.target.value = '';
   };
   const handleSubmit = async () => {
     if (!selectedRole) {
@@ -65,46 +77,63 @@ const Onboarding = () => {
     }
     setUploading(true);
     try {
-      // Upload ID image
-      const fileExt = idFile.name.split(".").pop();
-      const filePath = `${user?.id}/id-${Date.now()}.${fileExt}`;
+      // Upload ID image with unique filename to prevent collisions
+      const fileExt = idFile.name.split(".").pop()?.toLowerCase() || 'jpg';
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
+      const filePath = `${user?.id}/id-${timestamp}-${randomSuffix}.${fileExt}`;
+      
       const {
         error: uploadError
-      } = await supabase.storage.from("id-verifications").upload(filePath, idFile);
-      if (uploadError) throw uploadError;
+      } = await supabase.storage.from("id-verifications").upload(filePath, idFile, {
+        contentType: idFile.type,
+        upsert: false // Don't overwrite, use unique filename
+      });
+      if (uploadError) {
+        console.error("Upload error:", uploadError);
+        throw new Error(`Failed to upload file: ${uploadError.message}`);
+      }
 
       // Generate signed URL with 1-hour expiry for security
       const {
-        data: {
-          signedUrl
-        },
+        data: urlData,
         error: urlError
       } = await supabase.storage.from("id-verifications").createSignedUrl(filePath, 3600);
-      if (urlError) throw urlError;
+      if (urlError) {
+        console.error("URL generation error:", urlError);
+        throw new Error(`Failed to generate URL: ${urlError.message}`);
+      }
 
-      // Update profile with ID and role
+      // Update profile with ID and role - clear any previous rejection notes
       const {
         error: updateError
       } = await supabase.from("profiles").update({
         id_image_url: filePath,
         verification_status: "pending",
         verification_submitted_at: new Date().toISOString(),
+        verification_notes: null, // Clear previous rejection notes
         active_role: selectedRole,
         role_set_at: new Date().toISOString(),
         is_rider: selectedRole === 'rider',
         is_driver: selectedRole === 'driver'
       }).eq("id", user?.id);
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Profile update error:", updateError);
+        throw new Error(`Failed to update profile: ${updateError.message}`);
+      }
 
-      // Create KYC submission record
-      await supabase.from("kyc_submissions").insert({
+      // Create new KYC submission record (allows multiple submissions for tracking)
+      const { error: kycError } = await supabase.from("kyc_submissions").insert({
         user_id: user?.id,
         user_email: user?.email || '',
         role: selectedRole,
         front_image_url: filePath,
         status: 'pending'
       });
-      if (updateError) throw updateError;
+      if (kycError) {
+        console.error("KYC submission error (non-blocking):", kycError);
+        // Don't throw - this is a secondary record for tracking
+      }
 
       // Send notification emails
       try {
@@ -125,14 +154,24 @@ const Onboarding = () => {
         console.error("Error sending notification:", emailError);
         // Don't fail the whole process if email fails
       }
+      
+      // Clear the file state and refresh profile
+      setIdFile(null);
+      setProfile((prev: any) => ({
+        ...prev,
+        verification_status: 'pending',
+        id_image_url: filePath,
+        verification_notes: null
+      }));
+      
       toast.success("ID submitted for verification!");
       toast.info("Our team will review your submission shortly. You'll be notified once your account is verified.", {
         duration: 6000
       });
       navigate("/verification-pending");
     } catch (error: any) {
-      console.error("Error:", error);
-      toast.error(error.message || "Failed to submit");
+      console.error("Submission error:", error);
+      toast.error(error.message || "Failed to submit. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -289,10 +328,18 @@ const Onboarding = () => {
                 </div>
               </Card>
               
+              {/* Role Selection for pending resubmission */}
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-4">Confirm Your Role</h2>
+                <Card className="p-6">
+                  <RolePicker onRoleSelect={setSelectedRole} selectedRole={selectedRole} />
+                </Card>
+              </div>
+              
               <div className="mt-6">
                 <h2 className="text-xl font-semibold mb-4">Resubmit ID</h2>
                 <Card className="p-6">
-                  <Label htmlFor="id-upload" className="cursor-pointer">
+                  <Label htmlFor="id-upload-pending" className="cursor-pointer">
                     <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
                       {idFile ? <div className="flex flex-col items-center gap-2">
                           <CheckCircle className="w-12 h-12 text-success" />
@@ -306,7 +353,7 @@ const Onboarding = () => {
                           </p>
                         </div>}
                     </div>
-                    <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                    <input id="id-upload-pending" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
                   </Label>
                 </Card>
               </div>
@@ -322,6 +369,11 @@ const Onboarding = () => {
                     <p className="text-foreground/70 mb-4">
                       Your previous ID submission could not be verified. This may be due to image quality or document type.
                     </p>
+                    {profile?.verification_notes && (
+                      <p className="text-sm text-destructive/80 mb-4 p-3 bg-destructive/10 rounded-lg">
+                        <strong>Reason:</strong> {profile.verification_notes}
+                      </p>
+                    )}
                     <p className="text-sm font-medium">
                       Please submit a clear photo of your government-issued ID below.
                     </p>
@@ -329,10 +381,18 @@ const Onboarding = () => {
                 </div>
               </Card>
               
+              {/* Role Selection for resubmission - allow changing role */}
+              <div className="mt-6">
+                <h2 className="text-xl font-semibold mb-4">Confirm Your Role</h2>
+                <Card className="p-6">
+                  <RolePicker onRoleSelect={setSelectedRole} selectedRole={selectedRole} />
+                </Card>
+              </div>
+              
               <div className="mt-6">
                 <h2 className="text-xl font-semibold mb-4">Resubmit ID for Verification</h2>
                 <Card className="p-6">
-                  <Label htmlFor="id-upload" className="cursor-pointer">
+                  <Label htmlFor="id-upload-rejected" className="cursor-pointer">
                     <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
                       {idFile ? <div className="flex flex-col items-center gap-2">
                           <CheckCircle className="w-12 h-12 text-success" />
@@ -346,7 +406,7 @@ const Onboarding = () => {
                           </p>
                         </div>}
                     </div>
-                    <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                    <input id="id-upload-rejected" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
                   </Label>
                 </Card>
                 <p className="text-xs text-muted-foreground mt-2">
