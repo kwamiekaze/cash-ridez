@@ -12,7 +12,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapBackground } from "@/components/MapBackground";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 import { SplashScreen } from "@/components/SplashScreen";
-import { PASSWORD_POLICY, getPasswordRequirementsText, validatePassword } from "@/lib/passwordValidation";
+
+// Inline password validation to avoid module bundling issues
+const PASSWORD_POLICY = { minLength: 8, maxLength: 128 };
+
+function validatePassword(password: string): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!password) {
+    return { isValid: false, errors: ["Password is required"] };
+  }
+  if (password.length < PASSWORD_POLICY.minLength) {
+    errors.push(`Password must be at least ${PASSWORD_POLICY.minLength} characters`);
+  }
+  if (password.length > PASSWORD_POLICY.maxLength) {
+    errors.push(`Password must be less than ${PASSWORD_POLICY.maxLength} characters`);
+  }
+  return { isValid: errors.length === 0, errors };
+}
+
+function getPasswordRequirementsText(): string {
+  return `At least ${PASSWORD_POLICY.minLength} characters`;
+}
 
 const Auth = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -26,7 +46,7 @@ const Auth = () => {
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [referralCode, setReferralCode] = useState("");
 
-  // Signup password validation (shared policy)
+  // Signup password validation
   const [signupPassword, setSignupPassword] = useState("");
   const signupPasswordValidation = useMemo(() => validatePassword(signupPassword), [signupPassword]);
   const showSignupPasswordError = signupPassword.length > 0 && !signupPasswordValidation.isValid;
