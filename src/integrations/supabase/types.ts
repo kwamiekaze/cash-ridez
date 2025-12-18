@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_actions: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          target_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          target_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          target_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       admin_notification_settings: {
         Row: {
           admin_id: string
@@ -939,6 +972,7 @@ export type Database = {
           map_history_cleared_at: string | null
           map_history_cleared_by: string | null
           map_history_hidden_from_public: boolean | null
+          must_change_password: boolean | null
           notification_preferences: Json | null
           notify_new_driver: boolean | null
           paused: boolean | null
@@ -1011,6 +1045,7 @@ export type Database = {
           map_history_cleared_at?: string | null
           map_history_cleared_by?: string | null
           map_history_hidden_from_public?: boolean | null
+          must_change_password?: boolean | null
           notification_preferences?: Json | null
           notify_new_driver?: boolean | null
           paused?: boolean | null
@@ -1083,6 +1118,7 @@ export type Database = {
           map_history_cleared_at?: string | null
           map_history_cleared_by?: string | null
           map_history_hidden_from_public?: boolean | null
+          must_change_password?: boolean | null
           notification_preferences?: Json | null
           notify_new_driver?: boolean | null
           paused?: boolean | null
