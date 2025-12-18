@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -31,6 +31,7 @@ import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff } from "luc
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordValidation";
 
 interface UserDetailDialogProps {
   userId: string | null;
@@ -293,17 +294,10 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const handleSetTempPassword = async () => {
     if (!userId || !tempPassword) return;
     
-    // Validate password
-    if (tempPassword.length < 12) {
-      toast.error("Password must be at least 12 characters");
-      return;
-    }
-    if (!/\d/.test(tempPassword)) {
-      toast.error("Password must contain at least 1 number");
-      return;
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(tempPassword)) {
-      toast.error("Password must contain at least 1 symbol");
+    // Validate password using shared utility
+    const validation = validatePassword(tempPassword);
+    if (!validation.isValid) {
+      toast.error(validation.errors[0]);
       return;
     }
 
@@ -361,15 +355,14 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   };
 
   const generateTempPassword = () => {
+    // Generate a strong password that meets the policy (min 8 chars)
     const chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const symbols = "!@#$%^&*";
     let password = "";
+    // Generate 10 chars for a secure temp password
     for (let i = 0; i < 10; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    // Ensure at least one number and one symbol
-    password += Math.floor(Math.random() * 10);
-    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
     // Shuffle the password
     setTempPassword(password.split("").sort(() => Math.random() - 0.5).join(""));
   };
@@ -542,10 +535,10 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                   <div className="relative flex-1">
                     <Input
                       type={showTempPassword ? "text" : "password"}
-                      placeholder="Min 12 chars, 1 number, 1 symbol"
+                      placeholder={getPasswordRequirementsText()}
                       value={tempPassword}
                       onChange={(e) => setTempPassword(e.target.value)}
-                      className="pr-10"
+                      className={`pr-10 ${tempPassword && !validatePassword(tempPassword).isValid ? 'border-destructive' : ''}`}
                     />
                     <Button
                       type="button"
@@ -566,6 +559,17 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                     Generate
                   </Button>
                 </div>
+                {/* Inline validation feedback */}
+                {tempPassword && !validatePassword(tempPassword).isValid && (
+                  <p className="text-xs text-destructive">
+                    {validatePassword(tempPassword).errors[0]}
+                  </p>
+                )}
+                {tempPassword && validatePassword(tempPassword).isValid && (
+                  <p className="text-xs text-green-500">
+                    Password meets requirements
+                  </p>
+                )}
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="revoke-sessions"
@@ -583,7 +587,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                   variant="outline"
                   size="sm"
                   onClick={() => setConfirmTempPasswordOpen(true)}
-                  disabled={settingTempPassword || !tempPassword}
+                  disabled={settingTempPassword || !tempPassword || !validatePassword(tempPassword).isValid}
                   className="w-full justify-start"
                 >
                   <Key className="h-4 w-4 mr-2" />
