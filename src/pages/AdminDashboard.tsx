@@ -220,6 +220,7 @@ const AdminDashboard = () => {
                   })} 
                   onUpdate={fetchUsers}
                   onViewUser={handleViewUser}
+                  showFilters={false}
                 />
               </motion.div>
             </TabsContent>

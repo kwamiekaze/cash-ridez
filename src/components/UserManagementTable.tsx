@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock } from "lucide-react";
 import { UserChip } from "@/components/UserChip";
+import { AdminUserFilters, UserFilters } from "@/components/admin/AdminUserFilters";
 
 interface User {
   id: string;
@@ -24,48 +25,134 @@ interface User {
   full_name: string | null;
   created_at: string | null;
   verification_reviewed_at: string | null;
+  verification_submitted_at?: string | null;
+}
+
+interface UserWithActivity extends User {
+  lastVisit?: Date | null;
+  isAdmin?: boolean;
 }
 
 interface UserManagementTableProps {
   users: User[];
   onUpdate: () => void;
   onViewUser: (userId: string) => void;
+  showFilters?: boolean;
 }
 
-export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagementTableProps) {
+export function UserManagementTable({ users, onUpdate, onViewUser, showFilters = true }: UserManagementTableProps) {
   const [loading, setLoading] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("created_at");
-  const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
+  const [filters, setFilters] = useState<UserFilters>({
+    roles: [],
+    verificationStatus: "all",
+    lastVisit: "all",
+  });
+  const [filteredUsers, setFilteredUsers] = useState<UserWithActivity[]>(users);
+  const [userActivity, setUserActivity] = useState<Record<string, Date | null>>({});
+  const [adminUsers, setAdminUsers] = useState<Set<string>>(new Set());
 
+  // Fetch last visit data and admin status
   useEffect(() => {
-    let filtered = [...users];
+    const fetchActivityAndRoles = async () => {
+      // Fetch latest page view per user
+      const { data: pageViews } = await supabase
+        .from("page_views")
+        .select("user_id, created_at")
+        .not("user_id", "is", null)
+        .order("created_at", { ascending: false });
+
+      if (pageViews) {
+        const activityMap: Record<string, Date | null> = {};
+        pageViews.forEach(pv => {
+          if (pv.user_id && !activityMap[pv.user_id]) {
+            activityMap[pv.user_id] = new Date(pv.created_at);
+          }
+        });
+        setUserActivity(activityMap);
+      }
+
+      // Fetch admin roles
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      if (adminRoles) {
+        setAdminUsers(new Set(adminRoles.map(r => r.user_id)));
+      }
+    };
+
+    fetchActivityAndRoles();
+  }, [users]);
+
+  // Apply filters
+  useEffect(() => {
+    let filtered: UserWithActivity[] = users.map(u => ({
+      ...u,
+      lastVisit: userActivity[u.id] || null,
+      isAdmin: adminUsers.has(u.id),
+    }));
     
-    // Role filter
-    if (roleFilter === "rider") {
-      filtered = filtered.filter(u => u.is_rider);
-    } else if (roleFilter === "driver") {
-      filtered = filtered.filter(u => u.is_driver);
-    } else if (roleFilter === "verified") {
-      filtered = filtered.filter(u => u.is_verified);
+    // Role filter (multi-select)
+    if (filters.roles.length > 0) {
+      filtered = filtered.filter(u => {
+        return filters.roles.some(role => {
+          if (role === "driver") return u.is_driver && !u.is_rider;
+          if (role === "rider") return u.is_rider && !u.is_driver;
+          if (role === "both") return u.is_driver && u.is_rider;
+          if (role === "admin") return u.isAdmin;
+          return false;
+        });
+      });
+    }
+
+    // Verification status filter
+    if (filters.verificationStatus !== "all") {
+      filtered = filtered.filter(u => {
+        switch (filters.verificationStatus) {
+          case "verified":
+            return u.is_verified;
+          case "pending":
+            return !u.is_verified && u.verification_status === "pending";
+          case "rejected":
+            return !u.is_verified && u.verification_status === "rejected";
+          case "not_submitted":
+            return !u.is_verified && (!u.verification_status || u.verification_status === "pending") && !u.verification_submitted_at;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Last visit filter
+    if (filters.lastVisit !== "all") {
+      const now = new Date();
+      filtered = filtered.filter(u => {
+        const lastVisit = u.lastVisit;
+        switch (filters.lastVisit) {
+          case "online_now":
+            return lastVisit && (now.getTime() - lastVisit.getTime()) <= 5 * 60 * 1000; // 5 min
+          case "24h":
+            return lastVisit && (now.getTime() - lastVisit.getTime()) <= 24 * 60 * 60 * 1000;
+          case "7d":
+            return lastVisit && (now.getTime() - lastVisit.getTime()) <= 7 * 24 * 60 * 60 * 1000;
+          case "30d":
+            return lastVisit && (now.getTime() - lastVisit.getTime()) <= 30 * 24 * 60 * 60 * 1000;
+          case "never":
+            return !lastVisit;
+          default:
+            return true;
+        }
+      });
     }
     
-    // Sort
+    // Sort by created_at desc by default
     filtered.sort((a, b) => {
-      if (sortBy === "created_at") {
-        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
-      } else if (sortBy === "created_at_asc") {
-        return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
-      } else if (sortBy === "verification_date") {
-        return new Date(b.verification_reviewed_at || 0).getTime() - new Date(a.verification_reviewed_at || 0).getTime();
-      } else if (sortBy === "verification_date_asc") {
-        return new Date(a.verification_reviewed_at || 0).getTime() - new Date(b.verification_reviewed_at || 0).getTime();
-      }
-      return 0;
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
     });
     
     setFilteredUsers(filtered);
-  }, [users, roleFilter, sortBy]);
+  }, [users, filters, userActivity, adminUsers]);
 
   const handleVerificationToggle = async (userId: string, currentStatus: boolean) => {
     setLoading(userId);
@@ -215,8 +302,17 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
   };
 
   return (
-    <div className="rounded-md border overflow-hidden bg-card/50 backdrop-blur-sm">
-      <div className="overflow-x-auto">
+    <div className="space-y-4">
+      {showFilters && (
+        <AdminUserFilters filters={filters} onFiltersChange={setFilters} />
+      )}
+      
+      {filteredUsers.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground bg-card/50 backdrop-blur-sm rounded-lg border border-border/50">
+          <p>No users match the current filters</p>
+        </div>
+      ) : (
+      <div className="rounded-md border overflow-hidden bg-card/50 backdrop-blur-sm">
         <Table>
           <TableHeader>
             <TableRow className="border-border/50">
@@ -345,6 +441,7 @@ export function UserManagementTable({ users, onUpdate, onViewUser }: UserManagem
           </TableBody>
         </Table>
       </div>
+      )}
     </div>
   );
 }
