@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import StatusBadge from "@/components/StatusBadge";
@@ -17,9 +27,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Users, Mail } from "lucide-react";
+import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff } from "lucide-react";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface UserDetailDialogProps {
   userId: string | null;
@@ -49,6 +60,17 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
   const [idPreviewOpen, setIdPreviewOpen] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null; referralCode: string | null; totalReferredTrips: number }>({ count: 0, referrerName: null, referralCode: null, totalReferredTrips: 0 });
+  
+  // Security section state
+  const [sendingResetEmail, setSendingResetEmail] = useState(false);
+  const [settingTempPassword, setSettingTempPassword] = useState(false);
+  const [revokingSessions, setRevokingSessions] = useState(false);
+  const [tempPassword, setTempPassword] = useState("");
+  const [showTempPassword, setShowTempPassword] = useState(false);
+  const [revokeOnReset, setRevokeOnReset] = useState(true);
+  const [confirmResetEmailOpen, setConfirmResetEmailOpen] = useState(false);
+  const [confirmTempPasswordOpen, setConfirmTempPasswordOpen] = useState(false);
+  const [confirmRevokeSessionsOpen, setConfirmRevokeSessionsOpen] = useState(false);
 
   useEffect(() => {
     if (userId && open) {
@@ -241,6 +263,117 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     }
   };
 
+  // Security action handlers
+  const handleSendResetEmail = async () => {
+    if (!userId) return;
+    setConfirmResetEmailOpen(false);
+    setSendingResetEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-password-reset", {
+        body: {
+          action: "send_reset_email",
+          targetUserId: userId,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(data.message || "Password reset email sent");
+      } else {
+        toast.error(data?.error || "Failed to send reset email");
+      }
+    } catch (error: any) {
+      console.error("Error sending reset email:", error);
+      toast.error(error.message || "Failed to send password reset email");
+    } finally {
+      setSendingResetEmail(false);
+    }
+  };
+
+  const handleSetTempPassword = async () => {
+    if (!userId || !tempPassword) return;
+    
+    // Validate password
+    if (tempPassword.length < 12) {
+      toast.error("Password must be at least 12 characters");
+      return;
+    }
+    if (!/\d/.test(tempPassword)) {
+      toast.error("Password must contain at least 1 number");
+      return;
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(tempPassword)) {
+      toast.error("Password must contain at least 1 symbol");
+      return;
+    }
+
+    setConfirmTempPasswordOpen(false);
+    setSettingTempPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-password-reset", {
+        body: {
+          action: "set_temp_password",
+          targetUserId: userId,
+          tempPassword,
+          revokeSessionsOnReset: revokeOnReset,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(data.message || "Temporary password set");
+        setTempPassword("");
+      } else {
+        toast.error(data?.error || "Failed to set temporary password");
+      }
+    } catch (error: any) {
+      console.error("Error setting temp password:", error);
+      toast.error(error.message || "Failed to set temporary password");
+    } finally {
+      setSettingTempPassword(false);
+    }
+  };
+
+  const handleRevokeSessions = async () => {
+    if (!userId) return;
+    setConfirmRevokeSessionsOpen(false);
+    setRevokingSessions(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-password-reset", {
+        body: {
+          action: "revoke_sessions",
+          targetUserId: userId,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.success) {
+        toast.success(data.message || "All sessions revoked");
+      } else {
+        toast.error(data?.error || "Failed to revoke sessions");
+      }
+    } catch (error: any) {
+      console.error("Error revoking sessions:", error);
+      toast.error(error.message || "Failed to revoke sessions");
+    } finally {
+      setRevokingSessions(false);
+    }
+  };
+
+  const generateTempPassword = () => {
+    const chars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const symbols = "!@#$%^&*";
+    let password = "";
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    // Ensure at least one number and one symbol
+    password += Math.floor(Math.random() * 10);
+    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    // Shuffle the password
+    setTempPassword(password.split("").sort(() => Math.random() - 0.5).join(""));
+  };
+
   if (!user) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -377,6 +510,108 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               </p>
             </Card>
           )}
+
+          {/* Security Section */}
+          <Card className="p-4 border-destructive/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Shield className="h-4 w-4 text-destructive" />
+              <Label className="text-sm font-medium">Security</Label>
+            </div>
+            <div className="space-y-4">
+              {/* Send Password Reset Email */}
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmResetEmailOpen(true)}
+                  disabled={sendingResetEmail}
+                  className="w-full justify-start"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {sendingResetEmail ? "Sending..." : "Send Password Reset Email"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Sends a password reset link to {user.email}
+                </p>
+              </div>
+
+              {/* Set Temporary Password */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Set Temporary Password</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      type={showTempPassword ? "text" : "password"}
+                      placeholder="Min 12 chars, 1 number, 1 symbol"
+                      value={tempPassword}
+                      onChange={(e) => setTempPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowTempPassword(!showTempPassword)}
+                    >
+                      {showTempPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateTempPassword}
+                    className="shrink-0"
+                  >
+                    Generate
+                  </Button>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="revoke-sessions"
+                    checked={revokeOnReset}
+                    onCheckedChange={(checked) => setRevokeOnReset(checked === true)}
+                  />
+                  <label
+                    htmlFor="revoke-sessions"
+                    className="text-xs text-muted-foreground cursor-pointer"
+                  >
+                    Revoke all sessions after setting password
+                  </label>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmTempPasswordOpen(true)}
+                  disabled={settingTempPassword || !tempPassword}
+                  className="w-full justify-start"
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  {settingTempPassword ? "Setting..." : "Set Temporary Password"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  User will be required to change password on next login
+                </p>
+              </div>
+
+              {/* Revoke Sessions */}
+              <div className="space-y-2 pt-2 border-t">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setConfirmRevokeSessionsOpen(true)}
+                  disabled={revokingSessions}
+                  className="w-full justify-start"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {revokingSessions ? "Revoking..." : "Revoke All Sessions"}
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Signs the user out of all devices immediately
+                </p>
+              </div>
+            </div>
+          </Card>
 
           {/* Ratings */}
           <div className="grid grid-cols-2 gap-4">
@@ -581,6 +816,72 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Send Reset Email Dialog */}
+      <AlertDialog open={confirmResetEmailOpen} onOpenChange={setConfirmResetEmailOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Password Reset Email</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send a password reset link to <strong>{user?.email}</strong>. 
+              The user will be able to set a new password using this link.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSendResetEmail}>
+              Send Reset Email
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Set Temp Password Dialog */}
+      <AlertDialog open={confirmTempPasswordOpen} onOpenChange={setConfirmTempPasswordOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set Temporary Password</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will set a temporary password for <strong>{user?.email}</strong>.
+              </p>
+              <p>
+                The user will be required to change their password on next login.
+              </p>
+              {revokeOnReset && (
+                <p className="text-destructive">
+                  All active sessions will be revoked.
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSetTempPassword}>
+              Set Temporary Password
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Revoke Sessions Dialog */}
+      <AlertDialog open={confirmRevokeSessionsOpen} onOpenChange={setConfirmRevokeSessionsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke All Sessions</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will sign <strong>{user?.email}</strong> out of all devices immediately. 
+              They will need to log in again to access their account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRevokeSessions} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Revoke All Sessions
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

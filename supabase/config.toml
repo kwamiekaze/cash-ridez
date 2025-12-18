@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.send-driver-available-notification]
 verify_jwt = true
+
+[functions.admin-password-reset]
+verify_jwt = true
