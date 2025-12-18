@@ -31,7 +31,27 @@ import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff } from "luc
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordValidation";
+
+// Inline password validation to avoid module bundling issues
+const PASSWORD_POLICY = { minLength: 8, maxLength: 128 };
+
+function validatePassword(password: string): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!password) {
+    return { isValid: false, errors: ["Password is required"] };
+  }
+  if (password.length < PASSWORD_POLICY.minLength) {
+    errors.push(`Password must be at least ${PASSWORD_POLICY.minLength} characters`);
+  }
+  if (password.length > PASSWORD_POLICY.maxLength) {
+    errors.push(`Password must be less than ${PASSWORD_POLICY.maxLength} characters`);
+  }
+  return { isValid: errors.length === 0, errors };
+}
+
+function getPasswordRequirementsText(): string {
+  return `At least ${PASSWORD_POLICY.minLength} characters`;
+}
 
 interface UserDetailDialogProps {
   userId: string | null;
