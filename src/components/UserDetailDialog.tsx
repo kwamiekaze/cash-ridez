@@ -32,7 +32,7 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordValidation";
-
+import { formatEdgeFunctionError } from "@/lib/formatEdgeFunctionError";
 interface UserDetailDialogProps {
   userId: string | null;
   open: boolean;
@@ -67,6 +67,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const [settingTempPassword, setSettingTempPassword] = useState(false);
   const [revokingSessions, setRevokingSessions] = useState(false);
   const [tempPassword, setTempPassword] = useState("");
+  const tempPasswordValidation = useMemo(() => validatePassword(tempPassword), [tempPassword]);
   const [showTempPassword, setShowTempPassword] = useState(false);
   const [revokeOnReset, setRevokeOnReset] = useState(true);
   const [confirmResetEmailOpen, setConfirmResetEmailOpen] = useState(false);
@@ -293,36 +294,40 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
   const handleSetTempPassword = async () => {
     if (!userId || !tempPassword) return;
-    
-    // Validate password using shared utility
-    const validation = validatePassword(tempPassword);
-    if (!validation.isValid) {
-      toast.error(validation.errors[0]);
-      return;
-    }
+    if (!tempPasswordValidation.isValid) return;
 
     setConfirmTempPasswordOpen(false);
     setSettingTempPassword(true);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.access_token) {
+        toast.error("Password update failed (401): You are not signed in");
+        return;
+      }
+
+      const accessToken = sessionData.session.access_token;
+
       const { data, error } = await supabase.functions.invoke("admin-password-reset", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
         body: {
           action: "set_temp_password",
           targetUserId: userId,
           tempPassword,
-          revokeSessionsOnReset: revokeOnReset,
+          revokeSessions: revokeOnReset,
         },
       });
 
       if (error) throw error;
-      if (data?.success) {
-        toast.success(data.message || "Temporary password set");
-        setTempPassword("");
-      } else {
-        toast.error(data?.error || "Failed to set temporary password");
-      }
+
+      toast.success(data?.message || "Temporary password set");
+      setTempPassword("");
     } catch (error: any) {
       console.error("Error setting temp password:", error);
-      toast.error(error.message || "Failed to set temporary password");
+      const info = await formatEdgeFunctionError(error);
+      toast.error(`Password update failed${info.status ? ` (${info.status})` : ""}: ${info.message}`);
     } finally {
       setSettingTempPassword(false);
     }
@@ -538,7 +543,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                       placeholder={getPasswordRequirementsText()}
                       value={tempPassword}
                       onChange={(e) => setTempPassword(e.target.value)}
-                      className={`pr-10 ${tempPassword && !validatePassword(tempPassword).isValid ? 'border-destructive' : ''}`}
+                      className={`pr-10 ${tempPassword && !tempPasswordValidation.isValid ? "border-destructive" : ""}`}
                     />
                     <Button
                       type="button"
@@ -559,17 +564,11 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                     Generate
                   </Button>
                 </div>
-                {/* Inline validation feedback */}
-                {tempPassword && !validatePassword(tempPassword).isValid && (
-                  <p className="text-xs text-destructive">
-                    {validatePassword(tempPassword).errors[0]}
-                  </p>
+
+                {tempPassword && !tempPasswordValidation.isValid && (
+                  <p className="text-xs text-destructive">{tempPasswordValidation.errors[0]}</p>
                 )}
-                {tempPassword && validatePassword(tempPassword).isValid && (
-                  <p className="text-xs text-green-500">
-                    Password meets requirements
-                  </p>
-                )}
+
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="revoke-sessions"
@@ -587,7 +586,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                   variant="outline"
                   size="sm"
                   onClick={() => setConfirmTempPasswordOpen(true)}
-                  disabled={settingTempPassword || !tempPassword || !validatePassword(tempPassword).isValid}
+                  disabled={settingTempPassword || !tempPasswordValidation.isValid}
                   className="w-full justify-start"
                 >
                   <Key className="h-4 w-4 mr-2" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapBackground } from "@/components/MapBackground";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 import { SplashScreen } from "@/components/SplashScreen";
+import { PASSWORD_POLICY, getPasswordRequirementsText, validatePassword } from "@/lib/passwordValidation";
 
 const Auth = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -24,6 +25,11 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+
+  // Signup password validation (shared policy)
+  const [signupPassword, setSignupPassword] = useState("");
+  const signupPasswordValidation = useMemo(() => validatePassword(signupPassword), [signupPassword]);
+  const showSignupPasswordError = signupPassword.length > 0 && !signupPasswordValidation.isValid;
 
   // Pre-fill referral code from URL parameter
   useEffect(() => {
@@ -56,6 +62,14 @@ const Auth = () => {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const enteredReferralCode = formData.get("referral_code") as string;
+
+    // Validate password using the same shared policy as admin temp password
+    const validation = validatePassword(password);
+    if (!validation.isValid) {
+      toast.error(validation.errors[0]);
+      setIsLoading(false);
+      return;
+    }
     
     // Store referral code in localStorage to process after signup
     if (enteredReferralCode?.trim()) {
@@ -169,8 +183,23 @@ const Auth = () => {
                   <Label htmlFor="signup-password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input id="signup-password" name="password" type="password" placeholder="••••••••" className="pl-10" required minLength={8} />
+                    <Input
+                      id="signup-password"
+                      name="password"
+                      type="password"
+                      placeholder="••••••••"
+                      className={`pl-10 ${showSignupPasswordError ? "border-destructive" : ""}`}
+                      required
+                      minLength={PASSWORD_POLICY.minLength}
+                      maxLength={PASSWORD_POLICY.maxLength}
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                    />
                   </div>
+                  <p className="text-xs text-muted-foreground">{getPasswordRequirementsText()}</p>
+                  {showSignupPasswordError && (
+                    <p className="text-xs text-destructive">{signupPasswordValidation.errors[0]}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-referral">Referral Code (optional)</Label>
@@ -187,7 +216,11 @@ const Auth = () => {
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-emerald-500 hover:from-yellow-600 hover:to-emerald-600 text-black font-semibold"
+                  disabled={isLoading || !signupPasswordValidation.isValid}
+                >
                   {isLoading ? "Creating account..." : "Create Account"}
                 </Button>
               </form>
