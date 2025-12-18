@@ -6,6 +6,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Password policy matching frontend signup rules
+const PASSWORD_POLICY = {
+  minLength: 8,
+  maxLength: 128,
+};
+
+interface PasswordValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+function validatePassword(password: string): PasswordValidationResult {
+  const errors: string[] = [];
+
+  if (!password) {
+    errors.push("Password is required");
+    return { isValid: false, errors };
+  }
+
+  if (password.length < PASSWORD_POLICY.minLength) {
+    errors.push(`Password must be at least ${PASSWORD_POLICY.minLength} characters`);
+  }
+
+  if (password.length > PASSWORD_POLICY.maxLength) {
+    errors.push(`Password must be less than ${PASSWORD_POLICY.maxLength} characters`);
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
 interface RequestBody {
   action: "send_reset_email" | "set_temp_password" | "revoke_sessions";
   targetUserId: string;
@@ -14,18 +47,46 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const timestamp = new Date().toISOString();
+  
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
+    // Check required environment variables
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+
+    if (!supabaseUrl) {
+      console.error(`[${requestId}] Missing SUPABASE_URL`);
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing server configuration: SUPABASE_URL" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!supabaseServiceKey) {
+      console.error(`[${requestId}] Missing SUPABASE_SERVICE_ROLE_KEY`);
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing server configuration: SUPABASE_SERVICE_ROLE_KEY" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (!supabaseAnonKey) {
+      console.error(`[${requestId}] Missing SUPABASE_ANON_KEY`);
+      return new Response(
+        JSON.stringify({ success: false, error: "Missing server configuration: SUPABASE_ANON_KEY" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get admin auth from request
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      console.log(`[${requestId}] Missing authorization header`);
       return new Response(
         JSON.stringify({ success: false, error: "Missing authorization header" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -33,12 +94,13 @@ serve(async (req) => {
     }
 
     // Create client with user's token to verify they're an admin
-    const supabaseUser = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+    const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
     if (userError || !user) {
+      console.log(`[${requestId}] Auth failed:`, userError?.message);
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -52,7 +114,7 @@ serve(async (req) => {
     });
 
     if (roleError || !isAdmin) {
-      console.error("Admin check failed:", roleError);
+      console.log(`[${requestId}] Admin check failed for user ${user.id}:`, roleError?.message);
       return new Response(
         JSON.stringify({ success: false, error: "Admin access required" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -60,10 +122,31 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const body: RequestBody = await req.json();
+    let body: RequestBody;
+    try {
+      body = await req.json();
+    } catch (parseError) {
+      console.error(`[${requestId}] Failed to parse request body:`, parseError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid JSON in request body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const { action, targetUserId, tempPassword, revokeSessionsOnReset = true } = body;
 
+    // Log structured request info
+    console.log(`[${requestId}] Admin password reset request`, {
+      requestId,
+      timestamp,
+      adminUserId: user.id,
+      targetUserId,
+      action,
+      revokeSessionsOnReset: action === "set_temp_password" ? revokeSessionsOnReset : undefined,
+    });
+
     if (!action || !targetUserId) {
+      console.log(`[${requestId}] Missing action or targetUserId`);
       return new Response(
         JSON.stringify({ success: false, error: "Missing action or targetUserId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -76,7 +159,7 @@ serve(async (req) => {
     // Get target user details
     const { data: targetUser, error: targetError } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
     if (targetError || !targetUser) {
-      console.error("Failed to get target user:", targetError);
+      console.log(`[${requestId}] Target user not found:`, targetError?.message);
       return new Response(
         JSON.stringify({ success: false, error: "Target user not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -91,7 +174,7 @@ serve(async (req) => {
 
     switch (action) {
       case "send_reset_email": {
-        console.log(`Admin ${user.id} sending password reset email to ${targetUserId}`);
+        console.log(`[${requestId}] Sending password reset email to ${targetUser.user.email}`);
         
         // Use Supabase's built-in password recovery
         const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
@@ -100,7 +183,7 @@ serve(async (req) => {
         });
 
         if (resetError) {
-          console.error("Failed to generate reset link:", resetError);
+          console.error(`[${requestId}] Failed to generate reset link:`, resetError.message);
           result = { success: false, error: resetError.message };
         } else {
           // Actually send the email using resetPasswordForEmail
@@ -112,9 +195,10 @@ serve(async (req) => {
           );
 
           if (emailError) {
-            console.error("Failed to send reset email:", emailError);
+            console.error(`[${requestId}] Failed to send reset email:`, emailError.message);
             result = { success: false, error: emailError.message };
           } else {
+            console.log(`[${requestId}] Password reset email sent successfully`);
             result = { success: true, message: "Password reset email sent successfully" };
           }
         }
@@ -123,33 +207,24 @@ serve(async (req) => {
 
       case "set_temp_password": {
         if (!tempPassword) {
+          console.log(`[${requestId}] Temp password validation failed: password required`);
           return new Response(
             JSON.stringify({ success: false, error: "Temporary password is required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
-        // Validate password requirements: min 12 chars, 1 number, 1 symbol
-        if (tempPassword.length < 12) {
+        // Validate password using shared policy
+        const validation = validatePassword(tempPassword);
+        if (!validation.isValid) {
+          console.log(`[${requestId}] Temp password validation failed:`, validation.errors);
           return new Response(
-            JSON.stringify({ success: false, error: "Password must be at least 12 characters" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (!/\d/.test(tempPassword)) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Password must contain at least 1 number" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(tempPassword)) {
-          return new Response(
-            JSON.stringify({ success: false, error: "Password must contain at least 1 symbol" }),
+            JSON.stringify({ success: false, error: validation.errors[0] }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
-        console.log(`Admin ${user.id} setting temporary password for ${targetUserId}`);
+        console.log(`[${requestId}] Setting temporary password for user ${targetUserId}`);
 
         // Update user's password
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
@@ -157,7 +232,7 @@ serve(async (req) => {
         });
 
         if (updateError) {
-          console.error("Failed to set temporary password:", updateError);
+          console.error(`[${requestId}] Failed to set temporary password:`, updateError.message);
           result = { success: false, error: updateError.message };
         } else {
           // Set must_change_password flag
@@ -167,14 +242,20 @@ serve(async (req) => {
             .eq("id", targetUserId);
 
           if (flagError) {
-            console.error("Failed to set must_change_password flag:", flagError);
+            console.error(`[${requestId}] Failed to set must_change_password flag:`, flagError.message);
           }
 
           // Revoke sessions if requested
           if (revokeSessionsOnReset) {
-            await supabaseAdmin.auth.admin.signOut(targetUserId, "global");
+            const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(targetUserId, "global");
+            if (signOutError) {
+              console.error(`[${requestId}] Failed to revoke sessions:`, signOutError.message);
+            } else {
+              console.log(`[${requestId}] Sessions revoked for user ${targetUserId}`);
+            }
           }
 
+          console.log(`[${requestId}] Temporary password set successfully`);
           result = { 
             success: true, 
             message: `Temporary password set${revokeSessionsOnReset ? " and sessions revoked" : ""}. User must change password on next login.` 
@@ -184,20 +265,22 @@ serve(async (req) => {
       }
 
       case "revoke_sessions": {
-        console.log(`Admin ${user.id} revoking all sessions for ${targetUserId}`);
+        console.log(`[${requestId}] Revoking all sessions for user ${targetUserId}`);
 
         const { error: signOutError } = await supabaseAdmin.auth.admin.signOut(targetUserId, "global");
 
         if (signOutError) {
-          console.error("Failed to revoke sessions:", signOutError);
+          console.error(`[${requestId}] Failed to revoke sessions:`, signOutError.message);
           result = { success: false, error: signOutError.message };
         } else {
+          console.log(`[${requestId}] All sessions revoked successfully`);
           result = { success: true, message: "All sessions revoked successfully" };
         }
         break;
       }
 
       default:
+        console.log(`[${requestId}] Invalid action: ${action}`);
         return new Response(
           JSON.stringify({ success: false, error: "Invalid action" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -211,6 +294,7 @@ serve(async (req) => {
         target_user_id: targetUserId,
         action_type: action,
         metadata: {
+          request_id: requestId,
           revoke_sessions: action === "set_temp_password" ? revokeSessionsOnReset : undefined,
         },
         ip_address: ipAddress,
@@ -218,7 +302,7 @@ serve(async (req) => {
       });
 
       if (logError) {
-        console.error("Failed to log admin action:", logError);
+        console.error(`[${requestId}] Failed to log admin action:`, logError.message);
         // Don't fail the request if logging fails
       }
     }
@@ -228,7 +312,7 @@ serve(async (req) => {
       { status: result.success ? 200 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error(`[${requestId}] Unexpected error:`, error);
     return new Response(
       JSON.stringify({ success: false, error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
