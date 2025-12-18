@@ -32,7 +32,7 @@ import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordValidation";
-import { formatEdgeFunctionError } from "@/lib/formatEdgeFunctionError";
+
 interface UserDetailDialogProps {
   userId: string | null;
   open: boolean;
@@ -326,8 +326,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
       setTempPassword("");
     } catch (error: any) {
       console.error("Error setting temp password:", error);
-      const info = await formatEdgeFunctionError(error);
-      toast.error(`Password update failed${info.status ? ` (${info.status})` : ""}: ${info.message}`);
+      const errMsg = error?.message || error?.context?.error || "Failed to set temporary password";
+      toast.error(errMsg);
     } finally {
       setSettingTempPassword(false);
     }
