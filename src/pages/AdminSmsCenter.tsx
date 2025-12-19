@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Check, CheckCheck, X } from "lucide-react";
+import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Check, CheckCheck, X, Activity, RefreshCw } from "lucide-react";
 import { MapBackground } from "@/components/MapBackground";
 import AppHeader from "@/components/AppHeader";
 import AdminRoute from "@/components/AdminRoute";
@@ -20,6 +20,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+
+// Webhook URL for Twilio configuration
+const WEBHOOK_URL = "https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/twilio-inbound-sms-webhook";
 
 // SMS character limits
 const GSM7_SINGLE_LIMIT = 160;
@@ -111,6 +114,14 @@ const AdminSmsCenter = () => {
   // Logs state
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  
+  // Diagnostics state
+  const [pingResult, setPingResult] = useState<{ ok: boolean; time: number; error?: string } | null>(null);
+  const [pinging, setPinging] = useState(false);
+  const [diagnosticsInbound, setDiagnosticsInbound] = useState<any[]>([]);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
+  const [conversationCount, setConversationCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
 
   // Load users with phone numbers
   useEffect(() => {
@@ -268,6 +279,63 @@ const AdminSmsCenter = () => {
     
     setLogs((data || []) as SmsLog[]);
     setLoadingLogs(false);
+  };
+
+  // Load diagnostics data
+  useEffect(() => {
+    if (activeTab === "diagnostics") {
+      fetchDiagnostics();
+    }
+  }, [activeTab]);
+
+  const fetchDiagnostics = async () => {
+    setDiagnosticsLoading(true);
+    
+    // Get last 10 inbound messages
+    const { data: inboundMessages } = await supabase
+      .from("admin_sms_messages")
+      .select("id, created_at, direction, from_e164, to_e164, body, status")
+      .eq("direction", "inbound")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    
+    setDiagnosticsInbound(inboundMessages || []);
+    
+    // Get counts
+    const { count: convCount } = await supabase
+      .from("admin_sms_conversations")
+      .select("*", { count: "exact", head: true });
+    
+    const { count: msgCount } = await supabase
+      .from("admin_sms_messages")
+      .select("*", { count: "exact", head: true });
+    
+    setConversationCount(convCount || 0);
+    setMessageCount(msgCount || 0);
+    
+    setDiagnosticsLoading(false);
+  };
+
+  const handlePingWebhook = async () => {
+    setPinging(true);
+    setPingResult(null);
+    const start = Date.now();
+    
+    try {
+      const response = await fetch(`${WEBHOOK_URL}?ping=1`);
+      const elapsed = Date.now() - start;
+      
+      if (response.ok) {
+        const text = await response.text();
+        setPingResult({ ok: text === 'pong', time: elapsed });
+      } else {
+        setPingResult({ ok: false, time: elapsed, error: `HTTP ${response.status}` });
+      }
+    } catch (err: any) {
+      setPingResult({ ok: false, time: Date.now() - start, error: err.message });
+    } finally {
+      setPinging(false);
+    }
   };
 
   // Filter conversations
@@ -475,6 +543,10 @@ const AdminSmsCenter = () => {
               <TabsTrigger value="history" className="gap-2">
                 <History className="h-4 w-4" />
                 History
+              </TabsTrigger>
+              <TabsTrigger value="diagnostics" className="gap-2">
+                <Activity className="h-4 w-4" />
+                Diagnostics
               </TabsTrigger>
             </TabsList>
 
@@ -892,6 +964,171 @@ const AdminSmsCenter = () => {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            {/* DIAGNOSTICS TAB */}
+            <TabsContent value="diagnostics">
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Webhook Health Check */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Activity className="h-5 w-5" />
+                      Webhook Health
+                    </CardTitle>
+                    <CardDescription>
+                      Test the inbound SMS webhook endpoint
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono break-all">
+                      {WEBHOOK_URL}
+                    </div>
+                    
+                    <Button 
+                      onClick={handlePingWebhook} 
+                      disabled={pinging}
+                      className="w-full gap-2"
+                    >
+                      {pinging ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Ping Webhook
+                    </Button>
+                    
+                    {pingResult && (
+                      <div className={cn(
+                        "p-3 rounded-lg text-sm",
+                        pingResult.ok ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
+                      )}>
+                        <p className="font-medium">
+                          {pingResult.ok ? "✓ Webhook is healthy" : "✗ Webhook check failed"}
+                        </p>
+                        <p className="text-xs mt-1 opacity-80">
+                          Response time: {pingResult.time}ms
+                          {pingResult.error && ` • Error: ${pingResult.error}`}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Database Stats */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Database Stats</CardTitle>
+                    <CardDescription>SMS tables overview</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {diagnosticsLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm">Total Conversations</span>
+                          <span className="font-medium">{conversationCount}</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm">Total Messages</span>
+                          <span className="font-medium">{messageCount}</span>
+                        </div>
+                        <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                          <span className="text-sm">Inbound Messages (shown below)</span>
+                          <span className="font-medium">{diagnosticsInbound.length}</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={fetchDiagnostics}
+                          className="w-full mt-2"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh Stats
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Last 10 Inbound Messages */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Last 10 Inbound Messages</CardTitle>
+                    <CardDescription>
+                      If Twilio shows incoming but nothing appears here, the webhook isn't inserting correctly.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {diagnosticsLoading ? (
+                      <div className="flex items-center justify-center p-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : diagnosticsInbound.length === 0 ? (
+                      <div className="text-center p-8 text-muted-foreground">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No inbound messages found in admin_sms_messages</p>
+                        <p className="text-xs mt-2 opacity-70">
+                          Send a test SMS to your Twilio number and check if it appears here.
+                        </p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[300px]">
+                        <div className="space-y-2">
+                          {diagnosticsInbound.map((msg: any) => (
+                            <div key={msg.id} className="p-3 rounded-lg border bg-card/50 text-sm">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                    <Phone className="h-3 w-3" />
+                                    <span>From: {msg.from_e164}</span>
+                                    <span>→</span>
+                                    <span>To: {msg.to_e164}</span>
+                                  </div>
+                                  <p className="truncate">{msg.body || '(empty)'}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <Badge variant={msg.status === 'received' ? 'default' : 'secondary'} className="text-xs">
+                                    {msg.status}
+                                  </Badge>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(new Date(msg.created_at), 'MMM d, h:mm:ss a')}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Twilio Configuration Info */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Twilio Configuration</CardTitle>
+                    <CardDescription>
+                      Ensure your Twilio Messaging Service is configured to send inbound messages to this webhook
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="p-4 rounded-lg bg-amber-900/20 border border-amber-700/30">
+                      <p className="text-sm text-amber-300 font-medium mb-2">Required Twilio Setup:</p>
+                      <ol className="text-xs text-amber-200/80 space-y-1 list-decimal list-inside">
+                        <li>Go to Twilio Console → Messaging → Services → Your Service</li>
+                        <li>Under "Inbound Settings", set Request URL to:</li>
+                        <li className="ml-4 font-mono bg-amber-950/50 p-1 rounded break-all">{WEBHOOK_URL}</li>
+                        <li>Set HTTP method to POST</li>
+                        <li>Save changes</li>
+                      </ol>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

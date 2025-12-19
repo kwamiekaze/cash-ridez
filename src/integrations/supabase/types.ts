@@ -109,13 +109,16 @@ export type Database = {
           admin_user_id: string
           body: string
           created_at: string
+          direction: string | null
           error_message: string | null
           from_number: string | null
           id: string
           include_opt_out: boolean | null
+          message_sid: string | null
           messaging_service_sid: string | null
           metadata: Json | null
           segments_count: number | null
+          status: string | null
           to_number: string
           twilio_message_sid: string | null
           twilio_status: string | null
@@ -124,13 +127,16 @@ export type Database = {
           admin_user_id: string
           body: string
           created_at?: string
+          direction?: string | null
           error_message?: string | null
           from_number?: string | null
           id?: string
           include_opt_out?: boolean | null
+          message_sid?: string | null
           messaging_service_sid?: string | null
           metadata?: Json | null
           segments_count?: number | null
+          status?: string | null
           to_number: string
           twilio_message_sid?: string | null
           twilio_status?: string | null
@@ -139,13 +145,16 @@ export type Database = {
           admin_user_id?: string
           body?: string
           created_at?: string
+          direction?: string | null
           error_message?: string | null
           from_number?: string | null
           id?: string
           include_opt_out?: boolean | null
+          message_sid?: string | null
           messaging_service_sid?: string | null
           metadata?: Json | null
           segments_count?: number | null
+          status?: string | null
           to_number?: string
           twilio_message_sid?: string | null
           twilio_status?: string | null

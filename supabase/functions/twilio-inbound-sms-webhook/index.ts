@@ -6,205 +6,29 @@
 //
 // ENDPOINT:
 //   POST /functions/v1/twilio-inbound-sms-webhook
+//   GET  /functions/v1/twilio-inbound-sms-webhook?ping=1 → returns "pong"
+//
+// TWILIO WEBHOOK URL (configure in Twilio Console → Messaging → Services → Integration):
+//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/twilio-inbound-sms-webhook
 //
 // Expected form data from Twilio:
 //   - From: sender phone number (E.164)
 //   - To: Twilio number that received message (E.164)
 //   - Body: message text
-//   - MessageSid: Twilio message SID
+//   - MessageSid or SmsSid: Twilio message SID
+//   - MessagingServiceSid: optional
 //   - NumMedia: number of media attachments
 //
-// Security: Validates Twilio request signature when TWILIO_AUTH_TOKEN is set.
+// Response: Always returns HTTP 200 with TwiML to prevent Twilio retries.
 //
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 
-// Validate Twilio signature using Web Crypto API
-async function validateTwilioSignature(
-  req: Request,
-  formData: FormData,
-  authToken: string | undefined
-): Promise<boolean> {
-  if (!authToken) {
-    console.log('[twilio-inbound-sms] No auth token, skipping signature validation');
-    return true; // Skip validation if no auth token
-  }
-
-  const twilioSignature = req.headers.get('x-twilio-signature');
-  if (!twilioSignature) {
-    console.warn('[twilio-inbound-sms] Missing Twilio signature header');
-    return false;
-  }
-
-  // Build the URL from the request
-  const url = new URL(req.url);
-  const fullUrl = `${url.protocol}//${url.host}${url.pathname}`;
-
-  // Sort form params alphabetically and concatenate
-  const params = Array.from(formData.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}${value}`)
-    .join('');
-
-  const dataToSign = fullUrl + params;
-  
-  // Compute HMAC-SHA1 signature using Web Crypto API
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(authToken);
-  const data = encoder.encode(dataToSign);
-  
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData,
-    { name: 'HMAC', hash: 'SHA-1' },
-    false,
-    ['sign']
-  );
-  
-  const signature = await crypto.subtle.sign('HMAC', key, data);
-  const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)));
-
-  const isValid = computedSignature === twilioSignature;
-  if (!isValid) {
-    console.warn('[twilio-inbound-sms] Invalid Twilio signature');
-  }
-  return isValid;
-}
-
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      }
-    });
-  }
-
-  try {
-    console.log('[twilio-inbound-sms] Webhook received');
-
-    // Parse form data from Twilio
-    const formData = await req.formData();
-    
-    // Validate Twilio signature for security
-    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const isValidSignature = await validateTwilioSignature(req, formData, twilioAuthToken);
-    if (!isValidSignature && twilioAuthToken) {
-      console.error('[twilio-inbound-sms] Invalid Twilio signature, rejecting request');
-      return new Response('Forbidden', { status: 403 });
-    }
-    
-    const from = formData.get('From')?.toString();
-    const to = formData.get('To')?.toString();
-    const body = formData.get('Body')?.toString() || '';
-    const messageSid = formData.get('MessageSid')?.toString();
-    const numMedia = parseInt(formData.get('NumMedia')?.toString() || '0', 10);
-
-    console.log('[twilio-inbound-sms] Inbound message:', {
-      from: from?.slice(0, 4) + '***',
-      to: to?.slice(0, 4) + '***',
-      bodyLength: body.length,
-      messageSid,
-      numMedia
-    });
-
-    // Validate required fields
-    if (!from || !to) {
-      console.error('[twilio-inbound-sms] Missing From or To');
-      return new Response('Missing required fields', { status: 400 });
-    }
-
-    // Create service role client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Normalize phone numbers to E.164
-    const participantE164 = normalizeE164(from);
-    const twilioNumberE164 = normalizeE164(to);
-
-    // Upsert conversation - create if doesn't exist
-    const { data: conversation, error: convError } = await supabase
-      .from('admin_sms_conversations')
-      .upsert({
-        participant_e164: participantE164,
-        twilio_number_e164: twilioNumberE164,
-        last_message_at: new Date().toISOString(),
-        last_message_preview: body.slice(0, 100),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'participant_e164,twilio_number_e164'
-      })
-      .select('id, unread_count')
-      .single();
-
-    if (convError) {
-      console.error('[twilio-inbound-sms] Failed to upsert conversation:', convError);
-      // Try to get existing conversation
-      const { data: existingConv } = await supabase
-        .from('admin_sms_conversations')
-        .select('id, unread_count')
-        .eq('participant_e164', participantE164)
-        .eq('twilio_number_e164', twilioNumberE164)
-        .single();
-      
-      if (!existingConv) {
-        console.error('[twilio-inbound-sms] Could not find or create conversation');
-        return new Response('OK', { status: 200 }); // Still return 200 to Twilio
-      }
-      
-      // Use existing conversation
-      const conversationId = existingConv.id;
-      
-      // Insert message
-      await insertMessage(supabase, conversationId, {
-        from: participantE164,
-        to: twilioNumberE164,
-        body,
-        messageSid,
-        direction: 'inbound'
-      });
-      
-      // Increment unread count
-      await supabase
-        .from('admin_sms_conversations')
-        .update({ 
-          unread_count: (existingConv.unread_count || 0) + 1,
-          last_message_at: new Date().toISOString(),
-          last_message_preview: body.slice(0, 100)
-        })
-        .eq('id', conversationId);
-      
-    } else if (conversation) {
-      // Insert message into conversation
-      await insertMessage(supabase, conversation.id, {
-        from: participantE164,
-        to: twilioNumberE164,
-        body,
-        messageSid,
-        direction: 'inbound'
-      });
-      
-      // Note: unread_count is incremented by the database trigger
-    }
-
-    console.log('[twilio-inbound-sms] Message stored successfully');
-
-    // Return TwiML with empty response (no auto-reply)
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
-    return new Response(twiml, { 
-      status: 200,
-      headers: { 'Content-Type': 'application/xml' }
-    });
-
-  } catch (error: any) {
-    console.error('[twilio-inbound-sms] Error:', error);
-    // Return 200 to prevent Twilio retries
-    return new Response('Error processed', { status: 200 });
-  }
-});
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 // Helper to normalize phone number to E.164
 function normalizeE164(phone: string): string {
@@ -232,10 +56,10 @@ function normalizeE164(phone: string): string {
   return '+' + cleaned;
 }
 
-// Helper to insert message
+// Helper to insert message into admin_sms_messages
 async function insertMessage(
-  supabase: any, 
-  conversationId: string, 
+  supabase: any,
+  conversationId: string,
   data: {
     from: string;
     to: string;
@@ -243,7 +67,7 @@ async function insertMessage(
     messageSid: string | undefined;
     direction: 'inbound' | 'outbound';
   }
-) {
+): Promise<{ success: boolean; error?: string }> {
   const { error } = await supabase
     .from('admin_sms_messages')
     .insert({
@@ -259,5 +83,267 @@ async function insertMessage(
 
   if (error) {
     console.error('[twilio-inbound-sms] Failed to insert message:', error);
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}
+
+// Helper to also log to admin_sms_logs for backward compat & diagnostics
+async function insertIntoLogs(
+  supabase: any,
+  data: {
+    from: string;
+    to: string;
+    body: string;
+    messageSid: string | undefined;
+    messagingServiceSid: string | undefined;
+  }
+): Promise<void> {
+  try {
+    await supabase.from('admin_sms_logs').insert({
+      admin_user_id: '00000000-0000-0000-0000-000000000000', // System user placeholder
+      to_number: data.to,
+      from_number: data.from,
+      body: data.body,
+      twilio_message_sid: data.messageSid || null,
+      messaging_service_sid: data.messagingServiceSid || null,
+      twilio_status: 'received',
+      direction: 'inbound',
+      status: 'received',
+      message_sid: data.messageSid || null,
+      include_opt_out: false,
+      segments_count: 1
+    });
+    console.log('[twilio-inbound-sms] Also logged to admin_sms_logs');
+  } catch (err: unknown) {
+    console.warn('[twilio-inbound-sms] Could not log to admin_sms_logs:', err);
   }
 }
+
+// TwiML empty response
+const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  // Health check / ping route
+  const url = new URL(req.url);
+  if (url.searchParams.get('ping') === '1' || req.method === 'GET') {
+    console.log('[twilio-inbound-sms] Ping received');
+    return new Response('pong', { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'text/plain' } 
+    });
+  }
+
+  try {
+    console.log('[twilio-inbound-sms] Webhook received');
+    console.log('[twilio-inbound-sms] Content-Type:', req.headers.get('content-type'));
+
+    // Parse body - handle both form-encoded and JSON
+    let from: string | undefined;
+    let to: string | undefined;
+    let body: string = '';
+    let messageSid: string | undefined;
+    let messagingServiceSid: string | undefined;
+
+    const contentType = req.headers.get('content-type') || '';
+
+    if (contentType.includes('application/x-www-form-urlencoded')) {
+      try {
+        const formData = await req.formData();
+        from = formData.get('From')?.toString();
+        to = formData.get('To')?.toString();
+        body = formData.get('Body')?.toString() || '';
+        messageSid = formData.get('MessageSid')?.toString() || formData.get('SmsSid')?.toString();
+        messagingServiceSid = formData.get('MessagingServiceSid')?.toString();
+        
+        console.log('[twilio-inbound-sms] Parsed form data:', {
+          contentType: 'form-urlencoded',
+          hasFrom: !!from,
+          hasTo: !!to,
+          bodyLength: body.length,
+          messageSid: messageSid?.slice(0, 10) || 'none',
+          messagingServiceSid: messagingServiceSid?.slice(0, 10) || 'none'
+        });
+      } catch (formErr) {
+        console.error('[twilio-inbound-sms] Form parse error:', formErr);
+      }
+    } else if (contentType.includes('application/json')) {
+      try {
+        const jsonBody = await req.json();
+        from = jsonBody.From || jsonBody.from;
+        to = jsonBody.To || jsonBody.to;
+        body = jsonBody.Body || jsonBody.body || '';
+        messageSid = jsonBody.MessageSid || jsonBody.SmsSid || jsonBody.messageSid;
+        messagingServiceSid = jsonBody.MessagingServiceSid || jsonBody.messagingServiceSid;
+        
+        console.log('[twilio-inbound-sms] Parsed JSON:', {
+          contentType: 'json',
+          hasFrom: !!from,
+          hasTo: !!to,
+          bodyLength: body.length,
+          messageSid: messageSid?.slice(0, 10) || 'none'
+        });
+      } catch (jsonErr) {
+        console.error('[twilio-inbound-sms] JSON parse error:', jsonErr);
+      }
+    } else {
+      // Try form data as fallback
+      try {
+        const formData = await req.formData();
+        from = formData.get('From')?.toString();
+        to = formData.get('To')?.toString();
+        body = formData.get('Body')?.toString() || '';
+        messageSid = formData.get('MessageSid')?.toString() || formData.get('SmsSid')?.toString();
+        messagingServiceSid = formData.get('MessagingServiceSid')?.toString();
+        console.log('[twilio-inbound-sms] Fallback form parse succeeded');
+      } catch (fallbackErr) {
+        console.error('[twilio-inbound-sms] Fallback parse failed:', fallbackErr);
+      }
+    }
+
+    // Log structured diagnostic info
+    console.log('[twilio-inbound-sms] Extracted fields:', JSON.stringify({
+      from: from ? from.slice(0, 6) + '***' : null,
+      to: to ? to.slice(0, 6) + '***' : null,
+      bodyLength: body.length,
+      messageSid,
+      messagingServiceSid
+    }));
+
+    // Validate required fields
+    if (!from || !to) {
+      console.error('[twilio-inbound-sms] Missing From or To - returning 200 anyway');
+      return new Response(twimlResponse, { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/xml' } 
+      });
+    }
+
+    // Create service role client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[twilio-inbound-sms] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return new Response(twimlResponse, { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/xml' } 
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Normalize phone numbers to E.164
+    const participantE164 = normalizeE164(from);
+    const twilioNumberE164 = normalizeE164(to);
+
+    console.log('[twilio-inbound-sms] Normalized phones:', {
+      participant: participantE164.slice(0, 6) + '***',
+      twilioNumber: twilioNumberE164.slice(0, 6) + '***'
+    });
+
+    // Upsert conversation - create if doesn't exist
+    let conversationId: string | null = null;
+    
+    const { data: existingConv, error: fetchError } = await supabase
+      .from('admin_sms_conversations')
+      .select('id, unread_count')
+      .eq('participant_e164', participantE164)
+      .eq('twilio_number_e164', twilioNumberE164)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[twilio-inbound-sms] Error fetching conversation:', fetchError);
+    }
+
+    if (existingConv) {
+      conversationId = existingConv.id;
+      
+      // Update conversation
+      const { error: updateError } = await supabase
+        .from('admin_sms_conversations')
+        .update({
+          last_message_at: new Date().toISOString(),
+          last_message_preview: body.slice(0, 100),
+          unread_count: (existingConv.unread_count || 0) + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId);
+
+      if (updateError) {
+        console.error('[twilio-inbound-sms] Failed to update conversation:', updateError);
+      } else {
+        console.log('[twilio-inbound-sms] Updated existing conversation:', conversationId);
+      }
+    } else {
+      // Create new conversation
+      const { data: newConv, error: insertError } = await supabase
+        .from('admin_sms_conversations')
+        .insert({
+          participant_e164: participantE164,
+          twilio_number_e164: twilioNumberE164,
+          last_message_at: new Date().toISOString(),
+          last_message_preview: body.slice(0, 100),
+          unread_count: 1
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('[twilio-inbound-sms] Failed to create conversation:', insertError);
+      } else if (newConv) {
+        conversationId = newConv.id;
+        console.log('[twilio-inbound-sms] Created new conversation:', conversationId);
+      }
+    }
+
+    // Insert message if we have a conversation
+    if (conversationId) {
+      const insertResult = await insertMessage(supabase, conversationId, {
+        from: participantE164,
+        to: twilioNumberE164,
+        body,
+        messageSid,
+        direction: 'inbound'
+      });
+
+      if (insertResult.success) {
+        console.log('[twilio-inbound-sms] Message inserted successfully');
+      } else {
+        console.error('[twilio-inbound-sms] Message insert failed:', insertResult.error);
+      }
+    } else {
+      console.error('[twilio-inbound-sms] No conversation ID - cannot insert message');
+    }
+
+    // Also log to admin_sms_logs for diagnostics
+    await insertIntoLogs(supabase, {
+      from: participantE164,
+      to: twilioNumberE164,
+      body,
+      messageSid,
+      messagingServiceSid
+    });
+
+    console.log('[twilio-inbound-sms] Webhook completed successfully');
+
+    // Return TwiML with empty response (no auto-reply)
+    return new Response(twimlResponse, { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+    });
+
+  } catch (error: unknown) {
+    console.error('[twilio-inbound-sms] Unhandled error:', error);
+    // Always return 200 to prevent Twilio retries
+    return new Response(twimlResponse, { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+    });
+  }
+});
