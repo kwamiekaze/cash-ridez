@@ -37,6 +37,40 @@ const GSM7_SINGLE_LIMIT = 160;
 const GSM7_MULTI_LIMIT = 153;
 const UNICODE_SINGLE_LIMIT = 70;
 const UNICODE_MULTI_LIMIT = 67;
+const MAX_MESSAGE_LENGTH = 2000;
+
+// GSM-7 character set (basic + extended)
+// Basic set: Standard ASCII letters, digits, and specific symbols
+// Extended set: Characters that use escape sequence (count as 2 chars)
+const GSM7_BASIC_CHARS = new Set([
+  '@', '£', '$', '¥', 'è', 'é', 'ù', 'ì', 'ò', 'Ç', '\n', 'Ø', 'ø', '\r', 'Å', 'å',
+  'Δ', '_', 'Φ', 'Γ', 'Λ', 'Ω', 'Π', 'Ψ', 'Σ', 'Θ', 'Ξ', ' ', 'Æ', 'æ', 'ß', 'É',
+  '!', '"', '#', '¤', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
+  '¡', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+  'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'Ä', 'Ö', 'Ñ', 'Ü', '§',
+  '¿', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+  'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'ä', 'ö', 'ñ', 'ü', 'à'
+]);
+
+// Extended GSM-7 chars (each counts as 2 characters due to escape sequence)
+const GSM7_EXTENDED_CHARS = new Set(['^', '{', '}', '\\', '[', ']', '~', '|', '€']);
+
+// Check if a string is GSM-7 compatible and calculate effective length
+const analyzeGsm7 = (text: string): { isGsm7: boolean; effectiveLength: number } => {
+  let effectiveLength = 0;
+  for (const char of text) {
+    if (GSM7_BASIC_CHARS.has(char)) {
+      effectiveLength += 1;
+    } else if (GSM7_EXTENDED_CHARS.has(char)) {
+      effectiveLength += 2; // Extended chars count as 2
+    } else {
+      // Not GSM-7 compatible - switch to Unicode
+      return { isGsm7: false, effectiveLength: text.length };
+    }
+  }
+  return { isGsm7: true, effectiveLength };
+};
 
 interface ParsedRecipient extends ParsedContact {
   messageRendered?: string;
@@ -97,23 +131,30 @@ export function AutoTextTab() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testPhone, setTestPhone] = useState("");
 
-  // Calculate message info
+  // Calculate message info with accurate GSM-7 detection
   const calculateMessageInfo = (body: string, withOptOut: boolean) => {
     const fullMessage = withOptOut ? body + OPT_OUT_TEXT : body;
-    const length = fullMessage.length;
+    const charCount = fullMessage.length;
     
-    const gsm7Regex = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ!"#¤%&'()*+,\-.\/:;<=>?¡ÄÖÑÜ§¿äöñüà0-9A-Za-z{first_name}]*$/;
-    const isGsm7 = gsm7Regex.test(body);
+    // Analyze for GSM-7 compatibility
+    const analysis = analyzeGsm7(fullMessage);
+    const { isGsm7, effectiveLength } = analysis;
     
     const singleLimit = isGsm7 ? GSM7_SINGLE_LIMIT : UNICODE_SINGLE_LIMIT;
     const multiLimit = isGsm7 ? GSM7_MULTI_LIMIT : UNICODE_MULTI_LIMIT;
     
     let segments = 1;
-    if (length > singleLimit) {
-      segments = Math.ceil(length / multiLimit);
+    if (effectiveLength > singleLimit) {
+      segments = Math.ceil(effectiveLength / multiLimit);
     }
     
-    return { length, segments, isGsm7 };
+    return { 
+      charCount, 
+      effectiveLength, 
+      segments, 
+      isGsm7,
+      encoding: isGsm7 ? 'GSM-7' : 'Unicode'
+    };
   };
 
   const templateInfo = useMemo(() => {
@@ -546,17 +587,54 @@ export function AutoTextTab() {
             <Label>Message Template</Label>
             <Textarea
               value={template}
-              onChange={(e) => setTemplate(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value.length <= MAX_MESSAGE_LENGTH) {
+                  setTemplate(e.target.value);
+                }
+              }}
               placeholder="Hi {first_name}, ..."
-              rows={4}
+              rows={5}
+              className="min-h-[120px]"
             />
             <p className="text-xs text-muted-foreground">
               Use {"{first_name}"} for personalization
             </p>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{templateInfo.length} chars • {templateInfo.segments} segment(s)</span>
+            
+            {/* Message stats */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <span className="text-muted-foreground">
+                Characters: <span className="font-medium text-foreground">{templateInfo.charCount}</span>
+                {templateInfo.effectiveLength !== templateInfo.charCount && (
+                  <span className="text-muted-foreground"> ({templateInfo.effectiveLength} GSM units)</span>
+                )}
+              </span>
+              <span className="text-muted-foreground">
+                Encoding: <span className={cn(
+                  "font-medium",
+                  templateInfo.isGsm7 ? "text-foreground" : "text-yellow-500"
+                )}>{templateInfo.encoding}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Segments: <span className={cn(
+                  "font-medium",
+                  templateInfo.segments > 3 ? "text-yellow-500" : "text-foreground"
+                )}>{templateInfo.segments}</span>
+              </span>
+            </div>
+
+            {/* Warnings */}
+            <div className="flex flex-wrap gap-2">
+              {!templateInfo.isGsm7 && (
+                <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 bg-yellow-500/10">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Unicode mode — fewer chars per segment (67 vs 153)
+                </Badge>
+              )}
               {templateInfo.segments > 3 && (
-                <span className="text-yellow-500">⚠️ Long message ({templateInfo.segments} segments)</span>
+                <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 bg-yellow-500/10">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {templateInfo.segments} segments — may cost more
+                </Badge>
               )}
             </div>
           </div>
