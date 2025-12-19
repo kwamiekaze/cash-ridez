@@ -211,6 +211,54 @@ export type Database = {
           },
         ]
       }
+      admin_sms_webhook_events: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          from_e164: string | null
+          headers: Json | null
+          id: string
+          insert_error: string | null
+          insert_ok: boolean | null
+          messaging_service_sid: string | null
+          num_media: number | null
+          raw_body: string | null
+          received_at: string
+          sms_sid: string | null
+          to_e164: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          from_e164?: string | null
+          headers?: Json | null
+          id?: string
+          insert_error?: string | null
+          insert_ok?: boolean | null
+          messaging_service_sid?: string | null
+          num_media?: number | null
+          raw_body?: string | null
+          received_at?: string
+          sms_sid?: string | null
+          to_e164?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          from_e164?: string | null
+          headers?: Json | null
+          id?: string
+          insert_error?: string | null
+          insert_ok?: boolean | null
+          messaging_service_sid?: string | null
+          num_media?: number | null
+          raw_body?: string | null
+          received_at?: string
+          sms_sid?: string | null
+          to_e164?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
