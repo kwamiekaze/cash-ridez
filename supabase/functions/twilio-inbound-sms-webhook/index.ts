@@ -56,7 +56,7 @@ function normalizeE164(phone: string): string {
   return '+' + cleaned;
 }
 
-// Helper to insert message into admin_sms_messages
+// Helper to insert message into admin_sms_messages (idempotent - uses upsert)
 async function insertMessage(
   supabase: any,
   conversationId: string,
@@ -67,7 +67,21 @@ async function insertMessage(
     messageSid: string | undefined;
     direction: 'inbound' | 'outbound';
   }
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; duplicate?: boolean }> {
+  // If we have a messageSid, check for duplicates first (idempotency)
+  if (data.messageSid) {
+    const { data: existing } = await supabase
+      .from('admin_sms_messages')
+      .select('id')
+      .eq('twilio_message_sid', data.messageSid)
+      .maybeSingle();
+    
+    if (existing) {
+      console.log('[twilio-inbound-sms] Duplicate message detected, skipping:', data.messageSid);
+      return { success: true, duplicate: true };
+    }
+  }
+
   const { error } = await supabase
     .from('admin_sms_messages')
     .insert({
@@ -82,13 +96,18 @@ async function insertMessage(
     });
 
   if (error) {
+    // Handle unique constraint violation gracefully (race condition duplicate)
+    if (error.code === '23505') {
+      console.log('[twilio-inbound-sms] Duplicate message (constraint):', data.messageSid);
+      return { success: true, duplicate: true };
+    }
     console.error('[twilio-inbound-sms] Failed to insert message:', error);
     return { success: false, error: error.message };
   }
   return { success: true };
 }
 
-// Helper to also log to admin_sms_logs for backward compat & diagnostics
+// Helper to also log to admin_sms_logs for backward compat & diagnostics (idempotent)
 async function insertIntoLogs(
   supabase: any,
   data: {
@@ -100,6 +119,20 @@ async function insertIntoLogs(
   }
 ): Promise<void> {
   try {
+    // Check for duplicate first (idempotency)
+    if (data.messageSid) {
+      const { data: existing } = await supabase
+        .from('admin_sms_logs')
+        .select('id')
+        .eq('message_sid', data.messageSid)
+        .maybeSingle();
+      
+      if (existing) {
+        console.log('[twilio-inbound-sms] Duplicate log entry, skipping');
+        return;
+      }
+    }
+
     await supabase.from('admin_sms_logs').insert({
       admin_user_id: '00000000-0000-0000-0000-000000000000', // System user placeholder
       to_number: data.to,
@@ -116,6 +149,12 @@ async function insertIntoLogs(
     });
     console.log('[twilio-inbound-sms] Also logged to admin_sms_logs');
   } catch (err: unknown) {
+    // Handle unique constraint violation gracefully
+    const errObj = err as { code?: string };
+    if (errObj.code === '23505') {
+      console.log('[twilio-inbound-sms] Duplicate log (constraint), skipping');
+      return;
+    }
     console.warn('[twilio-inbound-sms] Could not log to admin_sms_logs:', err);
   }
 }
