@@ -57,6 +57,7 @@ interface Campaign {
   started_at: string | null;
   finished_at: string | null;
   last_error: string | null;
+  next_send_at: string | null;
 }
 
 interface CampaignRecipient {
@@ -355,34 +356,45 @@ export function AutoTextTab() {
     }
   };
 
-  // Pause/Resume/Cancel campaign
+  // Pause/Resume/Cancel campaign using edge function
   const handlePauseCampaign = async () => {
     if (!selectedCampaign) return;
-    await supabase
-      .from("admin_sms_campaigns")
-      .update({ status: "paused" })
-      .eq("id", selectedCampaign.id);
+    try {
+      const { error } = await supabase.functions.invoke('admin-autotext-control', {
+        body: { campaign_id: selectedCampaign.id, action: 'pause' }
+      });
+      if (error) throw error;
+      toast({ title: "Campaign Paused", description: "Campaign will pause after current message." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   const handleResumeCampaign = async () => {
     if (!selectedCampaign) return;
-    await supabase
-      .from("admin_sms_campaigns")
-      .update({ status: "running" })
-      .eq("id", selectedCampaign.id);
-    
-    // Kick worker
-    await supabase.functions.invoke('admin-bulk-sms-runner', {
-      body: { campaign_id: selectedCampaign.id }
-    });
+    try {
+      const { error } = await supabase.functions.invoke('admin-autotext-control', {
+        body: { campaign_id: selectedCampaign.id, action: 'resume' }
+      });
+      if (error) throw error;
+      toast({ title: "Campaign Resumed", description: "Campaign will continue sending." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   const handleCancelCampaign = async () => {
     if (!selectedCampaign) return;
-    await supabase
-      .from("admin_sms_campaigns")
-      .update({ status: "canceled", finished_at: new Date().toISOString() })
-      .eq("id", selectedCampaign.id);
+    if (!confirm("Are you sure you want to cancel this campaign? Remaining recipients will be skipped.")) return;
+    try {
+      const { error } = await supabase.functions.invoke('admin-autotext-control', {
+        body: { campaign_id: selectedCampaign.id, action: 'cancel' }
+      });
+      if (error) throw error;
+      toast({ title: "Campaign Cancelled", description: "Remaining recipients were skipped." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
   };
 
   // Send test SMS
@@ -436,15 +448,27 @@ export function AutoTextTab() {
     }
   };
 
-  // Calculate ETA
+  // Calculate ETA based on 61-second throttle
   const calculateEta = (campaign: Campaign) => {
     const remaining = campaign.queued_count;
-    const perMinute = 25;
-    const minutes = Math.ceil(remaining / perMinute);
+    const secondsPerMessage = 61;
+    const totalSeconds = remaining * secondsPerMessage;
+    const minutes = Math.ceil(totalSeconds / 60);
     if (minutes < 60) return `~${minutes} min`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `~${hours}h ${mins}m`;
+  };
+
+  // Calculate next send countdown
+  const getNextSendCountdown = (campaign: Campaign) => {
+    if (!campaign.next_send_at || campaign.status !== 'running') return null;
+    const nextSend = new Date(campaign.next_send_at);
+    const now = new Date();
+    const diffMs = nextSend.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Sending...';
+    const diffSec = Math.ceil(diffMs / 1000);
+    return `Next in ${diffSec}s`;
   };
 
   return (
@@ -676,7 +700,7 @@ export function AutoTextTab() {
                     {selectedCampaign.status === 'running' && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        ETA: {calculateEta(selectedCampaign)}
+                        {getNextSendCountdown(selectedCampaign) || calculateEta(selectedCampaign)}
                       </span>
                     )}
                   </div>
