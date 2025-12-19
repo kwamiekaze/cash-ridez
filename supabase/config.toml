@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.admin-bulk-sms-runner]
 verify_jwt = false
 
+[functions.admin-autotext-control]
+verify_jwt = true
+
 [functions.call-voice]
 verify_jwt = false
 

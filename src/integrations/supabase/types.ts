@@ -133,6 +133,7 @@ export type Database = {
           id: string
           last_error: string | null
           name: string | null
+          next_send_at: string | null
           opt_out_footer_enabled: boolean | null
           opt_out_footer_text: string | null
           queued_count: number | null
@@ -152,6 +153,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           name?: string | null
+          next_send_at?: string | null
           opt_out_footer_enabled?: boolean | null
           opt_out_footer_text?: string | null
           queued_count?: number | null
@@ -171,6 +173,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           name?: string | null
+          next_send_at?: string | null
           opt_out_footer_enabled?: boolean | null
           opt_out_footer_text?: string | null
           queued_count?: number | null
