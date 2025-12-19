@@ -71,6 +71,119 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sms_campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          error: string | null
+          first_name: string | null
+          id: string
+          message_rendered: string
+          phone_e164: string
+          phone_raw: string | null
+          raw_line: string | null
+          sent_at: string | null
+          status: string
+          twilio_sid: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          message_rendered: string
+          phone_e164: string
+          phone_raw?: string | null
+          raw_line?: string | null
+          sent_at?: string | null
+          status?: string
+          twilio_sid?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          message_rendered?: string
+          phone_e164?: string
+          phone_raw?: string | null
+          raw_line?: string | null
+          sent_at?: string | null
+          status?: string
+          twilio_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sms_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_sms_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_sms_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string
+          failed_count: number | null
+          finished_at: string | null
+          id: string
+          last_error: string | null
+          name: string | null
+          opt_out_footer_enabled: boolean | null
+          opt_out_footer_text: string | null
+          queued_count: number | null
+          sender: string
+          sent_count: number | null
+          skipped_count: number | null
+          started_at: string | null
+          status: string
+          template: string
+          total_recipients: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          name?: string | null
+          opt_out_footer_enabled?: boolean | null
+          opt_out_footer_text?: string | null
+          queued_count?: number | null
+          sender: string
+          sent_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: string
+          template: string
+          total_recipients?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          name?: string | null
+          opt_out_footer_enabled?: boolean | null
+          opt_out_footer_text?: string | null
+          queued_count?: number | null
+          sender?: string
+          sent_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: string
+          template?: string
+          total_recipients?: number | null
+        }
+        Relationships: []
+      }
       admin_sms_conversations: {
         Row: {
           created_at: string | null
@@ -210,6 +323,63 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      admin_sms_opt_outs: {
+        Row: {
+          created_at: string
+          id: string
+          opted_out_at: string
+          phone_e164: string
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          opted_out_at?: string
+          phone_e164: string
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          opted_out_at?: string
+          phone_e164?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
+      admin_sms_rate_limits: {
+        Row: {
+          created_at: string
+          hour_count: number
+          hour_window_start: string
+          id: string
+          minute_count: number
+          minute_window_start: string
+          scope: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          hour_count?: number
+          hour_window_start?: string
+          id?: string
+          minute_count?: number
+          minute_window_start?: string
+          scope: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          hour_count?: number
+          hour_window_start?: string
+          id?: string
+          minute_count?: number
+          minute_window_start?: string
+          scope?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       admin_sms_webhook_events: {
         Row: {

@@ -1,5 +1,11 @@
 project_id = "wnajjqsqmrpwyffbpgsj"
 
+[functions.admin-bulk-sms-worker]
+verify_jwt = false
+
+[functions.admin-bulk-sms-runner]
+verify_jwt = false
+
 [functions.call-voice]
 verify_jwt = false
 
