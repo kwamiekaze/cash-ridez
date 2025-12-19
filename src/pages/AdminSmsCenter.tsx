@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AutoTextTab } from "@/components/admin/AutoTextTab";
-
+import { SmsCenterMobileNav } from "@/components/admin/SmsCenterMobileNav";
 // Derive all URLs from VITE_SUPABASE_URL (single source of truth)
 const BACKEND_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const BACKEND_PROJECT_REF = (() => {
@@ -593,17 +593,34 @@ const AdminSmsCenter = () => {
     return <Badge variant="outline">{status}</Badge>;
   };
 
+  // Calculate unread count
+  const totalUnreadCount = useMemo(() => 
+    conversations.reduce((sum, c) => sum + c.unread_count, 0), 
+    [conversations]
+  );
+
   return (
     <AdminRoute>
       <div className="min-h-screen bg-background relative">
         <MapBackground />
-        <AppHeader showStatus={false} />
+        {/* Hide AppHeader on mobile when in inbox and viewing a conversation */}
+        <div className={cn(selectedConversation && activeTab === "inbox" ? "hidden md:block" : "")}>
+          <AppHeader showStatus={false} />
+        </div>
 
-        <div className="container mx-auto px-4 py-6 relative z-10 max-w-6xl">
+        {/* Mobile Navigation */}
+        <SmsCenterMobileNav 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab}
+          unreadCount={totalUnreadCount}
+        />
+
+        <div className="container mx-auto px-4 py-4 md:py-6 relative z-10 max-w-6xl">
+          {/* Desktop Header - Hidden on mobile */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-6 hidden md:block"
           >
             <div className="flex items-center gap-3 mb-4">
               <Button 
@@ -627,13 +644,14 @@ const AdminSmsCenter = () => {
           </motion.div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
+            {/* Desktop Tab List - Hidden on mobile (using drawer instead) */}
+            <TabsList className="mb-6 hidden md:flex">
               <TabsTrigger value="inbox" className="gap-2">
                 <Inbox className="h-4 w-4" />
                 Inbox
-                {conversations.some(c => c.unread_count > 0) && (
+                {totalUnreadCount > 0 && (
                   <Badge variant="destructive" className="ml-1 h-5 px-1.5">
-                    {conversations.reduce((sum, c) => sum + c.unread_count, 0)}
+                    {totalUnreadCount}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -655,11 +673,13 @@ const AdminSmsCenter = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* INBOX TAB - Two panel layout */}
             <TabsContent value="inbox" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-280px)] min-h-[500px]">
-                {/* Left: Conversations list */}
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-1 flex flex-col">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)] md:h-[calc(100vh-280px)] min-h-[400px]">
+                {/* Left: Conversations list - Hidden on mobile when conversation selected */}
+                <Card className={cn(
+                  "bg-card/80 backdrop-blur-sm border-border/50 md:col-span-1 flex flex-col",
+                  selectedConversation ? "hidden md:flex" : "flex"
+                )}>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">Conversations</CardTitle>
@@ -671,7 +691,7 @@ const AdminSmsCenter = () => {
                       <div className="relative flex-1">
                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
-                          placeholder="Search..."
+                          placeholder="Search messages..."
                           value={conversationSearch}
                           onChange={(e) => setConversationSearch(e.target.value)}
                           className="pl-8 h-8 text-sm"
@@ -740,29 +760,34 @@ const AdminSmsCenter = () => {
                   </CardContent>
                 </Card>
 
-                {/* Right: Message stream */}
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2 flex flex-col">
+                {/* Right: Message stream - Takes full width on mobile when conversation selected */}
+                <Card className={cn(
+                  "bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2 flex flex-col",
+                  selectedConversation ? "flex" : "hidden md:flex"
+                )}>
                   {selectedConversation ? (
                     <>
                       <CardHeader className="pb-2 border-b border-border/50">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Phone className="h-4 w-4" />
-                              {selectedConversation.participant_e164}
-                            </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              via {selectedConversation.twilio_number_e164}
-                            </p>
+                          <div className="flex items-center gap-3">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setSelectedConversation(null)}
+                              className="md:hidden shrink-0 -ml-2"
+                            >
+                              <ArrowLeft className="h-4 w-4" />
+                            </Button>
+                            <div>
+                              <CardTitle className="text-base flex items-center gap-2">
+                                <Phone className="h-4 w-4 hidden md:block" />
+                                {selectedConversation.participant_e164}
+                              </CardTitle>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                via {selectedConversation.twilio_number_e164}
+                              </p>
+                            </div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setSelectedConversation(null)}
-                            className="md:hidden"
-                          >
-                            <ArrowLeft className="h-4 w-4" />
-                          </Button>
                         </div>
                       </CardHeader>
                       
@@ -789,7 +814,7 @@ const AdminSmsCenter = () => {
                                 >
                                   <div
                                     className={cn(
-                                      "max-w-[80%] rounded-lg px-3 py-2",
+                                      "max-w-[85%] md:max-w-[80%] rounded-lg px-3 py-2",
                                       msg.direction === 'outbound'
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-muted"
@@ -821,8 +846,8 @@ const AdminSmsCenter = () => {
                         </ScrollArea>
                       </CardContent>
 
-                      {/* Reply composer */}
-                      <div className="p-3 border-t border-border/50">
+                      {/* Reply composer - Safe area aware for mobile */}
+                      <div className="p-3 border-t border-border/50 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                         <div className="flex items-center gap-2 mb-2">
                           <Switch
                             id="reply-opt-out"
@@ -842,7 +867,7 @@ const AdminSmsCenter = () => {
                             placeholder="Type a reply..."
                             value={replyBody}
                             onChange={(e) => setReplyBody(e.target.value)}
-                            className="resize-none min-h-[60px] flex-1"
+                            className="resize-none min-h-[50px] md:min-h-[60px] flex-1"
                             rows={2}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -853,7 +878,7 @@ const AdminSmsCenter = () => {
                           <Button
                             onClick={handleSendReply}
                             disabled={replying || !replyBody.trim()}
-                            className="self-end"
+                            className="self-end h-10 w-10 p-0 md:h-auto md:w-auto md:px-4"
                           >
                             {replying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                           </Button>

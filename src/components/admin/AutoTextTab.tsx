@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { parseContactsFromText, parseContactsFromCSV, normalizePhoneToE164, type ParsedContact } from "@/lib/phoneParser";
 
 // SMS character limits
 const GSM7_SINGLE_LIMIT = 160;
@@ -37,13 +38,7 @@ const GSM7_MULTI_LIMIT = 153;
 const UNICODE_SINGLE_LIMIT = 70;
 const UNICODE_MULTI_LIMIT = 67;
 
-interface ParsedRecipient {
-  rawLine: string;
-  firstName: string | null;
-  phoneRaw: string | null;
-  phoneE164: string | null;
-  valid: boolean;
-  skipReason?: string;
+interface ParsedRecipient extends ParsedContact {
   messageRendered?: string;
 }
 
@@ -125,15 +120,6 @@ export function AutoTextTab() {
     return calculateMessageInfo(sampleMessage, includeOptOut);
   }, [template, includeOptOut]);
 
-  // Normalize phone to E.164
-  const normalizePhone = (phone: string): string | null => {
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length === 10) return `+1${digits}`;
-    if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-    if (phone.startsWith('+') && digits.length >= 10) return `+${digits}`;
-    return null;
-  };
-
   // Render message with template
   const renderMessage = (tmpl: string, firstName: string | null, withOptOut: boolean): string => {
     let msg = tmpl.replace(/{first_name}/g, firstName || "there");
@@ -141,127 +127,21 @@ export function AutoTextTab() {
     return msg;
   };
 
-  // Parse uploaded file
+  // Parse uploaded file using new robust parser
   const parseFile = async (file: File) => {
     setParsing(true);
     const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    
-    const parsed: ParsedRecipient[] = [];
-    const seenPhones = new Set<string>();
-    
     const isCsv = file.name.toLowerCase().endsWith('.csv');
     
-    if (isCsv) {
-      // Parse CSV
-      const [headerLine, ...dataLines] = lines;
-      const headers = headerLine.toLowerCase().split(',').map(h => h.trim());
-      
-      const phoneIdx = headers.findIndex(h => 
-        ['phone', 'phone_number', 'mobile', 'phonenumber', 'cell'].includes(h)
-      );
-      const nameIdx = headers.findIndex(h => 
-        ['first_name', 'firstname', 'name', 'first'].includes(h)
-      );
-      
-      if (phoneIdx === -1) {
-        toast({ title: "CSV Error", description: "No phone column found", variant: "destructive" });
-        setParsing(false);
-        return;
-      }
-      
-      for (const line of dataLines) {
-        const cols = line.split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
-        const phoneRaw = cols[phoneIdx] || '';
-        const firstName = nameIdx >= 0 ? cols[nameIdx] || null : null;
-        const phoneE164 = normalizePhone(phoneRaw);
-        
-        let valid = !!phoneE164;
-        let skipReason: string | undefined;
-        
-        if (phoneE164 && seenPhones.has(phoneE164)) {
-          valid = false;
-          skipReason = 'Duplicate';
-        } else if (phoneE164) {
-          seenPhones.add(phoneE164);
-        } else if (phoneRaw) {
-          skipReason = 'Invalid phone format';
-        } else {
-          skipReason = 'Missing phone';
-        }
-        
-        parsed.push({
-          rawLine: line,
-          firstName,
-          phoneRaw,
-          phoneE164,
-          valid,
-          skipReason,
-          messageRendered: phoneE164 ? renderMessage(template, firstName, includeOptOut) : undefined
-        });
-      }
-    } else {
-      // Parse TXT - various formats
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        
-        let firstName: string | null = null;
-        let phoneRaw: string | null = null;
-        
-        // Try different formats
-        // Format: FirstName, 4045551234
-        const commaMatch = trimmed.match(/^([^,]+),\s*(\d{10,})$/);
-        if (commaMatch) {
-          firstName = commaMatch[1].trim();
-          phoneRaw = commaMatch[2];
-        } else {
-          // Format: 4045551234 John or +14045551234 John
-          const phoneNameMatch = trimmed.match(/^(\+?\d{10,})\s+(.+)$/);
-          if (phoneNameMatch) {
-            phoneRaw = phoneNameMatch[1];
-            firstName = phoneNameMatch[2].trim();
-          } else {
-            // Format: John 4045551234
-            const namePhoneMatch = trimmed.match(/^([A-Za-z]+)\s+(\d{10,})$/);
-            if (namePhoneMatch) {
-              firstName = namePhoneMatch[1];
-              phoneRaw = namePhoneMatch[2];
-            } else {
-              // Just phone number
-              const phoneOnly = trimmed.replace(/\D/g, '');
-              if (phoneOnly.length >= 10) {
-                phoneRaw = phoneOnly;
-              }
-            }
-          }
-        }
-        
-        const phoneE164 = phoneRaw ? normalizePhone(phoneRaw) : null;
-        
-        let valid = !!phoneE164;
-        let skipReason: string | undefined;
-        
-        if (phoneE164 && seenPhones.has(phoneE164)) {
-          valid = false;
-          skipReason = 'Duplicate';
-        } else if (phoneE164) {
-          seenPhones.add(phoneE164);
-        } else {
-          skipReason = 'Invalid phone format';
-        }
-        
-        parsed.push({
-          rawLine: trimmed,
-          firstName,
-          phoneRaw,
-          phoneE164,
-          valid,
-          skipReason,
-          messageRendered: phoneE164 ? renderMessage(template, firstName, includeOptOut) : undefined
-        });
-      }
-    }
+    const contacts = isCsv 
+      ? parseContactsFromCSV(text) 
+      : parseContactsFromText(text);
+    
+    // Add rendered messages to parsed contacts
+    const parsed: ParsedRecipient[] = contacts.map(c => ({
+      ...c,
+      messageRendered: c.phoneE164 ? renderMessage(template, c.firstName, includeOptOut) : undefined
+    }));
     
     setParsedRecipients(parsed);
     setParsing(false);
@@ -507,7 +387,7 @@ export function AutoTextTab() {
 
   // Send test SMS
   const handleSendTest = async () => {
-    const phoneE164 = normalizePhone(testPhone);
+    const phoneE164 = normalizePhoneToE164(testPhone);
     if (!phoneE164) {
       toast({ title: "Invalid Phone", description: "Enter a valid phone number", variant: "destructive" });
       return;
