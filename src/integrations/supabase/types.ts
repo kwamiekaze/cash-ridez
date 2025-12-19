@@ -71,6 +71,54 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sms_logs: {
+        Row: {
+          admin_user_id: string
+          body: string
+          created_at: string
+          error_message: string | null
+          from_number: string | null
+          id: string
+          include_opt_out: boolean | null
+          messaging_service_sid: string | null
+          metadata: Json | null
+          segments_count: number | null
+          to_number: string
+          twilio_message_sid: string | null
+          twilio_status: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          body: string
+          created_at?: string
+          error_message?: string | null
+          from_number?: string | null
+          id?: string
+          include_opt_out?: boolean | null
+          messaging_service_sid?: string | null
+          metadata?: Json | null
+          segments_count?: number | null
+          to_number: string
+          twilio_message_sid?: string | null
+          twilio_status?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          body?: string
+          created_at?: string
+          error_message?: string | null
+          from_number?: string | null
+          id?: string
+          include_opt_out?: boolean | null
+          messaging_service_sid?: string | null
+          metadata?: Json | null
+          segments_count?: number | null
+          to_number?: string
+          twilio_message_sid?: string | null
+          twilio_status?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           created_at: string
