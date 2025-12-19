@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,6 +99,9 @@ const AdminSmsCenter = () => {
   const [replyBody, setReplyBody] = useState("");
   const [replyIncludeOptOut, setReplyIncludeOptOut] = useState(false);
   const [replying, setReplying] = useState(false);
+  
+  // Auto-scroll ref
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // User picker state
   const [users, setUsers] = useState<UserWithPhone[]>([]);
@@ -240,6 +243,13 @@ const AdminSmsCenter = () => {
       supabase.removeChannel(channel);
     };
   }, [selectedConversation]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   // Load SMS logs
   useEffect(() => {
@@ -626,6 +636,7 @@ const AdminSmsCenter = () => {
                                   </div>
                                 </div>
                               ))}
+                              <div ref={messagesEndRef} />
                             </div>
                           )}
                         </ScrollArea>

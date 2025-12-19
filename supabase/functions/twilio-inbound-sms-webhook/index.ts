@@ -14,9 +14,63 @@
 //   - MessageSid: Twilio message SID
 //   - NumMedia: number of media attachments
 //
+// Security: Validates Twilio request signature when TWILIO_AUTH_TOKEN is set.
+//
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+
+// Validate Twilio signature using Web Crypto API
+async function validateTwilioSignature(
+  req: Request,
+  formData: FormData,
+  authToken: string | undefined
+): Promise<boolean> {
+  if (!authToken) {
+    console.log('[twilio-inbound-sms] No auth token, skipping signature validation');
+    return true; // Skip validation if no auth token
+  }
+
+  const twilioSignature = req.headers.get('x-twilio-signature');
+  if (!twilioSignature) {
+    console.warn('[twilio-inbound-sms] Missing Twilio signature header');
+    return false;
+  }
+
+  // Build the URL from the request
+  const url = new URL(req.url);
+  const fullUrl = `${url.protocol}//${url.host}${url.pathname}`;
+
+  // Sort form params alphabetically and concatenate
+  const params = Array.from(formData.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${key}${value}`)
+    .join('');
+
+  const dataToSign = fullUrl + params;
+  
+  // Compute HMAC-SHA1 signature using Web Crypto API
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(authToken);
+  const data = encoder.encode(dataToSign);
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', key, data);
+  const computedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)));
+
+  const isValid = computedSignature === twilioSignature;
+  if (!isValid) {
+    console.warn('[twilio-inbound-sms] Invalid Twilio signature');
+  }
+  return isValid;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -33,6 +87,15 @@ Deno.serve(async (req) => {
 
     // Parse form data from Twilio
     const formData = await req.formData();
+    
+    // Validate Twilio signature for security
+    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+    const isValidSignature = await validateTwilioSignature(req, formData, twilioAuthToken);
+    if (!isValidSignature && twilioAuthToken) {
+      console.error('[twilio-inbound-sms] Invalid Twilio signature, rejecting request');
+      return new Response('Forbidden', { status: 403 });
+    }
+    
     const from = formData.get('From')?.toString();
     const to = formData.get('To')?.toString();
     const body = formData.get('Body')?.toString() || '';
