@@ -21,11 +21,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
-// Derive the inbound webhook URL from the same backend URL the app uses (single source of truth)
-const BACKEND_URL = import.meta.env.VITE_SUPABASE_URL;
-const INBOUND_WEBHOOK_URL = BACKEND_URL
-  ? `${BACKEND_URL.replace(/\/$/, '')}/functions/v1/twilio-inbound-sms-webhook`
-  : "";
+// Derive all URLs from VITE_SUPABASE_URL (single source of truth)
+const BACKEND_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const BACKEND_PROJECT_REF = (() => {
   try {
     return new URL(BACKEND_URL).hostname.split('.')[0];
@@ -33,6 +30,13 @@ const BACKEND_PROJECT_REF = (() => {
     return 'unknown';
   }
 })();
+// Use v2 webhook which logs to webhook_events table for debugging
+const INBOUND_WEBHOOK_URL = BACKEND_URL
+  ? `${BACKEND_URL.replace(/\/$/, '')}/functions/v1/twilio-inbound-sms-webhook-v2`
+  : "";
+const INBOUND_WEBHOOK_URL_V1 = BACKEND_URL
+  ? `${BACKEND_URL.replace(/\/$/, '')}/functions/v1/twilio-inbound-sms-webhook`
+  : "";
 
 // SMS character limits
 const GSM7_SINGLE_LIMIT = 160;
@@ -129,9 +133,12 @@ const AdminSmsCenter = () => {
   const [pingResult, setPingResult] = useState<{ ok: boolean; time: number; error?: string } | null>(null);
   const [pinging, setPinging] = useState(false);
   const [diagnosticsInbound, setDiagnosticsInbound] = useState<any[]>([]);
+  const [webhookEvents, setWebhookEvents] = useState<any[]>([]);
   const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
   const [conversationCount, setConversationCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
+  const [simulatingInbound, setSimulatingInbound] = useState(false);
+  const [showAdvancedDebug, setShowAdvancedDebug] = useState(false);
 
   // Load users with phone numbers
   useEffect(() => {
@@ -304,12 +311,21 @@ const AdminSmsCenter = () => {
     // Get last 10 inbound messages
     const { data: inboundMessages } = await supabase
       .from("admin_sms_messages")
-      .select("id, created_at, direction, from_e164, to_e164, body, status")
+      .select("id, created_at, direction, from_e164, to_e164, body, status, conversation_id")
       .eq("direction", "inbound")
       .order("created_at", { ascending: false })
       .limit(10);
     
     setDiagnosticsInbound(inboundMessages || []);
+    
+    // Get last 10 webhook events
+    const { data: events } = await supabase
+      .from("admin_sms_webhook_events")
+      .select("id, received_at, from_e164, to_e164, body, sms_sid, insert_ok, insert_error")
+      .order("received_at", { ascending: false })
+      .limit(10);
+    
+    setWebhookEvents(events || []);
     
     // Get counts
     const { count: convCount } = await supabase
@@ -324,6 +340,53 @@ const AdminSmsCenter = () => {
     setMessageCount(msgCount || 0);
     
     setDiagnosticsLoading(false);
+  };
+
+  // Simulate an inbound SMS (server-side test)
+  const handleSimulateInbound = async () => {
+    setSimulatingInbound(true);
+    try {
+      const testSid = `SM_TEST_SIM_${Date.now()}`;
+      const testBody = `Test inbound simulation at ${new Date().toLocaleTimeString()}`;
+      
+      // Send to v2 webhook with JSON body
+      const response = await fetch(INBOUND_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          From: '+14045551234',
+          To: '+16789288816', // Twilio number
+          Body: testBody,
+          MessageSid: testSid,
+          SmsSid: testSid,
+          MessagingServiceSid: 'MGtest',
+          NumMedia: '0'
+        })
+      });
+      
+      if (response.ok) {
+        toast({ 
+          title: 'Simulation sent', 
+          description: `Test message posted to webhook. Check Webhook Events and Inbound Messages tables.` 
+        });
+        // Refresh diagnostics after a short delay
+        setTimeout(() => fetchDiagnostics(), 1000);
+      } else {
+        toast({ 
+          title: 'Simulation failed', 
+          description: `HTTP ${response.status}`, 
+          variant: 'destructive' 
+        });
+      }
+    } catch (err: any) {
+      toast({ 
+        title: 'Simulation error', 
+        description: err.message, 
+        variant: 'destructive' 
+      });
+    } finally {
+      setSimulatingInbound(false);
+    }
   };
 
   const handlePingWebhook = async () => {
@@ -985,125 +1048,243 @@ const AdminSmsCenter = () => {
 
             {/* DIAGNOSTICS TAB */}
             <TabsContent value="diagnostics">
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Webhook Health Check */}
+              <div className="space-y-4">
+                {/* Advanced Debug Panel (collapsible) */}
                 <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Activity className="h-5 w-5" />
-                      Webhook Health
-                    </CardTitle>
-                    <CardDescription>
-                      Test the inbound SMS webhook endpoint
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Inbound Webhook Verification (admin-only page) */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">Backend project ref</span>
-                        <span className="font-mono">{BACKEND_PROJECT_REF}</span>
-                      </div>
-
-                      <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono break-all">
-                        {INBOUND_WEBHOOK_URL || 'Missing VITE_SUPABASE_URL'}
-                      </div>
-
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5" />
+                        System Configuration
+                      </CardTitle>
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         size="sm"
-                        className="w-full"
-                        disabled={!INBOUND_WEBHOOK_URL}
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(INBOUND_WEBHOOK_URL);
-                            toast({ title: 'Copied', description: 'Inbound webhook URL copied to clipboard.' });
-                          } catch (e: any) {
-                            toast({ title: 'Copy failed', description: e?.message || 'Unable to copy.', variant: 'destructive' });
-                          }
-                        }}
+                        onClick={() => setShowAdvancedDebug(!showAdvancedDebug)}
                       >
-                        Copy inbound webhook URL
+                        {showAdvancedDebug ? 'Hide' : 'Show'} Advanced
                       </Button>
                     </div>
-
-                    <Button
-                      onClick={handlePingWebhook}
-                      disabled={pinging || !INBOUND_WEBHOOK_URL}
-                      className="w-full gap-2"
-                    >
-                      {pinging ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                      Ping Webhook
-                    </Button>
-
-                    {pingResult && (
-                      <div
-                        className={cn(
-                          "p-3 rounded-lg text-sm",
-                          pingResult.ok ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
-                        )}
-                      >
-                        <p className="font-medium">
-                          {pingResult.ok ? "✓ Webhook is healthy" : "✗ Webhook check failed"}
-                        </p>
-                        <p className="text-xs mt-1 opacity-80">
-                          Response time: {pingResult.time}ms
-                          {pingResult.error && ` • Error: ${pingResult.error}`}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid gap-2 text-xs">
+                      <div className="flex justify-between p-2 bg-muted/50 rounded">
+                        <span className="text-muted-foreground">FRONTEND_SUPABASE_URL</span>
+                        <span className="font-mono truncate max-w-[300px]">{BACKEND_URL || 'NOT SET'}</span>
+                      </div>
+                      <div className="flex justify-between p-2 bg-muted/50 rounded">
+                        <span className="text-muted-foreground">PROJECT_REF</span>
+                        <span className="font-mono">{BACKEND_PROJECT_REF}</span>
+                      </div>
+                      <div className="flex justify-between p-2 bg-muted/50 rounded">
+                        <span className="text-muted-foreground">INBOUND_WEBHOOK_URL (v2)</span>
+                        <span className="font-mono truncate max-w-[400px]">{INBOUND_WEBHOOK_URL || 'NOT SET'}</span>
+                      </div>
+                      <div className="flex justify-between p-2 bg-muted/50 rounded">
+                        <span className="text-muted-foreground">Active Tables</span>
+                        <span className="font-mono">admin_sms_conversations, admin_sms_messages, admin_sms_webhook_events</span>
+                      </div>
+                      <div className="flex justify-between p-2 bg-muted/50 rounded">
+                        <span className="text-muted-foreground">Selected Conversation</span>
+                        <span className="font-mono">{selectedConversation?.id || 'none'}</span>
+                      </div>
+                    </div>
+                    
+                    {showAdvancedDebug && (
+                      <div className="pt-2 border-t space-y-2">
+                        <div className="flex justify-between p-2 bg-muted/50 rounded text-xs">
+                          <span className="text-muted-foreground">v1 Webhook (legacy)</span>
+                          <span className="font-mono truncate max-w-[400px]">{INBOUND_WEBHOOK_URL_V1}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Use the v2 webhook URL above in Twilio. It logs all requests to admin_sms_webhook_events for debugging.
                         </p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Database Stats */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Webhook Health Check */}
+                  <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Activity className="h-5 w-5" />
+                        Webhook Health
+                      </CardTitle>
+                      <CardDescription>
+                        Test the inbound SMS webhook endpoint
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono break-all">
+                        {INBOUND_WEBHOOK_URL || 'Missing VITE_SUPABASE_URL'}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          disabled={!INBOUND_WEBHOOK_URL}
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(INBOUND_WEBHOOK_URL);
+                              toast({ title: 'Copied', description: 'Webhook URL copied to clipboard.' });
+                            } catch (e: any) {
+                              toast({ title: 'Copy failed', description: e?.message || 'Unable to copy.', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          Copy URL
+                        </Button>
+                        <Button
+                          onClick={handlePingWebhook}
+                          disabled={pinging || !INBOUND_WEBHOOK_URL}
+                          className="flex-1 gap-2"
+                        >
+                          {pinging ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                          Ping
+                        </Button>
+                      </div>
+
+                      {pingResult && (
+                        <div
+                          className={cn(
+                            "p-3 rounded-lg text-sm",
+                            pingResult.ok ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
+                          )}
+                        >
+                          <p className="font-medium">
+                            {pingResult.ok ? "✓ Webhook is healthy" : "✗ Webhook check failed"}
+                          </p>
+                          <p className="text-xs mt-1 opacity-80">
+                            Response time: {pingResult.time}ms
+                            {pingResult.error && ` • Error: ${pingResult.error}`}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Database Stats + Simulation */}
+                  <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Database Stats</CardTitle>
+                      <CardDescription>SMS tables overview & simulation</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {diagnosticsLoading ? (
+                        <div className="flex items-center justify-center p-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                            <span className="text-sm">Total Conversations</span>
+                            <span className="font-medium">{conversationCount}</span>
+                          </div>
+                          <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                            <span className="text-sm">Total Messages</span>
+                            <span className="font-medium">{messageCount}</span>
+                          </div>
+                          <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                            <span className="text-sm">Webhook Events (last 10)</span>
+                            <span className="font-medium">{webhookEvents.length}</span>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={fetchDiagnostics}
+                              className="flex-1"
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Refresh
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              onClick={handleSimulateInbound}
+                              disabled={simulatingInbound}
+                              className="flex-1"
+                            >
+                              {simulatingInbound ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                              Simulate Inbound
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Webhook Events (last 10) - THIS IS THE KEY DEBUG TABLE */}
                 <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                   <CardHeader>
-                    <CardTitle className="text-lg">Database Stats</CardTitle>
-                    <CardDescription>SMS tables overview</CardDescription>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Inbox className="h-5 w-5" />
+                      Webhook Events (last 10)
+                    </CardTitle>
+                    <CardDescription>
+                      Every request to the webhook is logged here. If empty after texting, Twilio isn't calling the webhook.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     {diagnosticsLoading ? (
                       <div className="flex items-center justify-center p-8">
                         <Loader2 className="h-6 w-6 animate-spin" />
                       </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                          <span className="text-sm">Total Conversations</span>
-                          <span className="font-medium">{conversationCount}</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                          <span className="text-sm">Total Messages</span>
-                          <span className="font-medium">{messageCount}</span>
-                        </div>
-                        <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
-                          <span className="text-sm">Inbound Messages (shown below)</span>
-                          <span className="font-medium">{diagnosticsInbound.length}</span>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={fetchDiagnostics}
-                          className="w-full mt-2"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Refresh Stats
-                        </Button>
+                    ) : webhookEvents.length === 0 ? (
+                      <div className="text-center p-8 text-muted-foreground">
+                        <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No webhook events found</p>
+                        <p className="text-xs mt-2 opacity-70">
+                          This means Twilio is NOT calling your webhook. Check Twilio Console configuration.
+                        </p>
                       </div>
+                    ) : (
+                      <ScrollArea className="h-[200px]">
+                        <div className="space-y-2">
+                          {webhookEvents.map((evt: any) => (
+                            <div key={evt.id} className="p-3 rounded-lg border bg-card/50 text-sm">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                                    <Phone className="h-3 w-3" />
+                                    <span>From: {evt.from_e164 || '?'}</span>
+                                    <span>→</span>
+                                    <span>To: {evt.to_e164 || '?'}</span>
+                                    {evt.sms_sid && <span className="font-mono opacity-50">SID: {evt.sms_sid.slice(0, 12)}...</span>}
+                                  </div>
+                                  <p className="truncate text-xs">{evt.body || '(empty body)'}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <Badge variant={evt.insert_ok ? 'default' : 'destructive'} className="text-xs">
+                                    {evt.insert_ok ? 'OK' : 'FAIL'}
+                                  </Badge>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(new Date(evt.received_at), 'h:mm:ss a')}
+                                  </p>
+                                  {evt.insert_error && (
+                                    <p className="text-xs text-red-400 mt-1 truncate max-w-[150px]">{evt.insert_error}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
                     )}
                   </CardContent>
                 </Card>
 
                 {/* Last 10 Inbound Messages */}
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2">
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                   <CardHeader>
                     <CardTitle className="text-lg">Last 10 Inbound Messages</CardTitle>
                     <CardDescription>
-                      If Twilio shows incoming but nothing appears here, the webhook isn't inserting correctly.
+                      If Webhook Events shows entries but this is empty, the DB insert is failing.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1116,11 +1297,11 @@ const AdminSmsCenter = () => {
                         <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No inbound messages found in admin_sms_messages</p>
                         <p className="text-xs mt-2 opacity-70">
-                          Send a test SMS to your Twilio number and check if it appears here.
+                          Use "Simulate Inbound" above to test the full flow.
                         </p>
                       </div>
                     ) : (
-                      <ScrollArea className="h-[300px]">
+                      <ScrollArea className="h-[200px]">
                         <div className="space-y-2">
                           {diagnosticsInbound.map((msg: any) => (
                             <div key={msg.id} className="p-3 rounded-lg border bg-card/50 text-sm">
@@ -1131,6 +1312,7 @@ const AdminSmsCenter = () => {
                                     <span>From: {msg.from_e164}</span>
                                     <span>→</span>
                                     <span>To: {msg.to_e164}</span>
+                                    <span className="font-mono opacity-50">Conv: {msg.conversation_id?.slice(0, 8)}...</span>
                                   </div>
                                   <p className="truncate">{msg.body || '(empty)'}</p>
                                 </div>
@@ -1152,11 +1334,11 @@ const AdminSmsCenter = () => {
                 </Card>
 
                 {/* Twilio Configuration Info */}
-                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2">
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                   <CardHeader>
                     <CardTitle className="text-lg">Twilio Configuration</CardTitle>
                     <CardDescription>
-                      Ensure your Twilio Messaging Service is configured to send inbound messages to this webhook
+                      Configure Twilio to send inbound messages to this webhook
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
