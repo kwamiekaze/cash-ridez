@@ -2,6 +2,7 @@
 // BULK SMS WORKER FOR CASHRIDEZ
 // ============================================================================
 // Processes queued SMS recipients for bulk campaigns with rate limiting.
+// Creates conversations and messages so they appear in the Inbox.
 // Called by admin-bulk-sms-runner or directly by admin UI.
 // ============================================================================
 
@@ -43,6 +44,7 @@ interface Recipient {
   id: string;
   campaign_id: string;
   phone_e164: string;
+  first_name: string | null;
   message_rendered: string;
   status: string;
 }
@@ -145,14 +147,104 @@ async function checkAndUpdateRateLimits(
   return { allowed: true };
 }
 
+// Upsert conversation and return conversation_id
+async function upsertConversation(
+  supabase: any,
+  participantE164: string,
+  twilioNumberE164: string,
+  firstName: string | null,
+  messagePreview: string
+): Promise<string | null> {
+  try {
+    // Check if conversation exists
+    const { data: existing } = await supabase
+      .from('admin_sms_conversations')
+      .select('id')
+      .eq('participant_e164', participantE164)
+      .eq('twilio_number_e164', twilioNumberE164)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing conversation
+      await supabase
+        .from('admin_sms_conversations')
+        .update({
+          last_message_at: new Date().toISOString(),
+          last_message_preview: messagePreview.slice(0, 100),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+      
+      return existing.id;
+    }
+
+    // Create new conversation
+    const { data: newConv, error } = await supabase
+      .from('admin_sms_conversations')
+      .insert({
+        participant_e164: participantE164,
+        twilio_number_e164: twilioNumberE164,
+        last_message_at: new Date().toISOString(),
+        last_message_preview: messagePreview.slice(0, 100),
+        unread_count: 0
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('[bulk-sms-worker] Failed to create conversation:', error);
+      return null;
+    }
+
+    console.log(`[bulk-sms-worker] Created conversation ${newConv.id} for ${participantE164}`);
+    return newConv.id;
+  } catch (err: any) {
+    console.error('[bulk-sms-worker] upsertConversation error:', err);
+    return null;
+  }
+}
+
+// Insert outbound message into admin_sms_messages
+async function insertOutboundMessage(
+  supabase: any,
+  conversationId: string,
+  fromE164: string,
+  toE164: string,
+  body: string,
+  twilioSid: string | null,
+  status: string
+): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('admin_sms_messages')
+      .insert({
+        conversation_id: conversationId,
+        direction: 'outbound',
+        from_e164: fromE164,
+        to_e164: toE164,
+        body,
+        twilio_message_sid: twilioSid,
+        status,
+        created_at: new Date().toISOString()
+      });
+
+    if (error) {
+      console.error('[bulk-sms-worker] Failed to insert message:', error);
+    }
+  } catch (err: any) {
+    console.error('[bulk-sms-worker] insertOutboundMessage error:', err);
+  }
+}
+
 async function sendSingleSms(
   twilioAccountSid: string,
   twilioAuthToken: string,
   twilioMessagingServiceSid: string | undefined,
+  twilioPhoneNumber: string | undefined,
   to: string,
   body: string,
   supabaseUrl: string
-): Promise<{ ok: boolean; sid?: string; error?: string; status?: string }> {
+): Promise<{ ok: boolean; sid?: string; error?: string; status?: string; fromNumber?: string }> {
   const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
   const authString = btoa(`${twilioAccountSid}:${twilioAuthToken}`);
 
@@ -160,15 +252,16 @@ async function sendSingleSms(
   formParams.append('To', to);
   formParams.append('Body', body);
   
+  let fromNumber = twilioPhoneNumber;
+  
   if (twilioMessagingServiceSid) {
     formParams.append('MessagingServiceSid', twilioMessagingServiceSid);
+    // When using messaging service, we may not know the exact from number until sent
+    fromNumber = twilioPhoneNumber || '+16789288816'; // Default if not set
+  } else if (twilioPhoneNumber) {
+    formParams.append('From', twilioPhoneNumber);
   } else {
-    const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER');
-    if (twilioPhoneNumber) {
-      formParams.append('From', twilioPhoneNumber);
-    } else {
-      return { ok: false, error: 'No sender configured' };
-    }
+    return { ok: false, error: 'No sender configured' };
   }
 
   // Add status callback
@@ -198,7 +291,8 @@ async function sendSingleSms(
     return { 
       ok: true, 
       sid: twilioResponse.sid,
-      status: twilioResponse.status || 'queued'
+      status: twilioResponse.status || 'queued',
+      fromNumber: twilioResponse.from || fromNumber
     };
   } catch (err: any) {
     return { ok: false, error: err.message || 'Network error' };
@@ -219,6 +313,7 @@ Deno.serve(async (req) => {
     const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const twilioMessagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID');
+    const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16789288816';
 
     if (!twilioAccountSid || !twilioAuthToken) {
       return errorResponse('CONFIG_ERROR', 'Twilio credentials not configured', 500);
@@ -267,6 +362,7 @@ Deno.serve(async (req) => {
     let totalFailed = 0;
     let totalSkipped = 0;
     let rateLimitPaused = false;
+    let conversationsCreated = 0;
 
     for (const campaign of campaigns as Campaign[]) {
       console.log(`[bulk-sms-worker] Processing campaign ${campaign.id}`);
@@ -346,16 +442,44 @@ Deno.serve(async (req) => {
           .update({ status: 'sending' })
           .eq('id', recipient.id);
 
+        // Upsert conversation for this recipient (so it appears in Inbox)
+        const conversationId = await upsertConversation(
+          supabase,
+          recipient.phone_e164,
+          twilioPhoneNumber,
+          recipient.first_name,
+          recipient.message_rendered
+        );
+
+        if (conversationId) {
+          conversationsCreated++;
+        }
+
         if (dryRun) {
           // Simulate success in dry run
+          const dryRunSid = `DRY_RUN_${Date.now()}`;
+          
           await supabase
             .from('admin_sms_campaign_recipients')
             .update({
               status: 'sent',
-              twilio_sid: `DRY_RUN_${Date.now()}`,
+              twilio_sid: dryRunSid,
               sent_at: new Date().toISOString()
             })
             .eq('id', recipient.id);
+
+          // Insert message into conversation (even for dry run)
+          if (conversationId) {
+            await insertOutboundMessage(
+              supabase,
+              conversationId,
+              twilioPhoneNumber,
+              recipient.phone_e164,
+              recipient.message_rendered,
+              dryRunSid,
+              'sent'
+            );
+          }
           
           totalSent++;
           totalProcessed++;
@@ -367,6 +491,7 @@ Deno.serve(async (req) => {
           twilioAccountSid,
           twilioAuthToken,
           twilioMessagingServiceSid,
+          twilioPhoneNumber,
           recipient.phone_e164,
           recipient.message_rendered,
           supabaseUrl
@@ -381,6 +506,19 @@ Deno.serve(async (req) => {
               sent_at: new Date().toISOString()
             })
             .eq('id', recipient.id);
+
+          // Insert outbound message into conversation
+          if (conversationId) {
+            await insertOutboundMessage(
+              supabase,
+              conversationId,
+              result.fromNumber || twilioPhoneNumber,
+              recipient.phone_e164,
+              recipient.message_rendered,
+              result.sid || null,
+              result.status || 'sent'
+            );
+          }
           
           totalSent++;
         } else {
@@ -391,6 +529,19 @@ Deno.serve(async (req) => {
               error: result.error
             })
             .eq('id', recipient.id);
+
+          // Still insert the failed message into conversation for audit trail
+          if (conversationId) {
+            await insertOutboundMessage(
+              supabase,
+              conversationId,
+              twilioPhoneNumber,
+              recipient.phone_e164,
+              recipient.message_rendered,
+              null,
+              'failed'
+            );
+          }
           
           totalFailed++;
         }
@@ -428,7 +579,7 @@ Deno.serve(async (req) => {
     }
 
     const elapsed = Date.now() - startTime;
-    console.log(`[bulk-sms-worker] Completed in ${elapsed}ms. Processed: ${totalProcessed}, Sent: ${totalSent}, Failed: ${totalFailed}, Skipped: ${totalSkipped}`);
+    console.log(`[bulk-sms-worker] Completed in ${elapsed}ms. Processed: ${totalProcessed}, Sent: ${totalSent}, Failed: ${totalFailed}, Skipped: ${totalSkipped}, Conversations: ${conversationsCreated}`);
 
     return new Response(
       JSON.stringify({
@@ -437,6 +588,7 @@ Deno.serve(async (req) => {
         sent: totalSent,
         failed: totalFailed,
         skipped: totalSkipped,
+        conversations_created: conversationsCreated,
         rate_limit_paused: rateLimitPaused,
         elapsed_ms: elapsed
       }),

@@ -277,6 +277,7 @@ export type Database = {
       admin_sms_messages: {
         Row: {
           body: string
+          body_tsv: unknown
           conversation_id: string
           created_at: string | null
           direction: string
@@ -290,6 +291,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          body_tsv?: unknown
           conversation_id: string
           created_at?: string | null
           direction: string
@@ -303,6 +305,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          body_tsv?: unknown
           conversation_id?: string
           created_at?: string | null
           direction?: string
@@ -2082,6 +2085,20 @@ export type Database = {
       }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
       repair_user_trip_counts: { Args: never; Returns: undefined }
+      search_sms_conversations: {
+        Args: { search_term: string }
+        Returns: {
+          created_at: string
+          id: string
+          last_message_at: string
+          last_message_preview: string
+          matched_message_preview: string
+          participant_e164: string
+          twilio_number_e164: string
+          unread_count: number
+          updated_at: string
+        }[]
+      }
       set_referral_code: {
         Args: { p_new_code: string; p_user_id: string }
         Returns: Json
