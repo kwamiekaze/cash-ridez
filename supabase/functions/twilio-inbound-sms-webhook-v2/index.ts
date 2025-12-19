@@ -4,6 +4,7 @@
 //
 // This v2 endpoint logs EVERY request to admin_sms_webhook_events for debugging
 // and inserts inbound SMS into the conversation thread.
+// Also creates admin notifications for admins with sms_inbound_enabled.
 //
 // ENDPOINT:
 //   POST /functions/v1/twilio-inbound-sms-webhook-v2
@@ -48,6 +49,71 @@ function normalizeE164(phone: string): string {
   
   // Just add + for other formats
   return '+' + cleaned;
+}
+
+// Create admin notifications for inbound SMS
+async function notifyAdminsOfInboundSms(
+  supabase: any,
+  conversationId: string,
+  fromNumber: string,
+  messageBody: string,
+  messageSid: string
+): Promise<void> {
+  try {
+    // Find all admins with sms_inbound_enabled
+    const { data: adminSettings, error: settingsError } = await supabase
+      .from('admin_notification_settings')
+      .select('admin_id')
+      .eq('sms_inbound_enabled', true);
+
+    if (settingsError) {
+      console.error('[v2] Failed to fetch admin settings:', settingsError);
+      return;
+    }
+
+    if (!adminSettings || adminSettings.length === 0) {
+      console.log('[v2] No admins with sms_inbound_enabled');
+      return;
+    }
+
+    // Verify these are actually admins
+    const adminIds = adminSettings.map((s: any) => s.admin_id);
+    const { data: adminRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .in('user_id', adminIds)
+      .eq('role', 'admin');
+
+    const verifiedAdminIds = adminRoles?.map((r: any) => r.user_id) || [];
+    
+    if (verifiedAdminIds.length === 0) {
+      console.log('[v2] No verified admins found');
+      return;
+    }
+
+    // Create notifications for each admin
+    const notifications = verifiedAdminIds.map((adminId: string) => ({
+      user_id: adminId,
+      type: 'sms_inbound',
+      title: `New SMS from ${fromNumber}`,
+      message: messageBody.slice(0, 120) + (messageBody.length > 120 ? '...' : ''),
+      link: `/admin/sms?c=${conversationId}`,
+      read: false,
+      created_at: new Date().toISOString()
+    }));
+
+    const { error: insertError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+
+    if (insertError) {
+      console.error('[v2] Failed to insert admin notifications:', insertError);
+    } else {
+      console.log(`[v2] Created ${notifications.length} admin notification(s) for inbound SMS`);
+    }
+  } catch (err: any) {
+    console.error('[v2] notifyAdminsOfInboundSms error:', err);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -160,6 +226,7 @@ Deno.serve(async (req) => {
   // Variables for logging
   let insertOk = false;
   let insertError: string | null = null;
+  let conversationId: string | null = null;
 
   // Insert into messages table if we have required fields
   if (fromE164 && toE164 && smsSid) {
@@ -179,8 +246,6 @@ Deno.serve(async (req) => {
         // For inbound: participant = sender (from), twilio number = recipient (to)
         const participantE164 = fromE164;
         const twilioNumberE164 = toE164;
-
-        let conversationId: string | null = null;
 
         const { data: existingConv } = await supabase
           .from('admin_sms_conversations')
@@ -254,6 +319,15 @@ Deno.serve(async (req) => {
           } else {
             console.log('[v2] Message inserted successfully');
             insertOk = true;
+            
+            // Create admin notifications for inbound SMS (only for new messages)
+            await notifyAdminsOfInboundSms(
+              supabase,
+              conversationId,
+              fromE164,
+              body,
+              smsSid
+            );
           }
         }
       }

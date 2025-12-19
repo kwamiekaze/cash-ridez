@@ -50,23 +50,29 @@ export type Database = {
       admin_notification_settings: {
         Row: {
           admin_id: string
+          campaign_complete_enabled: boolean
           created_at: string
           notify_channel: string
           notify_on_new_visit: boolean
+          sms_inbound_enabled: boolean
           updated_at: string
         }
         Insert: {
           admin_id: string
+          campaign_complete_enabled?: boolean
           created_at?: string
           notify_channel?: string
           notify_on_new_visit?: boolean
+          sms_inbound_enabled?: boolean
           updated_at?: string
         }
         Update: {
           admin_id?: string
+          campaign_complete_enabled?: boolean
           created_at?: string
           notify_channel?: string
           notify_on_new_visit?: boolean
+          sms_inbound_enabled?: boolean
           updated_at?: string
         }
         Relationships: []
