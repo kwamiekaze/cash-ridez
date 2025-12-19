@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.twilio-sms-status-webhook]
 verify_jwt = false
+
+[functions.twilio-inbound-sms-webhook]
+verify_jwt = false

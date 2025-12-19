@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,14 +11,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle } from "lucide-react";
+import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Check, CheckCheck, X } from "lucide-react";
 import { MapBackground } from "@/components/MapBackground";
 import AppHeader from "@/components/AppHeader";
 import AdminRoute from "@/components/AdminRoute";
 import { motion } from "motion/react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
 
 // SMS character limits
 const GSM7_SINGLE_LIMIT = 160;
@@ -26,6 +27,30 @@ const GSM7_MULTI_LIMIT = 153;
 const UNICODE_SINGLE_LIMIT = 70;
 const UNICODE_MULTI_LIMIT = 67;
 const OPT_OUT_TEXT = "\n\nReply STOP to opt out.";
+
+interface Conversation {
+  id: string;
+  participant_e164: string;
+  twilio_number_e164: string;
+  last_message_at: string;
+  last_message_preview: string | null;
+  unread_count: number;
+  created_at: string;
+}
+
+interface SmsMessage {
+  id: string;
+  conversation_id: string;
+  direction: 'inbound' | 'outbound';
+  from_e164: string;
+  to_e164: string;
+  body: string;
+  twilio_message_sid: string | null;
+  status: string;
+  error_code: string | null;
+  error_message: string | null;
+  created_at: string;
+}
 
 interface SmsLog {
   id: string;
@@ -51,12 +76,29 @@ const AdminSmsCenter = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  // Form state
+  // Tab state
+  const [activeTab, setActiveTab] = useState("inbox");
+  
+  // Compose form state
   const [recipient, setRecipient] = useState("");
   const [messageBody, setMessageBody] = useState("");
   const [includeOptOut, setIncludeOptOut] = useState(true);
   const [senderType, setSenderType] = useState<"messaging_service" | "phone_number">("messaging_service");
   const [sending, setSending] = useState(false);
+  
+  // Inbox state
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<SmsMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [conversationSearch, setConversationSearch] = useState("");
+  const [filterUnread, setFilterUnread] = useState(false);
+  
+  // Reply state
+  const [replyBody, setReplyBody] = useState("");
+  const [replyIncludeOptOut, setReplyIncludeOptOut] = useState(false);
+  const [replying, setReplying] = useState(false);
   
   // User picker state
   const [users, setUsers] = useState<UserWithPhone[]>([]);
@@ -66,7 +108,6 @@ const AdminSmsCenter = () => {
   // Logs state
   const [logs, setLogs] = useState<SmsLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
-  const [activeTab, setActiveTab] = useState("compose");
 
   // Load users with phone numbers
   useEffect(() => {
@@ -83,6 +124,122 @@ const AdminSmsCenter = () => {
     };
     fetchUsers();
   }, []);
+
+  // Load conversations
+  const fetchConversations = useCallback(async () => {
+    setLoadingConversations(true);
+    const { data, error } = await supabase
+      .from("admin_sms_conversations")
+      .select("*")
+      .order("last_message_at", { ascending: false });
+    
+    if (error) {
+      console.error('[AdminSmsCenter] Failed to load conversations:', error);
+    } else {
+      setConversations((data || []) as Conversation[]);
+    }
+    setLoadingConversations(false);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "inbox") {
+      fetchConversations();
+    }
+  }, [activeTab, fetchConversations]);
+
+  // Subscribe to realtime updates for conversations
+  useEffect(() => {
+    if (activeTab !== "inbox") return;
+
+    const channel = supabase
+      .channel('sms-conversations-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'admin_sms_conversations' },
+        () => {
+          fetchConversations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, fetchConversations]);
+
+  // Load messages for selected conversation
+  const fetchMessages = useCallback(async (conversationId: string) => {
+    setLoadingMessages(true);
+    const { data, error } = await supabase
+      .from("admin_sms_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true })
+      .limit(100);
+    
+    if (error) {
+      console.error('[AdminSmsCenter] Failed to load messages:', error);
+    } else {
+      setMessages((data || []) as SmsMessage[]);
+    }
+    setLoadingMessages(false);
+  }, []);
+
+  // When conversation is selected, load messages and mark as read
+  useEffect(() => {
+    if (selectedConversation) {
+      fetchMessages(selectedConversation.id);
+      
+      // Mark conversation as read
+      if (selectedConversation.unread_count > 0) {
+        supabase
+          .from("admin_sms_conversations")
+          .update({ unread_count: 0 })
+          .eq("id", selectedConversation.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('[AdminSmsCenter] Failed to mark as read:', error);
+            } else {
+              // Update local state
+              setConversations(prev => 
+                prev.map(c => c.id === selectedConversation.id ? { ...c, unread_count: 0 } : c)
+              );
+            }
+          });
+      }
+    }
+  }, [selectedConversation, fetchMessages]);
+
+  // Subscribe to realtime updates for messages in selected conversation
+  useEffect(() => {
+    if (!selectedConversation) return;
+
+    const channel = supabase
+      .channel(`sms-messages-${selectedConversation.id}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'admin_sms_messages',
+          filter: `conversation_id=eq.${selectedConversation.id}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setMessages(prev => [...prev, payload.new as SmsMessage]);
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages(prev => 
+              prev.map(m => m.id === (payload.new as SmsMessage).id ? payload.new as SmsMessage : m)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedConversation]);
 
   // Load SMS logs
   useEffect(() => {
@@ -103,6 +260,25 @@ const AdminSmsCenter = () => {
     setLoadingLogs(false);
   };
 
+  // Filter conversations
+  const filteredConversations = useMemo(() => {
+    let filtered = conversations;
+    
+    if (filterUnread) {
+      filtered = filtered.filter(c => c.unread_count > 0);
+    }
+    
+    if (conversationSearch.trim()) {
+      const query = conversationSearch.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.participant_e164.includes(query) ||
+        c.last_message_preview?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [conversations, filterUnread, conversationSearch]);
+
   // Filter users by search query
   const filteredUsers = useMemo(() => {
     if (!userSearchQuery.trim()) return users.slice(0, 50);
@@ -116,11 +292,10 @@ const AdminSmsCenter = () => {
   }, [users, userSearchQuery]);
 
   // Calculate message info
-  const messageInfo = useMemo(() => {
-    const fullMessage = includeOptOut ? messageBody + OPT_OUT_TEXT : messageBody;
+  const calculateMessageInfo = (body: string, withOptOut: boolean) => {
+    const fullMessage = withOptOut ? body + OPT_OUT_TEXT : body;
     const length = fullMessage.length;
     
-    // Check for non-GSM-7 characters
     const gsm7Regex = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ ÆæßÉ!"#¤%&'()*+,\-.\/:;<=>?¡ÄÖÑÜ§¿äöñüà0-9A-Za-z]*$/;
     const isGsm7 = gsm7Regex.test(fullMessage);
     
@@ -132,130 +307,110 @@ const AdminSmsCenter = () => {
       segments = Math.ceil(length / multiLimit);
     }
     
-    const charsRemaining = segments === 1 
-      ? singleLimit - length 
-      : (segments * multiLimit) - length;
-    
-    return {
-      length,
-      segments,
-      charsRemaining,
-      isGsm7,
-      encoding: isGsm7 ? 'GSM-7' : 'Unicode'
-    };
-  }, [messageBody, includeOptOut]);
+    return { length, segments, isGsm7, encoding: isGsm7 ? 'GSM-7' : 'Unicode' };
+  };
+
+  const messageInfo = useMemo(() => calculateMessageInfo(messageBody, includeOptOut), [messageBody, includeOptOut]);
+  const replyInfo = useMemo(() => calculateMessageInfo(replyBody, replyIncludeOptOut), [replyBody, replyIncludeOptOut]);
 
   // Validate E.164 format
-  const isValidE164 = (phone: string): boolean => {
-    return /^\+[1-9]\d{1,14}$/.test(phone);
-  };
+  const isValidE164 = (phone: string): boolean => /^\+[1-9]\d{1,14}$/.test(phone);
 
   // Handle user selection
   const handleSelectUser = (userId: string) => {
     const selectedUser = users.find(u => u.id === userId);
     if (selectedUser?.phone_number) {
-      // Ensure E.164 format
       let phone = selectedUser.phone_number.trim();
       if (!phone.startsWith('+')) {
         phone = phone.replace(/\D/g, '');
-        if (phone.length === 10) {
-          phone = '+1' + phone;
-        } else if (phone.length === 11 && phone.startsWith('1')) {
-          phone = '+' + phone;
-        }
+        if (phone.length === 10) phone = '+1' + phone;
+        else if (phone.length === 11 && phone.startsWith('1')) phone = '+' + phone;
       }
       setRecipient(phone);
     }
   };
 
-  // Send SMS
+  // Send SMS (compose tab)
   const handleSend = async () => {
-    if (!recipient.trim()) {
-      toast({ title: "Error", description: "Recipient phone number is required.", variant: "destructive" });
-      return;
-    }
-
-    if (!isValidE164(recipient)) {
-      toast({ 
-        title: "Invalid Phone Format", 
-        description: "Phone number must be in E.164 format (e.g., +15551234567).", 
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    if (!messageBody.trim()) {
-      toast({ title: "Error", description: "Message body is required.", variant: "destructive" });
-      return;
-    }
-
-    if (messageInfo.length > 1500) {
-      toast({ title: "Error", description: "Message is too long (max 1500 characters).", variant: "destructive" });
+    if (!recipient.trim() || !isValidE164(recipient) || !messageBody.trim()) {
+      toast({ title: "Error", description: "Valid recipient and message are required.", variant: "destructive" });
       return;
     }
 
     setSending(true);
-
     try {
       const { data, error } = await supabase.functions.invoke('admin-send-sms', {
-        body: {
-          to: recipient,
-          body: messageBody,
-          includeOptOut,
-          fromNumber: senderType === "phone_number" ? undefined : undefined // Will use messaging service
-        }
+        body: { to: recipient, body: messageBody, includeOptOut }
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (data?.ok) {
-        toast({
-          title: "SMS Sent!",
-          description: `Message SID: ${data.sid} (${data.segments || 1} segment${data.segments > 1 ? 's' : ''})`,
-        });
-        
-        // Reset form
+        toast({ title: "SMS Sent!", description: `Message SID: ${data.sid}` });
         setRecipient("");
         setMessageBody("");
-        
-        // Refresh logs if on history tab
-        if (activeTab === "history") {
-          fetchLogs();
-        }
+        fetchConversations();
       } else {
-        toast({
-          title: "SMS Failed",
-          description: data?.error || "Unknown error occurred.",
-          variant: "destructive",
-        });
+        toast({ title: "SMS Failed", description: data?.error || "Unknown error", variant: "destructive" });
       }
     } catch (err: any) {
-      console.error('[AdminSmsCenter] Send error:', err);
-      toast({
-        title: "Error",
-        description: err?.message || "Failed to send SMS.",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: err?.message || "Failed to send SMS.", variant: "destructive" });
     } finally {
       setSending(false);
     }
   };
 
+  // Send reply in conversation
+  const handleSendReply = async () => {
+    if (!selectedConversation || !replyBody.trim()) return;
+
+    setReplying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-send-sms', {
+        body: { 
+          to: selectedConversation.participant_e164, 
+          body: replyBody, 
+          includeOptOut: replyIncludeOptOut 
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.ok) {
+        setReplyBody("");
+        // Message will appear via realtime subscription
+      } else {
+        toast({ title: "Failed to send", description: data?.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err?.message || "Failed to send reply.", variant: "destructive" });
+    } finally {
+      setReplying(false);
+    }
+  };
+
+  // Start new conversation
+  const handleStartNewConversation = () => {
+    setActiveTab("compose");
+    setSelectedConversation(null);
+  };
+
+  const getStatusIcon = (status: string | null) => {
+    const s = status?.toLowerCase() || '';
+    if (s === 'delivered') return <CheckCheck className="h-3 w-3 text-green-500" />;
+    if (s === 'sent') return <Check className="h-3 w-3 text-blue-500" />;
+    if (s === 'failed' || s === 'undelivered') return <X className="h-3 w-3 text-destructive" />;
+    return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />;
+  };
+
   const getStatusBadge = (status: string | null) => {
     if (!status) return <Badge variant="secondary">Unknown</Badge>;
-    
-    const statusLower = status.toLowerCase();
-    if (statusLower === 'delivered') {
-      return <Badge className="bg-green-600">Delivered</Badge>;
-    } else if (statusLower === 'sent') {
-      return <Badge className="bg-blue-600">Sent</Badge>;
-    } else if (statusLower === 'queued' || statusLower === 'sending') {
-      return <Badge variant="secondary">Pending</Badge>;
-    } else if (statusLower === 'failed' || statusLower === 'undelivered') {
-      return <Badge variant="destructive">Failed</Badge>;
-    }
+    const s = status.toLowerCase();
+    if (s === 'delivered') return <Badge className="bg-green-600">Delivered</Badge>;
+    if (s === 'sent') return <Badge className="bg-blue-600">Sent</Badge>;
+    if (s === 'received') return <Badge className="bg-purple-600">Received</Badge>;
+    if (s === 'queued' || s === 'sending') return <Badge variant="secondary">Pending</Badge>;
+    if (s === 'failed' || s === 'undelivered') return <Badge variant="destructive">Failed</Badge>;
     return <Badge variant="outline">{status}</Badge>;
   };
 
@@ -265,7 +420,7 @@ const AdminSmsCenter = () => {
         <MapBackground />
         <AppHeader showStatus={false} />
 
-        <div className="container mx-auto px-4 py-6 relative z-10 max-w-4xl">
+        <div className="container mx-auto px-4 py-6 relative z-10 max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -286,7 +441,7 @@ const AdminSmsCenter = () => {
                   SMS Center
                 </h1>
                 <p className="text-muted-foreground text-sm">
-                  Send SMS messages to users via Twilio
+                  Send and receive SMS messages
                 </p>
               </div>
             </div>
@@ -294,6 +449,15 @@ const AdminSmsCenter = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
+              <TabsTrigger value="inbox" className="gap-2">
+                <Inbox className="h-4 w-4" />
+                Inbox
+                {conversations.some(c => c.unread_count > 0) && (
+                  <Badge variant="destructive" className="ml-1 h-5 px-1.5">
+                    {conversations.reduce((sum, c) => sum + c.unread_count, 0)}
+                  </Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="compose" className="gap-2">
                 <Send className="h-4 w-4" />
                 Compose
@@ -304,13 +468,229 @@ const AdminSmsCenter = () => {
               </TabsTrigger>
             </TabsList>
 
+            {/* INBOX TAB - Two panel layout */}
+            <TabsContent value="inbox" className="mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-280px)] min-h-[500px]">
+                {/* Left: Conversations list */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-1 flex flex-col">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">Conversations</CardTitle>
+                      <Button size="sm" variant="outline" onClick={handleStartNewConversation}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search..."
+                          value={conversationSearch}
+                          onChange={(e) => setConversationSearch(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={filterUnread ? "default" : "outline"}
+                        onClick={() => setFilterUnread(!filterUnread)}
+                        className="text-xs"
+                      >
+                        Unread
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 overflow-hidden p-0">
+                    <ScrollArea className="h-full">
+                      {loadingConversations ? (
+                        <div className="flex items-center justify-center p-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : filteredConversations.length === 0 ? (
+                        <div className="text-center p-8 text-muted-foreground">
+                          <Inbox className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No conversations</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-border/50">
+                          {filteredConversations.map((conv) => (
+                            <button
+                              key={conv.id}
+                              onClick={() => setSelectedConversation(conv)}
+                              className={cn(
+                                "w-full text-left p-3 hover:bg-accent/50 transition-colors",
+                                selectedConversation?.id === conv.id && "bg-accent"
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span className="font-medium text-sm truncate">
+                                      {conv.participant_e164}
+                                    </span>
+                                    {conv.unread_count > 0 && (
+                                      <Badge variant="destructive" className="h-5 px-1.5 text-xs">
+                                        {conv.unread_count}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground truncate mt-1">
+                                    {conv.last_message_preview || 'No messages'}
+                                  </p>
+                                </div>
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })}
+                                </span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Right: Message stream */}
+                <Card className="bg-card/80 backdrop-blur-sm border-border/50 md:col-span-2 flex flex-col">
+                  {selectedConversation ? (
+                    <>
+                      <CardHeader className="pb-2 border-b border-border/50">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base flex items-center gap-2">
+                              <Phone className="h-4 w-4" />
+                              {selectedConversation.participant_e164}
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              via {selectedConversation.twilio_number_e164}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelectedConversation(null)}
+                            className="md:hidden"
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      
+                      <CardContent className="flex-1 overflow-hidden p-0">
+                        <ScrollArea className="h-full p-4">
+                          {loadingMessages ? (
+                            <div className="flex items-center justify-center p-8">
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                          ) : messages.length === 0 ? (
+                            <div className="text-center p-8 text-muted-foreground">
+                              <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm">No messages yet</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {messages.map((msg) => (
+                                <div
+                                  key={msg.id}
+                                  className={cn(
+                                    "flex",
+                                    msg.direction === 'outbound' ? "justify-end" : "justify-start"
+                                  )}
+                                >
+                                  <div
+                                    className={cn(
+                                      "max-w-[80%] rounded-lg px-3 py-2",
+                                      msg.direction === 'outbound'
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-muted"
+                                    )}
+                                  >
+                                    <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                                    <div className={cn(
+                                      "flex items-center gap-1 mt-1",
+                                      msg.direction === 'outbound' ? "justify-end" : "justify-start"
+                                    )}>
+                                      <span className="text-[10px] opacity-70">
+                                        {format(new Date(msg.created_at), 'MMM d, h:mm a')}
+                                      </span>
+                                      {msg.direction === 'outbound' && (
+                                        <span className="ml-1" title={msg.error_message || msg.status}>
+                                          {getStatusIcon(msg.status)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {msg.error_message && (
+                                      <p className="text-[10px] text-destructive mt-1">{msg.error_message}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </CardContent>
+
+                      {/* Reply composer */}
+                      <div className="p-3 border-t border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Switch
+                            id="reply-opt-out"
+                            checked={replyIncludeOptOut}
+                            onCheckedChange={setReplyIncludeOptOut}
+                            className="scale-75"
+                          />
+                          <Label htmlFor="reply-opt-out" className="text-xs text-muted-foreground cursor-pointer">
+                            Opt-out footer
+                          </Label>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {replyInfo.length} chars • {replyInfo.segments} seg
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Textarea
+                            placeholder="Type a reply..."
+                            value={replyBody}
+                            onChange={(e) => setReplyBody(e.target.value)}
+                            className="resize-none min-h-[60px] flex-1"
+                            rows={2}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                handleSendReply();
+                              }
+                            }}
+                          />
+                          <Button
+                            onClick={handleSendReply}
+                            disabled={replying || !replyBody.trim()}
+                            className="self-end"
+                          >
+                            {replying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                        <p>Select a conversation</p>
+                        <Button variant="link" onClick={handleStartNewConversation} className="mt-2">
+                          or start a new one
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* COMPOSE TAB */}
             <TabsContent value="compose">
-              <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+              <Card className="bg-card/80 backdrop-blur-sm border-border/50 max-w-2xl mx-auto">
                 <CardHeader>
                   <CardTitle className="text-lg">Send SMS</CardTitle>
-                  <CardDescription>
-                    Compose and send an SMS message to a single recipient
-                  </CardDescription>
+                  <CardDescription>Compose and send an SMS message</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Sender Type */}
@@ -330,7 +710,7 @@ const AdminSmsCenter = () => {
                         <SelectItem value="phone_number">
                           <div className="flex items-center gap-2">
                             <Phone className="h-4 w-4" />
-                            CashRidez Phone Number
+                            Phone Number
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -340,20 +720,17 @@ const AdminSmsCenter = () => {
                   {/* Recipient */}
                   <div className="space-y-2">
                     <Label>Recipient (E.164 format)</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="+15551234567"
-                        value={recipient}
-                        onChange={(e) => setRecipient(e.target.value)}
-                        className="flex-1"
-                      />
-                    </div>
+                    <Input
+                      placeholder="+15551234567"
+                      value={recipient}
+                      onChange={(e) => setRecipient(e.target.value)}
+                    />
                     
                     {/* User picker */}
                     <div className="space-y-2 pt-2">
                       <Label className="text-muted-foreground text-xs">Or select a user:</Label>
                       <Input
-                        placeholder="Search users by name, email, or phone..."
+                        placeholder="Search users..."
                         value={userSearchQuery}
                         onChange={(e) => setUserSearchQuery(e.target.value)}
                         className="text-sm"
@@ -395,7 +772,7 @@ const AdminSmsCenter = () => {
                     {recipient && !isValidE164(recipient) && (
                       <p className="text-destructive text-xs flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
-                        Invalid E.164 format. Use +[country code][number] (e.g., +15551234567)
+                        Invalid E.164 format
                       </p>
                     )}
                   </div>
@@ -405,37 +782,25 @@ const AdminSmsCenter = () => {
                     <div className="flex items-center justify-between">
                       <Label>Message</Label>
                       <span className="text-xs text-muted-foreground">
-                        {messageInfo.length} chars • {messageInfo.segments} segment{messageInfo.segments > 1 ? 's' : ''} • {messageInfo.encoding}
+                        {messageInfo.length} chars • {messageInfo.segments} segment{messageInfo.segments > 1 ? 's' : ''}
                       </span>
                     </div>
                     <Textarea
-                      placeholder="Type your message here..."
+                      placeholder="Type your message..."
                       value={messageBody}
                       onChange={(e) => setMessageBody(e.target.value)}
                       rows={5}
                       className="resize-none"
                     />
-                    {messageInfo.segments > 1 && (
-                      <p className="text-amber-500 text-xs flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        Message will be split into {messageInfo.segments} SMS segments
-                      </p>
-                    )}
                   </div>
 
                   {/* Opt-out toggle */}
                   <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                     <div>
                       <Label htmlFor="opt-out" className="cursor-pointer">Append opt-out footer</Label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Adds "Reply STOP to opt out." to the message
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Adds "Reply STOP to opt out."</p>
                     </div>
-                    <Switch
-                      id="opt-out"
-                      checked={includeOptOut}
-                      onCheckedChange={setIncludeOptOut}
-                    />
+                    <Switch id="opt-out" checked={includeOptOut} onCheckedChange={setIncludeOptOut} />
                   </div>
 
                   {/* Preview */}
@@ -456,86 +821,59 @@ const AdminSmsCenter = () => {
                     className="w-full gap-2"
                     size="lg"
                   >
-                    {sending ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4" />
-                        Send SMS
-                      </>
-                    )}
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    Send Message
                   </Button>
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* HISTORY TAB */}
             <TabsContent value="history">
               <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">SMS History</CardTitle>
-                    <CardDescription>
-                      Recent SMS messages sent from this admin panel
-                    </CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loadingLogs}>
-                    {loadingLogs ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
-                  </Button>
+                <CardHeader>
+                  <CardTitle className="text-lg">Send History</CardTitle>
+                  <CardDescription>Recent outbound SMS logs</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {loadingLogs ? (
-                    <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     </div>
                   ) : logs.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No SMS messages sent yet</p>
-                    </div>
+                    <p className="text-muted-foreground text-center py-8">No SMS logs yet</p>
                   ) : (
                     <ScrollArea className="h-[500px]">
                       <div className="space-y-3">
                         {logs.map((log) => (
-                          <div 
-                            key={log.id} 
-                            className="p-4 rounded-lg border bg-muted/30 space-y-2"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-mono text-sm">{log.to_number}</span>
-                              </div>
-                              {getStatusBadge(log.twilio_status)}
-                            </div>
-                            
-                            <p className="text-sm whitespace-pre-wrap line-clamp-3">
-                              {log.body}
-                              {log.include_opt_out && (
-                                <span className="text-muted-foreground">{OPT_OUT_TEXT}</span>
-                              )}
-                            </p>
-                            
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>{format(new Date(log.created_at), 'MMM d, yyyy h:mm a')}</span>
-                              <div className="flex items-center gap-3">
-                                {log.segments_count > 1 && (
-                                  <span>{log.segments_count} segments</span>
-                                )}
-                                {log.twilio_message_sid && (
-                                  <span className="font-mono text-[10px]">{log.twilio_message_sid.slice(0, 16)}...</span>
+                          <div key={log.id} className="p-4 rounded-lg border bg-card/50">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium">{log.to_number}</span>
+                                  {getStatusBadge(log.twilio_status)}
+                                </div>
+                                <p className="text-sm text-muted-foreground line-clamp-2">{log.body}</p>
+                                {log.error_message && (
+                                  <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" />
+                                    {log.error_message}
+                                  </p>
                                 )}
                               </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(log.created_at), 'MMM d, yyyy')}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(log.created_at), 'h:mm a')}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {log.segments_count} segment{log.segments_count > 1 ? 's' : ''}
+                                </p>
+                              </div>
                             </div>
-                            
-                            {log.error_message && (
-                              <p className="text-destructive text-xs mt-2 flex items-center gap-1">
-                                <AlertCircle className="h-3 w-3" />
-                                {log.error_message}
-                              </p>
-                            )}
                           </div>
                         ))}
                       </div>

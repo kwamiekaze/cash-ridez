@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
       twilioStatus = 'failed';
     }
 
-    // Log the SMS send attempt
+    // Log the SMS send attempt (existing audit log)
     const { error: logError } = await supabaseAdmin
       .from('admin_sms_logs')
       .insert({
@@ -260,7 +260,71 @@ Deno.serve(async (req) => {
 
     if (logError) {
       console.error('[admin-send-sms] Failed to log SMS:', logError);
-      // Don't fail the request if logging fails
+    }
+
+    // Also record in conversation thread (for two-way messaging UI)
+    if (!twilioError) {
+      const twilioFromNumber = twilioResponse?.from || effectiveFrom || 'unknown';
+      
+      // Upsert conversation
+      const { data: conversation, error: convError } = await supabaseAdmin
+        .from('admin_sms_conversations')
+        .upsert({
+          participant_e164: to,
+          twilio_number_e164: twilioFromNumber,
+          last_message_at: new Date().toISOString(),
+          last_message_preview: body.slice(0, 100),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'participant_e164,twilio_number_e164'
+        })
+        .select('id')
+        .single();
+
+      if (convError) {
+        console.error('[admin-send-sms] Failed to upsert conversation:', convError);
+        // Try to find existing conversation
+        const { data: existingConv } = await supabaseAdmin
+          .from('admin_sms_conversations')
+          .select('id')
+          .eq('participant_e164', to)
+          .eq('twilio_number_e164', twilioFromNumber)
+          .single();
+        
+        if (existingConv) {
+          // Insert message with existing conversation
+          await supabaseAdmin
+            .from('admin_sms_messages')
+            .insert({
+              conversation_id: existingConv.id,
+              direction: 'outbound',
+              from_e164: twilioFromNumber,
+              to_e164: to,
+              body: body,
+              twilio_message_sid: twilioResponse?.sid || null,
+              status: twilioStatus,
+              created_at: new Date().toISOString()
+            });
+        }
+      } else if (conversation) {
+        // Insert outbound message
+        const { error: msgError } = await supabaseAdmin
+          .from('admin_sms_messages')
+          .insert({
+            conversation_id: conversation.id,
+            direction: 'outbound',
+            from_e164: twilioFromNumber,
+            to_e164: to,
+            body: body,
+            twilio_message_sid: twilioResponse?.sid || null,
+            status: twilioStatus,
+            created_at: new Date().toISOString()
+          });
+
+        if (msgError) {
+          console.error('[admin-send-sms] Failed to insert message:', msgError);
+        }
+      }
     }
 
     // Return result

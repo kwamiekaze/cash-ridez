@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Build update object
+    // Build update object for logs
     const updateData: Record<string, any> = {
       twilio_status: messageStatus,
     };
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       };
     }
 
-    // Update the log entry
+    // Update the audit log entry
     const { data, error } = await supabase
       .from('admin_sms_logs')
       .update(updateData)
@@ -78,10 +78,31 @@ Deno.serve(async (req) => {
       .single();
 
     if (error) {
-      console.error('[twilio-sms-status-webhook] Update failed:', error);
-      // Still return 200 to Twilio to prevent retries
+      console.error('[twilio-sms-status-webhook] Logs update failed:', error);
     } else {
       console.log('[twilio-sms-status-webhook] Log updated:', data?.id);
+    }
+
+    // Also update the conversation message status
+    const msgUpdateData: Record<string, any> = {
+      status: messageStatus,
+    };
+    if (errorCode) {
+      msgUpdateData.error_code = errorCode;
+    }
+    if (errorMessage) {
+      msgUpdateData.error_message = errorMessage;
+    }
+
+    const { error: msgError } = await supabase
+      .from('admin_sms_messages')
+      .update(msgUpdateData)
+      .eq('twilio_message_sid', messageSid);
+
+    if (msgError) {
+      console.error('[twilio-sms-status-webhook] Message update failed:', msgError);
+    } else {
+      console.log('[twilio-sms-status-webhook] Message status updated');
     }
 
     // Return 200 to acknowledge receipt (Twilio expects this)

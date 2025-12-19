@@ -71,6 +71,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sms_conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          participant_e164: string
+          twilio_number_e164: string
+          unread_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant_e164: string
+          twilio_number_e164: string
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          participant_e164?: string
+          twilio_number_e164?: string
+          unread_count?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       admin_sms_logs: {
         Row: {
           admin_user_id: string
@@ -118,6 +151,56 @@ export type Database = {
           twilio_status?: string | null
         }
         Relationships: []
+      }
+      admin_sms_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string | null
+          direction: string
+          error_code: string | null
+          error_message: string | null
+          from_e164: string
+          id: string
+          status: string | null
+          to_e164: string
+          twilio_message_sid: string | null
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string | null
+          direction: string
+          error_code?: string | null
+          error_message?: string | null
+          from_e164: string
+          id?: string
+          status?: string | null
+          to_e164: string
+          twilio_message_sid?: string | null
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string | null
+          direction?: string
+          error_code?: string | null
+          error_message?: string | null
+          from_e164?: string
+          id?: string
+          status?: string | null
+          to_e164?: string
+          twilio_message_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sms_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_sms_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       app_settings: {
         Row: {
