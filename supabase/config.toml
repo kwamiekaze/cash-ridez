@@ -59,3 +59,9 @@ verify_jwt = true
 
 [functions.admin-password-reset]
 verify_jwt = true
+
+[functions.admin-send-sms]
+verify_jwt = true
+
+[functions.twilio-sms-status-webhook]
+verify_jwt = false
