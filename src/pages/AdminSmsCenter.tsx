@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Check, CheckCheck, X, Activity, RefreshCw } from "lucide-react";
+import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Check, CheckCheck, X, Activity, RefreshCw, Upload } from "lucide-react";
 import { MapBackground } from "@/components/MapBackground";
 import AppHeader from "@/components/AppHeader";
 import AdminRoute from "@/components/AdminRoute";
@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { AutoTextTab } from "@/components/admin/AutoTextTab";
 
 // Derive all URLs from VITE_SUPABASE_URL (single source of truth)
 const BACKEND_URL = import.meta.env.VITE_SUPABASE_URL || '';
@@ -627,6 +628,10 @@ const AdminSmsCenter = () => {
               <TabsTrigger value="diagnostics" className="gap-2">
                 <Activity className="h-4 w-4" />
                 Diagnostics
+              </TabsTrigger>
+              <TabsTrigger value="autotext" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Auto Text
               </TabsTrigger>
             </TabsList>
 
@@ -1355,6 +1360,11 @@ const AdminSmsCenter = () => {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            {/* AUTO TEXT TAB */}
+            <TabsContent value="autotext">
+              <AutoTextTab />
             </TabsContent>
           </Tabs>
         </div>
