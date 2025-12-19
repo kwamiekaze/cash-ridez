@@ -996,6 +996,7 @@ const AdminSmsCenter = () => {
                     <CardDescription>
                       Test the inbound SMS webhook endpoint
                     </CardDescription>
+                  </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Inbound Webhook Verification (admin-only page) */}
                     <div className="space-y-2">
@@ -1056,6 +1057,7 @@ const AdminSmsCenter = () => {
                       </div>
                     )}
                   </CardContent>
+                </Card>
 
                 {/* Database Stats */}
                 <Card className="bg-card/80 backdrop-blur-sm border-border/50">
