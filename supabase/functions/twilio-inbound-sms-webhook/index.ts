@@ -9,8 +9,7 @@
 //   GET  /functions/v1/twilio-inbound-sms-webhook?ping=1 → returns "pong"
 //
 // TWILIO WEBHOOK URL (configure in Twilio Console → Messaging → Services → Integration):
-//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/twilio-inbound-sms-webhook
-//
+//   https://<project-ref>.supabase.co/functions/v1/twilio-inbound-sms-webhook
 // Expected form data from Twilio:
 //   - From: sender phone number (E.164)
 //   - To: Twilio number that received message (E.164)

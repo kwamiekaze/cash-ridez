@@ -21,8 +21,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
-// Webhook URL for Twilio configuration
-const WEBHOOK_URL = "https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/twilio-inbound-sms-webhook";
+// Derive the inbound webhook URL from the same backend URL the app uses (single source of truth)
+const BACKEND_URL = import.meta.env.VITE_SUPABASE_URL;
+const INBOUND_WEBHOOK_URL = BACKEND_URL
+  ? `${BACKEND_URL.replace(/\/$/, '')}/functions/v1/twilio-inbound-sms-webhook`
+  : "";
+const BACKEND_PROJECT_REF = (() => {
+  try {
+    return new URL(BACKEND_URL).hostname.split('.')[0];
+  } catch {
+    return 'unknown';
+  }
+})();
 
 // SMS character limits
 const GSM7_SINGLE_LIMIT = 160;
@@ -320,11 +330,11 @@ const AdminSmsCenter = () => {
     setPinging(true);
     setPingResult(null);
     const start = Date.now();
-    
+
     try {
-      const response = await fetch(`${WEBHOOK_URL}?ping=1`);
+      const response = await fetch(`${INBOUND_WEBHOOK_URL}?ping=1`);
       const elapsed = Date.now() - start;
-      
+
       if (response.ok) {
         const text = await response.text();
         setPingResult({ ok: text === 'pong', time: elapsed });
@@ -337,6 +347,13 @@ const AdminSmsCenter = () => {
       setPinging(false);
     }
   };
+
+  // Log resolved backend + inbound webhook values at runtime (console only)
+  useEffect(() => {
+    console.log('[AdminSmsCenter] backendUrl (VITE_SUPABASE_URL):', BACKEND_URL);
+    console.log('[AdminSmsCenter] backendProjectRef:', BACKEND_PROJECT_REF);
+    console.log('[AdminSmsCenter] inboundWebhookUrl (derived):', INBOUND_WEBHOOK_URL);
+  }, []);
 
   // Filter conversations
   const filteredConversations = useMemo(() => {
@@ -979,15 +996,39 @@ const AdminSmsCenter = () => {
                     <CardDescription>
                       Test the inbound SMS webhook endpoint
                     </CardDescription>
-                  </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono break-all">
-                      {WEBHOOK_URL}
+                    {/* Inbound Webhook Verification (admin-only page) */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-muted-foreground">Backend project ref</span>
+                        <span className="font-mono">{BACKEND_PROJECT_REF}</span>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-muted/50 text-xs font-mono break-all">
+                        {INBOUND_WEBHOOK_URL || 'Missing VITE_SUPABASE_URL'}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={!INBOUND_WEBHOOK_URL}
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(INBOUND_WEBHOOK_URL);
+                            toast({ title: 'Copied', description: 'Inbound webhook URL copied to clipboard.' });
+                          } catch (e: any) {
+                            toast({ title: 'Copy failed', description: e?.message || 'Unable to copy.', variant: 'destructive' });
+                          }
+                        }}
+                      >
+                        Copy inbound webhook URL
+                      </Button>
                     </div>
-                    
-                    <Button 
-                      onClick={handlePingWebhook} 
-                      disabled={pinging}
+
+                    <Button
+                      onClick={handlePingWebhook}
+                      disabled={pinging || !INBOUND_WEBHOOK_URL}
                       className="w-full gap-2"
                     >
                       {pinging ? (
@@ -997,12 +1038,14 @@ const AdminSmsCenter = () => {
                       )}
                       Ping Webhook
                     </Button>
-                    
+
                     {pingResult && (
-                      <div className={cn(
-                        "p-3 rounded-lg text-sm",
-                        pingResult.ok ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
-                      )}>
+                      <div
+                        className={cn(
+                          "p-3 rounded-lg text-sm",
+                          pingResult.ok ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"
+                        )}
+                      >
                         <p className="font-medium">
                           {pingResult.ok ? "✓ Webhook is healthy" : "✗ Webhook check failed"}
                         </p>
@@ -1013,7 +1056,6 @@ const AdminSmsCenter = () => {
                       </div>
                     )}
                   </CardContent>
-                </Card>
 
                 {/* Database Stats */}
                 <Card className="bg-card/80 backdrop-blur-sm border-border/50">
@@ -1121,7 +1163,7 @@ const AdminSmsCenter = () => {
                       <ol className="text-xs text-amber-200/80 space-y-1 list-decimal list-inside">
                         <li>Go to Twilio Console → Messaging → Services → Your Service</li>
                         <li>Under "Inbound Settings", set Request URL to:</li>
-                        <li className="ml-4 font-mono bg-amber-950/50 p-1 rounded break-all">{WEBHOOK_URL}</li>
+                        <li className="ml-4 font-mono bg-amber-950/50 p-1 rounded break-all">{INBOUND_WEBHOOK_URL}</li>
                         <li>Set HTTP method to POST</li>
                         <li>Save changes</li>
                       </ol>
