@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Bell } from "lucide-react";
+import { Bell, MessageSquare, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { useBrowserNotifications } from "@/hooks/useBrowserNotifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -32,6 +32,22 @@ interface RelatedUser {
   display_name: string | null;
   full_name: string | null;
   photo_url: string | null;
+}
+
+// Format notification time - show date+time for older, relative for recent
+function formatNotificationTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  // If less than 24 hours ago, show relative time
+  if (diffHours < 24) {
+    return formatDistanceToNow(date, { addSuffix: true });
+  }
+  
+  // Otherwise show date + time
+  return format(date, "MMM d, yyyy '•' h:mm a");
 }
 
 export function NotificationBell() {
@@ -175,6 +191,14 @@ export function NotificationBell() {
     // For driver_available notifications, go to the drivers tab in rider dashboard
     if (notification.type === 'driver_available') {
       navigate('/rider?tab=chat');
+    } else if (notification.type === 'sms_inbound') {
+      // SMS reply notification - deep link to SMS center with conversation
+      const link = notification.link || '/admin/sms';
+      navigate(link);
+    } else if (notification.type === 'campaign_complete') {
+      // Campaign complete notification - deep link to Auto Text tab
+      const link = notification.link || '/admin/sms?tab=auto-text';
+      navigate(link);
     } else if (notification.type === 'community_message' || notification.type === 'community_chat') {
       // For community chat notifications, get user's active role and navigate to their dashboard's chat tab
       const { data: profile } = await supabase
@@ -250,6 +274,10 @@ export function NotificationBell() {
         return <div className={cn(iconClass, "bg-warning/20")}><Bell className="w-4 h-4 text-warning" /></div>;
       case 'driver_available':
         return <div className={cn(iconClass, "bg-primary/20")}><Bell className="w-4 h-4 text-primary" /></div>;
+      case 'sms_inbound':
+        return <div className={cn(iconClass, "bg-blue-500/20")}><MessageSquare className="w-4 h-4 text-blue-500" /></div>;
+      case 'campaign_complete':
+        return <div className={cn(iconClass, "bg-verified/20")}><CheckCircle2 className="w-4 h-4 text-verified" /></div>;
       default:
         return <div className={cn(iconClass, "bg-primary/20")}><Bell className="w-4 h-4 text-primary" /></div>;
     }
@@ -322,7 +350,7 @@ export function NotificationBell() {
                       {notification.message}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      {formatNotificationTime(notification.created_at)}
                     </p>
                   </div>
                 </button>

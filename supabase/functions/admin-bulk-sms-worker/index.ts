@@ -5,6 +5,7 @@
 // Enforces strict 61-second throttle per sender number.
 // Called by cron every minute via admin-bulk-sms-runner.
 // Creates conversations and messages so they appear in the Inbox.
+// Creates admin notifications when campaigns complete.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
@@ -20,6 +21,7 @@ const MAX_RETRIES = 3;
 
 interface Campaign {
   id: string;
+  name: string | null;
   sender: string;
   opt_out_footer_enabled: boolean;
   opt_out_footer_text: string;
@@ -134,6 +136,99 @@ async function insertOutboundMessage(
     }
   } catch (err: any) {
     console.error('[bulk-sms-worker] insertOutboundMessage error:', err);
+  }
+}
+
+// Create admin notifications when campaign completes
+async function notifyAdminsOfCampaignComplete(
+  supabase: any,
+  campaign: Campaign,
+  finalStatus: string,
+  completedAt: string
+): Promise<void> {
+  try {
+    // Check if we already sent a notification for this campaign
+    const { data: existingNotif } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('type', 'campaign_complete')
+      .ilike('link', `%campaign=${campaign.id}%`)
+      .limit(1);
+
+    if (existingNotif && existingNotif.length > 0) {
+      console.log(`[bulk-sms-worker] Campaign ${campaign.id} notification already sent`);
+      return;
+    }
+
+    // Find all admins with campaign_complete_enabled
+    const { data: adminSettings, error: settingsError } = await supabase
+      .from('admin_notification_settings')
+      .select('admin_id')
+      .eq('campaign_complete_enabled', true);
+
+    if (settingsError) {
+      console.error('[bulk-sms-worker] Failed to fetch admin settings:', settingsError);
+      return;
+    }
+
+    if (!adminSettings || adminSettings.length === 0) {
+      console.log('[bulk-sms-worker] No admins with campaign_complete_enabled');
+      return;
+    }
+
+    // Verify these are actually admins
+    const adminIds = adminSettings.map((s: any) => s.admin_id);
+    const { data: adminRoles } = await supabase
+      .from('user_roles')
+      .select('user_id')
+      .in('user_id', adminIds)
+      .eq('role', 'admin');
+
+    const verifiedAdminIds = adminRoles?.map((r: any) => r.user_id) || [];
+    
+    if (verifiedAdminIds.length === 0) {
+      console.log('[bulk-sms-worker] No verified admins found');
+      return;
+    }
+
+    // Get final counts
+    const { data: counts } = await supabase
+      .from('admin_sms_campaign_recipients')
+      .select('status')
+      .eq('campaign_id', campaign.id);
+
+    const statusCounts = (counts || []).reduce((acc: any, r: any) => {
+      acc[r.status] = (acc[r.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const sentCount = statusCounts.sent || 0;
+    const failedCount = statusCounts.failed || 0;
+    const totalCount = campaign.total_recipients || 0;
+    const campaignName = campaign.name || `Campaign ${campaign.id.slice(0, 8)}`;
+
+    // Create notifications for each admin
+    const notifications = verifiedAdminIds.map((adminId: string) => ({
+      user_id: adminId,
+      type: 'campaign_complete',
+      title: `Campaign Complete: ${campaignName}`,
+      message: `Sent ${sentCount}/${totalCount}. Failed ${failedCount}. Status: ${finalStatus}.`,
+      link: `/admin/sms?tab=auto-text&campaign=${campaign.id}`,
+      read: false,
+      created_at: completedAt
+    }));
+
+    const { error: insertError } = await supabase
+      .from('notifications')
+      .insert(notifications);
+
+    if (insertError) {
+      console.error('[bulk-sms-worker] Failed to insert campaign notifications:', insertError);
+    } else {
+      console.log(`[bulk-sms-worker] Created ${notifications.length} admin notification(s) for campaign complete`);
+    }
+  } catch (err: any) {
+    console.error('[bulk-sms-worker] notifyAdminsOfCampaignComplete error:', err);
   }
 }
 
@@ -282,15 +377,19 @@ Deno.serve(async (req) => {
 
         if (queuedCount === 0) {
           // Mark campaign as completed
+          const completedAt = new Date().toISOString();
           await supabase
             .from('admin_sms_campaigns')
             .update({
               status: 'completed',
-              finished_at: new Date().toISOString()
+              finished_at: completedAt
             })
             .eq('id', campaign.id);
           
           console.log(`[bulk-sms-worker] Campaign ${campaign.id} completed`);
+          
+          // Notify admins of campaign completion
+          await notifyAdminsOfCampaignComplete(supabase, campaign, 'completed', completedAt);
         }
         continue;
       }
