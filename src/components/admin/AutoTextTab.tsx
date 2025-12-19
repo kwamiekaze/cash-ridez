@@ -448,7 +448,10 @@ export function AutoTextTab() {
 
       if (recipError) throw recipError;
 
-      toast({ title: "Campaign Started", description: `Sending to ${validCount} recipients` });
+      toast({ 
+        title: "Campaign Started", 
+        description: `Sending to ${validCount} recipients. Messages will appear in the Inbox.` 
+      });
 
       // Kick off the worker
       await supabase.functions.invoke('admin-bulk-sms-runner', {

@@ -54,6 +54,7 @@ interface Conversation {
   last_message_preview: string | null;
   unread_count: number;
   created_at: string;
+  matched_message_preview?: string | null; // From search function
 }
 
 interface SmsMessage {
@@ -157,27 +158,54 @@ const AdminSmsCenter = () => {
     fetchUsers();
   }, []);
 
-  // Load conversations
-  const fetchConversations = useCallback(async () => {
+  // Load conversations - use search function if search term provided
+  const fetchConversations = useCallback(async (searchTerm?: string) => {
     setLoadingConversations(true);
-    const { data, error } = await supabase
-      .from("admin_sms_conversations")
-      .select("*")
-      .order("last_message_at", { ascending: false });
     
-    if (error) {
-      console.error('[AdminSmsCenter] Failed to load conversations:', error);
+    if (searchTerm && searchTerm.trim().length > 0) {
+      // Use the search RPC function for full-text search
+      const { data, error } = await supabase
+        .rpc('search_sms_conversations', { search_term: searchTerm.trim() });
+      
+      if (error) {
+        console.error('[AdminSmsCenter] Search failed:', error);
+        // Fall back to basic search
+        const { data: fallbackData } = await supabase
+          .from("admin_sms_conversations")
+          .select("*")
+          .or(`participant_e164.ilike.%${searchTerm}%,last_message_preview.ilike.%${searchTerm}%`)
+          .order("last_message_at", { ascending: false });
+        setConversations((fallbackData || []) as Conversation[]);
+      } else {
+        setConversations((data || []) as Conversation[]);
+      }
     } else {
-      setConversations((data || []) as Conversation[]);
+      // No search term - fetch all conversations
+      const { data, error } = await supabase
+        .from("admin_sms_conversations")
+        .select("*")
+        .order("last_message_at", { ascending: false });
+      
+      if (error) {
+        console.error('[AdminSmsCenter] Failed to load conversations:', error);
+      } else {
+        setConversations((data || []) as Conversation[]);
+      }
     }
     setLoadingConversations(false);
   }, []);
 
+  // Debounced search effect
   useEffect(() => {
     if (activeTab === "inbox") {
-      fetchConversations();
+      // Debounce search by 300ms
+      const timeoutId = setTimeout(() => {
+        fetchConversations(conversationSearch);
+      }, conversationSearch ? 300 : 0);
+      
+      return () => clearTimeout(timeoutId);
     }
-  }, [activeTab, fetchConversations]);
+  }, [activeTab, fetchConversations, conversationSearch]);
 
   // Subscribe to realtime updates for conversations
   useEffect(() => {
@@ -419,7 +447,7 @@ const AdminSmsCenter = () => {
     console.log('[AdminSmsCenter] inboundWebhookUrl (derived):', INBOUND_WEBHOOK_URL);
   }, []);
 
-  // Filter conversations
+  // Filter conversations (search is now done server-side, only filter by unread locally)
   const filteredConversations = useMemo(() => {
     let filtered = conversations;
     
@@ -427,16 +455,8 @@ const AdminSmsCenter = () => {
       filtered = filtered.filter(c => c.unread_count > 0);
     }
     
-    if (conversationSearch.trim()) {
-      const query = conversationSearch.toLowerCase();
-      filtered = filtered.filter(c => 
-        c.participant_e164.includes(query) ||
-        c.last_message_preview?.toLowerCase().includes(query)
-      );
-    }
-    
     return filtered;
-  }, [conversations, filterUnread, conversationSearch]);
+  }, [conversations, filterUnread]);
 
   // Filter users by search query
   const filteredUsers = useMemo(() => {
@@ -703,7 +723,9 @@ const AdminSmsCenter = () => {
                                     )}
                                   </div>
                                   <p className="text-xs text-muted-foreground truncate mt-1">
-                                    {conv.last_message_preview || 'No messages'}
+                                    {conversationSearch && conv.matched_message_preview 
+                                      ? `"...${conv.matched_message_preview}..."` 
+                                      : conv.last_message_preview || 'No messages'}
                                   </p>
                                 </div>
                                 <span className="text-xs text-muted-foreground whitespace-nowrap">
