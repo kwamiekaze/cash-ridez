@@ -26,11 +26,19 @@ import {
   AlertCircle,
   Clock,
   Loader2,
-  Eye
+  Eye,
+  Zap,
+  Activity
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseContactsFromText, parseContactsFromCSV, normalizePhoneToE164, type ParsedContact } from "@/lib/phoneParser";
+
+interface WorkerStatus {
+  lastRunAt: string | null;
+  runsIn15Min: number;
+  isStalled: boolean;
+}
 
 // SMS character limits
 const GSM7_SINGLE_LIMIT = 160;
@@ -130,6 +138,14 @@ export function AutoTextTab() {
   const [creating, setCreating] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [testPhone, setTestPhone] = useState("");
+  
+  // Worker status state
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatus>({
+    lastRunAt: null,
+    runsIn15Min: 0,
+    isStalled: false
+  });
+  const [runningWorker, setRunningWorker] = useState(false);
 
   // Calculate message info with accurate GSM-7 detection
   const calculateMessageInfo = (body: string, withOptOut: boolean) => {
@@ -231,9 +247,80 @@ export function AutoTextTab() {
     setLoadingCampaigns(false);
   }, []);
 
+  // Load worker status
+  const fetchWorkerStatus = useCallback(async () => {
+    try {
+      const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      
+      // Get last run
+      const { data: lastRun } = await supabase
+        .from("admin_sms_worker_runs")
+        .select("ran_at")
+        .order("ran_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      // Count runs in last 15 minutes
+      const { count: runsCount } = await supabase
+        .from("admin_sms_worker_runs")
+        .select("*", { count: "exact", head: true })
+        .gte("ran_at", fifteenMinAgo);
+      
+      // Check if stalled: last run > 2 min ago AND there are queued recipients
+      const { count: queuedRecipients } = await supabase
+        .from("admin_sms_campaign_recipients")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "queued");
+      
+      const lastRunAt = lastRun?.ran_at || null;
+      const isStalled = lastRunAt 
+        ? new Date(lastRunAt) < new Date(twoMinAgo) && (queuedRecipients || 0) > 0
+        : (queuedRecipients || 0) > 0;
+      
+      setWorkerStatus({
+        lastRunAt,
+        runsIn15Min: runsCount || 0,
+        isStalled
+      });
+    } catch (err) {
+      console.error("Failed to fetch worker status:", err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchCampaigns();
-  }, [fetchCampaigns]);
+    fetchWorkerStatus();
+    
+    // Poll worker status every 10 seconds
+    const interval = setInterval(fetchWorkerStatus, 10000);
+    return () => clearInterval(interval);
+  }, [fetchCampaigns, fetchWorkerStatus]);
+
+  // Run worker now
+  const handleRunWorkerNow = async () => {
+    setRunningWorker(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-bulk-sms-runner', {
+        body: {}
+      });
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: "Worker Triggered", 
+        description: `Processed ${data?.worker_result?.processed || 0} recipients`
+      });
+      
+      // Refresh status
+      await fetchWorkerStatus();
+      await fetchCampaigns();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setRunningWorker(false);
+    }
+  };
 
   // Load recipients for selected campaign
   const fetchRecipients = useCallback(async (campaignId: string) => {
@@ -513,7 +600,68 @@ export function AutoTextTab() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-6">
+      {/* Worker Status Panel */}
+      <Card className={cn(
+        "bg-card/80 backdrop-blur-sm border-border/50",
+        workerStatus.isStalled && "border-yellow-500/50"
+      )}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Worker Status
+            {workerStatus.isStalled && (
+              <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 bg-yellow-500/10 ml-2">
+                <AlertCircle className="h-3 w-3 mr-1" />
+                Stalled
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Last run: </span>
+              <span className="font-medium">
+                {workerStatus.lastRunAt 
+                  ? formatDistanceToNow(new Date(workerStatus.lastRunAt), { addSuffix: true })
+                  : 'Never'}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Runs (15m): </span>
+              <span className="font-medium">{workerStatus.runsIn15Min}</span>
+            </div>
+            {selectedCampaign?.next_send_at && selectedCampaign.status === 'running' && (
+              <div>
+                <span className="text-muted-foreground">Next send: </span>
+                <span className="font-medium">
+                  {new Date(selectedCampaign.next_send_at) <= new Date() 
+                    ? 'Now' 
+                    : formatDistanceToNow(new Date(selectedCampaign.next_send_at), { addSuffix: true })}
+                </span>
+              </div>
+            )}
+            <div className="ml-auto">
+              <Button
+                size="sm"
+                variant={workerStatus.isStalled ? "default" : "outline"}
+                onClick={handleRunWorkerNow}
+                disabled={runningWorker}
+              >
+                {runningWorker ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-1" />
+                )}
+                Run Now
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Left: Create Campaign */}
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader>
@@ -873,6 +1021,7 @@ export function AutoTextTab() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
