@@ -316,14 +316,19 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find campaigns ready to send (status = running/queued AND next_send_at <= now)
+    // Find campaigns ready to send (status = running AND next_send_at <= now OR next_send_at IS NULL)
     const now = new Date();
+    const nowIso = now.toISOString();
+    
+    // Query campaigns where status is running AND (next_send_at is null OR next_send_at <= now)
     const { data: campaigns, error: campaignError } = await supabase
       .from('admin_sms_campaigns')
       .select('*')
-      .in('status', ['running', 'queued'])
-      .lte('next_send_at', now.toISOString())
-      .order('next_send_at', { ascending: true });
+      .eq('status', 'running')
+      .or(`next_send_at.is.null,next_send_at.lte.${nowIso}`)
+      .order('next_send_at', { ascending: true, nullsFirst: true });
+
+    console.log(`[bulk-sms-worker] Found ${campaigns?.length || 0} campaigns ready, now=${nowIso}`);
 
     if (campaignError) {
       console.error('[bulk-sms-worker] Failed to fetch campaigns:', campaignError);

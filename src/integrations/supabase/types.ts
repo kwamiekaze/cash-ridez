@@ -138,6 +138,7 @@ export type Database = {
           finished_at: string | null
           id: string
           last_error: string | null
+          last_run_at: string | null
           name: string | null
           next_send_at: string | null
           opt_out_footer_enabled: boolean | null
@@ -149,6 +150,7 @@ export type Database = {
           started_at: string | null
           status: string
           template: string
+          throttle_seconds: number
           total_recipients: number | null
         }
         Insert: {
@@ -158,6 +160,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           last_error?: string | null
+          last_run_at?: string | null
           name?: string | null
           next_send_at?: string | null
           opt_out_footer_enabled?: boolean | null
@@ -169,6 +172,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           template: string
+          throttle_seconds?: number
           total_recipients?: number | null
         }
         Update: {
@@ -178,6 +182,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           last_error?: string | null
+          last_run_at?: string | null
           name?: string | null
           next_send_at?: string | null
           opt_out_footer_enabled?: boolean | null
@@ -189,6 +194,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           template?: string
+          throttle_seconds?: number
           total_recipients?: number | null
         }
         Relationships: []

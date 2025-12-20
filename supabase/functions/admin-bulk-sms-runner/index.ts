@@ -79,12 +79,14 @@ Deno.serve(async (req) => {
     // Check if there are any running campaigns
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { count: runningCount } = await supabaseAdmin
+    const { count: runningCount, error: countError } = await supabaseAdmin
       .from('admin_sms_campaigns')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'running');
 
-    if (runningCount === 0 && !campaignId) {
+    console.log(`[bulk-sms-runner] Running campaigns: ${runningCount}, error: ${countError?.message || 'none'}`);
+
+    if ((runningCount === 0 || runningCount === null) && !campaignId) {
       console.log('[bulk-sms-runner] No running campaigns to process');
       return new Response(
         JSON.stringify({ ok: true, message: 'No running campaigns', worker_invoked: false }),
