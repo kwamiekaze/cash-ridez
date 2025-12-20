@@ -2085,6 +2085,38 @@ export type Database = {
         Returns: boolean
       }
       check_active_ride: { Args: { _user_id: string }; Returns: boolean }
+      claim_sms_recipient: {
+        Args: {
+          p_campaign_id: string
+          p_lock_id: string
+          p_stale_threshold?: unknown
+        }
+        Returns: {
+          attempt_count: number
+          campaign_id: string
+          created_at: string
+          error: string | null
+          first_name: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          lock_id: string | null
+          locked_at: string | null
+          message_rendered: string
+          phone_e164: string
+          phone_raw: string | null
+          raw_line: string | null
+          sent_at: string | null
+          status: string
+          twilio_sid: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "admin_sms_campaign_recipients"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       create_notification: {
         Args: {
@@ -2144,6 +2176,10 @@ export type Database = {
         Returns: Json
       }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
+      release_stale_sms_locks: {
+        Args: { p_stale_threshold?: unknown }
+        Returns: number
+      }
       repair_user_trip_counts: { Args: never; Returns: undefined }
       search_sms_conversations: {
         Args: { search_term: string }
