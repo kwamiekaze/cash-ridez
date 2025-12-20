@@ -79,11 +79,16 @@ export type Database = {
       }
       admin_sms_campaign_recipients: {
         Row: {
+          attempt_count: number
           campaign_id: string
           created_at: string
           error: string | null
           first_name: string | null
           id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          lock_id: string | null
+          locked_at: string | null
           message_rendered: string
           phone_e164: string
           phone_raw: string | null
@@ -93,11 +98,16 @@ export type Database = {
           twilio_sid: string | null
         }
         Insert: {
+          attempt_count?: number
           campaign_id: string
           created_at?: string
           error?: string | null
           first_name?: string | null
           id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lock_id?: string | null
+          locked_at?: string | null
           message_rendered: string
           phone_e164: string
           phone_raw?: string | null
@@ -107,11 +117,16 @@ export type Database = {
           twilio_sid?: string | null
         }
         Update: {
+          attempt_count?: number
           campaign_id?: string
           created_at?: string
           error?: string | null
           first_name?: string | null
           id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lock_id?: string | null
+          locked_at?: string | null
           message_rendered?: string
           phone_e164?: string
           phone_raw?: string | null
@@ -444,6 +459,36 @@ export type Database = {
           received_at?: string
           sms_sid?: string | null
           to_e164?: string | null
+        }
+        Relationships: []
+      }
+      admin_sms_worker_runs: {
+        Row: {
+          duration_ms: number | null
+          errors: Json | null
+          id: string
+          processed_campaign_ids: Json
+          processed_recipients_count: number
+          ran_at: string
+          source: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          errors?: Json | null
+          id?: string
+          processed_campaign_ids?: Json
+          processed_recipients_count?: number
+          ran_at?: string
+          source?: string
+        }
+        Update: {
+          duration_ms?: number | null
+          errors?: Json | null
+          id?: string
+          processed_campaign_ids?: Json
+          processed_recipients_count?: number
+          ran_at?: string
+          source?: string
         }
         Relationships: []
       }

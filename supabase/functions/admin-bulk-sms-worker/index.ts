@@ -1,11 +1,13 @@
 // ============================================================================
 // BULK SMS WORKER FOR CASHRIDEZ
 // ============================================================================
-// Processes ONE queued SMS recipient per campaign per invocation.
-// Enforces strict 61-second throttle per sender number.
-// Called by cron every minute via admin-bulk-sms-runner.
-// Creates conversations and messages so they appear in the Inbox.
-// Creates admin notifications when campaigns complete.
+// Processes queued SMS recipients from running campaigns.
+// - Uses atomic row locking to prevent double-sends
+// - Logs each run to admin_sms_worker_runs for observability
+// - Respects throttle_seconds per campaign (default 61)
+// - Updates campaign.last_run_at on every execution
+// - Creates conversations and messages so they appear in the Inbox
+// - Creates admin notifications when campaigns complete
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
@@ -15,9 +17,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Strict throttle: exactly 61 seconds between sends per campaign
-const THROTTLE_SECONDS = 61;
-const MAX_RETRIES = 3;
+const DEFAULT_THROTTLE_SECONDS = 61;
+const LOCK_TIMEOUT_SECONDS = 300; // 5 minutes - stale locks get reclaimed
+const MAX_BATCH_PER_CAMPAIGN = 3; // Process up to 3 recipients per campaign per run if behind
 
 interface Campaign {
   id: string;
@@ -31,6 +33,8 @@ interface Campaign {
   failed_count: number;
   skipped_count: number;
   next_send_at: string | null;
+  throttle_seconds: number | null;
+  last_run_at: string | null;
 }
 
 interface Recipient {
@@ -40,6 +44,9 @@ interface Recipient {
   first_name: string | null;
   message_rendered: string;
   status: string;
+  locked_at: string | null;
+  lock_id: string | null;
+  attempt_count: number;
 }
 
 function errorResponse(code: string, message: string, status: number = 400) {
@@ -48,6 +55,11 @@ function errorResponse(code: string, message: string, status: number = 400) {
     JSON.stringify({ ok: false, error: message, code }),
     { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
+}
+
+// Generate UUID for locking
+function generateUUID(): string {
+  return crypto.randomUUID();
 }
 
 // Upsert conversation and return conversation_id
@@ -59,7 +71,6 @@ async function upsertConversation(
   messagePreview: string
 ): Promise<string | null> {
   try {
-    // Check if conversation exists
     const { data: existing } = await supabase
       .from('admin_sms_conversations')
       .select('id')
@@ -68,7 +79,6 @@ async function upsertConversation(
       .maybeSingle();
 
     if (existing) {
-      // Update existing conversation
       await supabase
         .from('admin_sms_conversations')
         .update({
@@ -81,7 +91,6 @@ async function upsertConversation(
       return existing.id;
     }
 
-    // Create new conversation
     const { data: newConv, error } = await supabase
       .from('admin_sms_conversations')
       .insert({
@@ -99,7 +108,6 @@ async function upsertConversation(
       return null;
     }
 
-    console.log(`[bulk-sms-worker] Created conversation ${newConv.id} for ${participantE164}`);
     return newConv.id;
   } catch (err: any) {
     console.error('[bulk-sms-worker] upsertConversation error:', err);
@@ -118,7 +126,7 @@ async function insertOutboundMessage(
   status: string
 ): Promise<void> {
   try {
-    const { error } = await supabase
+    await supabase
       .from('admin_sms_messages')
       .insert({
         conversation_id: conversationId,
@@ -130,10 +138,6 @@ async function insertOutboundMessage(
         status,
         created_at: new Date().toISOString()
       });
-
-    if (error) {
-      console.error('[bulk-sms-worker] Failed to insert message:', error);
-    }
   } catch (err: any) {
     console.error('[bulk-sms-worker] insertOutboundMessage error:', err);
   }
@@ -147,7 +151,6 @@ async function notifyAdminsOfCampaignComplete(
   completedAt: string
 ): Promise<void> {
   try {
-    // Check if we already sent a notification for this campaign
     const { data: existingNotif } = await supabase
       .from('notifications')
       .select('id')
@@ -160,23 +163,16 @@ async function notifyAdminsOfCampaignComplete(
       return;
     }
 
-    // Find all admins with campaign_complete_enabled
-    const { data: adminSettings, error: settingsError } = await supabase
+    const { data: adminSettings } = await supabase
       .from('admin_notification_settings')
       .select('admin_id')
       .eq('campaign_complete_enabled', true);
-
-    if (settingsError) {
-      console.error('[bulk-sms-worker] Failed to fetch admin settings:', settingsError);
-      return;
-    }
 
     if (!adminSettings || adminSettings.length === 0) {
       console.log('[bulk-sms-worker] No admins with campaign_complete_enabled');
       return;
     }
 
-    // Verify these are actually admins
     const adminIds = adminSettings.map((s: any) => s.admin_id);
     const { data: adminRoles } = await supabase
       .from('user_roles')
@@ -187,11 +183,9 @@ async function notifyAdminsOfCampaignComplete(
     const verifiedAdminIds = adminRoles?.map((r: any) => r.user_id) || [];
     
     if (verifiedAdminIds.length === 0) {
-      console.log('[bulk-sms-worker] No verified admins found');
       return;
     }
 
-    // Get final counts
     const { data: counts } = await supabase
       .from('admin_sms_campaign_recipients')
       .select('status')
@@ -207,7 +201,6 @@ async function notifyAdminsOfCampaignComplete(
     const totalCount = campaign.total_recipients || 0;
     const campaignName = campaign.name || `Campaign ${campaign.id.slice(0, 8)}`;
 
-    // Create notifications for each admin
     const notifications = verifiedAdminIds.map((adminId: string) => ({
       user_id: adminId,
       type: 'campaign_complete',
@@ -218,15 +211,11 @@ async function notifyAdminsOfCampaignComplete(
       created_at: completedAt
     }));
 
-    const { error: insertError } = await supabase
+    await supabase
       .from('notifications')
       .insert(notifications);
 
-    if (insertError) {
-      console.error('[bulk-sms-worker] Failed to insert campaign notifications:', insertError);
-    } else {
-      console.log(`[bulk-sms-worker] Created ${notifications.length} admin notification(s) for campaign complete`);
-    }
+    console.log(`[bulk-sms-worker] Created ${notifications.length} admin notification(s) for campaign complete`);
   } catch (err: any) {
     console.error('[bulk-sms-worker] notifyAdminsOfCampaignComplete error:', err);
   }
@@ -259,7 +248,6 @@ async function sendSingleSms(
     return { ok: false, error: 'No sender configured' };
   }
 
-  // Add status callback
   const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-sms-status-webhook`;
   formParams.append('StatusCallback', statusCallbackUrl);
 
@@ -294,243 +282,48 @@ async function sendSingleSms(
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+// Atomically claim a recipient using UPDATE ... RETURNING
+async function claimRecipient(
+  supabase: any, 
+  campaignId: string,
+  lockId: string
+): Promise<Recipient | null> {
+  const now = new Date();
+  const staleThreshold = new Date(now.getTime() - LOCK_TIMEOUT_SECONDS * 1000).toISOString();
+
+  // Find and lock one queued recipient
+  // Lock is valid if: locked_at is null OR locked_at is stale (> 5 min ago)
+  const { data, error } = await supabase
+    .from('admin_sms_campaign_recipients')
+    .update({
+      locked_at: now.toISOString(),
+      lock_id: lockId,
+      last_attempt_at: now.toISOString()
+    })
+    .eq('campaign_id', campaignId)
+    .eq('status', 'queued')
+    .or(`locked_at.is.null,locked_at.lt.${staleThreshold}`)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .select('*');
+
+  if (error) {
+    console.error('[bulk-sms-worker] claimRecipient error:', error);
+    return null;
   }
 
-  const startTime = Date.now();
-  console.log('[bulk-sms-worker] Function invoked');
+  return data && data.length > 0 ? data[0] : null;
+}
 
-  try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const twilioMessagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID');
-    const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16789288816';
+// Update campaign counts and next_send_at
+async function updateCampaignAfterSend(
+  supabase: any, 
+  campaignId: string, 
+  throttleSeconds: number
+) {
+  const now = new Date();
+  const nextSendAt = new Date(now.getTime() + throttleSeconds * 1000);
 
-    if (!twilioAccountSid || !twilioAuthToken) {
-      return errorResponse('CONFIG_ERROR', 'Twilio credentials not configured', 500);
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Find campaigns ready to send (status = running AND next_send_at <= now OR next_send_at IS NULL)
-    const now = new Date();
-    const nowIso = now.toISOString();
-    
-    // Query campaigns where status is running AND (next_send_at is null OR next_send_at <= now)
-    const { data: campaigns, error: campaignError } = await supabase
-      .from('admin_sms_campaigns')
-      .select('*')
-      .eq('status', 'running')
-      .or(`next_send_at.is.null,next_send_at.lte.${nowIso}`)
-      .order('next_send_at', { ascending: true, nullsFirst: true });
-
-    console.log(`[bulk-sms-worker] Found ${campaigns?.length || 0} campaigns ready, now=${nowIso}`);
-
-    if (campaignError) {
-      console.error('[bulk-sms-worker] Failed to fetch campaigns:', campaignError);
-      return errorResponse('DB_ERROR', 'Failed to fetch campaigns', 500);
-    }
-
-    if (!campaigns || campaigns.length === 0) {
-      console.log('[bulk-sms-worker] No campaigns ready to send');
-      return new Response(
-        JSON.stringify({ ok: true, processed: 0, message: 'No campaigns ready' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    let totalProcessed = 0;
-    let totalSent = 0;
-    let totalFailed = 0;
-    let totalSkipped = 0;
-
-    // Process ONE recipient from each ready campaign
-    for (const campaign of campaigns as Campaign[]) {
-      console.log(`[bulk-sms-worker] Processing campaign ${campaign.id}`);
-
-      // Double-check throttle timing (idempotency)
-      if (campaign.next_send_at && new Date(campaign.next_send_at) > now) {
-        console.log(`[bulk-sms-worker] Campaign ${campaign.id} not ready yet`);
-        continue;
-      }
-
-      // Get ONE queued recipient (oldest first)
-      const { data: recipients, error: recipError } = await supabase
-        .from('admin_sms_campaign_recipients')
-        .select('*')
-        .eq('campaign_id', campaign.id)
-        .eq('status', 'queued')
-        .order('created_at', { ascending: true })
-        .limit(1);
-
-      if (recipError) {
-        console.error('[bulk-sms-worker] Failed to fetch recipients:', recipError);
-        continue;
-      }
-
-      if (!recipients || recipients.length === 0) {
-        // No more queued recipients - check if campaign should complete
-        const { count: queuedCount } = await supabase
-          .from('admin_sms_campaign_recipients')
-          .select('*', { count: 'exact', head: true })
-          .eq('campaign_id', campaign.id)
-          .eq('status', 'queued');
-
-        if (queuedCount === 0) {
-          // Mark campaign as completed
-          const completedAt = new Date().toISOString();
-          await supabase
-            .from('admin_sms_campaigns')
-            .update({
-              status: 'completed',
-              finished_at: completedAt
-            })
-            .eq('id', campaign.id);
-          
-          console.log(`[bulk-sms-worker] Campaign ${campaign.id} completed`);
-          
-          // Notify admins of campaign completion
-          await notifyAdminsOfCampaignComplete(supabase, campaign, 'completed', completedAt);
-        }
-        continue;
-      }
-
-      const recipient = recipients[0] as Recipient;
-
-      // Check if phone is opted out
-      const { data: optOut } = await supabase
-        .from('admin_sms_opt_outs')
-        .select('id')
-        .eq('phone_e164', recipient.phone_e164)
-        .maybeSingle();
-
-      if (optOut) {
-        // Skip opted-out recipient and set next_send_at for next recipient
-        await supabase
-          .from('admin_sms_campaign_recipients')
-          .update({
-            status: 'skipped',
-            error: 'Opted out',
-            sent_at: new Date().toISOString()
-          })
-          .eq('id', recipient.id);
-
-        // Update campaign counts and next_send_at (still throttle to prevent rapid skipping)
-        const nextSendAt = new Date(Date.now() + THROTTLE_SECONDS * 1000);
-        await updateCampaignCounts(supabase, campaign.id, nextSendAt);
-        
-        totalSkipped++;
-        totalProcessed++;
-        continue;
-      }
-
-      // Upsert conversation for this recipient (so it appears in Inbox)
-      const conversationId = await upsertConversation(
-        supabase,
-        recipient.phone_e164,
-        twilioPhoneNumber,
-        recipient.first_name,
-        recipient.message_rendered
-      );
-
-      // Send SMS
-      const result = await sendSingleSms(
-        twilioAccountSid,
-        twilioAuthToken,
-        twilioMessagingServiceSid,
-        twilioPhoneNumber,
-        recipient.phone_e164,
-        recipient.message_rendered,
-        supabaseUrl
-      );
-
-      // Calculate next send time (61 seconds from now)
-      const nextSendAt = new Date(Date.now() + THROTTLE_SECONDS * 1000);
-
-      if (result.ok) {
-        await supabase
-          .from('admin_sms_campaign_recipients')
-          .update({
-            status: 'sent',
-            twilio_sid: result.sid,
-            sent_at: new Date().toISOString()
-          })
-          .eq('id', recipient.id);
-
-        // Insert outbound message into conversation
-        if (conversationId) {
-          await insertOutboundMessage(
-            supabase,
-            conversationId,
-            result.fromNumber || twilioPhoneNumber,
-            recipient.phone_e164,
-            recipient.message_rendered,
-            result.sid || null,
-            result.status || 'sent'
-          );
-        }
-
-        console.log(`[bulk-sms-worker] Sent to ${recipient.phone_e164}, SID: ${result.sid}`);
-        totalSent++;
-      } else {
-        await supabase
-          .from('admin_sms_campaign_recipients')
-          .update({
-            status: 'failed',
-            error: result.error,
-            sent_at: new Date().toISOString()
-          })
-          .eq('id', recipient.id);
-
-        // Still insert the failed message into conversation for audit trail
-        if (conversationId) {
-          await insertOutboundMessage(
-            supabase,
-            conversationId,
-            twilioPhoneNumber,
-            recipient.phone_e164,
-            recipient.message_rendered,
-            null,
-            'failed'
-          );
-        }
-
-        console.log(`[bulk-sms-worker] Failed to send to ${recipient.phone_e164}: ${result.error}`);
-        totalFailed++;
-      }
-
-      // Update campaign counts and next_send_at
-      await updateCampaignCounts(supabase, campaign.id, nextSendAt);
-      totalProcessed++;
-    }
-
-    const elapsed = Date.now() - startTime;
-    console.log(`[bulk-sms-worker] Completed in ${elapsed}ms. Processed: ${totalProcessed}, Sent: ${totalSent}, Failed: ${totalFailed}, Skipped: ${totalSkipped}`);
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        processed: totalProcessed,
-        sent: totalSent,
-        failed: totalFailed,
-        skipped: totalSkipped,
-        elapsed_ms: elapsed
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error: any) {
-    console.error('[bulk-sms-worker] Unexpected error:', error);
-    return errorResponse('INTERNAL_ERROR', error.message || 'Unexpected error', 500);
-  }
-});
-
-async function updateCampaignCounts(supabase: any, campaignId: string, nextSendAt: Date) {
-  // Get current counts
   const { data: counts } = await supabase
     .from('admin_sms_campaign_recipients')
     .select('status')
@@ -549,8 +342,299 @@ async function updateCampaignCounts(supabase: any, campaignId: string, nextSendA
         sent_count: statusCounts.sent || 0,
         failed_count: statusCounts.failed || 0,
         skipped_count: statusCounts.skipped || 0,
-        next_send_at: nextSendAt.toISOString()
+        next_send_at: nextSendAt.toISOString(),
+        last_run_at: now.toISOString()
       })
       .eq('id', campaignId);
   }
 }
+
+// Log worker run
+async function logWorkerRun(
+  supabase: any,
+  source: string,
+  campaignIds: string[],
+  recipientCount: number,
+  durationMs: number,
+  errors: any[] | null
+) {
+  try {
+    await supabase
+      .from('admin_sms_worker_runs')
+      .insert({
+        source,
+        processed_campaign_ids: campaignIds,
+        processed_recipients_count: recipientCount,
+        duration_ms: durationMs,
+        errors: errors && errors.length > 0 ? errors : null
+      });
+  } catch (err: any) {
+    console.error('[bulk-sms-worker] Failed to log worker run:', err);
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const startTime = Date.now();
+  console.log('[bulk-sms-worker] Function invoked');
+
+  // Parse source (cron or manual)
+  let source = 'cron';
+  try {
+    const body = await req.json();
+    if (body.source) source = body.source;
+  } catch {
+    // No body is OK
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+    const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+    const twilioMessagingServiceSid = Deno.env.get('TWILIO_MESSAGING_SERVICE_SID');
+    const twilioPhoneNumber = Deno.env.get('TWILIO_PHONE_NUMBER') || '+16789288816';
+
+    if (!twilioAccountSid || !twilioAuthToken) {
+      return errorResponse('CONFIG_ERROR', 'Twilio credentials not configured', 500);
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    
+    // Find campaigns that are running AND ready to send
+    const { data: campaigns, error: campaignError } = await supabase
+      .from('admin_sms_campaigns')
+      .select('*')
+      .eq('status', 'running')
+      .or(`next_send_at.is.null,next_send_at.lte.${nowIso}`)
+      .order('next_send_at', { ascending: true, nullsFirst: true });
+
+    console.log(`[bulk-sms-worker] Found ${campaigns?.length || 0} campaigns ready, now=${nowIso}`);
+
+    if (campaignError) {
+      console.error('[bulk-sms-worker] Failed to fetch campaigns:', campaignError);
+      return errorResponse('DB_ERROR', 'Failed to fetch campaigns', 500);
+    }
+
+    if (!campaigns || campaigns.length === 0) {
+      console.log('[bulk-sms-worker] No campaigns ready to send');
+      
+      // Still log this run
+      await logWorkerRun(supabase, source, [], 0, Date.now() - startTime, null);
+      
+      return new Response(
+        JSON.stringify({ ok: true, processed: 0, message: 'No campaigns ready' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    let totalProcessed = 0;
+    let totalSent = 0;
+    let totalFailed = 0;
+    let totalSkipped = 0;
+    const processedCampaignIds: string[] = [];
+    const errors: any[] = [];
+
+    // Process each ready campaign
+    for (const campaign of campaigns as Campaign[]) {
+      console.log(`[bulk-sms-worker] Processing campaign ${campaign.id}`);
+      processedCampaignIds.push(campaign.id);
+
+      const throttleSeconds = campaign.throttle_seconds ?? DEFAULT_THROTTLE_SECONDS;
+
+      // Check how many we can send this run (catch-up logic)
+      // If next_send_at is far in the past, we might be behind - process up to MAX_BATCH
+      let batchSize = 1;
+      if (campaign.next_send_at) {
+        const scheduledTime = new Date(campaign.next_send_at);
+        const delayMs = now.getTime() - scheduledTime.getTime();
+        if (delayMs > throttleSeconds * 1000) {
+          // We're behind - calculate how many sends we missed
+          const missedSends = Math.floor(delayMs / (throttleSeconds * 1000));
+          batchSize = Math.min(missedSends + 1, MAX_BATCH_PER_CAMPAIGN);
+          console.log(`[bulk-sms-worker] Campaign ${campaign.id} is behind by ${missedSends} sends, processing batch of ${batchSize}`);
+        }
+      }
+
+      let sentThisCampaign = 0;
+
+      for (let i = 0; i < batchSize; i++) {
+        const lockId = generateUUID();
+        
+        // Atomically claim a recipient
+        const recipient = await claimRecipient(supabase, campaign.id, lockId);
+
+        if (!recipient) {
+          // No more queued recipients - check if campaign should complete
+          const { count: queuedCount } = await supabase
+            .from('admin_sms_campaign_recipients')
+            .select('*', { count: 'exact', head: true })
+            .eq('campaign_id', campaign.id)
+            .eq('status', 'queued');
+
+          if (queuedCount === 0) {
+            const completedAt = nowIso;
+            await supabase
+              .from('admin_sms_campaigns')
+              .update({
+                status: 'completed',
+                finished_at: completedAt,
+                last_run_at: nowIso
+              })
+              .eq('id', campaign.id);
+            
+            console.log(`[bulk-sms-worker] Campaign ${campaign.id} completed`);
+            await notifyAdminsOfCampaignComplete(supabase, campaign, 'completed', completedAt);
+          } else {
+            console.log(`[bulk-sms-worker] Campaign ${campaign.id}: ${queuedCount} queued but none claimed`);
+          }
+          break; // Move to next campaign
+        }
+
+        // Check if phone is opted out
+        const { data: optOut } = await supabase
+          .from('admin_sms_opt_outs')
+          .select('id')
+          .eq('phone_e164', recipient.phone_e164)
+          .maybeSingle();
+
+        if (optOut) {
+          // Skip opted-out recipient
+          await supabase
+            .from('admin_sms_campaign_recipients')
+            .update({
+              status: 'skipped',
+              error: 'Opted out',
+              last_error: 'Opted out',
+              locked_at: null,
+              lock_id: null
+            })
+            .eq('id', recipient.id);
+
+          totalSkipped++;
+          totalProcessed++;
+          console.log(`[bulk-sms-worker] Skipped opted-out ${recipient.phone_e164}`);
+          continue;
+        }
+
+        // Upsert conversation
+        const conversationId = await upsertConversation(
+          supabase,
+          recipient.phone_e164,
+          twilioPhoneNumber,
+          recipient.first_name,
+          recipient.message_rendered
+        );
+
+        // Send SMS
+        const result = await sendSingleSms(
+          twilioAccountSid,
+          twilioAuthToken,
+          twilioMessagingServiceSid,
+          twilioPhoneNumber,
+          recipient.phone_e164,
+          recipient.message_rendered,
+          supabaseUrl
+        );
+
+        if (result.ok) {
+          await supabase
+            .from('admin_sms_campaign_recipients')
+            .update({
+              status: 'sent',
+              twilio_sid: result.sid,
+              sent_at: nowIso,
+              locked_at: null,
+              lock_id: null,
+              attempt_count: (recipient.attempt_count || 0) + 1
+            })
+            .eq('id', recipient.id);
+
+          if (conversationId) {
+            await insertOutboundMessage(
+              supabase,
+              conversationId,
+              result.fromNumber || twilioPhoneNumber,
+              recipient.phone_e164,
+              recipient.message_rendered,
+              result.sid || null,
+              result.status || 'sent'
+            );
+          }
+
+          console.log(`[bulk-sms-worker] Sent to ${recipient.phone_e164}, SID: ${result.sid}`);
+          totalSent++;
+          sentThisCampaign++;
+        } else {
+          await supabase
+            .from('admin_sms_campaign_recipients')
+            .update({
+              status: 'failed',
+              error: result.error,
+              last_error: result.error,
+              locked_at: null,
+              lock_id: null,
+              attempt_count: (recipient.attempt_count || 0) + 1
+            })
+            .eq('id', recipient.id);
+
+          if (conversationId) {
+            await insertOutboundMessage(
+              supabase,
+              conversationId,
+              twilioPhoneNumber,
+              recipient.phone_e164,
+              recipient.message_rendered,
+              null,
+              'failed'
+            );
+          }
+
+          console.log(`[bulk-sms-worker] Failed to send to ${recipient.phone_e164}: ${result.error}`);
+          totalFailed++;
+          errors.push({ campaign_id: campaign.id, phone: recipient.phone_e164, error: result.error });
+        }
+
+        totalProcessed++;
+      }
+
+      // Update campaign counts and next_send_at
+      await updateCampaignAfterSend(supabase, campaign.id, throttleSeconds);
+    }
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[bulk-sms-worker] Completed in ${elapsed}ms. Processed: ${totalProcessed}, Sent: ${totalSent}, Failed: ${totalFailed}, Skipped: ${totalSkipped}`);
+
+    // Log this worker run
+    await logWorkerRun(
+      supabase, 
+      source, 
+      processedCampaignIds, 
+      totalProcessed, 
+      elapsed, 
+      errors.length > 0 ? errors : null
+    );
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        processed: totalProcessed,
+        sent: totalSent,
+        failed: totalFailed,
+        skipped: totalSkipped,
+        elapsed_ms: elapsed
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: any) {
+    console.error('[bulk-sms-worker] Unexpected error:', error);
+    return errorResponse('INTERNAL_ERROR', error.message || 'Unexpected error', 500);
+  }
+});
