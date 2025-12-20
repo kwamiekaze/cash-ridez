@@ -117,7 +117,7 @@ const OPT_OUT_TEXT = "\n\nReply STOP to opt out.";
 export function AutoTextTab() {
   // Form state
   const [campaignName, setCampaignName] = useState("");
-  const [template, setTemplate] = useState("Hey {first_name}, this is Cash Ridez Connect LLC. We responded on Indeed as well. To finish onboarding and start connecting with the community, reply CASH and we'll send the next steps.");
+  const [template, setTemplate] = useState("Hey {first_name}, this is Cash Ridez Connect LLC. We responded on Indeed as well. To finish onboarding please reply CASH and we'll send the next steps.");
   const [includeOptOut, setIncludeOptOut] = useState(true);
   const [consentConfirmed, setConsentConfirmed] = useState(false);
   
