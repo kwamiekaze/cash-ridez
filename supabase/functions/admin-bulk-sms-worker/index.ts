@@ -282,33 +282,23 @@ async function sendSingleSms(
   }
 }
 
-// Atomically claim a recipient using UPDATE ... RETURNING
+// Atomically claim a recipient using RPC function with FOR UPDATE SKIP LOCKED
+// This prevents the bug where UPDATE...LIMIT updates ALL rows then returns 1
 async function claimRecipient(
   supabase: any, 
   campaignId: string,
   lockId: string
 ): Promise<Recipient | null> {
-  const now = new Date();
-  const staleThreshold = new Date(now.getTime() - LOCK_TIMEOUT_SECONDS * 1000).toISOString();
-
-  // Find and lock one queued recipient
-  // Lock is valid if: locked_at is null OR locked_at is stale (> 5 min ago)
+  // Use the RPC function for proper atomic claiming
   const { data, error } = await supabase
-    .from('admin_sms_campaign_recipients')
-    .update({
-      locked_at: now.toISOString(),
-      lock_id: lockId,
-      last_attempt_at: now.toISOString()
-    })
-    .eq('campaign_id', campaignId)
-    .eq('status', 'queued')
-    .or(`locked_at.is.null,locked_at.lt.${staleThreshold}`)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .select('*');
+    .rpc('claim_sms_recipient', {
+      p_campaign_id: campaignId,
+      p_lock_id: lockId,
+      p_stale_threshold: '5 minutes'
+    });
 
   if (error) {
-    console.error('[bulk-sms-worker] claimRecipient error:', error);
+    console.error('[bulk-sms-worker] claimRecipient RPC error:', error);
     return null;
   }
 
