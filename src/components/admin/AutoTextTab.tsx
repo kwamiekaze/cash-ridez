@@ -27,12 +27,14 @@ import {
   Loader2,
   Eye,
   Zap,
-  Activity
+  Activity,
+  RotateCcw
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseContactsFromText, parseContactsFromCSV, normalizePhoneToE164, type ParsedContact } from "@/lib/phoneParser";
 import { CampaignStatusBadge, RecipientStatusBadge } from "@/lib/smsStatusUtils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface WorkerStatus {
   lastRunAt: string | null;
@@ -115,6 +117,8 @@ interface CampaignRecipient {
 const OPT_OUT_TEXT = "\n\nReply STOP to opt out.";
 
 export function AutoTextTab() {
+  const { user } = useAuth();
+  
   // Form state
   const [campaignName, setCampaignName] = useState("");
   const [template, setTemplate] = useState("Hey {first_name}, this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps.");
@@ -138,6 +142,7 @@ export function AutoTextTab() {
   const [creating, setCreating] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [testPhone, setTestPhone] = useState("");
+  const [resendingId, setResendingId] = useState<string | null>(null);
   
   // Worker status state
   const [workerStatus, setWorkerStatus] = useState<WorkerStatus>({
@@ -525,7 +530,6 @@ export function AutoTextTab() {
     }
   };
 
-  // Send test SMS
   const handleSendTest = async () => {
     const phoneE164 = normalizePhoneToE164(testPhone);
     if (!phoneE164) {
@@ -550,6 +554,38 @@ export function AutoTextTab() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setSendingTest(false);
+    }
+  };
+
+  // Move recipient to drafts for resending
+  const handleResendToDrafts = async (recipient: CampaignRecipient) => {
+    if (!user || !selectedCampaign) return;
+    setResendingId(recipient.id);
+    
+    try {
+      const { error } = await supabase
+        .from('admin_sms_drafts')
+        .insert({
+          created_by_admin_id: user.id,
+          recipient_name: recipient.first_name,
+          recipient_phone: recipient.phone_e164,
+          message_body_final: recipient.message_rendered,
+          status: 'draft',
+          source: 'resend',
+          source_campaign_id: selectedCampaign.id,
+          source_recipient_id: recipient.id
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Added to Drafts",
+        description: `${recipient.phone_e164} moved to Drafts tab for manual sending.`
+      });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -990,15 +1026,35 @@ export function AutoTextTab() {
                     ) : (
                       filteredRecipients.map((r) => (
                         <div key={r.id} className="p-2 text-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono">{r.phone_e164}</span>
-                            <RecipientStatusBadge status={r.status} />
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-mono truncate">{r.phone_e164}</span>
+                              {r.first_name && (
+                                <span className="text-muted-foreground truncate">{r.first_name}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <RecipientStatusBadge status={r.status} />
+                              {(r.status === 'failed' || r.status === 'skipped') && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleResendToDrafts(r)}
+                                  disabled={resendingId === r.id}
+                                  className="h-6 w-6 p-0"
+                                  title="Move to Drafts for resend"
+                                >
+                                  {resendingId === r.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <RotateCcw className="h-3 w-3" />
+                                  )}
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          {r.first_name && (
-                            <span className="text-muted-foreground">{r.first_name}</span>
-                          )}
                           {r.error && (
-                            <p className="text-destructive mt-1">{r.error}</p>
+                            <p className="text-destructive mt-1 truncate">{r.error}</p>
                           )}
                         </div>
                       ))

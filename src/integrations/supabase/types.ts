@@ -247,6 +247,60 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sms_drafts: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          created_by_admin_id: string
+          error_message: string | null
+          id: string
+          last_attempt_at: string | null
+          message_body_final: string
+          recipient_name: string | null
+          recipient_phone: string
+          sent_at: string | null
+          source: string | null
+          source_campaign_id: string | null
+          source_recipient_id: string | null
+          status: string
+          twilio_message_sid: string | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          created_by_admin_id: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          message_body_final: string
+          recipient_name?: string | null
+          recipient_phone: string
+          sent_at?: string | null
+          source?: string | null
+          source_campaign_id?: string | null
+          source_recipient_id?: string | null
+          status?: string
+          twilio_message_sid?: string | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          created_by_admin_id?: string
+          error_message?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          message_body_final?: string
+          recipient_name?: string | null
+          recipient_phone?: string
+          sent_at?: string | null
+          source?: string | null
+          source_campaign_id?: string | null
+          source_recipient_id?: string | null
+          status?: string
+          twilio_message_sid?: string | null
+        }
+        Relationships: []
+      }
       admin_sms_logs: {
         Row: {
           admin_user_id: string
@@ -411,6 +465,33 @@ export type Database = {
           minute_window_start?: string
           scope?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      admin_sms_send_lock: {
+        Row: {
+          id: string
+          last_sent_at: string | null
+          last_sent_by_admin_id: string | null
+          last_sent_draft_id: string | null
+          locked_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          last_sent_at?: string | null
+          last_sent_by_admin_id?: string | null
+          last_sent_draft_id?: string | null
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          last_sent_at?: string | null
+          last_sent_by_admin_id?: string | null
+          last_sent_draft_id?: string | null
+          locked_until?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

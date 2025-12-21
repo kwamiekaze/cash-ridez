@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.twilio-inbound-sms-webhook-v2]
 verify_jwt = false
+
+[functions.admin-send-draft]
+verify_jwt = true
