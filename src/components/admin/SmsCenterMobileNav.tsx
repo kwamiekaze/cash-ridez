@@ -27,6 +27,7 @@ const tabs = [
   { id: "history", label: "History", icon: History },
   { id: "diagnostics", label: "Diagnostics", icon: Activity },
   { id: "autotext", label: "Auto Text", icon: Upload },
+  { id: "drafts", label: "Drafts", icon: MessageSquare },
 ];
 
 export function SmsCenterMobileNav({ activeTab, onTabChange, unreadCount }: SmsCenterMobileNavProps) {

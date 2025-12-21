@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AutoTextTab } from "@/components/admin/AutoTextTab";
+import { DraftsTab } from "@/components/admin/DraftsTab";
 import { SmsCenterMobileNav } from "@/components/admin/SmsCenterMobileNav";
 import { SmsStatusIcon, SmsStatusBadge } from "@/lib/smsStatusUtils";
 // Derive all URLs from VITE_SUPABASE_URL (single source of truth)
@@ -654,6 +655,10 @@ const AdminSmsCenter = () => {
               <TabsTrigger value="autotext" className="gap-2">
                 <Upload className="h-4 w-4" />
                 Auto Text
+              </TabsTrigger>
+              <TabsTrigger value="drafts" className="gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Drafts
               </TabsTrigger>
             </TabsList>
 
@@ -1401,6 +1406,11 @@ const AdminSmsCenter = () => {
             {/* AUTO TEXT TAB */}
             <TabsContent value="autotext">
               <AutoTextTab />
+            </TabsContent>
+
+            {/* DRAFTS TAB */}
+            <TabsContent value="drafts">
+              <DraftsTab />
             </TabsContent>
           </Tabs>
         </div>
