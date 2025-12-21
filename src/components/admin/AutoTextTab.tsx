@@ -22,7 +22,6 @@ import {
   FileText, 
   Users, 
   CheckCircle, 
-  XCircle, 
   AlertCircle,
   Clock,
   Loader2,
@@ -33,6 +32,7 @@ import {
 import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { parseContactsFromText, parseContactsFromCSV, normalizePhoneToE164, type ParsedContact } from "@/lib/phoneParser";
+import { CampaignStatusBadge, RecipientStatusBadge } from "@/lib/smsStatusUtils";
 
 interface WorkerStatus {
   lastRunAt: string | null;
@@ -559,22 +559,7 @@ export function AutoTextTab() {
     return recipients.filter(r => r.status === recipientFilter);
   }, [recipients, recipientFilter]);
 
-  // Status badge helper
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "running": return <Badge className="bg-green-600">Running</Badge>;
-      case "paused": return <Badge className="bg-yellow-600">Paused</Badge>;
-      case "completed": return <Badge className="bg-blue-600">Completed</Badge>;
-      case "canceled": return <Badge variant="secondary">Canceled</Badge>;
-      case "failed": return <Badge variant="destructive">Failed</Badge>;
-      case "draft": return <Badge variant="outline">Draft</Badge>;
-      case "sent": return <Badge className="bg-green-600">Sent</Badge>;
-      case "queued": return <Badge variant="secondary">Queued</Badge>;
-      case "sending": return <Badge className="bg-blue-600">Sending</Badge>;
-      case "skipped": return <Badge variant="outline">Skipped</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  // Status badge helper - now uses unified utility
 
   // Calculate ETA based on 61-second throttle
   const calculateEta = (campaign: Campaign) => {
@@ -600,54 +585,57 @@ export function AutoTextTab() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Worker Status Panel */}
+    <div className="space-y-4 md:space-y-6">
+      {/* Worker Status Panel - Compact on mobile */}
       <Card className={cn(
         "bg-card/80 backdrop-blur-sm border-border/50",
         workerStatus.isStalled && "border-yellow-500/50"
       )}>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Worker Status
+        <CardHeader className="pb-2 px-3 md:px-6 pt-3 md:pt-6">
+          <CardTitle className="text-sm flex items-center gap-2 flex-wrap">
+            <Activity className="h-4 w-4 shrink-0" />
+            <span>Worker Status</span>
             {workerStatus.isStalled && (
-              <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 bg-yellow-500/10 ml-2">
+              <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 bg-yellow-500/10">
                 <AlertCircle className="h-3 w-3 mr-1" />
                 Stalled
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Last run: </span>
-              <span className="font-medium">
-                {workerStatus.lastRunAt 
-                  ? formatDistanceToNow(new Date(workerStatus.lastRunAt), { addSuffix: true })
-                  : 'Never'}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Runs (15m): </span>
-              <span className="font-medium">{workerStatus.runsIn15Min}</span>
-            </div>
-            {selectedCampaign?.next_send_at && selectedCampaign.status === 'running' && (
+        <CardContent className="px-3 md:px-6 pb-3 md:pb-6">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-2 sm:gap-4 text-sm">
+            <div className="flex gap-4 flex-wrap">
               <div>
-                <span className="text-muted-foreground">Next send: </span>
-                <span className="font-medium">
-                  {new Date(selectedCampaign.next_send_at) <= new Date() 
-                    ? 'Now' 
-                    : formatDistanceToNow(new Date(selectedCampaign.next_send_at), { addSuffix: true })}
+                <span className="text-muted-foreground text-xs sm:text-sm">Last run: </span>
+                <span className="font-medium text-xs sm:text-sm">
+                  {workerStatus.lastRunAt 
+                    ? formatDistanceToNow(new Date(workerStatus.lastRunAt), { addSuffix: true })
+                    : 'Never'}
                 </span>
               </div>
-            )}
-            <div className="ml-auto">
+              <div>
+                <span className="text-muted-foreground text-xs sm:text-sm">Runs (15m): </span>
+                <span className="font-medium text-xs sm:text-sm">{workerStatus.runsIn15Min}</span>
+              </div>
+              {selectedCampaign?.next_send_at && selectedCampaign.status === 'running' && (
+                <div>
+                  <span className="text-muted-foreground text-xs sm:text-sm">Next send: </span>
+                  <span className="font-medium text-xs sm:text-sm">
+                    {new Date(selectedCampaign.next_send_at) <= new Date() 
+                      ? 'Now' 
+                      : formatDistanceToNow(new Date(selectedCampaign.next_send_at), { addSuffix: true })}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="w-full sm:w-auto sm:ml-auto">
               <Button
                 size="sm"
                 variant={workerStatus.isStalled ? "default" : "outline"}
                 onClick={handleRunWorkerNow}
                 disabled={runningWorker}
+                className="w-full sm:w-auto"
               >
                 {runningWorker ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -661,17 +649,18 @@ export function AutoTextTab() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Two column layout on desktop, stacked on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
       {/* Left: Create Campaign */}
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Upload className="h-5 w-5" />
+        <CardHeader className="px-3 md:px-6 pt-3 md:pt-6 pb-2">
+          <CardTitle className="text-base md:text-lg flex items-center gap-2">
+            <Upload className="h-5 w-5 shrink-0" />
             Create Campaign
           </CardTitle>
-          <CardDescription>Upload contacts and send bulk SMS</CardDescription>
+          <CardDescription className="text-xs md:text-sm">Upload contacts and send bulk SMS</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-3 md:px-6 pb-3 md:pb-6">
           {/* Campaign Name */}
           <div className="space-y-2">
             <Label>Campaign Name (optional)</Label>
@@ -868,20 +857,20 @@ export function AutoTextTab() {
 
       {/* Right: Campaign Progress */}
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader>
+        <CardHeader className="px-3 md:px-6 pt-3 md:pt-6 pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Users className="h-5 w-5" />
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <Users className="h-5 w-5 shrink-0" />
               Campaigns
             </CardTitle>
-            <Button variant="ghost" size="icon" onClick={fetchCampaigns}>
+            <Button variant="ghost" size="icon" onClick={fetchCampaigns} className="shrink-0">
               <RefreshCw className={cn("h-4 w-4", loadingCampaigns && "animate-spin")} />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-3 md:px-6 pb-3 md:pb-6">
           {/* Campaign List */}
-          <ScrollArea className="h-32">
+          <ScrollArea className="h-28 md:h-32">
             <div className="space-y-2">
               {campaigns.map((campaign) => (
                 <button
@@ -898,7 +887,7 @@ export function AutoTextTab() {
                     <span className="text-sm font-medium truncate">
                       {campaign.name || `Campaign ${campaign.id.slice(0, 8)}`}
                     </span>
-                    {getStatusBadge(campaign.status)}
+                    <CampaignStatusBadge status={campaign.status} />
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {campaign.sent_count}/{campaign.total_recipients} sent • {format(new Date(campaign.created_at), 'MMM d, h:mm a')}
@@ -922,7 +911,7 @@ export function AutoTextTab() {
                     {selectedCampaign.name || `Campaign ${selectedCampaign.id.slice(0, 8)}`}
                   </h4>
                   <div className="flex items-center gap-2 mt-1">
-                    {getStatusBadge(selectedCampaign.status)}
+                    <CampaignStatusBadge status={selectedCampaign.status} />
                     {selectedCampaign.status === 'running' && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
@@ -1003,7 +992,7 @@ export function AutoTextTab() {
                         <div key={r.id} className="p-2 text-xs">
                           <div className="flex items-center justify-between">
                             <span className="font-mono">{r.phone_e164}</span>
-                            {getStatusBadge(r.status)}
+                            <RecipientStatusBadge status={r.status} />
                           </div>
                           {r.first_name && (
                             <span className="text-muted-foreground">{r.first_name}</span>
