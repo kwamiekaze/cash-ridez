@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Check, CheckCheck, X, Activity, RefreshCw, Upload } from "lucide-react";
+import { Loader2, Send, MessageSquare, Phone, User, History, ArrowLeft, AlertCircle, Inbox, Plus, Search, Activity, RefreshCw, Upload } from "lucide-react";
 import { MapBackground } from "@/components/MapBackground";
 import AppHeader from "@/components/AppHeader";
 import AdminRoute from "@/components/AdminRoute";
@@ -22,6 +22,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { AutoTextTab } from "@/components/admin/AutoTextTab";
 import { SmsCenterMobileNav } from "@/components/admin/SmsCenterMobileNav";
+import { SmsStatusIcon, SmsStatusBadge } from "@/lib/smsStatusUtils";
 // Derive all URLs from VITE_SUPABASE_URL (single source of truth)
 const BACKEND_URL = import.meta.env.VITE_SUPABASE_URL || '';
 const BACKEND_PROJECT_REF = (() => {
@@ -574,24 +575,7 @@ const AdminSmsCenter = () => {
     setSelectedConversation(null);
   };
 
-  const getStatusIcon = (status: string | null) => {
-    const s = status?.toLowerCase() || '';
-    if (s === 'delivered') return <CheckCheck className="h-3 w-3 text-green-500" />;
-    if (s === 'sent') return <Check className="h-3 w-3 text-blue-500" />;
-    if (s === 'failed' || s === 'undelivered') return <X className="h-3 w-3 text-destructive" />;
-    return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />;
-  };
-
-  const getStatusBadge = (status: string | null) => {
-    if (!status) return <Badge variant="secondary">Unknown</Badge>;
-    const s = status.toLowerCase();
-    if (s === 'delivered') return <Badge className="bg-green-600">Delivered</Badge>;
-    if (s === 'sent') return <Badge className="bg-blue-600">Sent</Badge>;
-    if (s === 'received') return <Badge className="bg-purple-600">Received</Badge>;
-    if (s === 'queued' || s === 'sending') return <Badge variant="secondary">Pending</Badge>;
-    if (s === 'failed' || s === 'undelivered') return <Badge variant="destructive">Failed</Badge>;
-    return <Badge variant="outline">{status}</Badge>;
-  };
+  // Status helpers now use the unified utility from smsStatusUtils
 
   // Calculate unread count
   const totalUnreadCount = useMemo(() => 
@@ -829,9 +813,14 @@ const AdminSmsCenter = () => {
                                         {format(new Date(msg.created_at), 'MMM d, h:mm a')}
                                       </span>
                                       {msg.direction === 'outbound' && (
-                                        <span className="ml-1" title={msg.error_message || msg.status}>
-                                          {getStatusIcon(msg.status)}
-                                        </span>
+                                        <SmsStatusIcon 
+                                          status={msg.status}
+                                          errorCode={msg.error_code}
+                                          errorMessage={msg.error_message}
+                                          timestamp={format(new Date(msg.created_at), 'MMM d, h:mm a')}
+                                          messageSid={msg.twilio_message_sid}
+                                          className="ml-1"
+                                        />
                                       )}
                                     </div>
                                     {msg.error_message && (
@@ -1067,7 +1056,7 @@ const AdminSmsCenter = () => {
                                 <div className="flex items-center gap-2 mb-1">
                                   <Phone className="h-4 w-4 text-muted-foreground" />
                                   <span className="font-medium">{log.to_number}</span>
-                                  {getStatusBadge(log.twilio_status)}
+                                  <SmsStatusBadge status={log.twilio_status} errorCode={log.error_message ? 'error' : null} />
                                 </div>
                                 <p className="text-sm text-muted-foreground line-clamp-2">{log.body}</p>
                                 {log.error_message && (
