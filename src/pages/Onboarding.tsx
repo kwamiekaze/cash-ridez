@@ -353,7 +353,7 @@ const Onboarding = () => {
                           </p>
                         </div>}
                     </div>
-                    <input id="id-upload-pending" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                    <input id="id-upload-pending" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
                   </Label>
                 </Card>
               </div>
@@ -406,7 +406,7 @@ const Onboarding = () => {
                           </p>
                         </div>}
                     </div>
-                    <input id="id-upload-rejected" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                    <input id="id-upload-rejected" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
                   </Label>
                 </Card>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -459,7 +459,7 @@ const Onboarding = () => {
                         </p>
                       </div>}
                   </div>
-                  <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                  <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
                 </Label>
               </Card>
               <p className="text-xs text-muted-foreground mt-2 text-center">
