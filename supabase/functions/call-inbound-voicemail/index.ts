@@ -4,14 +4,24 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Inbound Voicemail Handler - Called when inbound call is missed.
  * 
- * CRITICAL: Uses ONLY the pre-recorded voicemail audio via our streaming endpoint.
+ * CRITICAL: Uses ONLY the pre-recorded voicemail audio via PUBLIC Supabase Storage URL.
  * NO ElevenLabs, NO Twilio <Say>, NO fallback voices.
  * 
- * The audio is served via /functions/v1/call-center-voicemail-audio
- * which streams the MP3 directly from storage.
+ * The audio is served directly from Supabase Storage public bucket:
+ * ${SUPABASE_URL}/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3
+ * 
+ * This URL is:
+ * - Public (no auth required)
+ * - HTTPS
+ * - Returns 200 OK with audio/mpeg
+ * - No redirects
+ * - Stable forever
  */
 
-const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+
+// Direct public storage URL - Twilio can fetch this without auth
+const PUBLIC_VOICEMAIL_URL = `${SUPABASE_URL}/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3`;
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -42,6 +52,7 @@ serve(async (req) => {
     fromNumber = fromNumber || url.searchParams.get('from') || '';
 
     console.log(`[call-inbound-voicemail] CallSid=${callSid}, From=${fromNumber}`);
+    console.log(`[call-inbound-voicemail] Using PUBLIC storage URL: ${PUBLIC_VOICEMAIL_URL}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -79,19 +90,18 @@ serve(async (req) => {
       if (logError) console.error('[call-inbound-voicemail] Failed to log message:', logError);
     }
 
-    // Build the audio URL - use our streaming endpoint that serves raw MP3 bytes
-    const voicemailAudioUrl = `${APP_BASE_URL}/functions/v1/call-center-voicemail-audio`;
+    console.log('[call-inbound-voicemail] TwiML will use <Play> URL:', PUBLIC_VOICEMAIL_URL);
 
-    console.log('[call-inbound-voicemail] Playing pre-recorded audio via:', voicemailAudioUrl);
-
-    // Build TwiML response - ONLY use <Play> with our audio endpoint
+    // Build TwiML response - ONLY use <Play> with direct PUBLIC storage URL
     // NO <Say> elements anywhere in this response
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${escapeXml(voicemailAudioUrl)}</Play>
+  <Play>${escapeXml(PUBLIC_VOICEMAIL_URL)}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
+
+    console.log('[call-inbound-voicemail] Returning TwiML with public storage URL');
 
     return new Response(twiml, {
       status: 200,

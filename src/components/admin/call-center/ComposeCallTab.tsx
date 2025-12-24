@@ -7,6 +7,7 @@ import { Phone, Loader2, CheckCircle2, XCircle, AlertCircle, PhoneOff, Home } fr
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import VoicemailAudioTest from "./VoicemailAudioTest";
 
 // Estimated script duration in seconds (based on exact script text)
 // Script: ~45 words at ~150 words/min = ~18 seconds + 3 second pause = ~21 seconds
@@ -455,6 +456,9 @@ const ComposeCallTab = () => {
           </p>
         </CardContent>
       </Card>
+
+      {/* Voicemail Audio Test */}
+      <VoicemailAudioTest />
     </div>
   );
 };
