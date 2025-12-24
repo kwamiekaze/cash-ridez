@@ -56,10 +56,10 @@ serve(async (req) => {
     
     if (isInbound) {
       // Inbound call - different message, still ends with thank you
-      scriptText = `${greeting}, thank you for calling Cash Ridez Connect LLC. For faster service, please text the word CASH to this number and a team member will assist you shortly, thank you.`;
+      scriptText = `${greeting}, thank you for calling Cash Ridez Connect LLC. For faster service, please text the word CASH to this number and a team member will assist you shortly. We look forward to your text, thank you.`;
     } else {
       // Outbound call - the EXACT script requested (starts with Hey, ends with thank you)
-      scriptText = `${greeting}, this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps, thank you.`;
+      scriptText = `${greeting}, this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps. We look forward to your text, thank you.`;
     }
 
     // Log the assistant message
@@ -145,10 +145,11 @@ serve(async (req) => {
     let twiml: string;
 
     if (useElevenLabs && audioUrl) {
-      // SUCCESS: Use ONLY the ElevenLabs agent audio - no other voices
+      // SUCCESS: Use ONLY the ElevenLabs agent audio + 3 second pause before hangup
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${escapeXml(audioUrl)}</Play>
+  <Pause length="3"/>
   <Hangup/>
 </Response>`;
     } else {
@@ -157,6 +158,7 @@ serve(async (req) => {
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew">${escapeXml(scriptText)}</Say>
+  <Pause length="3"/>
   <Hangup/>
 </Response>`;
     }
@@ -175,7 +177,8 @@ serve(async (req) => {
     console.error('EMERGENCY FALLBACK: Returning minimal TwiML due to critical error');
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">This is Cash Ridez Connect. Please text CASH to this number for next steps, thank you.</Say>
+  <Say voice="Polly.Matthew">This is Cash Ridez Connect. Please text CASH to this number for next steps. We look forward to your text, thank you.</Say>
+  <Pause length="3"/>
   <Hangup/>
 </Response>`;
 
