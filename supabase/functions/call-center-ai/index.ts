@@ -12,6 +12,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *  Please text us back with the word CASH for the next steps. We look forward to your text, thank you."
  * 
  * Then 3-second pause, then hangup. NO "goodbye". NO Q&A.
+ * 
+ * CRITICAL: NO <Say> elements in this file. If audio fails, just hangup.
  */
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
@@ -77,7 +79,7 @@ serve(async (req) => {
       if (logError) console.error('[call-center-ai] Failed to log message:', logError);
     }
 
-    // Build TwiML response - ALWAYS use pre-generated audio
+    // Build TwiML response - ONLY use pre-generated audio, NO <Say> fallbacks
     let twiml: string;
 
     if (audioUrl) {
@@ -89,17 +91,15 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
     } else {
-      // EMERGENCY FALLBACK ONLY - should never happen if audio is seeded
-      console.error('[call-center-ai] CRITICAL: Pre-generated audio not found! Using Polly.Matthew fallback.');
+      // NO POLLY/SAY FALLBACK - if audio is missing, just hangup
+      console.error('[call-center-ai] CRITICAL: Pre-generated audio not found! Hanging up (no TTS fallback).');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">${escapeXml(scriptText)}</Say>
-  <Pause length="3"/>
   <Hangup/>
 </Response>`;
     }
 
-    console.log('[call-center-ai] Returning TwiML with pre-generated audio');
+    console.log('[call-center-ai] Returning TwiML');
 
     return new Response(twiml, {
       status: 200,
@@ -109,16 +109,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-center-ai] CRITICAL error:', error);
     
-    // Emergency fallback TwiML - use Polly.Matthew (male) - NEVER any female voice
-    const fallbackScript = "Hey there, this is Cash Ridez Connect LLC. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.";
-    const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // On error, just hangup - NO TTS/Polly fallback ever
+    return new Response(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">${escapeXml(fallbackScript)}</Say>
-  <Pause length="3"/>
   <Hangup/>
-</Response>`;
-
-    return new Response(fallbackTwiml, {
+</Response>`, {
       status: 200,
       headers: { 'Content-Type': 'text/xml' },
     });

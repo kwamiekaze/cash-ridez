@@ -4,13 +4,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Inbound Voicemail Handler - Called when inbound call is missed.
  * 
- * CRITICAL: Uses ONLY the pre-recorded Cashridez_VM2.mp3 audio file.
+ * CRITICAL: Uses ONLY the pre-recorded voicemail audio via our streaming endpoint.
  * NO ElevenLabs, NO Twilio <Say>, NO fallback voices.
  * 
- * The audio file is stored in the call_center_audio bucket as 'cashridez_voicemail.mp3'
+ * The audio is served via /functions/v1/call-center-voicemail-audio
+ * which streams the MP3 directly from storage.
  */
 
-const VOICEMAIL_AUDIO_PATH = 'cashridez_voicemail.mp3';
+const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -67,25 +68,6 @@ serve(async (req) => {
       console.error('[call-inbound-voicemail] Failed to notify admins:', err);
     });
 
-    // Get the pre-recorded audio URL from the public bucket
-    const { data: publicUrlData } = supabase.storage
-      .from('call_center_audio')
-      .getPublicUrl(VOICEMAIL_AUDIO_PATH);
-
-    const audioUrl = publicUrlData?.publicUrl;
-
-    if (!audioUrl) {
-      console.error('[call-inbound-voicemail] CRITICAL: Voicemail audio file not found!');
-      // Return a hangup - do NOT use any TTS fallback
-      return new Response(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Hangup/>
-</Response>`, {
-        status: 200,
-        headers: { 'Content-Type': 'text/xml' },
-      });
-    }
-
     // Log the voicemail message
     if (callSid) {
       const { error: logError } = await supabase.from('call_center_messages').insert({
@@ -97,12 +79,16 @@ serve(async (req) => {
       if (logError) console.error('[call-inbound-voicemail] Failed to log message:', logError);
     }
 
-    console.log('[call-inbound-voicemail] Playing pre-recorded audio:', audioUrl);
+    // Build the audio URL - use our streaming endpoint that serves raw MP3 bytes
+    const voicemailAudioUrl = `${APP_BASE_URL}/functions/v1/call-center-voicemail-audio`;
 
-    // Build TwiML response - ONLY use pre-recorded audio, NO fallbacks
+    console.log('[call-inbound-voicemail] Playing pre-recorded audio via:', voicemailAudioUrl);
+
+    // Build TwiML response - ONLY use <Play> with our audio endpoint
+    // NO <Say> elements anywhere in this response
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${escapeXml(audioUrl)}</Play>
+  <Play>${escapeXml(voicemailAudioUrl)}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
@@ -115,7 +101,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-inbound-voicemail] Handler error:', error);
     
-    // On error, just hangup - NO TTS fallback
+    // On error, just hangup - NO TTS fallback ever
     return new Response(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Hangup/>

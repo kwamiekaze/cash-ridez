@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-const VOICEMAIL_SEED_KEY = "cr_voicemail_seeded_vm2";
+const VOICEMAIL_SEED_KEY = "cr_voicemail_seeded_vm2_v2";
 const VOICEMAIL_SOURCE_PATH = "/audio/cashridez_voicemail_source.mp3";
 
 /**
