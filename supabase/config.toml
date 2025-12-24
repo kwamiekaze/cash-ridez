@@ -119,3 +119,6 @@ verify_jwt = false
 
 [functions.call-inbound-voicemail]
 verify_jwt = false
+
+[functions.call-center-seed-audio]
+verify_jwt = false
