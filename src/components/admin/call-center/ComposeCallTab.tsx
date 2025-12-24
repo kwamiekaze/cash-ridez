@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,86 @@ const ComposeCallTab = () => {
   const [firstName, setFirstName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
-  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'answered' | 'voicemail' | 'failed'>('idle');
+  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'answered' | 'voicemail' | 'failed' | 'completed'>('idle');
   const [lastCallSid, setLastCallSid] = useState<string | null>(null);
   const [lastCallLogId, setLastCallLogId] = useState<string | null>(null);
+
+  // Subscribe to realtime updates for call status
+  useEffect(() => {
+    if (!lastCallLogId) return;
+
+    console.log('Subscribing to realtime updates for call:', lastCallLogId);
+
+    const channel = supabase
+      .channel(`call-status-${lastCallLogId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'admin_call_logs',
+          filter: `id=eq.${lastCallLogId}`,
+        },
+        (payload) => {
+          console.log('Realtime call status update:', payload);
+          const newStatus = payload.new?.status;
+          handleStatusUpdate(newStatus, payload.new);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Unsubscribing from realtime updates');
+      supabase.removeChannel(channel);
+    };
+  }, [lastCallLogId]);
+
+  const handleStatusUpdate = useCallback((status: string, callData: any) => {
+    console.log('Processing status update:', status);
+    
+    switch (status) {
+      case 'answered':
+      case 'in-progress':
+        setCallStatus('answered');
+        break;
+      case 'voicemail':
+        setCallStatus('voicemail');
+        toast({
+          title: "Voicemail left",
+          description: "Message was left on voicemail",
+        });
+        break;
+      case 'completed':
+        setCallStatus('completed');
+        setTimeout(() => {
+          setCallStatus('idle');
+          setLastCallSid(null);
+          setLastCallLogId(null);
+        }, 2000);
+        toast({
+          title: "Call completed",
+          description: callData?.call_duration_seconds 
+            ? `Duration: ${Math.floor(callData.call_duration_seconds / 60)}:${(callData.call_duration_seconds % 60).toString().padStart(2, '0')}`
+            : "The call has ended.",
+        });
+        break;
+      case 'failed':
+      case 'busy':
+      case 'no-answer':
+        setCallStatus('failed');
+        setLastCallSid(null);
+        setLastCallLogId(null);
+        toast({
+          title: "Call ended",
+          description: `Status: ${status}`,
+          variant: "destructive",
+        });
+        break;
+      default:
+        // Keep current status for ringing, initiated, etc.
+        break;
+    }
+  }, [toast]);
 
   const normalizePhone = (phone: string): string => {
     // Remove all non-digit characters except +
@@ -59,6 +136,7 @@ const ComposeCallTab = () => {
 
     setIsLoading(true);
     setCallStatus('calling');
+    setCallStatus('calling');
 
     try {
       const { data, error } = await supabase.functions.invoke('call-center-initiate', {
@@ -78,8 +156,8 @@ const ComposeCallTab = () => {
           description: `Calling ${normalizedPhone}...`,
         });
 
-        // Poll for call status updates
-        pollCallStatus(data.callLogId);
+        // Start failsafe polling (only triggers if realtime doesn't work)
+        startFailsafePoll(data.callLogId);
       } else {
         throw new Error(data.error || 'Failed to initiate call');
       }
@@ -143,52 +221,58 @@ const ComposeCallTab = () => {
     }
   };
 
-  const pollCallStatus = async (callLogId: string) => {
+  // Failsafe poll - only used if realtime doesn't fire within 10 seconds
+  const startFailsafePoll = useCallback((callLogId: string) => {
     let attempts = 0;
-    const maxAttempts = 60; // 2 minutes max
-    
+    const maxAttempts = 10; // 30 seconds max (3s intervals)
+    let pollStarted = false;
+
+    // Wait 10 seconds before starting failsafe poll
+    const pollTimeout = setTimeout(() => {
+      pollStarted = true;
+      poll();
+    }, 10000);
+
     const poll = async () => {
+      if (attempts >= maxAttempts) {
+        console.log('Failsafe poll: max attempts reached');
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('admin_call_logs')
-          .select('status')
+          .select('status, call_duration_seconds')
           .eq('id', callLogId)
           .single();
 
-        if (error) return;
+        if (error) {
+          console.error('Failsafe poll error:', error);
+          return;
+        }
 
-        if (data.status === 'answered' || data.status === 'in-progress') {
-          setCallStatus('answered');
-        } else if (data.status === 'voicemail') {
-          setCallStatus('voicemail');
-        } else if (data.status === 'completed') {
-          setCallStatus('idle');
-          setLastCallSid(null);
-          setLastCallLogId(null);
-          toast({
-            title: "Call completed",
-            description: "The call has ended.",
-          });
-        } else if (data.status === 'failed' || data.status === 'busy' || data.status === 'no-answer') {
-          setCallStatus('failed');
-          setLastCallSid(null);
-          setLastCallLogId(null);
-          toast({
-            title: "Call ended",
-            description: `Status: ${data.status}`,
-            variant: "destructive",
-          });
-        } else if (attempts < maxAttempts) {
-          attempts++;
-          setTimeout(poll, 2000);
+        // Check if call has ended
+        if (['completed', 'failed', 'busy', 'no-answer', 'voicemail'].includes(data.status)) {
+          console.log('Failsafe poll: detected final status', data.status);
+          handleStatusUpdate(data.status, data);
+          return;
+        }
+
+        // Continue polling
+        attempts++;
+        if (pollStarted && attempts < maxAttempts) {
+          setTimeout(poll, 3000);
         }
       } catch (err) {
-        console.error('Poll error:', err);
+        console.error('Failsafe poll exception:', err);
       }
     };
 
-    poll();
-  };
+    // Cleanup function
+    return () => {
+      clearTimeout(pollTimeout);
+    };
+  }, [handleStatusUpdate]);
 
   const getStatusIcon = () => {
     switch (callStatus) {
@@ -313,10 +397,10 @@ const ComposeCallTab = () => {
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p><strong>What the caller will hear:</strong></p>
           <blockquote className="border-l-2 border-primary pl-4 italic">
-            "Hey [Name], this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps. Goodbye."
+            "Hey [Name], this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps. We look forward to your text, thank you."
           </blockquote>
           <p className="text-xs">
-            The call uses a male voice and ends automatically after the message.
+            The call uses the same ElevenLabs male voice and ends automatically after a 3 second pause.
           </p>
         </CardContent>
       </Card>

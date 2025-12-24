@@ -113,3 +113,9 @@ verify_jwt = true
 
 [functions.call-center-end]
 verify_jwt = true
+
+[functions.call-inbound-voice]
+verify_jwt = false
+
+[functions.call-inbound-voicemail]
+verify_jwt = false
