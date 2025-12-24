@@ -83,15 +83,14 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Inbound voice handler error:', error);
-    
-    // Emergency fallback - use Polly.Matthew (male) - NEVER female
-    console.error('[call-inbound-voice] CRITICAL: Using Polly.Matthew fallback due to error');
-    const fallbackScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
+
+    // CRITICAL: Never use Twilio <Say> fallbacks here.
+    // If anything goes wrong, route straight to our pre-recorded voicemail handler.
+    const voicemailUrl = `${APP_BASE_URL}/functions/v1/call-inbound-voicemail`;
+
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">${escapeXml(fallbackScript)}</Say>
-  <Pause length="3"/>
-  <Hangup/>
+  <Redirect method="POST">${escapeXml(voicemailUrl)}</Redirect>
 </Response>`;
 
     return new Response(fallbackTwiml, {
