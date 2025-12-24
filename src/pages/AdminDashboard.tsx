@@ -94,6 +94,7 @@ const AdminDashboard = () => {
     { id: "analytics", label: "Analytics", icon: BarChart },
     { id: "emails", label: "Email Logs", icon: Mail },
     { id: "sms", label: "SMS Center", icon: Phone, isLink: true, href: "/admin/sms" },
+    { id: "calls", label: "Call Center", icon: Phone, isLink: true, href: "/admin/calls" },
     { id: "community", label: "Chat/Community", icon: MessageSquare },
     { id: "rooms", label: "Chat Rooms", icon: Users },
     { id: "messages", label: "System Messages", icon: Megaphone },
@@ -190,7 +191,7 @@ const AdminDashboard = () => {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
             {/* Desktop Navigation */}
-            <TabsList className="hidden lg:grid w-full grid-cols-10 bg-card/50 backdrop-blur-sm border border-border/50">
+            <TabsList className="hidden lg:grid w-full grid-cols-12 bg-card/50 backdrop-blur-sm border border-border/50">
               {menuItems.map((item) => {
                 const Icon = item.icon;
                 if (item.isLink) {
