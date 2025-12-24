@@ -1,6 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/**
+ * Call Center Initiate - Starts an outbound call.
+ * 
+ * CRITICAL: All calls use pre-recorded MP3 files from GitHub.
+ * NO ElevenLabs, NO AI voice generation.
+ * 
+ * Supports two modes:
+ * - 'recording' (default): Play outbound MP3 and hang up
+ * - 'live': Connect user directly for live conversation
+ */
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,7 +20,6 @@ const corsHeaders = {
 const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
 const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
 const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')!;
-const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID')!;
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
 serve(async (req) => {
@@ -57,7 +67,7 @@ serve(async (req) => {
       });
     }
 
-    const { phoneE164, firstName, campaignId, recipientId } = await req.json();
+    const { phoneE164, firstName, campaignId, recipientId, callMode } = await req.json();
 
     if (!phoneE164) {
       return new Response(JSON.stringify({ error: 'Phone number required' }), {
@@ -66,7 +76,10 @@ serve(async (req) => {
       });
     }
 
-    console.log(`Initiating call to ${phoneE164} (${firstName || 'Unknown'})`);
+    // Default to 'recording' mode (play MP3 and hang up)
+    const mode = callMode || 'recording';
+
+    console.log(`[call-center-initiate] Initiating call to ${phoneE164} (${firstName || 'Unknown'}), mode: ${mode}`);
 
     // Create call log entry first
     const { data: callLog, error: logError } = await supabase
@@ -84,18 +97,38 @@ serve(async (req) => {
       .single();
 
     if (logError) {
-      console.error('Failed to create call log:', logError);
+      console.error('[call-center-initiate] Failed to create call log:', logError);
       return new Response(JSON.stringify({ error: 'Failed to create call log' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Generate TwiML that connects to ElevenLabs agent
-    // The agent will wait for human to speak first
-    const twimlUrl = `${APP_BASE_URL}/functions/v1/call-center-twiml?callLogId=${callLog.id}&firstName=${encodeURIComponent(firstName || '')}`;
+    // Build TwiML URL with mode parameter
+    const twimlUrl = `${APP_BASE_URL}/functions/v1/call-center-twiml?callLogId=${callLog.id}&firstName=${encodeURIComponent(firstName || '')}&mode=${mode}`;
     const statusCallbackUrl = `${APP_BASE_URL}/functions/v1/call-center-status`;
     const machineDetectionUrl = `${APP_BASE_URL}/functions/v1/call-center-amd`;
+
+    // Build Twilio call parameters
+    const callParams: Record<string, string> = {
+      To: phoneE164,
+      From: TWILIO_PHONE_NUMBER,
+      Url: twimlUrl,
+      StatusCallback: statusCallbackUrl,
+      StatusCallbackEvent: 'initiated ringing answered completed',
+      StatusCallbackMethod: 'POST',
+      Record: 'true',
+      RecordingStatusCallback: `${APP_BASE_URL}/functions/v1/call-center-recording`,
+      RecordingStatusCallbackEvent: 'completed',
+    };
+
+    // Only enable AMD for 'recording' mode (we want to detect voicemail)
+    if (mode === 'recording') {
+      callParams.MachineDetection = 'DetectMessageEnd';
+      callParams.AsyncAmd = 'true';
+      callParams.AsyncAmdStatusCallback = machineDetectionUrl;
+      callParams.AsyncAmdStatusCallbackMethod = 'POST';
+    }
 
     // Initiate call via Twilio
     const twilioResponse = await fetch(
@@ -106,28 +139,14 @@ serve(async (req) => {
           'Authorization': 'Basic ' + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          To: phoneE164,
-          From: TWILIO_PHONE_NUMBER,
-          Url: twimlUrl,
-          StatusCallback: statusCallbackUrl,
-          StatusCallbackEvent: 'initiated ringing answered completed',
-          StatusCallbackMethod: 'POST',
-          MachineDetection: 'DetectMessageEnd',
-          AsyncAmd: 'true',
-          AsyncAmdStatusCallback: machineDetectionUrl,
-          AsyncAmdStatusCallbackMethod: 'POST',
-          Record: 'true',
-          RecordingStatusCallback: `${APP_BASE_URL}/functions/v1/call-center-recording`,
-          RecordingStatusCallbackEvent: 'completed',
-        }),
+        body: new URLSearchParams(callParams),
       }
     );
 
     const twilioData = await twilioResponse.json();
 
     if (!twilioResponse.ok) {
-      console.error('Twilio call failed:', twilioData);
+      console.error('[call-center-initiate] Twilio call failed:', twilioData);
       
       // Update call log with error
       await supabase
@@ -171,18 +190,19 @@ serve(async (req) => {
         .eq('id', recipientId);
     }
 
-    console.log(`Call initiated successfully: ${twilioData.sid}`);
+    console.log(`[call-center-initiate] Call initiated successfully: ${twilioData.sid}`);
 
     return new Response(JSON.stringify({
       success: true,
       callSid: twilioData.sid,
       callLogId: callLog.id,
+      mode: mode,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Call center initiate error:', error);
+    console.error('[call-center-initiate] Call center initiate error:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
