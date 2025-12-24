@@ -4,24 +4,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Voicemail Handler - Called when AMD detects answering machine (outbound calls).
  * 
- * CRITICAL: When leaving a voicemail, play the OUTBOUND MP3 (the marketing message).
- * This is the message we want to leave on the recipient's voicemail.
- * 
- * DO NOT confuse with the voicemail GREETING (cashridez_voicemail.mp3) which is
- * for inbound missed calls. This handler plays the OUTBOUND message.
+ * CRITICAL: When leaving a voicemail, play the VOICEMAIL MP3.
+ * This is a shorter message optimized for voicemail systems.
  * 
  * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO fallback voices.
  * 
- * AUTHORITATIVE OUTBOUND AUDIO URL (message to leave on voicemail):
- * https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_outbound.mp3
+ * AUTHORITATIVE VOICEMAIL AUDIO URL (message to leave on voicemail):
+ * https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_voicemail.mp3
  * 
- * After playback: 1 second pause, then hangup.
+ * After playback: 1-2 second pause, then hangup.
  * On ANY error: hangup silently - NEVER substitute a voice.
  */
 
 // HARDCODED GitHub MP3 URL - DO NOT CHANGE
-// This is the OUTBOUND message to leave on voicemail (not the greeting)
-const OUTBOUND_MP3_URL = "https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_outbound.mp3";
+// This is the VOICEMAIL message to leave (shorter, voicemail-optimized)
+const VOICEMAIL_MP3_URL = "https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_voicemail.mp3";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -33,6 +30,8 @@ serve(async (req) => {
       },
     });
   }
+
+  const startTime = Date.now();
 
   try {
     // Parse request
@@ -51,7 +50,7 @@ serve(async (req) => {
     firstName = url.searchParams.get('firstName') || '';
 
     console.log(`[call-center-voicemail] CallSid=${callSid}, FirstName=${firstName}`);
-    console.log(`[call-center-voicemail] Playing OUTBOUND MP3 on voicemail: ${OUTBOUND_MP3_URL}`);
+    console.log(`[call-center-voicemail] Playing VOICEMAIL MP3: ${VOICEMAIL_MP3_URL}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -87,23 +86,27 @@ serve(async (req) => {
       const { error: logError } = await supabase.from('call_center_messages').insert({
         twilio_call_sid: callSid,
         role: 'assistant',
-        content: '[Left voicemail: cashridez_outbound.mp3]',
+        content: '[Left voicemail: cashridez_voicemail.mp3]',
         provider: 'prerecorded-github',
+        metadata: {
+          action: 'voicemail_play',
+          mp3_url: VOICEMAIL_MP3_URL,
+          timestamp: new Date().toISOString(),
+        },
       });
       if (logError) console.error('[call-center-voicemail] Failed to log message:', logError);
     }
 
-    // Build TwiML response - Play OUTBOUND MP3 from the START
-    // This ensures the full message is left on voicemail
-    // NO <Say> elements. NO fallbacks.
+    // Build TwiML response - Play VOICEMAIL MP3 from the START
+    // Hang up 1-2 seconds after it ends
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${OUTBOUND_MP3_URL}</Play>
-  <Pause length="1"/>
+  <Play>${VOICEMAIL_MP3_URL}</Play>
+  <Pause length="2"/>
   <Hangup/>
 </Response>`;
 
-    console.log(`[call-center-voicemail] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
+    console.log(`[call-center-voicemail] Returning TwiML, latency=${Date.now() - startTime}ms`);
 
     return new Response(twiml, {
       status: 200,
@@ -116,11 +119,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-center-voicemail] Handler error:', error);
 
-    // On error: STILL play outbound message, no fallback voice
+    // On error: STILL play voicemail message, no fallback voice
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${OUTBOUND_MP3_URL}</Play>
-  <Pause length="1"/>
+  <Play>${VOICEMAIL_MP3_URL}</Play>
+  <Pause length="2"/>
   <Hangup/>
 </Response>`;
 
