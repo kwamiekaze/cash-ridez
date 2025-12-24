@@ -3,25 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Loader2, CheckCircle2, XCircle, AlertCircle, PhoneOff, Home } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Phone, Loader2, CheckCircle2, XCircle, AlertCircle, PhoneOff, Home, Mic, PlayCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import VoicemailAudioTest from "./VoicemailAudioTest";
 
-// Estimated script duration in seconds (based on exact script text)
-// Script: ~45 words at ~150 words/min = ~18 seconds + 3 second pause = ~21 seconds
+// Estimated script duration in seconds (based on MP3 file)
 const ESTIMATED_SCRIPT_DURATION_SECONDS = 21;
-// Real hangup is 3 seconds after script
 const REAL_HANGUP_BUFFER_SECONDS = 3;
-// UI failsafe is +5 seconds after expected real hangup (does NOT change real hangup)
 const UI_FAILSAFE_BUFFER_SECONDS = 5;
+
+type CallMode = 'recording' | 'live';
 
 const ComposeCallTab = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [firstName, setFirstName] = useState("");
+  const [callMode, setCallMode] = useState<CallMode | null>(null); // Must choose before calling
   const [isLoading, setIsLoading] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'ringing' | 'answered' | 'voicemail' | 'failed' | 'completed'>('idle');

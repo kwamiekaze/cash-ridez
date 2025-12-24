@@ -4,22 +4,18 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Voicemail Handler - Called when AMD detects answering machine (outbound calls).
  * 
- * CRITICAL: Uses ONLY the pre-recorded voicemail audio via PUBLIC Supabase Storage URL.
- * NO ElevenLabs, NO Twilio <Say>, NO fallback voices.
+ * CRITICAL: Uses ONLY the pre-recorded voicemail MP3 from GitHub.
+ * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO fallback voices.
  * 
- * The audio is served directly from Supabase Storage public bucket:
- * ${SUPABASE_URL}/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3
+ * AUTHORITATIVE AUDIO URL:
+ * https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3
  * 
- * This URL is:
- * - Public (no auth required)
- * - HTTPS
- * - Returns 200 OK with audio/mpeg
- * - No redirects
- * - Stable forever
+ * After playback: 3 second pause, then hangup.
+ * On ANY error: hangup silently - NEVER substitute a voice.
  */
 
-// Hardcoded voicemail <Play> URL (no runtime concatenation)
-const VOICEMAIL_PLAY_URL = "https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-center-voicemail-audio";
+// HARDCODED GitHub MP3 URL - DO NOT CHANGE
+const VOICEMAIL_MP3_URL = "https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -49,7 +45,7 @@ serve(async (req) => {
     firstName = url.searchParams.get('firstName') || '';
 
     console.log(`[call-center-voicemail] CallSid=${callSid}, FirstName=${firstName}`);
-    console.log(`[call-center-voicemail] Using voicemail audio endpoint: ${VOICEMAIL_PLAY_URL}`);
+    console.log(`[call-center-voicemail] Playing voicemail MP3: ${VOICEMAIL_MP3_URL}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -85,27 +81,27 @@ serve(async (req) => {
       const { error: logError } = await supabase.from('call_center_messages').insert({
         twilio_call_sid: callSid,
         role: 'assistant',
-        content: '[Played pre-recorded voicemail: cashridez_voicemail.mp3]',
-        provider: 'prerecorded',
+        content: '[Played voicemail: cashridez_voicemail.mp3]',
+        provider: 'prerecorded-github',
       });
       if (logError) console.error('[call-center-voicemail] Failed to log message:', logError);
     }
 
-    // Build TwiML response (ONLY Play + Pause + Hangup)
-    const twiml = `<Response>
-  <Play>${VOICEMAIL_PLAY_URL}</Play>
+    // Build TwiML response - ONLY Play MP3, Pause, Hangup
+    // NO <Say> elements. NO fallbacks.
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${VOICEMAIL_MP3_URL}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
 
-    const responseContentType = 'text/xml; charset=utf-8';
     console.log(`[call-center-voicemail] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
-    console.log(`[call-center-voicemail] Response Content-Type: ${responseContentType}`);
 
     return new Response(twiml, {
       status: 200,
       headers: {
-        'Content-Type': responseContentType,
+        'Content-Type': 'text/xml; charset=utf-8',
         'Cache-Control': 'no-store',
       },
     });
@@ -113,24 +109,20 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-center-voicemail] Handler error:', error);
 
-    // Even on error: return the exact voicemail TwiML (no <Say> fallback)
-    const twiml = `<Response>
-  <Play>${VOICEMAIL_PLAY_URL}</Play>
+    // On error: STILL play voicemail, no fallback voice
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${VOICEMAIL_MP3_URL}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
 
-    const responseContentType = 'text/xml; charset=utf-8';
-    console.log(`[call-center-voicemail] Returning TwiML (error path, first 200 chars): ${twiml.slice(0, 200)}`);
-    console.log(`[call-center-voicemail] Response Content-Type (error path): ${responseContentType}`);
-
     return new Response(twiml, {
       status: 200,
       headers: {
-        'Content-Type': responseContentType,
+        'Content-Type': 'text/xml; charset=utf-8',
         'Cache-Control': 'no-store',
       },
     });
   }
 });
-

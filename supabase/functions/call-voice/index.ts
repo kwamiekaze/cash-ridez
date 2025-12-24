@@ -8,13 +8,9 @@
 // 1. MASKED CALLING: When callId is provided - bridges rider/driver calls
 // 2. CALL CENTER FALLBACK: When no callId - redirects to voicemail handler
 //
-// WEBHOOK URL:
-//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-voice
-//
-// AUTHENTICATION: No JWT required (verify_jwt = false) - Twilio webhook
-//
-// CRITICAL: NO <Say> elements in this file. All voice output uses pre-recorded audio.
-// On any error, redirect to voicemail or hangup - never use Polly/TTS.
+// CRITICAL: NO <Say> elements. NO AI voice. NO Polly.
+// All voice output uses pre-recorded MP3 files from GitHub.
+// On any error, redirect to voicemail or hangup - NEVER use TTS.
 //
 // ============================================================================
 
@@ -37,7 +33,6 @@ function respondTwiml(endpoint: string, twiml: string) {
   };
 
   console.log(`[${endpoint}] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
-  console.log(`[${endpoint}] Response Content-Type: ${headers['Content-Type']}`);
 
   return new Response(twiml, { status: 200, headers });
 }
@@ -141,7 +136,7 @@ Deno.serve(async (req) => {
 
       if (callError || !call) {
         console.error('[call-voice] Call not found:', callError);
-        // Redirect to voicemail instead of using Polly
+        // Redirect to voicemail - NO TTS
         return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
@@ -160,7 +155,7 @@ Deno.serve(async (req) => {
 
       if (profilesError || !profiles || profiles.length !== 2) {
         console.error('[call-voice] Failed to fetch profiles:', profilesError);
-        // Redirect to voicemail instead of using Polly
+        // Redirect to voicemail - NO TTS
         return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
@@ -184,7 +179,7 @@ Deno.serve(async (req) => {
 
       if (!riderPhoneNumber || !driverPhoneNumber) {
         console.error('[call-voice] Missing phone numbers after fallback attempts');
-        // Redirect to voicemail instead of using Polly
+        // Redirect to voicemail - NO TTS
         return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
@@ -208,11 +203,11 @@ Deno.serve(async (req) => {
       
       if (!twilioPhoneNumber) {
         console.error('[call-voice] Missing TWILIO_PHONE_NUMBER environment variable');
-        // Redirect to voicemail instead of using Polly
+        // Redirect to voicemail - NO TTS
         return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
-      // Build TwiML to dial the other party
+      // Build TwiML to dial the other party - NO <Say>
       const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Dial callerId="${twilioPhoneNumber}">
@@ -227,7 +222,7 @@ Deno.serve(async (req) => {
 
     // =========================================================================
     // MODE 2: CALL CENTER FALLBACK (no callId - inbound call or fallback)
-    // Redirect to voicemail handler - NO TTS/Polly here
+    // Redirect to voicemail handler - NO TTS
     // =========================================================================
     console.log(`[call-voice] CALL CENTER FALLBACK mode - redirecting to voicemail handler`);
 
@@ -265,7 +260,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Redirect to the voicemail handler which uses pre-recorded audio
+    // Redirect to the voicemail handler which uses pre-recorded MP3
     return respondTwiml('call-voice', getVoicemailRedirectTwiml());
 
   } catch (error) {

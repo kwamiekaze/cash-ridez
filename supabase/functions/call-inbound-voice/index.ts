@@ -4,10 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Inbound Voice Handler - Called when someone calls our Twilio number.
  * 
- * CRITICAL: Returns valid TwiML immediately. No AI calls block this response.
+ * CRITICAL: NO <Say> elements. NO AI voice. NO Polly.
+ * Ring for 20 seconds, then redirect to voicemail which plays the MP3.
  * 
- * For MVP: Ring for 20 seconds, then go to voicemail with ElevenLabs voice.
- * In future: Add admin answer functionality.
+ * On ANY error: redirect to voicemail - NEVER substitute a voice.
  */
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
@@ -31,7 +31,7 @@ serve(async (req) => {
     const to = formData.get('To') as string || '';
     const callStatus = formData.get('CallStatus') as string || '';
 
-    console.log(`Inbound call received: CallSid=${callSid}, From=${from}, To=${to}, Status=${callStatus}`);
+    console.log(`[call-inbound-voice] Inbound call: CallSid=${callSid}, From=${from}, To=${to}, Status=${callStatus}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -53,55 +53,53 @@ serve(async (req) => {
       .single();
 
     if (logError) {
-      console.error('Failed to create inbound call log:', logError);
+      console.error('[call-inbound-voice] Failed to create inbound call log:', logError);
     } else {
-      console.log(`Created inbound call log: ${callLog?.id}`);
+      console.log(`[call-inbound-voice] Created inbound call log: ${callLog?.id}`);
     }
 
     // Notify admins about inbound call (non-blocking)
     notifyAdminsOfInboundCall(supabase, from, callSid).catch(err => {
-      console.error('Failed to notify admins:', err);
+      console.error('[call-inbound-voice] Failed to notify admins:', err);
     });
 
-    // For MVP: Go to voicemail with ElevenLabs voice after 20 second ring
+    // Ring for 20 seconds, then redirect to voicemail
     const voicemailUrl = `${APP_BASE_URL}/functions/v1/call-inbound-voicemail?callSid=${encodeURIComponent(callSid)}&from=${encodeURIComponent(from)}`;
 
-    // Ring for 20 seconds (simulate admin answer time), then go to voicemail
-    // Use <Pause> to let it ring, then redirect to voicemail
+    // NO <Say> - just pause (ring) then redirect to voicemail
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="20"/>
   <Redirect method="POST">${escapeXml(voicemailUrl)}</Redirect>
 </Response>`;
 
-    const responseContentType = 'text/xml; charset=utf-8';
     console.log(`[call-inbound-voice] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
-    console.log(`[call-inbound-voice] Response Content-Type: ${responseContentType}`);
 
     return new Response(twiml, {
       status: 200,
-      headers: { 'Content-Type': responseContentType, 'Cache-Control': 'no-store' },
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
     });
 
   } catch (error) {
-    console.error('Inbound voice handler error:', error);
+    console.error('[call-inbound-voice] Inbound voice handler error:', error);
 
-    // CRITICAL: Never use Twilio <Say> fallbacks here.
-    // If anything goes wrong, route straight to our pre-recorded voicemail handler.
+    // On error: redirect to voicemail (no voice fallback)
     const voicemailUrl = `${APP_BASE_URL}/functions/v1/call-inbound-voicemail`;
 
-    const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Redirect method="POST">${escapeXml(voicemailUrl)}</Redirect>
 </Response>`;
 
-    const responseContentType = 'text/xml; charset=utf-8';
-    console.log(`[call-inbound-voice] Returning TwiML (error path, first 200 chars): ${fallbackTwiml.slice(0, 200)}`);
-    console.log(`[call-inbound-voice] Response Content-Type (error path): ${responseContentType}`);
-
-    return new Response(fallbackTwiml, {
+    return new Response(twiml, {
       status: 200,
-      headers: { 'Content-Type': responseContentType, 'Cache-Control': 'no-store' },
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Cache-Control': 'no-store',
+      },
     });
   }
 });
@@ -115,7 +113,7 @@ async function notifyAdminsOfInboundCall(supabase: any, fromNumber: string, call
       .eq('notify_call_inbound', true);
 
     if (!adminSettings || adminSettings.length === 0) {
-      console.log('No admins have inbound call notifications enabled');
+      console.log('[call-inbound-voice] No admins have inbound call notifications enabled');
       return;
     }
 
@@ -137,9 +135,9 @@ async function notifyAdminsOfInboundCall(supabase: any, fromNumber: string, call
       });
     }
 
-    console.log(`Notified ${adminSettings.length} admins of inbound call`);
+    console.log(`[call-inbound-voice] Notified ${adminSettings.length} admins of inbound call`);
   } catch (err) {
-    console.error('Failed to notify admins of inbound call:', err);
+    console.error('[call-inbound-voice] Failed to notify admins of inbound call:', err);
   }
 }
 

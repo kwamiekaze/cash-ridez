@@ -1,6 +1,18 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/**
+ * Answering Machine Detection (AMD) Handler
+ * 
+ * Called by Twilio when AMD completes after a call connects.
+ * 
+ * CRITICAL: Uses ONLY the pre-recorded voicemail MP3 from GitHub.
+ * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO AI voice generation.
+ * 
+ * AUTHORITATIVE VOICEMAIL URL:
+ * https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3
+ */
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -21,7 +33,7 @@ serve(async (req) => {
     const answeredBy = formData.get('AnsweredBy') as string;
     const machineDetectionDuration = formData.get('MachineDetectionDuration') as string;
 
-    console.log(`AMD result for ${callSid}: ${answeredBy} (duration: ${machineDetectionDuration}ms)`);
+    console.log(`[call-center-amd] AMD result for ${callSid}: ${answeredBy} (duration: ${machineDetectionDuration}ms)`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -39,10 +51,10 @@ serve(async (req) => {
 
     // Handle different answering scenarios
     if (answeredBy === 'machine_end_beep' || answeredBy === 'machine_end_silence' || answeredBy === 'machine_end_other') {
-      // Voicemail detected - redirect call to leave voicemail
-      console.log(`Voicemail detected for ${callSid}, redirecting to leave message`);
+      // Voicemail detected - redirect call to play voicemail MP3
+      console.log(`[call-center-amd] Voicemail detected for ${callSid}, redirecting to voicemail`);
 
-      // Update call to play voicemail TwiML
+      // Redirect to voicemail handler which plays the GitHub MP3
       const redirectUrl = `${APP_BASE_URL}/functions/v1/call-center-voicemail?callSid=${callSid}&firstName=${encodeURIComponent(firstName)}`;
 
       await fetch(
@@ -82,8 +94,8 @@ serve(async (req) => {
       }
 
     } else if (answeredBy === 'human') {
-      // Human answered - continue with AI agent (already configured in initial TwiML)
-      console.log(`Human answered ${callSid}, AI agent will engage`);
+      // Human answered - the outbound MP3 is already playing from call-center-twiml
+      console.log(`[call-center-amd] Human answered ${callSid}, outbound recording playing`);
 
       if (callLog) {
         await supabase
@@ -105,8 +117,8 @@ serve(async (req) => {
       }
 
     } else if (answeredBy === 'fax') {
-      // Fax machine - hang up
-      console.log(`Fax detected for ${callSid}, hanging up`);
+      // Fax machine - hang up immediately
+      console.log(`[call-center-amd] Fax detected for ${callSid}, hanging up`);
 
       await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
@@ -138,7 +150,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('AMD webhook error:', error);
+    console.error('[call-center-amd] AMD webhook error:', error);
     return new Response('Error', {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
