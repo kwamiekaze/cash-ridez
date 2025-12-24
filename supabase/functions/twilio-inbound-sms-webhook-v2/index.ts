@@ -488,45 +488,56 @@ Deno.serve(async (req) => {
     
     try {
       // Rate limit check: has this number received a CASH reply in the last 24 hours?
+      // IMPORTANT: Only count messages with REAL Twilio SIDs (starting with "SM")
       const cutoffTime = new Date(Date.now() - CASH_RATE_LIMIT_HOURS * 60 * 60 * 1000).toISOString();
       
       // Look for outbound messages to this number containing the CASH auto-reply in the last 24h
-      // Check for messages with real Twilio SIDs (not fake auto-cash-* ones) OR recent ones
+      // Filter to only include real Twilio SIDs (SM prefix) - exclude fake/internal IDs
       const { data: recentReplies, error: rateLimitError } = await supabase
         .from('admin_sms_messages')
         .select('id, created_at, twilio_message_sid, status')
         .eq('direction', 'outbound')
         .eq('to_e164', fromE164)
         .like('body', '%Welcome to CashRidez%')
+        .like('twilio_message_sid', 'SM%')  // Only real Twilio SIDs
         .gte('created_at', cutoffTime)
+        .order('created_at', { ascending: false })
         .limit(1);
       
       if (rateLimitError) {
         console.error('[v2] Rate limit check error:', rateLimitError);
         // On error, don't block - try to send
       } else if (recentReplies && recentReplies.length > 0) {
-        console.log(`[v2] CASH rate limit hit for ${fromE164} - already replied at ${recentReplies[0].created_at}, SID: ${recentReplies[0].twilio_message_sid}`);
+        // Only rate limit if the previous message was actually delivered/sent (not failed)
+        const prevStatus = recentReplies[0].status;
+        const shouldRateLimit = prevStatus !== 'failed' && prevStatus !== 'undelivered';
         
-        // Log the rate limit decision
-        await logCashAutoReplyAttempt(supabase, {
-          senderPhone: fromE164,
-          twilioNumber: toE164,
-          conversationId,
-          matched: true,
-          rateLimited: true,
-          sendAttempted: false,
-          sendSuccess: false,
-          twilioSid: null,
-          twilioStatus: null,
-          errorMessage: 'Rate limited - already sent in last 24h',
-          errorCode: null
-        });
-        
-        // Return empty TwiML - no duplicate reply
-        return new Response(twimlEmptyResponse, { 
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
-        });
+        if (shouldRateLimit) {
+          console.log(`[v2] CASH rate limit hit for ${fromE164} - already replied at ${recentReplies[0].created_at}, SID: ${recentReplies[0].twilio_message_sid}, status: ${prevStatus}`);
+          
+          // Log the rate limit decision
+          await logCashAutoReplyAttempt(supabase, {
+            senderPhone: fromE164,
+            twilioNumber: toE164,
+            conversationId,
+            matched: true,
+            rateLimited: true,
+            sendAttempted: false,
+            sendSuccess: false,
+            twilioSid: null,
+            twilioStatus: null,
+            errorMessage: `Rate limited - already sent in last 24h (SID: ${recentReplies[0].twilio_message_sid}, status: ${prevStatus})`,
+            errorCode: null
+          });
+          
+          // Return empty TwiML - no duplicate reply
+          return new Response(twimlEmptyResponse, { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+          });
+        } else {
+          console.log(`[v2] Previous CASH reply failed (${prevStatus}), allowing retry for ${fromE164}`);
+        }
       }
       
       // =====================================================================

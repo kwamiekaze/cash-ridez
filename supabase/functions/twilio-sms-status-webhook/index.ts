@@ -2,16 +2,22 @@
 // TWILIO SMS STATUS WEBHOOK FOR CASHRIDEZ
 // ============================================================================
 //
-// Receives delivery status updates from Twilio and updates admin_sms_logs.
+// Receives delivery status updates from Twilio and updates admin_sms_logs
+// and admin_sms_messages.
+//
+// ERROR CODE REFERENCE (common ones):
+//   30001 - Queue Overflow
+//   30002 - Account Suspended
+//   30003 - Unreachable destination handset
+//   30004 - Message Blocked (carrier filtering)
+//   30005 - Unknown destination handset
+//   30006 - Landline or unreachable carrier
+//   30007 - Carrier violation
+//   30008 - Unknown error
+//   30034 - Message Blocked (A2P 10DLC - carrier filtering)
 //
 // ENDPOINT:
 //   POST /functions/v1/twilio-sms-status-webhook
-//
-// Expected form data from Twilio:
-//   - MessageSid: string
-//   - MessageStatus: queued|sending|sent|delivered|undelivered|failed
-//   - ErrorCode: string (optional)
-//   - ErrorMessage: string (optional)
 //
 // ============================================================================
 
@@ -20,6 +26,25 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Human-readable error descriptions for common Twilio error codes
+const ERROR_CODE_DESCRIPTIONS: Record<string, string> = {
+  '30001': 'Queue Overflow - Twilio queue is full',
+  '30002': 'Account Suspended',
+  '30003': 'Unreachable - destination handset unavailable',
+  '30004': 'Message Blocked - carrier filtering',
+  '30005': 'Unknown destination handset',
+  '30006': 'Landline or unreachable carrier',
+  '30007': 'Carrier violation',
+  '30008': 'Unknown error',
+  '30034': 'A2P 10DLC Blocked - carrier filtering unregistered traffic',
+  '21408': 'Permission not enabled for region',
+  '21610': 'Attempt to send to unsubscribed recipient',
+  '21611': 'Invalid To number',
+  '21612': 'Invalid From number for SMS',
+  '21614': 'To number is not SMS-capable',
+  '21617': 'Message body exceeds max length',
 };
 
 Deno.serve(async (req) => {
@@ -36,11 +61,24 @@ Deno.serve(async (req) => {
     const messageStatus = formData.get('MessageStatus')?.toString();
     const errorCode = formData.get('ErrorCode')?.toString();
     const errorMessage = formData.get('ErrorMessage')?.toString();
+    const to = formData.get('To')?.toString();
+    const from = formData.get('From')?.toString();
+
+    // Build human-readable error description
+    const errorDescription = errorCode 
+      ? (ERROR_CODE_DESCRIPTIONS[errorCode] || `Unknown error code: ${errorCode}`)
+      : null;
+    const fullErrorMessage = errorCode 
+      ? `[${errorCode}] ${errorDescription}${errorMessage ? ` - ${errorMessage}` : ''}`
+      : (errorMessage || null);
 
     console.log('[twilio-sms-status-webhook] Status update:', {
       messageSid,
       messageStatus,
       errorCode: errorCode || 'none',
+      errorDescription: errorDescription || 'none',
+      to: to?.slice(0, 6) + '***',
+      from: from?.slice(0, 6) + '***',
     });
 
     if (!messageSid) {
@@ -59,12 +97,13 @@ Deno.serve(async (req) => {
       twilio_status: messageStatus,
     };
 
-    // Add error info if present
+    // Add error info if present (with human-readable description)
     if (errorCode || errorMessage) {
-      updateData.error_message = errorMessage || `Error code: ${errorCode}`;
+      updateData.error_message = fullErrorMessage;
       updateData.metadata = {
         error_code: errorCode,
-        error_message: errorMessage,
+        error_code_description: errorDescription,
+        error_message_raw: errorMessage,
         updated_at: new Date().toISOString()
       };
     }
@@ -90,8 +129,8 @@ Deno.serve(async (req) => {
     if (errorCode) {
       msgUpdateData.error_code = errorCode;
     }
-    if (errorMessage) {
-      msgUpdateData.error_message = errorMessage;
+    if (fullErrorMessage) {
+      msgUpdateData.error_message = fullErrorMessage;
     }
 
     const { error: msgError } = await supabase
