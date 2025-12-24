@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.call-center-voicemail-audio-test]
 verify_jwt = false
+
+[functions.call-center-gather-complete]
+verify_jwt = false

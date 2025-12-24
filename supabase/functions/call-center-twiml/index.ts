@@ -8,16 +8,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO AI voice generation.
  * NO redirects to other voice handlers for outbound.
  * 
- * AUTHORITATIVE AUDIO URL:
- * https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_outbound.mp3
+ * AUTHORITATIVE AUDIO URLS:
+ * - Outbound (human): https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_outbound.mp3
+ * - Voicemail: https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_voicemail.mp3
  * 
- * Flow: Play MP3 → Pause 1 second → Hangup
+ * HUMAN-LIKE FLOW (recording mode):
+ * 1. Use <Gather input="speech"> to listen for caller's greeting (up to 2 seconds)
+ * 2. When caller finishes speaking OR timeout, redirect to gather-complete
+ * 3. Gather-complete plays the MP3 and hangs up
+ * 
  * On ANY error: hangup silently - NEVER substitute a voice.
  */
 
-// HARDCODED GitHub MP3 URL - DO NOT CHANGE
-const OUTBOUND_MP3_URL = "https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_outbound.mp3";
-const VOICEMAIL_MP3_URL = "https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3";
+// HARDCODED GitHub MP3 URLs - DO NOT CHANGE
+const OUTBOUND_MP3_URL = "https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_outbound.mp3";
+const VOICEMAIL_MP3_URL = "https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_voicemail.mp3";
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
@@ -31,6 +36,8 @@ serve(async (req) => {
       },
     });
   }
+
+  const startTime = Date.now();
 
   try {
     // Parse request - could be form data from Twilio or JSON
@@ -66,24 +73,29 @@ serve(async (req) => {
     firstName = firstName || url.searchParams.get('firstName') || '';
     callMode = callMode || url.searchParams.get('mode') || 'recording';
 
-    console.log(`[call-center-twiml] CallSid=${callSid}, Direction=${direction}, Mode=${callMode}`);
+    console.log(`[call-center-twiml] CallSid=${callSid}, Direction=${direction}, Mode=${callMode}, StartTime=${startTime}`);
 
     // Log to database in background (don't block response)
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    // Log TwiML request
     if (callSid) {
-      try {
-        const supabase = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-        
-        // Upsert call log by CallSid
-        await supabase
-          .from('admin_call_logs')
-          .update({ twilio_call_sid: callSid })
-          .eq('twilio_call_sid', callSid);
-      } catch (dbErr) {
-        console.error('DB logging failed (non-blocking):', dbErr);
-      }
+      supabase.from('call_center_messages').insert({
+        twilio_call_sid: callSid,
+        role: 'system',
+        content: `[TwiML requested] Direction: ${direction}, Mode: ${callMode}`,
+        provider: 'twilio-twiml',
+        metadata: {
+          direction,
+          call_mode: callMode,
+          timestamp: new Date().toISOString(),
+        },
+      }).then(({ error }) => {
+        if (error) console.error('[call-center-twiml] Failed to log:', error);
+      });
     }
 
     // Determine if this is outbound (we initiated) or inbound (someone calling us)
@@ -93,8 +105,7 @@ serve(async (req) => {
     let twiml: string;
 
     if (isOutbound) {
-      // OUTBOUND CALLS: Always play the outbound MP3, pause, hangup
-      // If mode is 'live', we skip recording and just connect (no audio playback)
+      // OUTBOUND CALLS
       if (callMode === 'live') {
         // Live mode: Start recording and wait for human interaction
         // This is for "Speak Live" option - no pre-recorded message
@@ -109,7 +120,13 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
       } else {
-        // Recording mode (default): Play outbound MP3 and hangup
+        // Recording mode (default): Use human-like Gather flow
+        // 1. Start recording for call logging
+        // 2. Use <Gather> to listen for caller's greeting (up to 2 seconds)
+        // 3. When caller finishes speaking OR timeout, hit gather-complete action URL
+        // 4. Gather-complete plays the MP3 and hangs up
+        const gatherActionUrl = `${APP_BASE_URL}/functions/v1/call-center-gather-complete?callSid=${encodeURIComponent(callSid)}`;
+        
         twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Start>
@@ -117,6 +134,9 @@ serve(async (req) => {
             recordingStatusCallbackMethod="POST"
             trim="trim-silence" />
   </Start>
+  <Gather input="speech" timeout="2" speechTimeout="auto" action="${escapeXml(gatherActionUrl)}" method="POST">
+  </Gather>
+  <!-- Fallback if Gather fails: play MP3 immediately -->
   <Play>${OUTBOUND_MP3_URL}</Play>
   <Pause length="1"/>
   <Hangup/>
@@ -133,7 +153,7 @@ serve(async (req) => {
 </Response>`;
     }
 
-    console.log(`[call-center-twiml] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
+    console.log(`[call-center-twiml] Returning TwiML (first 300 chars): ${twiml.slice(0, 300)}, latency=${Date.now() - startTime}ms`);
 
     return new Response(twiml, {
       status: 200,
@@ -146,7 +166,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-center-twiml] TwiML generation error:', error);
     
-    // On error: play outbound MP3 and hangup (no voice fallback)
+    // On error: play outbound MP3 directly and hangup (no voice fallback)
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${OUTBOUND_MP3_URL}</Play>

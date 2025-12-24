@@ -9,8 +9,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * CRITICAL: Uses ONLY the pre-recorded voicemail MP3 from GitHub.
  * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO AI voice generation.
  * 
- * AUTHORITATIVE VOICEMAIL URL:
- * https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3
+ * AUTHORITATIVE VOICEMAIL URL (for leaving messages on voicemail):
+ * https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_voicemail.mp3
+ * 
+ * HUMAN ANSWERED FLOW:
+ * - The initial TwiML (call-center-twiml) already uses <Gather> to listen
+ * - When gather completes, it plays the outbound MP3
+ * - This handler just logs and updates status
+ * 
+ * VOICEMAIL FLOW:
+ * - Redirect to call-center-voicemail to play the voicemail MP3
  */
 
 const corsHeaders = {
@@ -22,10 +30,15 @@ const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpg
 const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
 const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
 
+// Voicemail MP3 for leaving messages
+const VOICEMAIL_MP3_URL = "https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_voicemail.mp3";
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
 
   try {
     const formData = await req.formData();
@@ -39,6 +52,19 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
+
+    // Log AMD result
+    await supabase.from('call_center_messages').insert({
+      twilio_call_sid: callSid,
+      role: 'system',
+      content: `[AMD Result] AnsweredBy: ${answeredBy}, Duration: ${machineDetectionDuration}ms`,
+      provider: 'twilio-amd',
+      metadata: {
+        answered_by: answeredBy,
+        detection_duration_ms: machineDetectionDuration,
+        timestamp: new Date().toISOString(),
+      },
+    });
 
     // Get the call log to find firstName
     const { data: callLog } = await supabase
@@ -54,10 +80,10 @@ serve(async (req) => {
       // Voicemail detected - redirect call to play voicemail MP3
       console.log(`[call-center-amd] Voicemail detected for ${callSid}, redirecting to voicemail`);
 
-      // Redirect to voicemail handler which plays the GitHub MP3
+      // Redirect to voicemail handler which plays the voicemail MP3
       const redirectUrl = `${APP_BASE_URL}/functions/v1/call-center-voicemail?callSid=${callSid}&firstName=${encodeURIComponent(firstName)}`;
 
-      await fetch(
+      const redirectResponse = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,
         {
           method: 'POST',
@@ -71,6 +97,8 @@ serve(async (req) => {
           }),
         }
       );
+
+      console.log(`[call-center-amd] Redirect response: ${redirectResponse.status}`);
 
       // Update call log and recipient to indicate voicemail
       if (callLog) {
@@ -94,8 +122,9 @@ serve(async (req) => {
       }
 
     } else if (answeredBy === 'human') {
-      // Human answered - the outbound MP3 is already playing from call-center-twiml
-      console.log(`[call-center-amd] Human answered ${callSid}, outbound recording playing`);
+      // Human answered - the gather flow is already in progress from call-center-twiml
+      // Just update status and log
+      console.log(`[call-center-amd] Human answered ${callSid}, gather flow in progress`);
 
       if (callLog) {
         await supabase
@@ -144,6 +173,8 @@ serve(async (req) => {
           .eq('id', callLog.id);
       }
     }
+
+    console.log(`[call-center-amd] Completed in ${Date.now() - startTime}ms`);
 
     return new Response('OK', {
       headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
