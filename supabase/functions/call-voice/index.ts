@@ -24,11 +24,8 @@ const corsHeaders = {
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
-// The REQUIRED voicemail script for inbound missed calls (per user spec)
-const INBOUND_VOICEMAIL_SCRIPT = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections. We look forward to your text, thank you.";
-
-// Pre-generated audio path for inbound voicemail
-const INBOUND_VOICEMAIL_AUDIO_PATH = 'inbound_voicemail.mp3';
+// Pre-recorded voicemail audio file path (uploaded by user, NOT generated)
+const VOICEMAIL_AUDIO_PATH = 'cashridez_voicemail.mp3';
 
 // Helper function to extract phone number from text
 function extractPhoneNumber(text: string): string | null {
@@ -267,33 +264,33 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Try to use pre-generated audio first
+    // Use pre-recorded voicemail audio ONLY - no TTS fallback
     const { data: publicUrlData } = supabase.storage
       .from('call_center_audio')
-      .getPublicUrl(INBOUND_VOICEMAIL_AUDIO_PATH);
+      .getPublicUrl(VOICEMAIL_AUDIO_PATH);
 
     const audioUrl = publicUrlData?.publicUrl;
 
-    let twiml: string;
+    if (!audioUrl) {
+      console.error('[call-voice] CRITICAL: Voicemail audio file not found!');
+      // Just hangup - NO TTS fallback allowed
+      return new Response(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Hangup/>
+</Response>`, {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
+      });
+    }
 
-    if (audioUrl) {
-      console.log('[call-voice] Using pre-generated inbound voicemail audio:', audioUrl);
-      twiml = `<?xml version="1.0" encoding="UTF-8"?>
+    console.log('[call-voice] Playing pre-recorded voicemail audio:', audioUrl);
+
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${escapeXml(audioUrl)}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
-    } else {
-      // Fallback to Polly.Matthew (male voice) - NEVER use female voice
-      console.error('[call-voice] CRITICAL: Pre-generated audio not found! Using Polly.Matthew fallback.');
-      twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Matthew">${escapeXml(INBOUND_VOICEMAIL_SCRIPT)}</Say>
-  <Pause length="3"/>
-  <Hangup/>
-</Response>`;
-    }
 
     return new Response(twiml, {
       status: 200,
@@ -303,19 +300,13 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('[call-voice] Critical error:', error);
     
-    // Emergency fallback - ALWAYS use male voice
-    const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // On error, just hangup - NO TTS fallback allowed
+    return new Response(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">${escapeXml(INBOUND_VOICEMAIL_SCRIPT)}</Say>
-  <Pause length="3"/>
   <Hangup/>
-</Response>`;
-    
-    return new Response(fallbackTwiml, {
+</Response>`, {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
     });
   }
 });
-
-// escapeXml function is defined above

@@ -2,14 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * Audio Seed Function - Generates and stores pre-generated ElevenLabs audio files
+ * Audio Seed Function - For the ANSWERED call path only (outbound human-answered).
  * 
- * This ensures the SAME male voice is used for:
- * 1. Answered outbound calls
- * 2. Outbound voicemail (AMD detected machine)
- * 3. Inbound missed call voicemail
- * 
- * ALL scenarios now use the INBOUND VOICEMAIL script as specified by the user.
+ * The voicemail audio (cashridez_voicemail.mp3) is uploaded separately via upload-voicemail-audio.
  */
 
 const corsHeaders = {
@@ -17,28 +12,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// THE ONE VOICEMAIL SCRIPT for ALL voicemail scenarios (user specification)
-const VOICEMAIL_SCRIPT = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections. We look forward to your text, thank you.";
-
 // Answered call script (separate from voicemail)
 const ANSWERED_SCRIPT = "Hey there, this is Cash Ridez Connect LLC. We responded on Indeed as well. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.";
 
-// Audio files to generate
-const AUDIO_FILES = [
-  {
-    path: 'inbound_voicemail.mp3',
-    script: VOICEMAIL_SCRIPT,
-    description: 'Inbound missed call voicemail AND outbound voicemail'
-  },
-  {
-    path: 'outbound_answered.mp3', 
-    script: ANSWERED_SCRIPT,
-    description: 'Outbound call - human answered'
-  }
-];
-
-// ElevenLabs voice ID for a natural male voice
-// Roger voice: CwhRBWXzGAHq8TQ4Fs17 (recommended male voice)
+// ElevenLabs voice ID for a natural male voice (Roger)
 const ELEVENLABS_VOICE_ID = 'CwhRBWXzGAHq8TQ4Fs17';
 
 serve(async (req) => {
@@ -65,119 +42,118 @@ serve(async (req) => {
 
     const results: any[] = [];
 
-    for (const audioFile of AUDIO_FILES) {
-      console.log(`[call-center-seed-audio] Generating: ${audioFile.path}`);
-      console.log(`[call-center-seed-audio] Script: "${audioFile.script.substring(0, 50)}..."`);
+    // Only generate answered call audio - voicemail is uploaded separately
+    const audioPath = 'outbound_answered.mp3';
+    
+    console.log(`[call-center-seed-audio] Generating answered call audio: ${audioPath}`);
 
-      try {
-        // Check if file already exists
-        const { data: existingFile } = await supabase.storage
-          .from('call_center_audio')
-          .list('', { search: audioFile.path });
+    // Check if file already exists
+    const { data: existingFile } = await supabase.storage
+      .from('call_center_audio')
+      .list('', { search: audioPath });
 
-        const fileExists = existingFile && existingFile.some(f => f.name === audioFile.path);
+    const fileExists = existingFile && existingFile.some(f => f.name === audioPath);
 
-        if (fileExists) {
-          // Get public URL
-          const { data: publicUrlData } = supabase.storage
-            .from('call_center_audio')
-            .getPublicUrl(audioFile.path);
+    if (fileExists) {
+      const { data: publicUrlData } = supabase.storage
+        .from('call_center_audio')
+        .getPublicUrl(audioPath);
 
-          results.push({
-            path: audioFile.path,
-            status: 'exists',
-            url: publicUrlData?.publicUrl,
-            description: audioFile.description
-          });
-          console.log(`[call-center-seed-audio] File already exists: ${audioFile.path}`);
-          continue;
+      results.push({
+        path: audioPath,
+        status: 'exists',
+        url: publicUrlData?.publicUrl
+      });
+    } else {
+      // Generate audio with ElevenLabs
+      const ttsResponse = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'audio/mpeg',
+            'Content-Type': 'application/json',
+            'xi-api-key': ELEVENLABS_API_KEY,
+          },
+          body: JSON.stringify({
+            text: ANSWERED_SCRIPT,
+            model_id: 'eleven_monolingual_v1',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75,
+            }
+          }),
         }
+      );
 
-        // Generate audio with ElevenLabs
-        const ttsResponse = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`,
-          {
-            method: 'POST',
-            headers: {
-              'Accept': 'audio/mpeg',
-              'Content-Type': 'application/json',
-              'xi-api-key': ELEVENLABS_API_KEY,
-            },
-            body: JSON.stringify({
-              text: audioFile.script,
-              model_id: 'eleven_monolingual_v1',
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-              }
-            }),
-          }
-        );
-
-        if (!ttsResponse.ok) {
-          const errorText = await ttsResponse.text();
-          console.error(`[call-center-seed-audio] ElevenLabs error for ${audioFile.path}:`, errorText);
-          results.push({
-            path: audioFile.path,
-            status: 'error',
-            error: `ElevenLabs API error: ${ttsResponse.status}`,
-            description: audioFile.description
-          });
-          continue;
-        }
-
+      if (!ttsResponse.ok) {
+        const errorText = await ttsResponse.text();
+        console.error(`[call-center-seed-audio] ElevenLabs error:`, errorText);
+        results.push({
+          path: audioPath,
+          status: 'error',
+          error: `ElevenLabs API error: ${ttsResponse.status}`
+        });
+      } else {
         const audioBuffer = await ttsResponse.arrayBuffer();
-        console.log(`[call-center-seed-audio] Generated ${audioBuffer.byteLength} bytes for ${audioFile.path}`);
+        console.log(`[call-center-seed-audio] Generated ${audioBuffer.byteLength} bytes`);
 
-        // Upload to Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from('call_center_audio')
-          .upload(audioFile.path, audioBuffer, {
+          .upload(audioPath, audioBuffer, {
             contentType: 'audio/mpeg',
             upsert: true
           });
 
         if (uploadError) {
-          console.error(`[call-center-seed-audio] Upload error for ${audioFile.path}:`, uploadError);
           results.push({
-            path: audioFile.path,
+            path: audioPath,
             status: 'error',
-            error: uploadError.message,
-            description: audioFile.description
+            error: uploadError.message
           });
-          continue;
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from('call_center_audio')
+            .getPublicUrl(audioPath);
+
+          results.push({
+            path: audioPath,
+            status: 'created',
+            url: publicUrlData?.publicUrl
+          });
         }
-
-        // Get public URL
-        const { data: publicUrlData } = supabase.storage
-          .from('call_center_audio')
-          .getPublicUrl(audioFile.path);
-
-        results.push({
-          path: audioFile.path,
-          status: 'created',
-          url: publicUrlData?.publicUrl,
-          description: audioFile.description
-        });
-        console.log(`[call-center-seed-audio] Successfully created: ${audioFile.path}`);
-
-      } catch (fileError) {
-        console.error(`[call-center-seed-audio] Error processing ${audioFile.path}:`, fileError);
-        results.push({
-          path: audioFile.path,
-          status: 'error',
-          error: fileError instanceof Error ? fileError.message : 'Unknown error',
-          description: audioFile.description
-        });
       }
+    }
+
+    // Check voicemail file exists
+    const { data: vmFile } = await supabase.storage
+      .from('call_center_audio')
+      .list('', { search: 'cashridez_voicemail.mp3' });
+
+    const vmExists = vmFile && vmFile.some(f => f.name === 'cashridez_voicemail.mp3');
+    
+    if (vmExists) {
+      const { data: vmUrl } = supabase.storage
+        .from('call_center_audio')
+        .getPublicUrl('cashridez_voicemail.mp3');
+      results.push({
+        path: 'cashridez_voicemail.mp3',
+        status: 'exists (pre-recorded)',
+        url: vmUrl?.publicUrl
+      });
+    } else {
+      results.push({
+        path: 'cashridez_voicemail.mp3',
+        status: 'MISSING - must be uploaded via upload-voicemail-audio endpoint',
+        url: null
+      });
     }
 
     return new Response(JSON.stringify({
       success: true,
       message: 'Audio seeding complete',
       results,
-      voicemailScript: VOICEMAIL_SCRIPT,
-      answeredScript: ANSWERED_SCRIPT
+      note: 'Voicemail audio (cashridez_voicemail.mp3) must be uploaded separately'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

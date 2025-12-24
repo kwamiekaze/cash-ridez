@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.call-center-seed-audio]
 verify_jwt = false
+
+[functions.upload-voicemail-audio]
+verify_jwt = false

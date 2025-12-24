@@ -4,26 +4,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Voicemail Handler - Called when AMD detects answering machine (outbound calls).
  * 
- * CRITICAL: Uses PRE-GENERATED audio stored in call_center_audio bucket.
- * This ensures the EXACT SAME male ElevenLabs voice plays every time with zero latency.
+ * CRITICAL: Uses ONLY the pre-recorded Cashridez_VM2.mp3 audio file.
+ * NO ElevenLabs, NO Twilio <Say>, NO fallback voices.
  * 
- * INBOUND VOICEMAIL SCRIPT (per user specification):
- * "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. 
- *  To connect with an agent please text the word AGENT to this number and an agent 
- *  will return your call shortly. Please save this number for future connections.
- *  We look forward to your text, thank you."
- * 
- * Then 2-3 second pause, then hangup.
+ * The audio file is stored in the call_center_audio bucket as 'cashridez_voicemail.mp3'
  */
 
-const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
-
-// Pre-generated audio URL - use INBOUND voicemail for ALL voicemail scenarios
-// The user explicitly wants the SAME script for both inbound missed calls AND outbound voicemail
-const VOICEMAIL_AUDIO_PATH = 'inbound_voicemail.mp3';
-
-// THE EXACT SCRIPT (user specification)
-const VOICEMAIL_SCRIPT = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections. We look forward to your text, thank you.";
+const VOICEMAIL_AUDIO_PATH = 'cashridez_voicemail.mp3';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -53,7 +40,6 @@ serve(async (req) => {
     firstName = url.searchParams.get('firstName') || '';
 
     console.log(`[call-center-voicemail] CallSid=${callSid}, FirstName=${firstName}`);
-    console.log(`[call-center-voicemail] Will play script: "${VOICEMAIL_SCRIPT.substring(0, 50)}..."`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -84,52 +70,48 @@ serve(async (req) => {
       }
     }
 
-    // Get the pre-generated audio URL from the public bucket
+    // Get the pre-recorded audio URL from the public bucket
     const { data: publicUrlData } = supabase.storage
       .from('call_center_audio')
       .getPublicUrl(VOICEMAIL_AUDIO_PATH);
 
     const audioUrl = publicUrlData?.publicUrl;
 
-    // Log the voicemail message
+    if (!audioUrl) {
+      console.error('[call-center-voicemail] CRITICAL: Voicemail audio file not found!');
+      // Return a hangup - do NOT use any TTS fallback
+      return new Response(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Hangup/>
+</Response>`, {
+        status: 200,
+        headers: { 'Content-Type': 'text/xml' },
+      });
+    }
+
+    // Log the voicemail
     if (callSid) {
       const { error: logError } = await supabase.from('call_center_messages').insert({
         twilio_call_sid: callSid,
         role: 'assistant',
-        content: VOICEMAIL_SCRIPT,
-        provider: 'elevenlabs-pregenerated',
+        content: '[Played pre-recorded voicemail: cashridez_voicemail.mp3]',
+        provider: 'prerecorded',
       });
       if (logError) console.error('[call-center-voicemail] Failed to log message:', logError);
     }
 
-    // Build TwiML response - ALWAYS use pre-generated audio
-    // 2s pause to wait for voicemail beep, then play audio, then 3s pause, then hangup
-    let twiml: string;
+    console.log('[call-center-voicemail] Playing pre-recorded audio:', audioUrl);
+    console.log('[call-center-voicemail] voicemail_script_played=true');
 
-    if (audioUrl) {
-      console.log('[call-center-voicemail] Using pre-generated audio:', audioUrl);
-      console.log('[call-center-voicemail] voicemail_script_played=true');
-      twiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // Build TwiML response - ONLY use pre-recorded audio, NO fallbacks
+    // 2s pause to wait for voicemail beep, then play audio, then 3s pause, then hangup
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="2"/>
   <Play>${escapeXml(audioUrl)}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
-    } else {
-      // EMERGENCY FALLBACK ONLY - should never happen if audio is seeded
-      console.error('[call-center-voicemail] CRITICAL: Pre-generated audio not found! Using Polly.Matthew fallback.');
-      console.log('[call-center-voicemail] voicemail_script_played=true (fallback)');
-      twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Pause length="2"/>
-  <Say voice="Polly.Matthew">${escapeXml(VOICEMAIL_SCRIPT)}</Say>
-  <Pause length="3"/>
-  <Hangup/>
-</Response>`;
-    }
-
-    console.log('[call-center-voicemail] Returning TwiML');
 
     return new Response(twiml, {
       status: 200,
@@ -139,16 +121,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-center-voicemail] Handler error:', error);
     
-    // Emergency fallback - use Polly.Matthew (male) ONLY
-    const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+    // On error, just hangup - NO TTS fallback
+    return new Response(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Pause length="2"/>
-  <Say voice="Polly.Matthew">Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections. We look forward to your text, thank you.</Say>
-  <Pause length="3"/>
   <Hangup/>
-</Response>`;
-
-    return new Response(fallbackTwiml, {
+</Response>`, {
       status: 200,
       headers: { 'Content-Type': 'text/xml' },
     });
