@@ -11,7 +11,6 @@ import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
 import { useNotificationSound } from "./hooks/useNotificationSound";
-import RiderDashboard from "./pages/RiderDashboard";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -20,6 +19,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const VerificationPending = lazy(() => import("./pages/VerificationPending"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const RiderDashboard = lazy(() => import("./pages/RiderDashboard"));
 const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const CreateRideRequest = lazy(() => import("./pages/CreateRideRequest"));

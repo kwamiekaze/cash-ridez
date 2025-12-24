@@ -1,8 +1,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
-import App from "./App.tsx";
 import "./index.css";
+import App from "./App.tsx";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 
 // Preload critical fonts and assets
 if ('fonts' in document) {
@@ -29,7 +30,10 @@ if ('serviceWorker' in navigator) {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <HelmetProvider>
-      <App />
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
     </HelmetProvider>
   </StrictMode>
 );
+
