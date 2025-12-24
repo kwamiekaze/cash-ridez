@@ -50,7 +50,8 @@ function buildAudioResponse(
     `[call-center-voicemail-audio] Responding status=${opts.status} bytes=${bytes.byteLength} content-type=${headers["Content-Type"]}`
   );
 
-  return new Response(bytes, { status: opts.status, headers });
+  // Cast to any to satisfy Deno's strict BodyInit type
+  return new Response(bytes as unknown as BodyInit, { status: opts.status, headers });
 }
 
 function parseRange(rangeHeader: string | null, totalSize: number) {
