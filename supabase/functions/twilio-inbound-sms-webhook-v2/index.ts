@@ -25,8 +25,8 @@ const corsHeaders = {
 // TwiML empty response - always return 200 to prevent Twilio retries
 const twimlEmptyResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
 
-// TwiML response for CASH keyword auto-reply (fits in 1 SMS segment - ~90 chars)
-const CASH_AUTO_REPLY = "Welcome to CashRidez! Verify your ID at cashridez.com, then update your map pin to connect. 💰🚗";
+// TwiML response for CASH keyword auto-reply (fits in 1 SMS segment - ~95 chars)
+const CASH_AUTO_REPLY = "Welcome to CashRidez! Verify your ID at cashridez.com, then update your map pin to connect!💰🚗 🎉";
 
 // Rate limit: 1 CASH reply per phone number per 24 hours
 const CASH_RATE_LIMIT_HOURS = 24;
