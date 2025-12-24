@@ -74,11 +74,13 @@ serve(async (req) => {
   <Redirect method="POST">${escapeXml(voicemailUrl)}</Redirect>
 </Response>`;
 
-    console.log('Returning inbound TwiML with ring and voicemail redirect');
+    const responseContentType = 'text/xml; charset=utf-8';
+    console.log(`[call-inbound-voice] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
+    console.log(`[call-inbound-voice] Response Content-Type: ${responseContentType}`);
 
     return new Response(twiml, {
       status: 200,
-      headers: { 'Content-Type': 'text/xml' },
+      headers: { 'Content-Type': responseContentType, 'Cache-Control': 'no-store' },
     });
 
   } catch (error) {
@@ -93,9 +95,13 @@ serve(async (req) => {
   <Redirect method="POST">${escapeXml(voicemailUrl)}</Redirect>
 </Response>`;
 
+    const responseContentType = 'text/xml; charset=utf-8';
+    console.log(`[call-inbound-voice] Returning TwiML (error path, first 200 chars): ${fallbackTwiml.slice(0, 200)}`);
+    console.log(`[call-inbound-voice] Response Content-Type (error path): ${responseContentType}`);
+
     return new Response(fallbackTwiml, {
       status: 200,
-      headers: { 'Content-Type': 'text/xml' },
+      headers: { 'Content-Type': responseContentType, 'Cache-Control': 'no-store' },
     });
   }
 });

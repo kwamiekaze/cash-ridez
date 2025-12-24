@@ -27,6 +27,21 @@ const corsHeaders = {
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
+const TWIML_CONTENT_TYPE = 'text/xml; charset=utf-8';
+
+function respondTwiml(endpoint: string, twiml: string) {
+  const headers: Record<string, string> = {
+    ...corsHeaders,
+    'Content-Type': TWIML_CONTENT_TYPE,
+    'Cache-Control': 'no-store',
+  };
+
+  console.log(`[${endpoint}] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
+  console.log(`[${endpoint}] Response Content-Type: ${headers['Content-Type']}`);
+
+  return new Response(twiml, { status: 200, headers });
+}
+
 // Helper function to extract phone number from text
 function extractPhoneNumber(text: string): string | null {
   if (!text) return null;
@@ -127,10 +142,7 @@ Deno.serve(async (req) => {
       if (callError || !call) {
         console.error('[call-voice] Call not found:', callError);
         // Redirect to voicemail instead of using Polly
-        return new Response(getVoicemailRedirectTwiml(), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-        });
+        return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
       // Fetch trip details to get rider_note for fallback contact
@@ -149,10 +161,7 @@ Deno.serve(async (req) => {
       if (profilesError || !profiles || profiles.length !== 2) {
         console.error('[call-voice] Failed to fetch profiles:', profilesError);
         // Redirect to voicemail instead of using Polly
-        return new Response(getVoicemailRedirectTwiml(), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-        });
+        return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
       // Find rider and driver profiles
@@ -176,10 +185,7 @@ Deno.serve(async (req) => {
       if (!riderPhoneNumber || !driverPhoneNumber) {
         console.error('[call-voice] Missing phone numbers after fallback attempts');
         // Redirect to voicemail instead of using Polly
-        return new Response(getVoicemailRedirectTwiml(), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-        });
+        return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
       // Determine which party to dial based on role parameter
@@ -203,10 +209,7 @@ Deno.serve(async (req) => {
       if (!twilioPhoneNumber) {
         console.error('[call-voice] Missing TWILIO_PHONE_NUMBER environment variable');
         // Redirect to voicemail instead of using Polly
-        return new Response(getVoicemailRedirectTwiml(), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-        });
+        return respondTwiml('call-voice', getVoicemailRedirectTwiml());
       }
 
       // Build TwiML to dial the other party
@@ -219,10 +222,7 @@ Deno.serve(async (req) => {
 
       console.log(`[call-voice] MASKED CALLING - Bridging call ${callId}`);
 
-      return new Response(twiml, {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-      });
+      return respondTwiml('call-voice', twiml);
     }
 
     // =========================================================================
@@ -266,18 +266,12 @@ Deno.serve(async (req) => {
     }
 
     // Redirect to the voicemail handler which uses pre-recorded audio
-    return new Response(getVoicemailRedirectTwiml(), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-    });
+    return respondTwiml('call-voice', getVoicemailRedirectTwiml());
 
   } catch (error) {
     console.error('[call-voice] Critical error:', error);
     
     // On error, just hangup - NO TTS fallback ever
-    return new Response(getHangupTwiml(), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-    });
+    return respondTwiml('call-voice', getHangupTwiml());
   }
 });
