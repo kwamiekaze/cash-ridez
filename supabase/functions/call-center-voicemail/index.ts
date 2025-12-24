@@ -18,10 +18,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * - Stable forever
  */
 
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+// Hardcoded full public MP3 URL (no runtime concatenation)
+const PUBLIC_VOICEMAIL_URL = 'https://wnajjqsqmrpwyffbpgsj.supabase.co/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3';
 
-// Direct public storage URL - Twilio can fetch this without auth
-const PUBLIC_VOICEMAIL_URL = `${SUPABASE_URL}/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3`;
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -95,18 +94,14 @@ serve(async (req) => {
 
     console.log('[call-center-voicemail] TwiML will use <Play> URL:', PUBLIC_VOICEMAIL_URL);
 
-    // Build TwiML response - ONLY use <Play> with direct PUBLIC storage URL
-    // NO <Say> elements anywhere in this response
-    // 2s pause to wait for voicemail beep, then play audio, then 3s pause, then hangup
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Pause length="2"/>
-  <Play>${escapeXml(PUBLIC_VOICEMAIL_URL)}</Play>
+    // Build TwiML response (MUST be ONLY Play + Pause + Hangup)
+    const twiml = `<Response>
+  <Play>https://wnajjqsqmrpwyffbpgsj.supabase.co/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
 
-    console.log('[call-center-voicemail] Returning TwiML with public storage URL');
+    console.log('[call-center-voicemail] TwiML response:\n' + twiml);
 
     return new Response(twiml, {
       status: 200,
@@ -115,23 +110,20 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[call-center-voicemail] Handler error:', error);
-    
-    // On error, just hangup - NO TTS fallback ever
-    return new Response(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
+
+    // Even on error: return the exact voicemail TwiML (no <Say> fallback)
+    const twiml = `<Response>
+  <Play>https://wnajjqsqmrpwyffbpgsj.supabase.co/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3</Play>
+  <Pause length="3"/>
   <Hangup/>
-</Response>`, {
+</Response>`;
+
+    console.log('[call-center-voicemail] TwiML response (error path):\n' + twiml);
+
+    return new Response(twiml, {
       status: 200,
       headers: { 'Content-Type': 'text/xml' },
     });
   }
 });
 
-function escapeXml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
