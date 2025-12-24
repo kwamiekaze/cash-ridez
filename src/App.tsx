@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -55,10 +55,10 @@ const LoadingFallback = () => (
 // Floating update pin removed - now in AppHeader for better UX
 
 // Initialize notification sound system globally
-const NotificationSoundInitializer = () => {
+const NotificationSoundInitializer = React.memo(() => {
   useNotificationSound();
-  return null;
-};
+  return <React.Fragment />;
+});
 
 // Defer non-critical UI until idle
 const DeferMount = ({ children }: { children: React.ReactNode }) => {
