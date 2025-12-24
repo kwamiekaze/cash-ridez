@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, Play, Pause, X, Users, Phone, CheckCircle2, XCircle, Clock, Voicemail, Loader2 } from "lucide-react";
+import { Upload, Play, Pause, X, Users, Phone, CheckCircle2, XCircle, Clock, Voicemail, Loader2, PhoneOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,14 @@ interface Campaign {
   created_at: string;
 }
 
+interface ActiveRecipient {
+  id: string;
+  first_name: string | null;
+  phone_e164: string;
+  status: string;
+  twilio_call_sid: string | null;
+}
+
 const AutoCallTab = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -39,8 +47,10 @@ const AutoCallTab = () => {
   const [campaignName, setCampaignName] = useState("");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [activeCampaign, setActiveCampaign] = useState<Campaign | null>(null);
+  const [activeRecipient, setActiveRecipient] = useState<ActiveRecipient | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [isEndingCall, setIsEndingCall] = useState(false);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
 
   useEffect(() => {
@@ -50,7 +60,7 @@ const AutoCallTab = () => {
   useEffect(() => {
     if (!activeCampaign) return;
 
-    // Subscribe to campaign updates
+    // Subscribe to campaign and recipient updates
     const channel = supabase
       .channel('campaign-updates')
       .on(
@@ -63,9 +73,25 @@ const AutoCallTab = () => {
         },
         () => {
           loadCampaignDetails(activeCampaign.id);
+          loadActiveRecipient(activeCampaign.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_call_campaigns',
+          filter: `id=eq.${activeCampaign.id}`,
+        },
+        () => {
+          loadCampaignDetails(activeCampaign.id);
         }
       )
       .subscribe();
+
+    // Initial load of active recipient
+    loadActiveRecipient(activeCampaign.id);
 
     return () => {
       supabase.removeChannel(channel);
@@ -94,6 +120,19 @@ const AutoCallTab = () => {
     if (data) {
       setActiveCampaign(data);
     }
+  };
+
+  const loadActiveRecipient = async (campaignId: string) => {
+    // Find the recipient currently being called
+    const { data } = await supabase
+      .from('admin_call_campaign_recipients')
+      .select('id, first_name, phone_e164, status, twilio_call_sid')
+      .eq('campaign_id', campaignId)
+      .in('status', ['calling', 'ringing', 'in-progress'])
+      .limit(1)
+      .single();
+
+    setActiveRecipient(data || null);
   };
 
   const normalizePhone = (phone: string): string | null => {
@@ -126,14 +165,6 @@ const AutoCallTab = () => {
     const trimmed = line.trim();
     if (!trimmed) return null;
 
-    // Try to extract phone and name
-    // Formats: 
-    // +14704447481 John
-    // +1 470 444 7481 John Doe
-    // (470) 444-7481, John
-    // John, +14704447481
-    // just phone number
-
     // Split by common delimiters
     const parts = trimmed.split(/[,\t]+/).map(p => p.trim()).filter(Boolean);
     
@@ -141,7 +172,6 @@ const AutoCallTab = () => {
     let name = '';
 
     for (const part of parts) {
-      // Check if this part looks like a phone number
       const digits = part.replace(/[^\d+]/g, '');
       if (digits.length >= 10) {
         phone = part;
@@ -157,7 +187,6 @@ const AutoCallTab = () => {
         const digits = part.replace(/[^\d+]/g, '');
         if (digits.length >= 10) {
           phone = part;
-          // Everything else is the name
           name = spaceParts.filter(p => p !== part).join(' ');
           break;
         }
@@ -177,7 +206,6 @@ const AutoCallTab = () => {
     const normalizedPhone = normalizePhone(phone);
     if (!normalizedPhone) return null;
 
-    // Extract first name only
     const firstName = name.split(/\s+/)[0] || '';
 
     return {
@@ -209,7 +237,6 @@ const AutoCallTab = () => {
 
         const recipient = parseLine(line);
         if (recipient) {
-          // Deduplicate
           if (!seenPhones.has(recipient.phoneE164)) {
             seenPhones.add(recipient.phoneE164);
             parsed.push(recipient);
@@ -252,7 +279,6 @@ const AutoCallTab = () => {
     setIsCreating(true);
 
     try {
-      // Create campaign
       const { data: campaign, error: campaignError } = await supabase
         .from('admin_call_campaigns')
         .insert({
@@ -267,7 +293,6 @@ const AutoCallTab = () => {
 
       if (campaignError) throw campaignError;
 
-      // Insert recipients
       const recipientRows = recipients.map(r => ({
         campaign_id: campaign.id,
         first_name: r.firstName || null,
@@ -306,7 +331,6 @@ const AutoCallTab = () => {
 
   const updateCampaignStatus = async (campaignId: string, status: string) => {
     try {
-      // Map status to action for the edge function
       const actionMap: Record<string, string> = {
         'running': activeCampaign?.status === 'paused' ? 'resume' : 'start',
         'paused': 'pause',
@@ -315,7 +339,6 @@ const AutoCallTab = () => {
 
       const action = actionMap[status] || 'start';
 
-      // Call the edge function to manage campaign
       const { data, error } = await supabase.functions.invoke('call-center-outbound-start', {
         body: { campaignId, action },
       });
@@ -338,6 +361,48 @@ const AutoCallTab = () => {
         description: err.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleEndActiveCall = async () => {
+    if (!activeRecipient?.twilio_call_sid) {
+      toast({
+        title: "No active call",
+        description: "There is no call currently in progress.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsEndingCall(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('call-center-end', {
+        body: {
+          callSid: activeRecipient.twilio_call_sid,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Call ended",
+          description: "The active call has been terminated.",
+        });
+        setActiveRecipient(null);
+      } else {
+        throw new Error(data.error || 'Failed to end call');
+      }
+    } catch (err: any) {
+      console.error('End call error:', err);
+      toast({
+        title: "Failed to end call",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsEndingCall(false);
     }
   };
 
@@ -509,7 +574,36 @@ const AutoCallTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
+            {/* Currently Calling Indicator */}
+            {activeRecipient && activeCampaign.status === 'running' && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-yellow-500 animate-pulse" />
+                    <span className="text-sm font-medium">
+                      Calling: {activeRecipient.first_name || 'Unknown'} ({activeRecipient.phone_e164})
+                    </span>
+                    <Badge variant="outline" className="text-xs">{activeRecipient.status}</Badge>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleEndActiveCall}
+                    disabled={isEndingCall}
+                    className="gap-1"
+                  >
+                    {isEndingCall ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <PhoneOff className="w-3 h-3" />
+                    )}
+                    End Call
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
               {activeCampaign.status === 'draft' && (
                 <Button onClick={() => updateCampaignStatus(activeCampaign.id, 'running')} className="gap-2">
                   <Play className="w-4 h-4" />
@@ -531,7 +625,7 @@ const AutoCallTab = () => {
               {(activeCampaign.status === 'running' || activeCampaign.status === 'paused') && (
                 <Button onClick={() => updateCampaignStatus(activeCampaign.id, 'cancelled')} variant="destructive" className="gap-2">
                   <X className="w-4 h-4" />
-                  Cancel
+                  Cancel Campaign
                 </Button>
               )}
             </div>
@@ -574,8 +668,7 @@ const AutoCallTab = () => {
         <CardContent className="pt-4">
           <p className="text-sm text-muted-foreground">
             <strong>⚠️ Important:</strong> Auto Call campaigns are processed one call at a time. 
-            Each call waits for the previous to complete. All calls are recorded for compliance and training.
-            The AI agent guides recipients to text "CASH" for SMS compliance.
+            Each call delivers a short message and ends automatically. All calls are recorded for compliance.
           </p>
         </CardContent>
       </Card>

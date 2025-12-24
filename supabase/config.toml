@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.call-center-outbound-start]
 verify_jwt = true
+
+[functions.call-center-end]
+verify_jwt = true

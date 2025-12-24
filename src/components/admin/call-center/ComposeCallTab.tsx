@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { Phone, Loader2, CheckCircle2, XCircle, AlertCircle, PhoneOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -12,8 +12,10 @@ const ComposeCallTab = () => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [firstName, setFirstName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'answered' | 'voicemail' | 'failed'>('idle');
   const [lastCallSid, setLastCallSid] = useState<string | null>(null);
+  const [lastCallLogId, setLastCallLogId] = useState<string | null>(null);
 
   const normalizePhone = (phone: string): string => {
     // Remove all non-digit characters except +
@@ -70,6 +72,7 @@ const ComposeCallTab = () => {
 
       if (data.success) {
         setLastCallSid(data.callSid);
+        setLastCallLogId(data.callLogId);
         toast({
           title: "Call initiated",
           description: `Calling ${normalizedPhone}...`,
@@ -94,6 +97,52 @@ const ComposeCallTab = () => {
     }
   };
 
+  const handleEndCall = async () => {
+    if (!lastCallSid && !lastCallLogId) {
+      toast({
+        title: "No active call",
+        description: "There is no call to end.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsEnding(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('call-center-end', {
+        body: {
+          callSid: lastCallSid,
+          callLogId: lastCallLogId,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setCallStatus('idle');
+        setLastCallSid(null);
+        setLastCallLogId(null);
+        toast({
+          title: "Call ended",
+          description: "The call has been terminated.",
+        });
+      } else {
+        throw new Error(data.error || 'Failed to end call');
+      }
+
+    } catch (error: any) {
+      console.error('End call error:', error);
+      toast({
+        title: "Failed to end call",
+        description: error.message || "Could not end the call",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnding(false);
+    }
+  };
+
   const pollCallStatus = async (callLogId: string) => {
     let attempts = 0;
     const maxAttempts = 60; // 2 minutes max
@@ -114,12 +163,16 @@ const ComposeCallTab = () => {
           setCallStatus('voicemail');
         } else if (data.status === 'completed') {
           setCallStatus('idle');
+          setLastCallSid(null);
+          setLastCallLogId(null);
           toast({
             title: "Call completed",
             description: "The call has ended.",
           });
         } else if (data.status === 'failed' || data.status === 'busy' || data.status === 'no-answer') {
           setCallStatus('failed');
+          setLastCallSid(null);
+          setLastCallLogId(null);
           toast({
             title: "Call ended",
             description: `Status: ${data.status}`,
@@ -167,6 +220,8 @@ const ComposeCallTab = () => {
     }
   };
 
+  const isCallActive = callStatus === 'calling' || callStatus === 'answered';
+
   return (
     <div className="space-y-6">
       <Card>
@@ -176,8 +231,7 @@ const ComposeCallTab = () => {
             Make a Call
           </CardTitle>
           <CardDescription>
-            Place an outbound call using the AI Voice Agent. The agent will wait for the human to speak first,
-            then introduce CashRidez and guide them to text "CASH" for next steps.
+            Place an outbound call. The call will deliver a short message and end automatically.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -190,7 +244,7 @@ const ComposeCallTab = () => {
                 placeholder="+1 (470) 444-7481"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                disabled={isLoading || callStatus === 'calling'}
+                disabled={isLoading || isCallActive}
               />
               <p className="text-xs text-muted-foreground">
                 Enter in any format - will be normalized automatically
@@ -203,7 +257,7 @@ const ComposeCallTab = () => {
                 placeholder="John"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                disabled={isLoading || callStatus === 'calling'}
+                disabled={isLoading || isCallActive}
               />
               <p className="text-xs text-muted-foreground">
                 Used to personalize the greeting
@@ -211,10 +265,10 @@ const ComposeCallTab = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Button
               onClick={handleCall}
-              disabled={isLoading || callStatus === 'calling' || callStatus === 'answered'}
+              disabled={isLoading || isCallActive}
               className="gap-2"
             >
               {isLoading ? (
@@ -224,6 +278,22 @@ const ComposeCallTab = () => {
               )}
               {isLoading ? 'Initiating...' : 'Call Now'}
             </Button>
+
+            {isCallActive && (
+              <Button
+                onClick={handleEndCall}
+                disabled={isEnding}
+                variant="destructive"
+                className="gap-2"
+              >
+                {isEnding ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PhoneOff className="w-4 h-4" />
+                )}
+                End Call
+              </Button>
+            )}
 
             {callStatus !== 'idle' && (
               <div className="flex items-center gap-2 text-sm">
@@ -235,26 +305,19 @@ const ComposeCallTab = () => {
         </CardContent>
       </Card>
 
-      {/* AI Agent Info */}
+      {/* Script Info */}
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
-          <CardTitle className="text-base">🤖 AI Agent Behavior</CardTitle>
+          <CardTitle className="text-base">📞 Call Script</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p><strong>When answered by human:</strong></p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Waits for human to greet first</li>
-            <li>Introduces as "Cash Ridez Connect LLC"</li>
-            <li>Explains we're following up from Indeed</li>
-            <li>Answers questions about CashRidez platform</li>
-            <li>Guides to text "CASH" for next steps</li>
-          </ul>
-          <p><strong>When voicemail detected:</strong></p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Leaves personalized voicemail</li>
-            <li>Mentions Indeed application</li>
-            <li>Requests they text "CASH" to continue</li>
-          </ul>
+          <p><strong>What the caller will hear:</strong></p>
+          <blockquote className="border-l-2 border-primary pl-4 italic">
+            "Hey [Name], this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps. Goodbye."
+          </blockquote>
+          <p className="text-xs">
+            The call uses a male voice and ends automatically after the message.
+          </p>
         </CardContent>
       </Card>
     </div>
