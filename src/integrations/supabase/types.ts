@@ -178,6 +178,7 @@ export type Database = {
           campaign_id: string | null
           campaign_recipient_id: string | null
           created_at: string
+          direction: string | null
           error_code: string | null
           error_message: string | null
           first_name: string | null
@@ -201,6 +202,7 @@ export type Database = {
           campaign_id?: string | null
           campaign_recipient_id?: string | null
           created_at?: string
+          direction?: string | null
           error_code?: string | null
           error_message?: string | null
           first_name?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           campaign_id?: string | null
           campaign_recipient_id?: string | null
           created_at?: string
+          direction?: string | null
           error_code?: string | null
           error_message?: string | null
           first_name?: string | null
@@ -258,6 +261,10 @@ export type Database = {
           admin_id: string
           campaign_complete_enabled: boolean
           created_at: string
+          notify_call_campaign_complete: boolean | null
+          notify_call_inbound: boolean | null
+          notify_call_missed: boolean | null
+          notify_call_voicemail: boolean | null
           notify_channel: string
           notify_on_new_visit: boolean
           sms_inbound_enabled: boolean
@@ -267,6 +274,10 @@ export type Database = {
           admin_id: string
           campaign_complete_enabled?: boolean
           created_at?: string
+          notify_call_campaign_complete?: boolean | null
+          notify_call_inbound?: boolean | null
+          notify_call_missed?: boolean | null
+          notify_call_voicemail?: boolean | null
           notify_channel?: string
           notify_on_new_visit?: boolean
           sms_inbound_enabled?: boolean
@@ -276,6 +287,10 @@ export type Database = {
           admin_id?: string
           campaign_complete_enabled?: boolean
           created_at?: string
+          notify_call_campaign_complete?: boolean | null
+          notify_call_inbound?: boolean | null
+          notify_call_missed?: boolean | null
+          notify_call_voicemail?: boolean | null
           notify_channel?: string
           notify_on_new_visit?: boolean
           sms_inbound_enabled?: boolean
