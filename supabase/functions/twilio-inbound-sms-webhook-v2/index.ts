@@ -6,6 +6,11 @@
 // and inserts inbound SMS into the conversation thread.
 // Also creates admin notifications for admins with sms_inbound_enabled.
 //
+// CASH KEYWORD AUTO-REPLY:
+// - Uses Twilio REST API (not TwiML) for reliable delivery with real Message SID
+// - Enables status callback tracking for delivery confirmation
+// - Rate limit: 1 CASH reply per phone number per 24 hours
+//
 // ENDPOINT:
 //   POST /functions/v1/twilio-inbound-sms-webhook-v2
 //   GET  /functions/v1/twilio-inbound-sms-webhook-v2?ping=1 → returns "pong"
@@ -25,15 +30,11 @@ const corsHeaders = {
 // TwiML empty response - always return 200 to prevent Twilio retries
 const twimlEmptyResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
 
-// TwiML response for CASH keyword auto-reply (fits in 1 SMS segment - ~95 chars)
+// CASH keyword auto-reply message (~95 chars - fits in 1 SMS segment)
 const CASH_AUTO_REPLY = "Welcome to CashRidez! Verify your ID at cashridez.com, then update your map pin to connect!💰🚗🎉";
 
 // Rate limit: 1 CASH reply per phone number per 24 hours
 const CASH_RATE_LIMIT_HOURS = 24;
-
-function buildTwimlReply(message: string): string {
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`;
-}
 
 // Helper to normalize phone number to E.164
 function normalizeE164(phone: string): string {
@@ -59,6 +60,66 @@ function normalizeE164(phone: string): string {
   
   // Just add + for other formats
   return '+' + cleaned;
+}
+
+// Send SMS via Twilio REST API (reliable delivery with SID tracking)
+async function sendTwilioSms(
+  to: string,
+  body: string,
+  from: string,
+  statusCallbackUrl: string
+): Promise<{ success: boolean; sid?: string; status?: string; error?: string; errorCode?: string }> {
+  const twilioAccountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+  const twilioAuthToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+  
+  if (!twilioAccountSid || !twilioAuthToken) {
+    console.error('[v2] Missing Twilio credentials for REST API');
+    return { success: false, error: 'Missing Twilio credentials' };
+  }
+  
+  const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
+  const authString = btoa(`${twilioAccountSid}:${twilioAuthToken}`);
+  
+  const formParams = new URLSearchParams();
+  formParams.append('To', to);
+  formParams.append('From', from);
+  formParams.append('Body', body);
+  formParams.append('StatusCallback', statusCallbackUrl);
+  
+  console.log('[v2] Sending SMS via REST API:', { to: to.slice(0, 4) + '***', from, bodyLength: body.length });
+  
+  try {
+    const response = await fetch(twilioUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${authString}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formParams.toString(),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      console.error('[v2] Twilio REST API error:', result);
+      return {
+        success: false,
+        error: result.message || 'Twilio API error',
+        errorCode: String(result.code || result.error_code || ''),
+        status: 'failed'
+      };
+    }
+    
+    console.log('[v2] Twilio REST API success:', { sid: result.sid, status: result.status });
+    return {
+      success: true,
+      sid: result.sid,
+      status: result.status || 'queued'
+    };
+  } catch (err: any) {
+    console.error('[v2] Twilio REST API fetch error:', err);
+    return { success: false, error: err.message || 'Network error' };
+  }
 }
 
 // Create admin notifications for inbound SMS
@@ -126,6 +187,39 @@ async function notifyAdminsOfInboundSms(
   }
 }
 
+// Log CASH auto-reply attempt for diagnostics
+async function logCashAutoReplyAttempt(
+  supabase: any,
+  data: {
+    senderPhone: string;
+    twilioNumber: string;
+    conversationId: string | null;
+    matched: boolean;
+    rateLimited: boolean;
+    sendAttempted: boolean;
+    sendSuccess: boolean;
+    twilioSid: string | null;
+    twilioStatus: string | null;
+    errorMessage: string | null;
+    errorCode: string | null;
+  }
+): Promise<void> {
+  try {
+    await supabase.from('admin_sms_webhook_events').update({
+      insert_error: data.rateLimited 
+        ? 'CASH rate limited - already replied in last 24h' 
+        : data.errorMessage 
+          ? `CASH send error: ${data.errorMessage}` 
+          : data.sendSuccess 
+            ? `CASH auto-reply sent: ${data.twilioSid}` 
+            : null
+    }).eq('from_e164', data.senderPhone).order('received_at', { ascending: false }).limit(1);
+  } catch (err) {
+    // Non-critical, just log
+    console.error('[v2] Failed to update webhook event with CASH status:', err);
+  }
+}
+
 Deno.serve(async (req) => {
   const startTime = Date.now();
   
@@ -182,7 +276,6 @@ Deno.serve(async (req) => {
     console.log('[v2] Content-Type:', contentType);
 
     if (contentType.includes('application/x-www-form-urlencoded')) {
-      // Clone request to read body twice
       rawBody = await req.text();
       console.log('[v2] Raw body:', rawBody);
       
@@ -383,21 +476,25 @@ Deno.serve(async (req) => {
   }
 
   const elapsed = Date.now() - startTime;
-  console.log(`[v2] Completed in ${elapsed}ms, insertOk=${insertOk}, error=${insertError}`);
+  console.log(`[v2] Completed inbound processing in ${elapsed}ms, insertOk=${insertOk}, error=${insertError}`);
 
-  // Check for CASH keyword - case insensitive, trimmed
+  // =========================================================================
+  // CASH KEYWORD AUTO-REPLY - Using Twilio REST API for reliable delivery
+  // =========================================================================
   const normalizedBody = body.trim().toUpperCase();
+  
   if (normalizedBody === 'CASH' && fromE164 && toE164) {
     console.log(`[v2] CASH keyword detected from ${fromE164}`);
     
-    // Check rate limit: has this number received a CASH reply in the last 24 hours?
     try {
+      // Rate limit check: has this number received a CASH reply in the last 24 hours?
       const cutoffTime = new Date(Date.now() - CASH_RATE_LIMIT_HOURS * 60 * 60 * 1000).toISOString();
       
       // Look for outbound messages to this number containing the CASH auto-reply in the last 24h
+      // Check for messages with real Twilio SIDs (not fake auto-cash-* ones) OR recent ones
       const { data: recentReplies, error: rateLimitError } = await supabase
         .from('admin_sms_messages')
-        .select('id, created_at')
+        .select('id, created_at, twilio_message_sid, status')
         .eq('direction', 'outbound')
         .eq('to_e164', fromE164)
         .like('body', '%Welcome to CashRidez%')
@@ -406,9 +503,25 @@ Deno.serve(async (req) => {
       
       if (rateLimitError) {
         console.error('[v2] Rate limit check error:', rateLimitError);
-        // On error, still send reply to avoid blocking legitimate users
+        // On error, don't block - try to send
       } else if (recentReplies && recentReplies.length > 0) {
-        console.log(`[v2] CASH rate limit hit for ${fromE164} - already replied at ${recentReplies[0].created_at}`);
+        console.log(`[v2] CASH rate limit hit for ${fromE164} - already replied at ${recentReplies[0].created_at}, SID: ${recentReplies[0].twilio_message_sid}`);
+        
+        // Log the rate limit decision
+        await logCashAutoReplyAttempt(supabase, {
+          senderPhone: fromE164,
+          twilioNumber: toE164,
+          conversationId,
+          matched: true,
+          rateLimited: true,
+          sendAttempted: false,
+          sendSuccess: false,
+          twilioSid: null,
+          twilioStatus: null,
+          errorMessage: 'Rate limited - already sent in last 24h',
+          errorCode: null
+        });
+        
         // Return empty TwiML - no duplicate reply
         return new Response(twimlEmptyResponse, { 
           status: 200,
@@ -416,46 +529,75 @@ Deno.serve(async (req) => {
         });
       }
       
-      // No recent reply found - send the auto-reply
-      console.log(`[v2] Sending CASH auto-reply to ${fromE164}`);
+      // =====================================================================
+      // SEND CASH AUTO-REPLY VIA TWILIO REST API
+      // This provides: real SID, status callback tracking, delivery confirmation
+      // =====================================================================
+      console.log(`[v2] Sending CASH auto-reply to ${fromE164} via REST API`);
       
-      // Log the outbound auto-reply to admin_sms_messages for tracking
+      // Get our Twilio phone number (the "To" number in the inbound message)
+      const twilioFromNumber = Deno.env.get('TWILIO_PHONE_NUMBER') || toE164;
+      const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-sms-status-webhook`;
+      
+      const sendResult = await sendTwilioSms(
+        fromE164,           // To: the person who texted CASH
+        CASH_AUTO_REPLY,    // Message body
+        twilioFromNumber,   // From: our Twilio number
+        statusCallbackUrl   // Status callback for delivery tracking
+      );
+      
+      // Log the outbound auto-reply to admin_sms_messages
       if (conversationId) {
         const { error: logError } = await supabase
           .from('admin_sms_messages')
           .insert({
             conversation_id: conversationId,
             direction: 'outbound',
-            from_e164: toE164,
+            from_e164: twilioFromNumber,
             to_e164: fromE164,
             body: CASH_AUTO_REPLY,
-            twilio_message_sid: `auto-cash-${Date.now()}`,
-            status: 'sent',
+            twilio_message_sid: sendResult.sid || null,
+            status: sendResult.success ? (sendResult.status || 'queued') : 'failed',
+            error_code: sendResult.errorCode || null,
+            error_message: sendResult.error || null,
             created_at: new Date().toISOString()
           });
         
         if (logError) {
-          console.error('[v2] Failed to log CASH auto-reply:', logError);
+          console.error('[v2] Failed to log CASH auto-reply message:', logError);
         } else {
-          console.log('[v2] CASH auto-reply logged to messages');
+          console.log('[v2] CASH auto-reply logged to messages with SID:', sendResult.sid);
         }
       }
       
-      return new Response(buildTwimlReply(CASH_AUTO_REPLY), { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+      // Log diagnostic info
+      await logCashAutoReplyAttempt(supabase, {
+        senderPhone: fromE164,
+        twilioNumber: twilioFromNumber,
+        conversationId,
+        matched: true,
+        rateLimited: false,
+        sendAttempted: true,
+        sendSuccess: sendResult.success,
+        twilioSid: sendResult.sid || null,
+        twilioStatus: sendResult.status || null,
+        errorMessage: sendResult.error || null,
+        errorCode: sendResult.errorCode || null
       });
+      
+      if (sendResult.success) {
+        console.log(`[v2] CASH auto-reply sent successfully! SID: ${sendResult.sid}, Status: ${sendResult.status}`);
+      } else {
+        console.error(`[v2] CASH auto-reply FAILED: ${sendResult.error}`);
+      }
+      
     } catch (err: any) {
       console.error('[v2] CASH handling error:', err);
-      // On error, send reply anyway
-      return new Response(buildTwimlReply(CASH_AUTO_REPLY), { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
-      });
     }
   }
 
-  // Always return 200 to prevent Twilio retries
+  // Always return empty TwiML 200 to prevent Twilio retries
+  // (We're using REST API for replies, not TwiML)
   return new Response(twimlEmptyResponse, { 
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/xml' }

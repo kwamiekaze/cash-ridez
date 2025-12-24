@@ -143,6 +143,11 @@ const AdminSmsCenter = () => {
   const [messageCount, setMessageCount] = useState(0);
   const [simulatingInbound, setSimulatingInbound] = useState(false);
   const [showAdvancedDebug, setShowAdvancedDebug] = useState(false);
+  
+  // CASH auto-reply diagnostics
+  const [cashTestPhone, setCashTestPhone] = useState("+1");
+  const [simulatingCash, setSimulatingCash] = useState(false);
+  const [cashAutoReplies, setCashAutoReplies] = useState<any[]>([]);
 
   // Load users with phone numbers
   useEffect(() => {
@@ -358,6 +363,17 @@ const AdminSmsCenter = () => {
     
     setWebhookEvents(events || []);
     
+    // Get last 10 CASH auto-replies (outbound messages containing the auto-reply text)
+    const { data: cashReplies } = await supabase
+      .from("admin_sms_messages")
+      .select("id, created_at, direction, from_e164, to_e164, body, status, twilio_message_sid, error_code, error_message")
+      .eq("direction", "outbound")
+      .like("body", "%Welcome to CashRidez%")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    
+    setCashAutoReplies(cashReplies || []);
+    
     // Get counts
     const { count: convCount } = await supabase
       .from("admin_sms_conversations")
@@ -371,6 +387,61 @@ const AdminSmsCenter = () => {
     setMessageCount(msgCount || 0);
     
     setDiagnosticsLoading(false);
+  };
+
+  // Simulate CASH keyword inbound SMS
+  const handleSimulateCash = async () => {
+    if (!cashTestPhone || cashTestPhone.length < 10) {
+      toast({
+        title: 'Invalid phone',
+        description: 'Enter a valid phone number to simulate from',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setSimulatingCash(true);
+    try {
+      const testSid = `SM_CASH_TEST_${Date.now()}`;
+      
+      // Send to v2 webhook with CASH keyword
+      const response = await fetch(INBOUND_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          From: cashTestPhone,
+          To: '+16789288816', // Our Twilio number
+          Body: 'CASH',
+          MessageSid: testSid,
+          SmsSid: testSid,
+          MessagingServiceSid: 'MGtest',
+          NumMedia: '0'
+        })
+      });
+      
+      if (response.ok) {
+        toast({ 
+          title: 'CASH simulation sent', 
+          description: `Simulated "CASH" keyword from ${cashTestPhone}. Check CASH Auto-Replies table below.` 
+        });
+        // Refresh diagnostics after a short delay
+        setTimeout(() => fetchDiagnostics(), 2000);
+      } else {
+        toast({ 
+          title: 'Simulation failed', 
+          description: `HTTP ${response.status}`, 
+          variant: 'destructive' 
+        });
+      }
+    } catch (err: any) {
+      toast({ 
+        title: 'Simulation error', 
+        description: err.message, 
+        variant: 'destructive' 
+      });
+    } finally {
+      setSimulatingCash(false);
+    }
   };
 
   // Simulate an inbound SMS (server-side test)
@@ -1264,6 +1335,79 @@ const AdminSmsCenter = () => {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* CASH Auto-Reply Diagnostic Panel */}
+                <Card className="bg-card/80 backdrop-blur-sm border-amber-500/30">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2 text-amber-400">
+                      💰 CASH Auto-Reply Diagnostics
+                    </CardTitle>
+                    <CardDescription>
+                      Test and monitor CASH keyword auto-replies (uses REST API with real SID tracking)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="+14045551234"
+                        value={cashTestPhone}
+                        onChange={(e) => setCashTestPhone(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button 
+                        onClick={handleSimulateCash}
+                        disabled={simulatingCash}
+                        className="gap-2"
+                      >
+                        {simulatingCash ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        Test CASH
+                      </Button>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                      <p><strong>How it works:</strong> Simulates an inbound "CASH" text from the phone number above.</p>
+                      <p className="mt-1">The webhook will use Twilio REST API to send the auto-reply with a real Message SID for delivery tracking.</p>
+                    </div>
+                    
+                    {/* Last 5 CASH auto-replies */}
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium mb-2">Recent CASH Auto-Replies ({cashAutoReplies.length})</h4>
+                      {cashAutoReplies.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">No CASH auto-replies found yet.</p>
+                      ) : (
+                        <ScrollArea className="h-[150px]">
+                          <div className="space-y-2">
+                            {cashAutoReplies.slice(0, 5).map((msg: any) => (
+                              <div key={msg.id} className="p-2 rounded border bg-card/50 text-xs">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <span className="text-muted-foreground">To: </span>
+                                    <span className="font-mono">{msg.to_e164}</span>
+                                  </div>
+                                  <Badge 
+                                    variant={msg.status === 'delivered' ? 'default' : msg.status === 'failed' ? 'destructive' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    {msg.status}
+                                  </Badge>
+                                </div>
+                                <div className="mt-1 flex justify-between text-muted-foreground">
+                                  <span className="font-mono truncate max-w-[200px]">
+                                    SID: {msg.twilio_message_sid?.startsWith('SM') ? msg.twilio_message_sid.slice(0, 16) + '...' : msg.twilio_message_sid || 'N/A'}
+                                  </span>
+                                  <span>{format(new Date(msg.created_at), 'MMM d, h:mm a')}</span>
+                                </div>
+                                {msg.error_message && (
+                                  <p className="text-red-400 mt-1">Error: {msg.error_message}</p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Webhook Events (last 10) - THIS IS THE KEY DEBUG TABLE */}
                 <Card className="bg-card/80 backdrop-blur-sm border-border/50">
