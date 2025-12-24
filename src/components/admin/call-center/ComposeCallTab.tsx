@@ -152,6 +152,15 @@ const ComposeCallTab = () => {
   };
 
   const handleCall = async () => {
+    if (!callMode) {
+      toast({
+        title: "Call mode required",
+        description: "Please select 'Speak Live' or 'Play Recording' before calling.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!phoneNumber.trim()) {
       toast({
         title: "Phone number required",
@@ -181,6 +190,7 @@ const ComposeCallTab = () => {
         body: {
           phoneE164: normalizedPhone,
           firstName: firstName.trim() || undefined,
+          mode: callMode,
         },
       });
 
@@ -400,6 +410,41 @@ const ComposeCallTab = () => {
                 Used to personalize the greeting ("Hey John" vs "Hey there")
               </p>
             </div>
+          </div>
+
+          {/* Call Mode Selector */}
+          <div className="space-y-3 pt-2">
+            <Label className="text-base font-medium">Call Mode *</Label>
+            <RadioGroup
+              value={callMode || ""}
+              onValueChange={(v) => setCallMode(v as CallMode)}
+              className="flex flex-col sm:flex-row gap-4"
+              disabled={isLoading || isCallActive}
+            >
+              <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="live" id="mode-live" />
+                <Label htmlFor="mode-live" className="cursor-pointer flex items-center gap-2">
+                  <Mic className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="font-medium">Speak Live</div>
+                    <div className="text-xs text-muted-foreground">Connect directly to speak</div>
+                  </div>
+                </Label>
+              </div>
+              <div className="flex items-center space-x-3 border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors">
+                <RadioGroupItem value="recording" id="mode-recording" />
+                <Label htmlFor="mode-recording" className="cursor-pointer flex items-center gap-2">
+                  <PlayCircle className="w-4 h-4 text-primary" />
+                  <div>
+                    <div className="font-medium">Play Recording & Hang Up</div>
+                    <div className="text-xs text-muted-foreground">Auto-plays MP3, ends after 3s</div>
+                  </div>
+                </Label>
+              </div>
+            </RadioGroup>
+            {!callMode && (
+              <p className="text-xs text-destructive">You must select a call mode before calling</p>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
