@@ -2,18 +2,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * AI/Voice Handler - Called AFTER initial TwiML response.
+ * AI/Voice Handler - Called AFTER initial TwiML response for ANSWERED outbound calls.
  * 
- * Uses the EXACT ElevenLabs agent voice configured via ELEVENLABS_AGENT_ID.
- * NO other voices should ever play. If ElevenLabs fails, log error but still
- * use Polly.Matthew as absolute last resort (never female voice).
+ * CRITICAL: Uses PRE-GENERATED audio stored in call_center_audio bucket.
+ * This ensures the EXACT SAME male ElevenLabs voice plays every time with zero latency.
  * 
  * OUTBOUND SCRIPT (exact):
- * "Hey {first_name}, this is Cash Ridez Connect LLC. We responded on Indeed as well. 
+ * "Hey there, this is Cash Ridez Connect LLC. We responded on Indeed as well. 
  *  Please text us back with the word CASH for the next steps. We look forward to your text, thank you."
  * 
  * Then 3-second pause, then hangup. NO "goodbye". NO Q&A.
  */
+
+const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+
+// Pre-generated audio URL (seeded via call-center-seed-audio function)
+const ANSWERED_AUDIO_PATH = 'outbound_answered.mp3';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -45,25 +49,22 @@ serve(async (req) => {
     firstName = url.searchParams.get('firstName') || '';
     isInbound = url.searchParams.get('inbound') === 'true';
 
-    console.log(`AI handler: CallSid=${callSid}, FirstName=${firstName}, Inbound=${isInbound}`);
+    console.log(`[call-center-ai] CallSid=${callSid}, FirstName=${firstName}, Inbound=${isInbound}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Build the EXACT script - starts with "Hey", ends with "thank you", NO "goodbye"
-    const greeting = firstName && firstName.trim() ? `Hey ${firstName.trim()}` : 'Hey there';
-    
-    let scriptText: string;
-    
-    if (isInbound) {
-      // Inbound call - different message but same voice
-      scriptText = `${greeting}, thank you for calling Cash Ridez Connect LLC. For faster service, please text the word CASH to this number and a team member will assist you shortly. We look forward to your text, thank you.`;
-    } else {
-      // OUTBOUND: The EXACT script requested
-      scriptText = `${greeting}, this is Cash Ridez Connect LLC. We responded on Indeed as well. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.`;
-    }
+    // Get the pre-generated audio URL from the public bucket
+    const { data: publicUrlData } = supabase.storage
+      .from('call_center_audio')
+      .getPublicUrl(ANSWERED_AUDIO_PATH);
+
+    const audioUrl = publicUrlData?.publicUrl;
+
+    // The script text (for logging only - actual audio is pre-generated)
+    const scriptText = 'Hey there, this is Cash Ridez Connect LLC. We responded on Indeed as well. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.';
 
     // Log the assistant message
     if (callSid) {
@@ -71,86 +72,16 @@ serve(async (req) => {
         twilio_call_sid: callSid,
         role: 'assistant',
         content: scriptText,
-        provider: 'elevenlabs',
+        provider: 'elevenlabs-pregenerated',
       });
-      if (logError) console.error('Failed to log message:', logError);
+      if (logError) console.error('[call-center-ai] Failed to log message:', logError);
     }
 
-    // Use ONLY the configured ElevenLabs Agent voice - NO substitutes
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
-    const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID');
-    let useElevenLabs = false;
-    let audioUrl = '';
-
-    if (ELEVENLABS_API_KEY && ELEVENLABS_AGENT_ID) {
-      try {
-        console.log('Generating ElevenLabs audio with Agent Voice ID:', ELEVENLABS_AGENT_ID);
-        console.log('Script text:', scriptText);
-        
-        const response = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_AGENT_ID}`,
-          {
-            method: 'POST',
-            headers: {
-              'xi-api-key': ELEVENLABS_API_KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              text: scriptText,
-              model_id: 'eleven_turbo_v2_5',
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-                speed: 1.0,
-              },
-            }),
-          }
-        );
-
-        if (response.ok) {
-          const audioBuffer = await response.arrayBuffer();
-          
-          // Store the audio in Supabase storage for Twilio to access
-          const audioFileName = `call-audio/${callSid}-${Date.now()}.mp3`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('call-recordings')
-            .upload(audioFileName, new Uint8Array(audioBuffer), {
-              contentType: 'audio/mpeg',
-              upsert: true,
-            });
-          
-          if (!uploadError) {
-            const { data: publicUrlData } = supabase.storage
-              .from('call-recordings')
-              .getPublicUrl(audioFileName);
-            
-            if (publicUrlData?.publicUrl) {
-              audioUrl = publicUrlData.publicUrl;
-              useElevenLabs = true;
-              console.log('SUCCESS: ElevenLabs audio generated with AGENT voice:', audioUrl);
-            }
-          } else {
-            console.error('Failed to upload audio:', uploadError);
-          }
-        } else {
-          const errorText = await response.text();
-          console.error('ElevenLabs API error:', response.status, errorText);
-        }
-      } catch (elevenErr) {
-        console.error('ElevenLabs generation error:', elevenErr);
-      }
-    } else {
-      console.error('MISSING CONFIG: ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID not set');
-    }
-
-    // Build TwiML response
-    // CRITICAL: Only use ElevenLabs audio. Fallback to Polly.Matthew (male) ONLY if ElevenLabs completely fails.
-    // NEVER use any female voice.
+    // Build TwiML response - ALWAYS use pre-generated audio
     let twiml: string;
 
-    if (useElevenLabs && audioUrl) {
-      // SUCCESS: Use ONLY the ElevenLabs agent audio + 3 second pause before hangup
+    if (audioUrl) {
+      console.log('[call-center-ai] Using pre-generated audio:', audioUrl);
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${escapeXml(audioUrl)}</Play>
@@ -158,9 +89,8 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
     } else {
-      // FALLBACK ONLY: This should be rare - log it for debugging
-      // Use Polly.Matthew (male voice) as emergency fallback - NEVER female
-      console.error('FALLBACK TRIGGERED: ElevenLabs unavailable, using Twilio Polly.Matthew as emergency fallback');
+      // EMERGENCY FALLBACK ONLY - should never happen if audio is seeded
+      console.error('[call-center-ai] CRITICAL: Pre-generated audio not found! Using Polly.Matthew fallback.');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew">${escapeXml(scriptText)}</Say>
@@ -169,7 +99,7 @@ serve(async (req) => {
 </Response>`;
     }
 
-    console.log('Returning AI TwiML');
+    console.log('[call-center-ai] Returning TwiML with pre-generated audio');
 
     return new Response(twiml, {
       status: 200,
@@ -177,11 +107,9 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('AI handler CRITICAL error:', error);
+    console.error('[call-center-ai] CRITICAL error:', error);
     
-    // Emergency fallback TwiML - only if everything fails
-    // Use Polly.Matthew (male) - NEVER any female voice
-    console.error('EMERGENCY FALLBACK: Returning minimal TwiML due to critical error');
+    // Emergency fallback TwiML - use Polly.Matthew (male) - NEVER any female voice
     const fallbackScript = "Hey there, this is Cash Ridez Connect LLC. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

@@ -34,9 +34,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// CRITICAL: Use male voice (Polly.Matthew) for fallback - NEVER female voice
 const fallbackTwiML = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">We're sorry. We could not complete your CashRidez call. Goodbye.</Say>
+  <Say voice="Polly.Matthew">We're sorry. We could not complete your Cash Ridez call. Goodbye.</Say>
   <Hangup/>
 </Response>`;
 

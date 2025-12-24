@@ -84,7 +84,8 @@ serve(async (req) => {
   } catch (error) {
     console.error('Inbound voice handler error:', error);
     
-    // Emergency fallback - still try to play voicemail with male voice
+    // Emergency fallback - use Polly.Matthew (male) - NEVER female
+    console.error('[call-inbound-voice] CRITICAL: Using Polly.Matthew fallback due to error');
     const fallbackScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

@@ -2,16 +2,23 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
- * Inbound Voicemail Handler - Called when inbound call goes to voicemail (missed).
- * Uses the EXACT SAME ElevenLabs agent voice as outbound calls.
+ * Inbound Voicemail Handler - Called when inbound call is missed.
  * 
- * INBOUND VOICEMAIL SCRIPT (exact):
+ * CRITICAL: Uses PRE-GENERATED audio stored in call_center_audio bucket.
+ * This ensures the EXACT SAME male ElevenLabs voice plays every time with zero latency.
+ * 
+ * INBOUND VOICEMAIL SCRIPT:
  * "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. 
  *  To connect with an agent please text the word AGENT to this number and an agent 
  *  will return your call shortly. Please save this number for future connections."
  * 
  * Then 3-second pause, then hangup.
  */
+
+const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+
+// Pre-generated audio URL (seeded via call-center-seed-audio function)
+const VOICEMAIL_AUDIO_PATH = 'inbound_voicemail.mp3';
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -41,7 +48,7 @@ serve(async (req) => {
     callSid = callSid || url.searchParams.get('callSid') || '';
     fromNumber = fromNumber || url.searchParams.get('from') || '';
 
-    console.log(`Inbound voicemail handler: CallSid=${callSid}, From=${fromNumber}`);
+    console.log(`[call-inbound-voicemail] CallSid=${callSid}, From=${fromNumber}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -59,102 +66,39 @@ serve(async (req) => {
           })
           .eq('twilio_call_sid', callSid);
       } catch (dbErr) {
-        console.error('DB update failed:', dbErr);
+        console.error('[call-inbound-voicemail] DB update failed:', dbErr);
       }
     }
 
-    // Notify admins about missed call / voicemail
-    await notifyAdminsOfMissedCall(supabase, fromNumber, callSid);
+    // Notify admins about missed call / voicemail (non-blocking)
+    notifyAdminsOfMissedCall(supabase, fromNumber, callSid).catch(err => {
+      console.error('[call-inbound-voicemail] Failed to notify admins:', err);
+    });
 
-    // The EXACT script for inbound voicemail - same male ElevenLabs voice
-    const voicemailScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
+    // Get the pre-generated audio URL from the public bucket
+    const { data: publicUrlData } = supabase.storage
+      .from('call_center_audio')
+      .getPublicUrl(VOICEMAIL_AUDIO_PATH);
 
-    console.log('Inbound voicemail script:', voicemailScript);
-
-    // Use ONLY the configured ElevenLabs Agent voice - SAME as outbound calls
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
-    const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID');
-    let useElevenLabs = false;
-    let audioUrl = '';
-
-    if (ELEVENLABS_API_KEY && ELEVENLABS_AGENT_ID) {
-      try {
-        console.log('Generating ElevenLabs audio for inbound voicemail with Agent Voice ID:', ELEVENLABS_AGENT_ID);
-        
-        const response = await fetch(
-          `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_AGENT_ID}`,
-          {
-            method: 'POST',
-            headers: {
-              'xi-api-key': ELEVENLABS_API_KEY,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              text: voicemailScript,
-              model_id: 'eleven_turbo_v2_5',
-              voice_settings: {
-                stability: 0.5,
-                similarity_boost: 0.75,
-                speed: 1.0,
-              },
-            }),
-          }
-        );
-
-        if (response.ok) {
-          const audioBuffer = await response.arrayBuffer();
-          
-          // Store the audio in Supabase storage for Twilio to access
-          const audioFileName = `call-audio/inbound-voicemail-${callSid}-${Date.now()}.mp3`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('call-recordings')
-            .upload(audioFileName, new Uint8Array(audioBuffer), {
-              contentType: 'audio/mpeg',
-              upsert: true,
-            });
-          
-          if (!uploadError) {
-            const { data: publicUrlData } = supabase.storage
-              .from('call-recordings')
-              .getPublicUrl(audioFileName);
-            
-            if (publicUrlData?.publicUrl) {
-              audioUrl = publicUrlData.publicUrl;
-              useElevenLabs = true;
-              console.log('SUCCESS: ElevenLabs inbound voicemail audio generated:', audioUrl);
-            }
-          } else {
-            console.error('Failed to upload inbound voicemail audio:', uploadError);
-          }
-        } else {
-          const errorText = await response.text();
-          console.error('ElevenLabs API error for inbound voicemail:', response.status, errorText);
-        }
-      } catch (elevenErr) {
-        console.error('ElevenLabs inbound voicemail generation error:', elevenErr);
-      }
-    } else {
-      console.error('MISSING CONFIG: ELEVENLABS_API_KEY or ELEVENLABS_AGENT_ID not set for inbound voicemail');
-    }
+    const audioUrl = publicUrlData?.publicUrl;
 
     // Log the voicemail message
+    const voicemailScript = 'Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.';
     if (callSid) {
       const { error: logError } = await supabase.from('call_center_messages').insert({
         twilio_call_sid: callSid,
         role: 'assistant',
         content: voicemailScript,
-        provider: useElevenLabs ? 'elevenlabs' : 'twilio-fallback',
+        provider: 'elevenlabs-pregenerated',
       });
-      if (logError) console.error('Failed to log inbound voicemail message:', logError);
+      if (logError) console.error('[call-inbound-voicemail] Failed to log message:', logError);
     }
 
-    // Build TwiML response
-    // CRITICAL: Only use ElevenLabs audio. Fallback to Polly.Matthew (male) ONLY if ElevenLabs fails.
+    // Build TwiML response - ALWAYS use pre-generated audio
     let twiml: string;
 
-    if (useElevenLabs && audioUrl) {
-      // SUCCESS: Use ONLY the ElevenLabs agent audio + 3 second pause before hangup
+    if (audioUrl) {
+      console.log('[call-inbound-voicemail] Using pre-generated audio:', audioUrl);
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${escapeXml(audioUrl)}</Play>
@@ -162,8 +106,8 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
     } else {
-      // FALLBACK ONLY: Use Polly.Matthew (male) - NEVER female
-      console.error('INBOUND VOICEMAIL FALLBACK TRIGGERED: ElevenLabs unavailable, using Twilio Polly.Matthew as emergency fallback');
+      // EMERGENCY FALLBACK ONLY - should never happen if audio is seeded
+      console.error('[call-inbound-voicemail] CRITICAL: Pre-generated audio not found! Using Polly.Matthew fallback.');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew">${escapeXml(voicemailScript)}</Say>
@@ -172,7 +116,7 @@ serve(async (req) => {
 </Response>`;
     }
 
-    console.log('Returning inbound voicemail TwiML with ElevenLabs audio');
+    console.log('[call-inbound-voicemail] Returning TwiML with pre-generated audio');
 
     return new Response(twiml, {
       status: 200,
@@ -180,10 +124,9 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Inbound voicemail handler error:', error);
+    console.error('[call-inbound-voicemail] Handler error:', error);
     
-    // Emergency fallback - use Polly.Matthew (male)
-    console.error('INBOUND VOICEMAIL EMERGENCY FALLBACK: Critical error occurred');
+    // Emergency fallback - use Polly.Matthew (male) ONLY
     const fallbackScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -207,7 +150,7 @@ async function notifyAdminsOfMissedCall(supabase: any, fromNumber: string, callS
       .select('admin_id, notify_call_missed, notify_call_voicemail');
 
     if (!adminSettings || adminSettings.length === 0) {
-      console.log('No admin notification settings found');
+      console.log('[call-inbound-voicemail] No admin notification settings found');
       return;
     }
 
@@ -243,9 +186,9 @@ async function notifyAdminsOfMissedCall(supabase: any, fromNumber: string, callS
       }
     }
 
-    console.log(`Notified admins of missed call/voicemail from ${fromNumber}`);
+    console.log(`[call-inbound-voicemail] Notified admins of missed call/voicemail from ${fromNumber}`);
   } catch (err) {
-    console.error('Failed to notify admins of missed call:', err);
+    console.error('[call-inbound-voicemail] Failed to notify admins of missed call:', err);
   }
 }
 
