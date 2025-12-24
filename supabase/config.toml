@@ -83,3 +83,18 @@ verify_jwt = false
 
 [functions.admin-send-draft]
 verify_jwt = true
+
+[functions.call-center-initiate]
+verify_jwt = true
+
+[functions.call-center-twiml]
+verify_jwt = false
+
+[functions.call-center-status]
+verify_jwt = false
+
+[functions.call-center-amd]
+verify_jwt = false
+
+[functions.call-center-recording]
+verify_jwt = false
