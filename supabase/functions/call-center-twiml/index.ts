@@ -5,6 +5,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * CRITICAL: This endpoint MUST return valid TwiML XML within 1-2 seconds.
  * NO AI calls, NO ElevenLabs calls - those happen in call-center-ai endpoint.
  * Always return Content-Type: text/xml
+ * 
+ * IMPORTANT: No <Say> elements here - only silence and redirect.
+ * This prevents the "robotic female voice" issue.
  */
 
 serve(async (req) => {
@@ -27,7 +30,7 @@ serve(async (req) => {
     let to = '';
     let direction = 'inbound';
     let callLogId = '';
-    let firstName = 'there';
+    let firstName = '';
 
     const contentType = req.headers.get('content-type') || '';
     
@@ -42,11 +45,11 @@ serve(async (req) => {
       // Check URL params
       const url = new URL(req.url);
       callLogId = url.searchParams.get('callLogId') || '';
-      firstName = url.searchParams.get('firstName') || 'there';
+      firstName = url.searchParams.get('firstName') || '';
       callSid = url.searchParams.get('CallSid') || '';
     }
 
-    console.log(`TwiML request: CallSid=${callSid}, From=${from}, Direction=${direction}, callLogId=${callLogId}`);
+    console.log(`TwiML request: CallSid=${callSid}, From=${from}, Direction=${direction}, callLogId=${callLogId}, firstName=${firstName}`);
 
     // Log to database in background (don't block response)
     if (callSid) {
@@ -73,34 +76,35 @@ serve(async (req) => {
     let twiml: string;
 
     if (isOutbound) {
-      // OUTBOUND: We called them. Speak greeting, record, and redirect to AI handler.
-      // Use <Say> first for immediate audio, then redirect to AI endpoint
+      // OUTBOUND: We called them. 
+      // NO <Say> here - just silence, start recording, and redirect to AI handler.
+      // The AI handler will speak with the male ElevenLabs voice.
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Hello! This is Cash Ridez Connect LLC. We responded to your Indeed application.</Say>
+  <Start>
+    <Record recordingStatusCallback="${APP_BASE_URL}/functions/v1/call-center-recording"
+            recordingStatusCallbackMethod="POST"
+            trim="trim-silence" />
+  </Start>
   <Pause length="1"/>
-  <Say voice="alice">Please hold while I connect you.</Say>
   <Redirect method="POST">${APP_BASE_URL}/functions/v1/call-center-ai?callSid=${encodeURIComponent(callSid)}&amp;firstName=${encodeURIComponent(firstName)}</Redirect>
 </Response>`;
     } else {
-      // INBOUND: Someone is calling us. Greet them and offer to take a message.
+      // INBOUND: Someone is calling us. 
+      // For inbound, we still need some audio - use a simple pause then redirect
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Thank you for calling Cash Ridez Connect LLC.</Say>
+  <Start>
+    <Record recordingStatusCallback="${APP_BASE_URL}/functions/v1/call-center-recording"
+            recordingStatusCallbackMethod="POST"
+            trim="trim-silence" />
+  </Start>
   <Pause length="1"/>
-  <Say voice="alice">For faster service, please text the word CASH to this number, and a team member will assist you shortly.</Say>
-  <Say voice="alice">You can also leave a message after the beep.</Say>
-  <Record maxLength="60" 
-          playBeep="true"
-          recordingStatusCallback="${APP_BASE_URL}/functions/v1/call-center-recording"
-          recordingStatusCallbackMethod="POST"
-          transcribe="true"/>
-  <Say voice="alice">Thank you for your message. Goodbye!</Say>
-  <Hangup/>
+  <Redirect method="POST">${APP_BASE_URL}/functions/v1/call-center-ai?callSid=${encodeURIComponent(callSid)}&amp;firstName=${encodeURIComponent(firstName)}&amp;inbound=true</Redirect>
 </Response>`;
     }
 
-    console.log('Returning TwiML:', twiml.substring(0, 200) + '...');
+    console.log('Returning TwiML (no <Say>):', twiml.substring(0, 300));
 
     return new Response(twiml, {
       status: 200,
@@ -112,10 +116,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('TwiML generation error:', error);
     
-    // ALWAYS return valid TwiML even on error
+    // Even on error, return valid TwiML with just a pause and hangup (no Say)
+    // This ensures no Twilio voice plays
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">We apologize, but we're experiencing technical difficulties. Please text CASH to this number to continue.</Say>
+  <Pause length="2"/>
   <Hangup/>
 </Response>`;
 

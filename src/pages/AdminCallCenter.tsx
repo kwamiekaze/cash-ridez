@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Phone, Users, History, Menu } from "lucide-react";
+import { Phone, Users, History, Menu, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import ComposeCallTab from "@/components/admin/call-center/ComposeCallTab";
 import AutoCallTab from "@/components/admin/call-center/AutoCallTab";
 import CallHistoryTab from "@/components/admin/call-center/CallHistoryTab";
 
 const AdminCallCenter = () => {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("compose");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -31,6 +32,10 @@ const AdminCallCenter = () => {
     setMobileMenuOpen(false);
   };
 
+  const handleReturnHome = () => {
+    navigate('/admin');
+  };
+
   return (
     <>
       <Helmet>
@@ -42,6 +47,9 @@ const AdminCallCenter = () => {
         <div className="lg:hidden sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={handleReturnHome}>
+                <Home className="w-5 h-5" />
+              </Button>
               <Phone className="w-5 h-5 text-primary" />
               <h1 className="text-lg font-semibold">Call Center</h1>
             </div>
@@ -53,6 +61,17 @@ const AdminCallCenter = () => {
               </SheetTrigger>
               <SheetContent side="right" className="w-64">
                 <div className="flex flex-col gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    className="justify-start gap-2 mb-4"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleReturnHome();
+                    }}
+                  >
+                    <Home className="w-4 h-4" />
+                    Return to Home
+                  </Button>
                   {tabs.map((tab) => (
                     <Button
                       key={tab.value}
@@ -73,9 +92,15 @@ const AdminCallCenter = () => {
         {/* Desktop Header */}
         <div className="hidden lg:block border-b border-border bg-background/95 backdrop-blur sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center gap-3">
-              <Phone className="w-6 h-6 text-primary" />
-              <h1 className="text-2xl font-bold">Call Center</h1>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Phone className="w-6 h-6 text-primary" />
+                <h1 className="text-2xl font-bold">Call Center</h1>
+              </div>
+              <Button variant="outline" onClick={handleReturnHome} className="gap-2">
+                <Home className="w-4 h-4" />
+                Return to Home
+              </Button>
             </div>
           </div>
         </div>
