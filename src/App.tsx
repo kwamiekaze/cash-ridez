@@ -79,17 +79,6 @@ const DeferMount = ({ children }: { children: React.ReactNode }) => {
   return mounted ? <>{children}</> : null;
 };
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes cache
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
-
 // Redirect cashridez.map domain to cashridez.com/map
 const DomainRedirect = () => {
   useEffect(() => {
@@ -102,7 +91,19 @@ const DomainRedirect = () => {
   return null;
 };
 
-const App = () => (
+const App = () => {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        gcTime: 1000 * 60 * 30, // 30 minutes cache
+        refetchOnWindowFocus: false,
+        retry: 1,
+      },
+    },
+  }));
+
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" forcedTheme="dark">
       <BrowserRouter
@@ -315,6 +316,7 @@ const App = () => (
         </BrowserRouter>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
