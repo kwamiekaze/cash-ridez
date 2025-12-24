@@ -45,6 +45,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
 const Refer = lazy(() => import("./pages/Refer"));
+const LiveMap = lazy(() => import("./pages/LiveMap"));
 import { Navigate } from "react-router-dom";
 
 // Loading fallback component

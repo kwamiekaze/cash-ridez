@@ -11,12 +11,12 @@ import AutoCallTab from "@/components/admin/call-center/AutoCallTab";
 import CallHistoryTab from "@/components/admin/call-center/CallHistoryTab";
 
 const AdminCallCenter = () => {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("compose");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Simple redirect - AdminRoute wrapper handles auth
-  if (!user && !isLoading) {
+  if (!user && !loading) {
     return <Navigate to="/auth" replace />;
   }
 
