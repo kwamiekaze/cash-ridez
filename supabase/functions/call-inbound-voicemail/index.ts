@@ -98,11 +98,16 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
 
-    console.log('[call-inbound-voicemail] TwiML response:\n' + twiml);
+    const responseContentType = 'text/xml; charset=utf-8';
+    console.log(`[call-inbound-voicemail] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
+    console.log(`[call-inbound-voicemail] Response Content-Type: ${responseContentType}`);
 
     return new Response(twiml, {
       status: 200,
-      headers: { 'Content-Type': 'text/xml' },
+      headers: {
+        'Content-Type': responseContentType,
+        'Cache-Control': 'no-store',
+      },
     });
 
   } catch (error) {
@@ -115,11 +120,16 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
 
-    console.log('[call-inbound-voicemail] TwiML response (error path):\n' + twiml);
+    const responseContentType = 'text/xml; charset=utf-8';
+    console.log(`[call-inbound-voicemail] Returning TwiML (error path, first 200 chars): ${twiml.slice(0, 200)}`);
+    console.log(`[call-inbound-voicemail] Response Content-Type (error path): ${responseContentType}`);
 
     return new Response(twiml, {
       status: 200,
-      headers: { 'Content-Type': 'text/xml' },
+      headers: {
+        'Content-Type': responseContentType,
+        'Cache-Control': 'no-store',
+      },
     });
   }
 });

@@ -104,12 +104,16 @@ serve(async (req) => {
 </Response>`;
     }
 
-    console.log('Returning TwiML (no <Say>):', twiml.substring(0, 300));
+    console.log(`[call-center-twiml] Returning TwiML (first 200 chars): ${twiml.slice(0, 200)}`);
+
+    const responseContentType = 'text/xml; charset=utf-8';
+    console.log(`[call-center-twiml] Response Content-Type: ${responseContentType}`);
 
     return new Response(twiml, {
       status: 200,
       headers: {
-        'Content-Type': 'text/xml',
+        'Content-Type': responseContentType,
+        'Cache-Control': 'no-store',
       },
     });
 
@@ -124,10 +128,15 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
 
+    const responseContentType = 'text/xml; charset=utf-8';
+    console.log(`[call-center-twiml] Returning TwiML (error path, first 200 chars): ${fallbackTwiml.slice(0, 200)}`);
+    console.log(`[call-center-twiml] Response Content-Type (error path): ${responseContentType}`);
+
     return new Response(fallbackTwiml, {
       status: 200,
       headers: {
-        'Content-Type': 'text/xml',
+        'Content-Type': responseContentType,
+        'Cache-Control': 'no-store',
       },
     });
   }
