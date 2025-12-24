@@ -125,3 +125,9 @@ verify_jwt = false
 
 [functions.upload-voicemail-audio]
 verify_jwt = false
+
+[functions.call-center-voicemail-audio]
+verify_jwt = false
+
+[functions.call-center-voicemail-audio-test]
+verify_jwt = false

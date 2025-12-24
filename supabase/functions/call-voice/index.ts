@@ -6,12 +6,15 @@
 // 
 // TWO MODES:
 // 1. MASKED CALLING: When callId is provided - bridges rider/driver calls
-// 2. CALL CENTER FALLBACK: When no callId - plays voicemail script (male voice)
+// 2. CALL CENTER FALLBACK: When no callId - redirects to voicemail handler
 //
 // WEBHOOK URL:
 //   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-voice
 //
 // AUTHENTICATION: No JWT required (verify_jwt = false) - Twilio webhook
+//
+// CRITICAL: NO <Say> elements in this file. All voice output uses pre-recorded audio.
+// On any error, redirect to voicemail or hangup - never use Polly/TTS.
 //
 // ============================================================================
 
@@ -23,9 +26,6 @@ const corsHeaders = {
 };
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
-
-// Pre-recorded voicemail audio file path (uploaded by user, NOT generated)
-const VOICEMAIL_AUDIO_PATH = 'cashridez_voicemail.mp3';
 
 // Helper function to extract phone number from text
 function extractPhoneNumber(text: string): string | null {
@@ -56,6 +56,23 @@ function escapeXml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+// Build voicemail redirect TwiML - used for all error cases
+function getVoicemailRedirectTwiml(): string {
+  const voicemailUrl = `${APP_BASE_URL}/functions/v1/call-inbound-voicemail`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Redirect method="POST">${escapeXml(voicemailUrl)}</Redirect>
+</Response>`;
+}
+
+// Build simple hangup TwiML
+function getHangupTwiml(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Hangup/>
+</Response>`;
 }
 
 Deno.serve(async (req) => {
@@ -109,13 +126,8 @@ Deno.serve(async (req) => {
 
       if (callError || !call) {
         console.error('[call-voice] Call not found:', callError);
-        // For masked calling failure, use a simple error message with male voice
-        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Matthew">We're sorry, we could not complete your call. Please try again later.</Say>
-  <Hangup/>
-</Response>`;
-        return new Response(errorTwiml, {
+        // Redirect to voicemail instead of using Polly
+        return new Response(getVoicemailRedirectTwiml(), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
         });
@@ -136,12 +148,8 @@ Deno.serve(async (req) => {
 
       if (profilesError || !profiles || profiles.length !== 2) {
         console.error('[call-voice] Failed to fetch profiles:', profilesError);
-        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Matthew">We're sorry, we could not complete your call. Please try again later.</Say>
-  <Hangup/>
-</Response>`;
-        return new Response(errorTwiml, {
+        // Redirect to voicemail instead of using Polly
+        return new Response(getVoicemailRedirectTwiml(), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
         });
@@ -167,12 +175,8 @@ Deno.serve(async (req) => {
 
       if (!riderPhoneNumber || !driverPhoneNumber) {
         console.error('[call-voice] Missing phone numbers after fallback attempts');
-        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Matthew">We're sorry, we could not complete your call. Please try again later.</Say>
-  <Hangup/>
-</Response>`;
-        return new Response(errorTwiml, {
+        // Redirect to voicemail instead of using Polly
+        return new Response(getVoicemailRedirectTwiml(), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
         });
@@ -198,12 +202,8 @@ Deno.serve(async (req) => {
       
       if (!twilioPhoneNumber) {
         console.error('[call-voice] Missing TWILIO_PHONE_NUMBER environment variable');
-        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Matthew">We're sorry, we could not complete your call. Please try again later.</Say>
-  <Hangup/>
-</Response>`;
-        return new Response(errorTwiml, {
+        // Redirect to voicemail instead of using Polly
+        return new Response(getVoicemailRedirectTwiml(), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
         });
@@ -227,8 +227,9 @@ Deno.serve(async (req) => {
 
     // =========================================================================
     // MODE 2: CALL CENTER FALLBACK (no callId - inbound call or fallback)
+    // Redirect to voicemail handler - NO TTS/Polly here
     // =========================================================================
-    console.log(`[call-voice] CALL CENTER FALLBACK mode - playing voicemail script`);
+    console.log(`[call-voice] CALL CENTER FALLBACK mode - redirecting to voicemail handler`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -264,35 +265,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Use pre-recorded voicemail audio ONLY - no TTS fallback
-    const { data: publicUrlData } = supabase.storage
-      .from('call_center_audio')
-      .getPublicUrl(VOICEMAIL_AUDIO_PATH);
-
-    const audioUrl = publicUrlData?.publicUrl;
-
-    if (!audioUrl) {
-      console.error('[call-voice] CRITICAL: Voicemail audio file not found!');
-      // Just hangup - NO TTS fallback allowed
-      return new Response(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Hangup/>
-</Response>`, {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
-      });
-    }
-
-    console.log('[call-voice] Playing pre-recorded voicemail audio:', audioUrl);
-
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Play>${escapeXml(audioUrl)}</Play>
-  <Pause length="3"/>
-  <Hangup/>
-</Response>`;
-
-    return new Response(twiml, {
+    // Redirect to the voicemail handler which uses pre-recorded audio
+    return new Response(getVoicemailRedirectTwiml(), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
     });
@@ -300,11 +274,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('[call-voice] Critical error:', error);
     
-    // On error, just hangup - NO TTS fallback allowed
-    return new Response(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Hangup/>
-</Response>`, {
+    // On error, just hangup - NO TTS fallback ever
+    return new Response(getHangupTwiml(), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'text/xml' }
     });
