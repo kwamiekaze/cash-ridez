@@ -23,7 +23,14 @@ const corsHeaders = {
 };
 
 // TwiML empty response - always return 200 to prevent Twilio retries
-const twimlResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
+const twimlEmptyResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
+
+// TwiML response for CASH keyword auto-reply (fits in 1 SMS segment)
+const CASH_AUTO_REPLY = "Thanks! Verify your ID at cashridez.com, then update your map pin when posting/responding to trips. 🚗💰";
+
+function buildTwimlReply(message: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`;
+}
 
 // Helper to normalize phone number to E.164
 function normalizeE164(phone: string): string {
@@ -150,7 +157,7 @@ Deno.serve(async (req) => {
   
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('[v2] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-    return new Response(twimlResponse, { 
+    return new Response(twimlEmptyResponse, { 
       status: 200, 
       headers: { ...corsHeaders, 'Content-Type': 'application/xml' } 
     });
@@ -375,8 +382,18 @@ Deno.serve(async (req) => {
   const elapsed = Date.now() - startTime;
   console.log(`[v2] Completed in ${elapsed}ms, insertOk=${insertOk}, error=${insertError}`);
 
+  // Check for CASH keyword - case insensitive, trimmed
+  const normalizedBody = body.trim().toUpperCase();
+  if (normalizedBody === 'CASH') {
+    console.log(`[v2] CASH keyword detected from ${fromE164}, sending auto-reply`);
+    return new Response(buildTwimlReply(CASH_AUTO_REPLY), { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+    });
+  }
+
   // Always return 200 to prevent Twilio retries
-  return new Response(twimlResponse, { 
+  return new Response(twimlEmptyResponse, { 
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
   });
