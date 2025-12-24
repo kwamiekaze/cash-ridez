@@ -4,8 +4,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Voicemail Handler - Called when AMD detects answering machine.
  * Uses the EXACT SAME ElevenLabs agent voice as answered calls.
- * Script: "Hey {first_name}, this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps. We look forward to your text, thank you."
- * Then 3-second pause, then hangup.
+ * 
+ * OUTBOUND VOICEMAIL SCRIPT (exact - same as answered):
+ * "Hey {first_name}, this is Cash Ridez Connect LLC. We responded on Indeed as well. 
+ *  Please text us back with the word CASH for the next steps. We look forward to your text, thank you."
+ * 
+ * Then 3-second pause, then hangup. NO "goodbye".
  */
 
 serve(async (req) => {
@@ -66,9 +70,9 @@ serve(async (req) => {
       }
     }
 
-    // Build the EXACT script - same as answered calls
+    // Build the EXACT script - SAME as answered calls, starts with Hey, ends with thank you
     const greeting = firstName && firstName.trim() ? `Hey ${firstName.trim()}` : 'Hey there';
-    const voicemailScript = `${greeting}, this is Cash Ridez Connect LLC. We responded on Indeed as well, please reply CASH for the next steps. We look forward to your text, thank you.`;
+    const voicemailScript = `${greeting}, this is Cash Ridez Connect LLC. We responded on Indeed as well. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.`;
 
     console.log('Voicemail script:', voicemailScript);
 
@@ -150,11 +154,14 @@ serve(async (req) => {
       if (logError) console.error('Failed to log voicemail message:', logError);
     }
 
-    // Build TwiML response - ONLY use ElevenLabs audio, fallback only if completely failed
+    // Build TwiML response
+    // CRITICAL: Only use ElevenLabs audio. Fallback to Polly.Matthew (male) ONLY if ElevenLabs fails.
     let twiml: string;
 
     if (useElevenLabs && audioUrl) {
-      // SUCCESS: Use ONLY the ElevenLabs agent audio + 3 second pause before hangup
+      // SUCCESS: Use ONLY the ElevenLabs agent audio
+      // Add 2s pause before playing (wait for voicemail beep to finish)
+      // Then 3 second pause after script, then hangup
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="2"/>
@@ -163,7 +170,7 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
     } else {
-      // FALLBACK ONLY: This should be rare - log it for debugging
+      // FALLBACK ONLY: Use Polly.Matthew (male) - NEVER female
       console.error('VOICEMAIL FALLBACK TRIGGERED: ElevenLabs unavailable, using Twilio Polly.Matthew as emergency fallback');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -184,12 +191,13 @@ serve(async (req) => {
   } catch (error) {
     console.error('Voicemail handler error:', error);
     
-    // Emergency fallback - log this case
+    // Emergency fallback - log this case, use Polly.Matthew (male)
     console.error('VOICEMAIL EMERGENCY FALLBACK: Critical error occurred');
+    const fallbackScript = "Hey there, this is Cash Ridez Connect LLC. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="2"/>
-  <Say voice="Polly.Matthew">Hey there, this is Cash Ridez Connect LLC. Please reply CASH for the next steps. We look forward to your text, thank you.</Say>
+  <Say voice="Polly.Matthew">${escapeXml(fallbackScript)}</Say>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
