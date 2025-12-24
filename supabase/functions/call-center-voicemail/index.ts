@@ -7,17 +7,23 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * CRITICAL: Uses PRE-GENERATED audio stored in call_center_audio bucket.
  * This ensures the EXACT SAME male ElevenLabs voice plays every time with zero latency.
  * 
- * OUTBOUND VOICEMAIL SCRIPT:
- * "Hey there, this is Cash Ridez Connect LLC. We responded on Indeed as well. 
- *  Please text us back with the word CASH for the next steps. We look forward to your text, thank you."
+ * INBOUND VOICEMAIL SCRIPT (per user specification):
+ * "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. 
+ *  To connect with an agent please text the word AGENT to this number and an agent 
+ *  will return your call shortly. Please save this number for future connections.
+ *  We look forward to your text, thank you."
  * 
- * Then 3-second pause, then hangup. NO "goodbye".
+ * Then 2-3 second pause, then hangup.
  */
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
-// Pre-generated audio URL (seeded via call-center-seed-audio function)
-const VOICEMAIL_AUDIO_PATH = 'outbound_voicemail.mp3';
+// Pre-generated audio URL - use INBOUND voicemail for ALL voicemail scenarios
+// The user explicitly wants the SAME script for both inbound missed calls AND outbound voicemail
+const VOICEMAIL_AUDIO_PATH = 'inbound_voicemail.mp3';
+
+// THE EXACT SCRIPT (user specification)
+const VOICEMAIL_SCRIPT = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections. We look forward to your text, thank you.";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -47,6 +53,7 @@ serve(async (req) => {
     firstName = url.searchParams.get('firstName') || '';
 
     console.log(`[call-center-voicemail] CallSid=${callSid}, FirstName=${firstName}`);
+    console.log(`[call-center-voicemail] Will play script: "${VOICEMAIL_SCRIPT.substring(0, 50)}..."`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -85,12 +92,11 @@ serve(async (req) => {
     const audioUrl = publicUrlData?.publicUrl;
 
     // Log the voicemail message
-    const voicemailScript = 'Hey there, this is Cash Ridez Connect LLC. We responded on Indeed as well. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.';
     if (callSid) {
       const { error: logError } = await supabase.from('call_center_messages').insert({
         twilio_call_sid: callSid,
         role: 'assistant',
-        content: voicemailScript,
+        content: VOICEMAIL_SCRIPT,
         provider: 'elevenlabs-pregenerated',
       });
       if (logError) console.error('[call-center-voicemail] Failed to log message:', logError);
@@ -102,6 +108,7 @@ serve(async (req) => {
 
     if (audioUrl) {
       console.log('[call-center-voicemail] Using pre-generated audio:', audioUrl);
+      console.log('[call-center-voicemail] voicemail_script_played=true');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="2"/>
@@ -112,16 +119,17 @@ serve(async (req) => {
     } else {
       // EMERGENCY FALLBACK ONLY - should never happen if audio is seeded
       console.error('[call-center-voicemail] CRITICAL: Pre-generated audio not found! Using Polly.Matthew fallback.');
+      console.log('[call-center-voicemail] voicemail_script_played=true (fallback)');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="2"/>
-  <Say voice="Polly.Matthew">${escapeXml(voicemailScript)}</Say>
+  <Say voice="Polly.Matthew">${escapeXml(VOICEMAIL_SCRIPT)}</Say>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
     }
 
-    console.log('[call-center-voicemail] Returning TwiML with pre-generated audio');
+    console.log('[call-center-voicemail] Returning TwiML');
 
     return new Response(twiml, {
       status: 200,
@@ -132,11 +140,10 @@ serve(async (req) => {
     console.error('[call-center-voicemail] Handler error:', error);
     
     // Emergency fallback - use Polly.Matthew (male) ONLY
-    const fallbackScript = "Hey there, this is Cash Ridez Connect LLC. Please text us back with the word CASH for the next steps. We look forward to your text, thank you.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="2"/>
-  <Say voice="Polly.Matthew">${escapeXml(fallbackScript)}</Say>
+  <Say voice="Polly.Matthew">Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections. We look forward to your text, thank you.</Say>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
