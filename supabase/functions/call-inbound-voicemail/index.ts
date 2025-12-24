@@ -18,9 +18,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * - Stable forever
  */
 
-// Hardcoded full public MP3 URL (no runtime concatenation)
-const PUBLIC_VOICEMAIL_URL = 'https://wnajjqsqmrpwyffbpgsj.supabase.co/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3';
-
+// Hardcoded voicemail <Play> URL (no runtime concatenation)
+const VOICEMAIL_PLAY_URL = "https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-center-voicemail-audio";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -37,21 +36,21 @@ serve(async (req) => {
     // Parse request
     let callSid = '';
     let fromNumber = '';
-    
+
     const contentType = req.headers.get('content-type') || '';
-    
+
     if (contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await req.formData();
       callSid = formData.get('CallSid') as string || '';
       fromNumber = formData.get('From') as string || '';
     }
-    
+
     const url = new URL(req.url);
     callSid = callSid || url.searchParams.get('callSid') || '';
     fromNumber = fromNumber || url.searchParams.get('from') || '';
 
     console.log(`[call-inbound-voicemail] CallSid=${callSid}, From=${fromNumber}`);
-    console.log(`[call-inbound-voicemail] Using PUBLIC storage URL: ${PUBLIC_VOICEMAIL_URL}`);
+    console.log(`[call-inbound-voicemail] Using voicemail audio endpoint: ${VOICEMAIL_PLAY_URL}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -63,7 +62,7 @@ serve(async (req) => {
       try {
         await supabase
           .from('admin_call_logs')
-          .update({ 
+          .update({
             status: 'voicemail',
             voicemail_left: true,
           })
@@ -89,11 +88,9 @@ serve(async (req) => {
       if (logError) console.error('[call-inbound-voicemail] Failed to log message:', logError);
     }
 
-    console.log('[call-inbound-voicemail] TwiML will use <Play> URL:', PUBLIC_VOICEMAIL_URL);
-
-    // Build TwiML response (MUST be ONLY Play + Pause + Hangup)
+    // Build TwiML response (ONLY Play + Pause + Hangup)
     const twiml = `<Response>
-  <Play>https://wnajjqsqmrpwyffbpgsj.supabase.co/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3</Play>
+  <Play>${VOICEMAIL_PLAY_URL}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
@@ -115,7 +112,7 @@ serve(async (req) => {
 
     // Even on error: return the exact voicemail TwiML (no <Say> fallback)
     const twiml = `<Response>
-  <Play>https://wnajjqsqmrpwyffbpgsj.supabase.co/storage/v1/object/public/call_center_audio/cashridez_voicemail.mp3</Play>
+  <Play>${VOICEMAIL_PLAY_URL}</Play>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
