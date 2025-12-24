@@ -25,8 +25,11 @@ const corsHeaders = {
 // TwiML empty response - always return 200 to prevent Twilio retries
 const twimlEmptyResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Response>`;
 
-// TwiML response for CASH keyword auto-reply (fits in 1 SMS segment)
-const CASH_AUTO_REPLY = "Thanks! Verify your ID at cashridez.com, then update your map pin when posting/responding to trips. 🚗💰";
+// TwiML response for CASH keyword auto-reply (fits in 1 SMS segment - ~90 chars)
+const CASH_AUTO_REPLY = "Welcome to CashRidez! Verify your ID at cashridez.com, then update your map pin to connect. 💰🚗";
+
+// Rate limit: 1 CASH reply per phone number per 24 hours
+const CASH_RATE_LIMIT_HOURS = 24;
 
 function buildTwimlReply(message: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${message}</Message></Response>`;
@@ -384,12 +387,72 @@ Deno.serve(async (req) => {
 
   // Check for CASH keyword - case insensitive, trimmed
   const normalizedBody = body.trim().toUpperCase();
-  if (normalizedBody === 'CASH') {
-    console.log(`[v2] CASH keyword detected from ${fromE164}, sending auto-reply`);
-    return new Response(buildTwimlReply(CASH_AUTO_REPLY), { 
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
-    });
+  if (normalizedBody === 'CASH' && fromE164 && toE164) {
+    console.log(`[v2] CASH keyword detected from ${fromE164}`);
+    
+    // Check rate limit: has this number received a CASH reply in the last 24 hours?
+    try {
+      const cutoffTime = new Date(Date.now() - CASH_RATE_LIMIT_HOURS * 60 * 60 * 1000).toISOString();
+      
+      // Look for outbound messages to this number containing the CASH auto-reply in the last 24h
+      const { data: recentReplies, error: rateLimitError } = await supabase
+        .from('admin_sms_messages')
+        .select('id, created_at')
+        .eq('direction', 'outbound')
+        .eq('to_e164', fromE164)
+        .like('body', '%Welcome to CashRidez%')
+        .gte('created_at', cutoffTime)
+        .limit(1);
+      
+      if (rateLimitError) {
+        console.error('[v2] Rate limit check error:', rateLimitError);
+        // On error, still send reply to avoid blocking legitimate users
+      } else if (recentReplies && recentReplies.length > 0) {
+        console.log(`[v2] CASH rate limit hit for ${fromE164} - already replied at ${recentReplies[0].created_at}`);
+        // Return empty TwiML - no duplicate reply
+        return new Response(twimlEmptyResponse, { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+        });
+      }
+      
+      // No recent reply found - send the auto-reply
+      console.log(`[v2] Sending CASH auto-reply to ${fromE164}`);
+      
+      // Log the outbound auto-reply to admin_sms_messages for tracking
+      if (conversationId) {
+        const { error: logError } = await supabase
+          .from('admin_sms_messages')
+          .insert({
+            conversation_id: conversationId,
+            direction: 'outbound',
+            from_e164: toE164,
+            to_e164: fromE164,
+            body: CASH_AUTO_REPLY,
+            twilio_message_sid: `auto-cash-${Date.now()}`,
+            status: 'sent',
+            created_at: new Date().toISOString()
+          });
+        
+        if (logError) {
+          console.error('[v2] Failed to log CASH auto-reply:', logError);
+        } else {
+          console.log('[v2] CASH auto-reply logged to messages');
+        }
+      }
+      
+      return new Response(buildTwimlReply(CASH_AUTO_REPLY), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+      });
+    } catch (err: any) {
+      console.error('[v2] CASH handling error:', err);
+      // On error, send reply anyway
+      return new Response(buildTwimlReply(CASH_AUTO_REPLY), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/xml' }
+      });
+    }
   }
 
   // Always return 200 to prevent Twilio retries
