@@ -119,23 +119,7 @@ const AdminCallCenter = () => {
               </TabsList>
             </div>
 
-            {/* Mobile Tab Pills */}
-            <div className="lg:hidden mb-4 overflow-x-auto">
-              <div className="flex gap-2 pb-2">
-                {tabs.map((tab) => (
-                  <Button
-                    key={tab.value}
-                    variant={activeTab === tab.value ? "default" : "outline"}
-                    size="sm"
-                    className="flex-shrink-0 gap-1.5"
-                    onClick={() => handleTabChange(tab.value)}
-                  >
-                    <tab.icon className="w-3.5 h-3.5" />
-                    {tab.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            {/* Mobile: No tab pills - actions available via hamburger menu */}
 
             <TabsContent value="compose" className="mt-0">
               <ComposeCallTab />
