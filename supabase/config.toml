@@ -98,3 +98,15 @@ verify_jwt = false
 
 [functions.call-center-recording]
 verify_jwt = false
+
+[functions.call-center-ai]
+verify_jwt = false
+
+[functions.call-center-voicemail]
+verify_jwt = false
+
+[functions.call-center-tick]
+verify_jwt = false
+
+[functions.call-center-outbound-start]
+verify_jwt = true

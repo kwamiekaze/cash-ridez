@@ -10,7 +10,7 @@ const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
 const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
 const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')!;
 const ELEVENLABS_AGENT_ID = Deno.env.get('ELEVENLABS_AGENT_ID')!;
-const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

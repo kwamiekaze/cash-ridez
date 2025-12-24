@@ -884,6 +884,75 @@ export type Database = {
           },
         ]
       }
+      call_center_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          latency_ms: number | null
+          metadata: Json | null
+          provider: string | null
+          role: string
+          twilio_call_sid: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          provider?: string | null
+          role: string
+          twilio_call_sid: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          metadata?: Json | null
+          provider?: string | null
+          role?: string
+          twilio_call_sid?: string
+        }
+        Relationships: []
+      }
+      call_center_recordings: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          recording_url: string | null
+          status: string | null
+          transcript_json: Json | null
+          transcript_text: string | null
+          twilio_call_sid: string
+          twilio_recording_sid: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          recording_url?: string | null
+          status?: string | null
+          transcript_json?: Json | null
+          transcript_text?: string | null
+          twilio_call_sid: string
+          twilio_recording_sid?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          recording_url?: string | null
+          status?: string | null
+          transcript_json?: Json | null
+          transcript_text?: string | null
+          twilio_call_sid?: string
+          twilio_recording_sid?: string | null
+        }
+        Relationships: []
+      }
       calls: {
         Row: {
           created_at: string

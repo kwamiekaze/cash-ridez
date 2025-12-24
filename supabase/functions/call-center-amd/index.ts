@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const APP_BASE_URL = Deno.env.get('APP_BASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 const TWILIO_ACCOUNT_SID = Deno.env.get('TWILIO_ACCOUNT_SID')!;
 const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
 
@@ -43,7 +43,7 @@ serve(async (req) => {
       console.log(`Voicemail detected for ${callSid}, redirecting to leave message`);
 
       // Update call to play voicemail TwiML
-      const redirectUrl = `${APP_BASE_URL}/functions/v1/call-center-twiml?voicemail=true&firstName=${encodeURIComponent(firstName)}&callLogId=${callLog?.id || ''}`;
+      const redirectUrl = `${APP_BASE_URL}/functions/v1/call-center-voicemail?callSid=${callSid}&firstName=${encodeURIComponent(firstName)}`;
 
       await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls/${callSid}.json`,

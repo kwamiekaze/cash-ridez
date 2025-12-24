@@ -305,25 +305,39 @@ const AutoCallTab = () => {
   };
 
   const updateCampaignStatus = async (campaignId: string, status: string) => {
-    const { error } = await supabase
-      .from('admin_call_campaigns')
-      .update({ 
-        status,
-        started_at: status === 'running' ? new Date().toISOString() : undefined,
-        finished_at: status === 'completed' || status === 'cancelled' ? new Date().toISOString() : undefined,
-      })
-      .eq('id', campaignId);
+    try {
+      // Map status to action for the edge function
+      const actionMap: Record<string, string> = {
+        'running': activeCampaign?.status === 'paused' ? 'resume' : 'start',
+        'paused': 'pause',
+        'cancelled': 'stop',
+      };
 
-    if (error) {
-      toast({
-        title: "Failed to update campaign",
-        variant: "destructive",
+      const action = actionMap[status] || 'start';
+
+      // Call the edge function to manage campaign
+      const { data, error } = await supabase.functions.invoke('call-center-outbound-start', {
+        body: { campaignId, action },
       });
-    } else {
+
+      if (error) throw error;
+
+      toast({
+        title: "Campaign updated",
+        description: data?.message || `Campaign ${action} successful`,
+      });
+
       loadCampaigns();
       if (activeCampaign?.id === campaignId) {
         loadCampaignDetails(campaignId);
       }
+    } catch (err: any) {
+      console.error('Campaign status update error:', err);
+      toast({
+        title: "Failed to update campaign",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
