@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * Inbound Voicemail Handler - Called when inbound call goes to voicemail (missed).
  * Uses the EXACT SAME ElevenLabs agent voice as outbound calls.
  * 
- * Script (exact):
+ * INBOUND VOICEMAIL SCRIPT (exact):
  * "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. 
  *  To connect with an agent please text the word AGENT to this number and an agent 
  *  will return your call shortly. Please save this number for future connections."
@@ -66,7 +66,7 @@ serve(async (req) => {
     // Notify admins about missed call / voicemail
     await notifyAdminsOfMissedCall(supabase, fromNumber, callSid);
 
-    // The EXACT script for inbound voicemail
+    // The EXACT script for inbound voicemail - same male ElevenLabs voice
     const voicemailScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
 
     console.log('Inbound voicemail script:', voicemailScript);
@@ -149,7 +149,8 @@ serve(async (req) => {
       if (logError) console.error('Failed to log inbound voicemail message:', logError);
     }
 
-    // Build TwiML response - ONLY use ElevenLabs audio, fallback only if completely failed
+    // Build TwiML response
+    // CRITICAL: Only use ElevenLabs audio. Fallback to Polly.Matthew (male) ONLY if ElevenLabs fails.
     let twiml: string;
 
     if (useElevenLabs && audioUrl) {
@@ -161,7 +162,7 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
     } else {
-      // FALLBACK ONLY: This should be rare - log it for debugging
+      // FALLBACK ONLY: Use Polly.Matthew (male) - NEVER female
       console.error('INBOUND VOICEMAIL FALLBACK TRIGGERED: ElevenLabs unavailable, using Twilio Polly.Matthew as emergency fallback');
       twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -181,11 +182,12 @@ serve(async (req) => {
   } catch (error) {
     console.error('Inbound voicemail handler error:', error);
     
-    // Emergency fallback - log this case
+    // Emergency fallback - use Polly.Matthew (male)
     console.error('INBOUND VOICEMAIL EMERGENCY FALLBACK: Critical error occurred');
+    const fallbackScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">Thank you for calling Cash Ridez Connect LLC. Please text AGENT to this number to connect with an agent. Thank you.</Say>
+  <Say voice="Polly.Matthew">${escapeXml(fallbackScript)}</Say>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
@@ -209,6 +211,12 @@ async function notifyAdminsOfMissedCall(supabase: any, fromNumber: string, callS
       return;
     }
 
+    const timestamp = new Date().toLocaleString('en-US', { 
+      timeZone: 'America/New_York',
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+
     for (const setting of adminSettings) {
       // Notify for missed call
       if (setting.notify_call_missed) {
@@ -216,7 +224,7 @@ async function notifyAdminsOfMissedCall(supabase: any, fromNumber: string, callS
           user_id: setting.admin_id,
           type: 'call_missed',
           title: 'Missed Call',
-          message: `Missed call from ${fromNumber}`,
+          message: `Missed call from ${fromNumber} at ${timestamp}`,
           link: '/admin/call-center?tab=history',
           read: false,
         });
@@ -228,7 +236,7 @@ async function notifyAdminsOfMissedCall(supabase: any, fromNumber: string, callS
           user_id: setting.admin_id,
           type: 'call_voicemail',
           title: 'New Voicemail',
-          message: `Voicemail from ${fromNumber}`,
+          message: `Voicemail from ${fromNumber} at ${timestamp}`,
           link: '/admin/call-center?tab=history',
           read: false,
         });

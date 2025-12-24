@@ -3,14 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * Inbound Voice Handler - Called when someone calls our Twilio number.
- * Uses the EXACT SAME ElevenLabs agent voice as outbound calls.
  * 
- * Inbound voicemail script (if missed):
- * "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. 
- *  To connect with an agent please text the word AGENT to this number and an agent 
- *  will return your call shortly. Please save this number for future connections."
+ * CRITICAL: Returns valid TwiML immediately. No AI calls block this response.
  * 
- * Then 3-second pause, then hangup.
+ * For MVP: Ring for 20 seconds, then go to voicemail with ElevenLabs voice.
+ * In future: Add admin answer functionality.
  */
 
 const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
@@ -61,14 +58,16 @@ serve(async (req) => {
       console.log(`Created inbound call log: ${callLog?.id}`);
     }
 
-    // Notify admins about inbound call
-    await notifyAdminsOfInboundCall(supabase, from, callSid);
+    // Notify admins about inbound call (non-blocking)
+    notifyAdminsOfInboundCall(supabase, from, callSid).catch(err => {
+      console.error('Failed to notify admins:', err);
+    });
 
-    // For MVP: Go directly to voicemail with ElevenLabs voice
-    // In future: Add admin answer functionality
+    // For MVP: Go to voicemail with ElevenLabs voice after 20 second ring
     const voicemailUrl = `${APP_BASE_URL}/functions/v1/call-inbound-voicemail?callSid=${encodeURIComponent(callSid)}&from=${encodeURIComponent(from)}`;
 
-    // Ring for 20 seconds, then go to voicemail
+    // Ring for 20 seconds (simulate admin answer time), then go to voicemail
+    // Use <Pause> to let it ring, then redirect to voicemail
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Pause length="20"/>
@@ -85,10 +84,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Inbound voice handler error:', error);
     
-    // Emergency fallback - still try to play voicemail
+    // Emergency fallback - still try to play voicemail with male voice
+    const fallbackScript = "Thank you for calling Cash Ridez Connect LLC, sorry we missed your call. To connect with an agent please text the word AGENT to this number and an agent will return your call shortly. Please save this number for future connections.";
     const fallbackTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">Thank you for calling Cash Ridez Connect. Please text AGENT to this number. Thank you.</Say>
+  <Say voice="Polly.Matthew">${escapeXml(fallbackScript)}</Say>
   <Pause length="3"/>
   <Hangup/>
 </Response>`;
@@ -113,13 +113,19 @@ async function notifyAdminsOfInboundCall(supabase: any, fromNumber: string, call
       return;
     }
 
+    const timestamp = new Date().toLocaleString('en-US', { 
+      timeZone: 'America/New_York',
+      dateStyle: 'short',
+      timeStyle: 'short'
+    });
+
     // Create notifications for each admin
     for (const setting of adminSettings) {
       await supabase.from('notifications').insert({
         user_id: setting.admin_id,
         type: 'call_inbound',
         title: 'Incoming Call',
-        message: `Incoming call from ${fromNumber}`,
+        message: `Incoming call from ${fromNumber} at ${timestamp}`,
         link: '/admin/call-center?tab=history',
         read: false,
       });
