@@ -11,6 +11,7 @@ import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
 import { useNotificationSound } from "./hooks/useNotificationSound";
+import { useVoicemailAudioSeed } from "@/hooks/useVoicemailAudioSeed";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -57,6 +58,12 @@ const LoadingFallback = () => (
 // Initialize notification sound system globally
 const NotificationSoundInitializer = React.memo(() => {
   useNotificationSound();
+  return <React.Fragment />;
+});
+
+// Ensure voicemail audio is present in backend storage
+const VoicemailAudioSeeder = React.memo(() => {
+  useVoicemailAudioSeed();
   return <React.Fragment />;
 });
 
@@ -112,6 +119,7 @@ const App = () => {
         <AuthProvider>
           <DomainRedirect />
           <NotificationSoundInitializer />
+          <VoicemailAudioSeeder />
           <Toaster />
           <Sonner />
           <PageViewTracker />

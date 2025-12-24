@@ -68,7 +68,8 @@ serve(async (req) => {
       .from('call_center_audio')
       .upload(VOICEMAIL_FILENAME, audioBuffer, {
         contentType: 'audio/mpeg',
-        upsert: true
+        cacheControl: '0',
+        upsert: true,
       });
 
     if (uploadError) {
