@@ -2,16 +2,16 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationPermissionDialog } from "@/components/NotificationPermissionDialog";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
-
 import { useNotificationSound } from "./hooks/useNotificationSound";
+import RiderDashboard from "./pages/RiderDashboard";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -20,8 +20,6 @@ const Auth = lazy(() => import("./pages/Auth"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const VerificationPending = lazy(() => import("./pages/VerificationPending"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-// Import RiderDashboard directly to avoid context issues
-import RiderDashboard from "./pages/RiderDashboard";
 const DriverDashboard = lazy(() => import("./pages/DriverDashboard"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const CreateRideRequest = lazy(() => import("./pages/CreateRideRequest"));
@@ -46,7 +44,6 @@ const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
 const Refer = lazy(() => import("./pages/Refer"));
 const LiveMap = lazy(() => import("./pages/LiveMap"));
-import { Navigate } from "react-router-dom";
 
 // Loading fallback component
 const LoadingFallback = () => (
