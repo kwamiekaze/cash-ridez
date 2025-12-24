@@ -47,6 +47,212 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_call_campaign_recipients: {
+        Row: {
+          attempt_count: number | null
+          call_duration_seconds: number | null
+          call_ended_at: string | null
+          call_started_at: string | null
+          campaign_id: string
+          created_at: string
+          error_message: string | null
+          first_name: string | null
+          id: string
+          last_attempt_at: string | null
+          phone_e164: string
+          phone_raw: string | null
+          recording_duration_seconds: number | null
+          recording_url: string | null
+          status: string
+          twilio_call_sid: string | null
+          voicemail_left: boolean | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_started_at?: string | null
+          campaign_id: string
+          created_at?: string
+          error_message?: string | null
+          first_name?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          phone_e164: string
+          phone_raw?: string | null
+          recording_duration_seconds?: number | null
+          recording_url?: string | null
+          status?: string
+          twilio_call_sid?: string | null
+          voicemail_left?: boolean | null
+        }
+        Update: {
+          attempt_count?: number | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_started_at?: string | null
+          campaign_id?: string
+          created_at?: string
+          error_message?: string | null
+          first_name?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          phone_e164?: string
+          phone_raw?: string | null
+          recording_duration_seconds?: number | null
+          recording_url?: string | null
+          status?: string
+          twilio_call_sid?: string | null
+          voicemail_left?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_call_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_call_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_call_campaigns: {
+        Row: {
+          answered_count: number | null
+          called_count: number | null
+          created_at: string
+          created_by: string
+          failed_count: number | null
+          finished_at: string | null
+          id: string
+          last_call_at: string | null
+          name: string | null
+          queued_count: number | null
+          started_at: string | null
+          status: string
+          total_recipients: number | null
+          voicemail_count: number | null
+        }
+        Insert: {
+          answered_count?: number | null
+          called_count?: number | null
+          created_at?: string
+          created_by: string
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_call_at?: string | null
+          name?: string | null
+          queued_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_recipients?: number | null
+          voicemail_count?: number | null
+        }
+        Update: {
+          answered_count?: number | null
+          called_count?: number | null
+          created_at?: string
+          created_by?: string
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_call_at?: string | null
+          name?: string | null
+          queued_count?: number | null
+          started_at?: string | null
+          status?: string
+          total_recipients?: number | null
+          voicemail_count?: number | null
+        }
+        Relationships: []
+      }
+      admin_call_logs: {
+        Row: {
+          admin_user_id: string
+          ai_conversation_summary: string | null
+          call_answered_at: string | null
+          call_duration_seconds: number | null
+          call_ended_at: string | null
+          call_started_at: string | null
+          call_type: string
+          campaign_id: string | null
+          campaign_recipient_id: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          first_name: string | null
+          id: string
+          phone_e164: string
+          recording_duration_seconds: number | null
+          recording_sid: string | null
+          recording_url: string | null
+          status: string
+          twilio_call_sid: string | null
+          voicemail_left: boolean | null
+        }
+        Insert: {
+          admin_user_id: string
+          ai_conversation_summary?: string | null
+          call_answered_at?: string | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_started_at?: string | null
+          call_type?: string
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          first_name?: string | null
+          id?: string
+          phone_e164: string
+          recording_duration_seconds?: number | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          status?: string
+          twilio_call_sid?: string | null
+          voicemail_left?: boolean | null
+        }
+        Update: {
+          admin_user_id?: string
+          ai_conversation_summary?: string | null
+          call_answered_at?: string | null
+          call_duration_seconds?: number | null
+          call_ended_at?: string | null
+          call_started_at?: string | null
+          call_type?: string
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          first_name?: string | null
+          id?: string
+          phone_e164?: string
+          recording_duration_seconds?: number | null
+          recording_sid?: string | null
+          recording_url?: string | null
+          status?: string
+          twilio_call_sid?: string | null
+          voicemail_left?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_call_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_call_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_call_logs_campaign_recipient_id_fkey"
+            columns: ["campaign_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "admin_call_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_notification_settings: {
         Row: {
           admin_id: string
