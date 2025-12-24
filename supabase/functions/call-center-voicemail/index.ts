@@ -4,18 +4,24 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Voicemail Handler - Called when AMD detects answering machine (outbound calls).
  * 
- * CRITICAL: Uses ONLY the pre-recorded voicemail MP3 from GitHub.
+ * CRITICAL: When leaving a voicemail, play the OUTBOUND MP3 (the marketing message).
+ * This is the message we want to leave on the recipient's voicemail.
+ * 
+ * DO NOT confuse with the voicemail GREETING (cashridez_voicemail.mp3) which is
+ * for inbound missed calls. This handler plays the OUTBOUND message.
+ * 
  * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO fallback voices.
  * 
- * AUTHORITATIVE AUDIO URL:
- * https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3
+ * AUTHORITATIVE OUTBOUND AUDIO URL (message to leave on voicemail):
+ * https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_outbound.mp3
  * 
  * After playback: 1 second pause, then hangup.
  * On ANY error: hangup silently - NEVER substitute a voice.
  */
 
 // HARDCODED GitHub MP3 URL - DO NOT CHANGE
-const VOICEMAIL_MP3_URL = "https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_voicemail.mp3";
+// This is the OUTBOUND message to leave on voicemail (not the greeting)
+const OUTBOUND_MP3_URL = "https://github.com/kwamiekaze/cashridez-voicemail/raw/refs/heads/main/cashridez_outbound.mp3";
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -45,7 +51,7 @@ serve(async (req) => {
     firstName = url.searchParams.get('firstName') || '';
 
     console.log(`[call-center-voicemail] CallSid=${callSid}, FirstName=${firstName}`);
-    console.log(`[call-center-voicemail] Playing voicemail MP3: ${VOICEMAIL_MP3_URL}`);
+    console.log(`[call-center-voicemail] Playing OUTBOUND MP3 on voicemail: ${OUTBOUND_MP3_URL}`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -81,17 +87,18 @@ serve(async (req) => {
       const { error: logError } = await supabase.from('call_center_messages').insert({
         twilio_call_sid: callSid,
         role: 'assistant',
-        content: '[Played voicemail: cashridez_voicemail.mp3]',
+        content: '[Left voicemail: cashridez_outbound.mp3]',
         provider: 'prerecorded-github',
       });
       if (logError) console.error('[call-center-voicemail] Failed to log message:', logError);
     }
 
-    // Build TwiML response - ONLY Play MP3, Pause, Hangup
+    // Build TwiML response - Play OUTBOUND MP3 from the START
+    // This ensures the full message is left on voicemail
     // NO <Say> elements. NO fallbacks.
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${VOICEMAIL_MP3_URL}</Play>
+  <Play>${OUTBOUND_MP3_URL}</Play>
   <Pause length="1"/>
   <Hangup/>
 </Response>`;
@@ -109,10 +116,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('[call-center-voicemail] Handler error:', error);
 
-    // On error: STILL play voicemail, no fallback voice
+    // On error: STILL play outbound message, no fallback voice
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Play>${VOICEMAIL_MP3_URL}</Play>
+  <Play>${OUTBOUND_MP3_URL}</Play>
   <Pause length="1"/>
   <Hangup/>
 </Response>`;
