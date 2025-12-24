@@ -48,6 +48,29 @@ const UNICODE_SINGLE_LIMIT = 70;
 const UNICODE_MULTI_LIMIT = 67;
 const OPT_OUT_TEXT = "\n\nReply STOP to opt out.";
 
+// Human-readable Twilio error code descriptions
+const TWILIO_ERROR_DESCRIPTIONS: Record<string, string> = {
+  '30001': 'Queue Overflow - Twilio queue is full',
+  '30002': 'Account Suspended',
+  '30003': 'Unreachable - destination handset unavailable',
+  '30004': 'Message Blocked - carrier filtering',
+  '30005': 'Unknown destination handset',
+  '30006': 'Landline or unreachable carrier',
+  '30007': 'Carrier violation',
+  '30008': 'Unknown error',
+  '30034': 'A2P 10DLC Blocked - carrier is filtering unregistered traffic. This number may be a landline or the carrier blocks promotional SMS.',
+  '21408': 'Permission not enabled for region',
+  '21610': 'Unsubscribed recipient (STOP received)',
+  '21611': 'Invalid To number',
+  '21612': 'Invalid From number for SMS',
+  '21614': 'To number is not SMS-capable (likely a landline)',
+  '21617': 'Message body exceeds max length',
+};
+
+const getErrorDescription = (errorCode: string): string => {
+  return TWILIO_ERROR_DESCRIPTIONS[errorCode] || `Unknown error code: ${errorCode}`;
+};
+
 interface Conversation {
   id: string;
   participant_e164: string;
@@ -1375,33 +1398,50 @@ const AdminSmsCenter = () => {
                       {cashAutoReplies.length === 0 ? (
                         <p className="text-xs text-muted-foreground">No CASH auto-replies found yet.</p>
                       ) : (
-                        <ScrollArea className="h-[150px]">
+                        <ScrollArea className="h-[200px]">
                           <div className="space-y-2">
-                            {cashAutoReplies.slice(0, 5).map((msg: any) => (
-                              <div key={msg.id} className="p-2 rounded border bg-card/50 text-xs">
-                                <div className="flex justify-between items-start">
-                                  <div>
-                                    <span className="text-muted-foreground">To: </span>
-                                    <span className="font-mono">{msg.to_e164}</span>
+                            {cashAutoReplies.slice(0, 10).map((msg: any) => {
+                              const isRealSid = msg.twilio_message_sid?.startsWith('SM');
+                              const statusColor = 
+                                msg.status === 'delivered' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                                msg.status === 'sent' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                msg.status === 'queued' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                                msg.status === 'undelivered' || msg.status === 'failed' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                'bg-muted text-muted-foreground';
+                              
+                              return (
+                                <div key={msg.id} className="p-3 rounded border bg-card/50 text-xs">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="text-muted-foreground">To: </span>
+                                      <span className="font-mono">{msg.to_e164}</span>
+                                    </div>
+                                    <Badge className={cn("text-xs", statusColor)}>
+                                      {msg.status || 'unknown'}
+                                    </Badge>
                                   </div>
-                                  <Badge 
-                                    variant={msg.status === 'delivered' ? 'default' : msg.status === 'failed' ? 'destructive' : 'secondary'}
-                                    className="text-xs"
-                                  >
-                                    {msg.status}
-                                  </Badge>
+                                  <div className="mt-1 flex justify-between text-muted-foreground">
+                                    <span className="font-mono truncate max-w-[220px]">
+                                      {isRealSid ? (
+                                        <span className="text-green-400">SID: {msg.twilio_message_sid.slice(0, 18)}...</span>
+                                      ) : (
+                                        <span className="text-orange-400">Internal: {msg.twilio_message_sid || 'none'}</span>
+                                      )}
+                                    </span>
+                                    <span>{format(new Date(msg.created_at), 'MMM d, h:mm a')}</span>
+                                  </div>
+                                  {msg.error_code && (
+                                    <div className="mt-2 p-2 rounded bg-red-900/30 border border-red-500/30">
+                                      <p className="text-red-400 font-medium">Error {msg.error_code}</p>
+                                      <p className="text-red-300/80 mt-1">{msg.error_message || getErrorDescription(msg.error_code)}</p>
+                                    </div>
+                                  )}
+                                  {!msg.error_code && msg.error_message && (
+                                    <p className="text-red-400 mt-1 p-1 bg-red-900/20 rounded">{msg.error_message}</p>
+                                  )}
                                 </div>
-                                <div className="mt-1 flex justify-between text-muted-foreground">
-                                  <span className="font-mono truncate max-w-[200px]">
-                                    SID: {msg.twilio_message_sid?.startsWith('SM') ? msg.twilio_message_sid.slice(0, 16) + '...' : msg.twilio_message_sid || 'N/A'}
-                                  </span>
-                                  <span>{format(new Date(msg.created_at), 'MMM d, h:mm a')}</span>
-                                </div>
-                                {msg.error_message && (
-                                  <p className="text-red-400 mt-1">Error: {msg.error_message}</p>
-                                )}
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </ScrollArea>
                       )}
