@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * AUTHORITATIVE AUDIO URL:
  * https://raw.githubusercontent.com/kwamiekaze/cashridez-voicemail/main/cashridez_outbound.mp3
  * 
- * Flow: Play MP3 → Pause 3 seconds → Hangup
+ * Flow: Play MP3 → Pause 1 second → Hangup
  * On ANY error: hangup silently - NEVER substitute a voice.
  */
 
@@ -118,7 +118,7 @@ serve(async (req) => {
             trim="trim-silence" />
   </Start>
   <Play>${OUTBOUND_MP3_URL}</Play>
-  <Pause length="3"/>
+  <Pause length="1"/>
   <Hangup/>
 </Response>`;
       }
@@ -150,7 +150,7 @@ serve(async (req) => {
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${OUTBOUND_MP3_URL}</Play>
-  <Pause length="3"/>
+  <Pause length="1"/>
   <Hangup/>
 </Response>`;
 
