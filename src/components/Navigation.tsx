@@ -8,8 +8,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { ThemeToggle } from './ThemeToggle';
 import { NotificationBell } from './NotificationBell';
+import SupportDialog from './SupportDialog';
+
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -23,11 +26,14 @@ export function Navigation() {
     color: 'text-emerald-400'
   }, {
     label: 'Support',
-    href: '#support',
+    href: '#support-dialog',
     color: 'text-yellow-400'
   }];
   const handleMenuClick = (href: string) => {
-    if (href.startsWith('/')) {
+    if (href === '#support-dialog') {
+      setSupportOpen(true);
+      setIsMenuOpen(false);
+    } else if (href.startsWith('/')) {
       navigate(href);
       setIsMenuOpen(false);
     } else {
@@ -169,7 +175,7 @@ export function Navigation() {
                     </Button>
                     <Button 
                       variant="ghost" 
-                      onClick={() => { /* Open support dialog */ setIsMenuOpen(false); }} 
+                      onClick={() => { setSupportOpen(true); setIsMenuOpen(false); }} 
                       className="w-full justify-start text-yellow-400 hover:text-yellow-300 transition-all duration-300 hover:scale-105"
                     >
                       <HelpCircle className="mr-2 h-4 w-4" />
@@ -220,5 +226,6 @@ export function Navigation() {
         <SportsCar width={100} height={50} />
       </motion.div>
     </div>
+    <SupportDialog open={supportOpen} onOpenChange={setSupportOpen} />
     </>;
 }

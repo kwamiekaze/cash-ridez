@@ -298,17 +298,17 @@ export default function HowItWorks() {
                 <p className="text-gray-400 italic mt-2">This allows private communication without exposing personal phone numbers.</p>
               </StepCard>
               
-              <StepCard number={6} title="Trip Pickup" icon={Car}>
-                <p>The driver arrives at the pickup location at the agreed time and completes the trip to the drop-off location.</p>
-              </StepCard>
-              
-              <StepCard number={7} title="Pay the Driver Directly Upon Arrival" icon={DollarSign}>
+              <StepCard number={6} title="Pay the Driver Directly Upon Arrival" icon={DollarSign}>
                 <p>After the driver arrives:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2 text-gray-400">
                   <li>The rider pays the driver directly</li>
                   <li>The payment amount is the exact agreed-upon price</li>
                 </ul>
                 <p className="text-gray-400 italic mt-2">Payment methods are arranged between the rider and driver, keeping transactions simple and transparent.</p>
+              </StepCard>
+              
+              <StepCard number={7} title="Trip Completion" icon={Car}>
+                <p>The driver arrives at the pickup location at the agreed time and completes the trip to the drop-off location.</p>
               </StepCard>
               
               <StepCard number={8} title="Rate Each Other" icon={Star}>
