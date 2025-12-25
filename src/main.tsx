@@ -13,17 +13,40 @@ if ('fonts' in document) {
   });
 }
 
-// Register service worker for PWA
+// Register service worker for PWA with update handling
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
         console.log('Service Worker registered:', registration);
+        
+        // Check for updates periodically
+        setInterval(() => {
+          registration.update();
+        }, 60 * 1000); // Check every minute
+        
+        // Handle new service worker waiting
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New SW is ready, update will be handled by useAppUpdate hook
+                console.log('New Service Worker installed and waiting');
+              }
+            });
+          }
+        });
       })
       .catch((error) => {
         console.log('Service Worker registration failed:', error);
       });
+  });
+  
+  // Listen for controller change (new SW took over)
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    console.log('Service Worker controller changed');
   });
 }
 

@@ -8,7 +8,12 @@ export type AnalyticsEventName =
   | 'tips_banner_shown'
   | 'tips_banner_dismissed'
   | 'tips_banner_clicked_view_tips'
-  | 'tips_banner_learn_more_clicked';
+  | 'tips_banner_learn_more_clicked'
+  | 'update_available_shown'
+  | 'update_clicked'
+  | 'update_dismissed'
+  | 'update_auto_triggered'
+  | 'update_completed';
 
 interface TrackEventParams {
   eventName: AnalyticsEventName;

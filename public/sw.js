@@ -1,5 +1,5 @@
 // Service Worker for CashRidez PWA
-const CACHE_NAME = 'cashridez-v2';
+const CACHE_NAME = 'cashridez-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -38,6 +38,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Never cache version.json - always fetch fresh
+  if (url.pathname === '/version.json') {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+    );
+    return;
+  }
 
   // Don't cache Supabase, Stripe, or Twilio requests
   if (

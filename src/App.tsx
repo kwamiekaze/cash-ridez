@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { PageViewTracker } from "./components/PageViewTracker";
 import { useNotificationSound } from "./hooks/useNotificationSound";
 import { useVoicemailAudioSeed } from "@/hooks/useVoicemailAudioSeed";
+import { AppUpdateBanner } from "./components/AppUpdateBanner";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -122,6 +123,7 @@ const App = () => {
           <DomainRedirect />
           <NotificationSoundInitializer />
           <VoicemailAudioSeeder />
+          <AppUpdateBanner />
           <Toaster />
           <Sonner />
           <PageViewTracker />
