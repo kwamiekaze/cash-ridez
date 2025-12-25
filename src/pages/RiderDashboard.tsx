@@ -23,6 +23,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { DashboardCar } from "@/components/DashboardCar";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { AddressLink } from "@/components/AddressLink";
+import { RiderTipsBanner } from "@/components/RiderTipsBanner";
 
 const RiderDashboard = () => {
   const { user, signOut } = useAuth();
@@ -56,7 +57,7 @@ const RiderDashboard = () => {
       // Force fresh fetch by adding timestamp to bypass any caching
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_rider, is_driver, phone_number, profile_zip")
+        .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_rider, is_driver, phone_number, profile_zip, rider_tips_visited, rider_tips_dismissed")
         .eq("id", user?.id)
         .single();
       
@@ -423,6 +424,9 @@ const RiderDashboard = () => {
             </div>
           </Card>
         )}
+
+        {/* Rider Tips Banner - shown until dismissed or visited */}
+        <RiderTipsBanner profile={profile} />
 
         {/* Quick Actions */}
         <div className={`grid grid-cols-1 gap-4 mb-8 ${profile?.active_role !== 'rider' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>

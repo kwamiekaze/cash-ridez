@@ -7,17 +7,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAnalyticsEvents } from "@/hooks/useAnalyticsEvents";
 
-interface DriverTipsBannerProps {
+interface RiderTipsBannerProps {
   profile: {
     id: string;
     active_role?: string;
-    driver_tips_visited?: boolean;
-    driver_tips_dismissed?: boolean;
+    rider_tips_visited?: boolean;
+    rider_tips_dismissed?: boolean;
   } | null;
   onDismiss?: () => void;
 }
 
-export function DriverTipsBanner({ profile, onDismiss }: DriverTipsBannerProps) {
+export function RiderTipsBanner({ profile, onDismiss }: RiderTipsBannerProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { trackEvent } = useAnalyticsEvents();
@@ -27,17 +27,17 @@ export function DriverTipsBanner({ profile, onDismiss }: DriverTipsBannerProps) 
   useEffect(() => {
     if (!profile || !user) return;
     
-    // Only show for drivers who haven't visited tips AND haven't dismissed
-    const isDriver = profile.active_role === 'driver';
-    const hasVisited = profile.driver_tips_visited === true;
-    const hasDismissed = profile.driver_tips_dismissed === true;
+    // Only show for riders who haven't visited tips AND haven't dismissed
+    const isRider = profile.active_role === 'rider';
+    const hasVisited = profile.rider_tips_visited === true;
+    const hasDismissed = profile.rider_tips_dismissed === true;
     
-    if (isDriver && !hasVisited && !hasDismissed) {
+    if (isRider && !hasVisited && !hasDismissed) {
       setIsVisible(true);
       // Track banner shown event
       trackEvent({
         eventName: 'tips_banner_shown',
-        role: 'driver',
+        role: 'rider',
         pagePath: window.location.pathname
       });
     }
@@ -50,13 +50,13 @@ export function DriverTipsBanner({ profile, onDismiss }: DriverTipsBannerProps) 
     // Track event
     trackEvent({
       eventName: 'tips_banner_learn_more_clicked',
-      role: 'driver',
+      role: 'rider',
       pagePath: window.location.pathname
     });
 
     setIsVisible(false);
     onDismiss?.();
-    navigate('/driver/tips');
+    navigate('/rider/tips');
   };
 
   const handleDismiss = async () => {
@@ -66,7 +66,7 @@ export function DriverTipsBanner({ profile, onDismiss }: DriverTipsBannerProps) 
     // Track event
     trackEvent({
       eventName: 'tips_banner_dismissed',
-      role: 'driver',
+      role: 'rider',
       pagePath: window.location.pathname
     });
 
@@ -75,8 +75,8 @@ export function DriverTipsBanner({ profile, onDismiss }: DriverTipsBannerProps) 
       const { error } = await supabase
         .from('profiles')
         .update({
-          driver_tips_dismissed: true,
-          driver_tips_dismissed_at: new Date().toISOString()
+          rider_tips_dismissed: true,
+          rider_tips_dismissed_at: new Date().toISOString()
         })
         .eq('id', user.id);
 
@@ -111,10 +111,10 @@ export function DriverTipsBanner({ profile, onDismiss }: DriverTipsBannerProps) 
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-foreground mb-1">
-              New: Driver Tips
+              New: Rider Tips
             </h3>
             <p className="text-sm text-muted-foreground mb-3">
-              Earn more and avoid issues—check the Driver Tips before your first trip.
+              Get more rides accepted—check the Rider Tips before posting your first trip.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
