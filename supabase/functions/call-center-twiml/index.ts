@@ -122,7 +122,7 @@ serve(async (req) => {
       } else {
         // Recording mode (default): Use human-like Gather flow
         // 1. Start recording for call logging
-        // 2. Use <Gather> to listen for caller's greeting (up to 4 seconds)
+        // 2. Use <Gather> to listen for caller's greeting (up to 2 seconds)
         // 3. When caller finishes speaking OR timeout, hit gather-complete action URL
         // 4. Gather-complete plays the MP3 and hangs up
         const gatherActionUrl = `${APP_BASE_URL}/functions/v1/call-center-gather-complete?callSid=${encodeURIComponent(callSid)}`;
@@ -134,7 +134,7 @@ serve(async (req) => {
             recordingStatusCallbackMethod="POST"
             trim="trim-silence" />
   </Start>
-  <Gather input="speech" timeout="4" speechTimeout="auto" action="${escapeXml(gatherActionUrl)}" method="POST">
+  <Gather input="speech" timeout="2" speechTimeout="auto" action="${escapeXml(gatherActionUrl)}" method="POST">
   </Gather>
   <!-- Fallback if Gather fails: play MP3 immediately -->
   <Play>${OUTBOUND_MP3_URL}</Play>
