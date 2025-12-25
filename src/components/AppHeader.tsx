@@ -135,6 +135,14 @@ const AppHeader = ({
                   <MapPin className="mr-2 h-4 w-4" />
                   Map
                 </DropdownMenuItem>
+                {profile?.active_role === 'rider' && <DropdownMenuItem onClick={() => navigate("/rider/tips")} className="cursor-pointer">
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Rider Tips
+                  </DropdownMenuItem>}
+                {profile?.active_role === 'driver' && <DropdownMenuItem onClick={() => navigate("/driver/tips")} className="cursor-pointer">
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Driver Tips
+                  </DropdownMenuItem>}
                 <DropdownMenuItem onClick={() => navigate("/history")} className="cursor-pointer">
                   <History className="mr-2 h-4 w-4" />
                   History
@@ -150,14 +158,6 @@ const AppHeader = ({
                 {!profile?.is_member && <DropdownMenuItem onClick={() => navigate("/subscription")} className="cursor-pointer">
                     <Crown className="mr-2 h-4 w-4" />
                     Subscription
-                  </DropdownMenuItem>}
-                {profile?.active_role === 'rider' && <DropdownMenuItem onClick={() => navigate("/rider/tips")} className="cursor-pointer">
-                    <Lightbulb className="mr-2 h-4 w-4" />
-                    Rider Tips
-                  </DropdownMenuItem>}
-                {profile?.active_role === 'driver' && <DropdownMenuItem onClick={() => navigate("/driver/tips")} className="cursor-pointer">
-                    <Lightbulb className="mr-2 h-4 w-4" />
-                    Driver Tips
                   </DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
