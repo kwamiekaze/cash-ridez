@@ -45,7 +45,7 @@ const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
 const Refer = lazy(() => import("./pages/Refer"));
 const LiveMap = lazy(() => import("./pages/LiveMap"));
-
+const RiderTips = lazy(() => import("./pages/RiderTips"));
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -300,6 +300,15 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <Referrals />
+                </ProtectedRoute>
+              }
+            />
+            {/* Rider Tips - role protected */}
+            <Route
+              path="/rider/tips"
+              element={
+                <ProtectedRoute>
+                  <RiderTips />
                 </ProtectedRoute>
               }
             />

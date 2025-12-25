@@ -1,7 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, History, HeadphonesIcon, Crown, Shield, Megaphone, Download, Users, MapPin } from "lucide-react";
+import { LogOut, User, History, HeadphonesIcon, Crown, Shield, Megaphone, Download, Users, MapPin, Lightbulb } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SupportDialog from "@/components/SupportDialog";
@@ -150,6 +150,10 @@ const AppHeader = ({
                 {!profile?.is_member && <DropdownMenuItem onClick={() => navigate("/subscription")} className="cursor-pointer">
                     <Crown className="mr-2 h-4 w-4" />
                     Subscription
+                  </DropdownMenuItem>}
+                {profile?.active_role === 'rider' && <DropdownMenuItem onClick={() => navigate("/rider/tips")} className="cursor-pointer">
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Rider Tips
                   </DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
