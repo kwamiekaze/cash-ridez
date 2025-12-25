@@ -143,18 +143,19 @@ export default function HowItWorks() {
                 How CashRidez Works
               </motion.h1>
               
-              {/* Subtitle - with breathing room */}
+              {/* Subtitle - with extra breathing room for car */}
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-xl md:text-2xl max-w-3xl mx-auto gold-shimmer mt-6 mb-12"
+                className="text-xl md:text-2xl max-w-3xl mx-auto gold-shimmer mt-6 mb-16"
               >
                 A simple step-by-step flow for riders and independent drivers to connect, negotiate, and ride with confidence.
               </motion.p>
               
-              {/* Car Track Row - ABOVE tabs, on divider line, no glow */}
-              <div className="relative z-5 pointer-events-none mb-2" style={{ height: '40px' }}>
+              {/* Car + Divider Line Row - car wheels sit on the line */}
+              <div className="relative z-5 pointer-events-none mb-6" style={{ height: '50px' }}>
+                {/* Animated car - positioned so wheels touch the line at bottom */}
                 <motion.div
                   initial={{ opacity: 0, x: -100 }}
                   animate={{ 
@@ -165,16 +166,17 @@ export default function HowItWorks() {
                     opacity: { duration: 1, ease: "easeOut" },
                     x: { duration: 6, repeat: Infinity, ease: "easeInOut" }
                   }}
-                  className="absolute left-1/2 -translate-x-1/2 top-0"
+                  className="absolute left-1/2 -translate-x-1/2"
+                  style={{ bottom: '1px' }}
                 >
                   <div className="relative scale-90 md:scale-100">
                     <CashCarIcon width={80} height={40} glowIntensity="none" />
                   </div>
                 </motion.div>
+                
+                {/* Thin divider line - at bottom of container */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-px bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent" />
               </div>
-              
-              {/* Thin divider line */}
-              <div className="w-32 h-px bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent mx-auto mb-6" />
               
               {/* Tabs Row - fully readable and clickable */}
               <motion.div
