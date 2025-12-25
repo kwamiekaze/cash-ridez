@@ -131,28 +131,6 @@ export default function HowItWorks() {
         <section className="relative pt-44 pb-20 overflow-hidden">
           <MapBackground showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
           
-          {/* Animated Car - Background layer, positioned below tabs */}
-          <motion.div
-            initial={{ opacity: 0, x: -100 }}
-            animate={{ 
-              opacity: 0.15, 
-              x: [0, 20, 0],
-            }}
-            transition={{ 
-              opacity: { duration: 1, ease: "easeOut" },
-              x: { duration: 8, repeat: Infinity, ease: "easeInOut" }
-            }}
-            className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
-            style={{ 
-              maxWidth: '100px',
-              top: 'calc(100% - 48px)',
-              zIndex: -1,
-              opacity: 0.15
-            }}
-          >
-            <CashCarIcon width={80} height={40} glowIntensity="medium" />
-          </motion.div>
-          
           <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-4xl mx-auto text-center">
               {/* Main Heading */}
@@ -175,12 +153,12 @@ export default function HowItWorks() {
                 A simple step-by-step flow for riders and independent drivers to connect, negotiate, and ride with confidence.
               </motion.p>
               
-              {/* Divider + Buttons Group - Raised upward */}
+              {/* ROW A: Tabs Row - fully readable and clickable */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="relative -mt-4"
+                className="relative z-20"
               >
                 {/* Thin divider line */}
                 <div className="w-32 h-px bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent mx-auto mb-6" />
@@ -207,6 +185,37 @@ export default function HowItWorks() {
                   </button>
                 </div>
               </motion.div>
+              
+              {/* ROW B: Car Track Row - separate from tabs */}
+              <div className="relative z-5 mt-10 pointer-events-none" style={{ height: '50px' }}>
+                <motion.div
+                  initial={{ opacity: 0, x: -100 }}
+                  animate={{ 
+                    opacity: 1, 
+                    x: [0, 30, 0],
+                  }}
+                  transition={{ 
+                    opacity: { duration: 1, ease: "easeOut" },
+                    x: { duration: 6, repeat: Infinity, ease: "easeInOut" }
+                  }}
+                  className="absolute left-1/2 -translate-x-1/2 top-0"
+                  style={{
+                    filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.55)) drop-shadow(0 0 18px rgba(255, 215, 0, 0.25))'
+                  }}
+                >
+                  {/* Trailing glow behind car */}
+                  <div 
+                    className="absolute top-1/2 -translate-y-1/2 -left-8 w-20 h-6 rounded-full opacity-40"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.5), rgba(255, 215, 0, 0.3))',
+                      filter: 'blur(12px)',
+                    }}
+                  />
+                  <div className="relative scale-90 md:scale-100">
+                    <CashCarIcon width={80} height={40} glowIntensity="medium" />
+                  </div>
+                </motion.div>
+              </div>
             </div>
           </div>
         </section>
