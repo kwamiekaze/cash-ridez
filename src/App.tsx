@@ -47,6 +47,7 @@ const Refer = lazy(() => import("./pages/Refer"));
 const LiveMap = lazy(() => import("./pages/LiveMap"));
 const RiderTips = lazy(() => import("./pages/RiderTips"));
 const DriverTips = lazy(() => import("./pages/DriverTips"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 // Loading fallback component
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
@@ -135,6 +136,7 @@ const App = () => {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
               <Route path="/community" element={<Community />} />
             <Route
               path="/onboarding"
