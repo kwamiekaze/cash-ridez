@@ -15,7 +15,7 @@ export function Navigation() {
   const { theme, setTheme } = useTheme();
   const menuItems = [{
     label: 'How It Works',
-    href: '#how-it-works',
+    href: '/how-it-works',
     color: 'text-white'
   }, {
     label: 'Map',
