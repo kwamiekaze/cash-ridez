@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useInView } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, DollarSign, MessageCircle, Phone, Car, Star, Users, Shield, CheckCircle2, ChevronRight, BookOpen, HelpCircle } from 'lucide-react';
+import { MapPin, DollarSign, MessageCircle, Phone, Car, Star, Users, CheckCircle2 } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
 import { MapBackground } from '@/components/MapBackground';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,6 @@ const SECTIONS = [
   { id: 'rider-flow', label: 'Rider Flow' },
   { id: 'driver-flow', label: 'Driver Flow' },
   { id: 'community', label: 'Community-First' },
-  { id: 'faq', label: 'FAQ' },
 ];
 
 // Sticky section navigation
@@ -80,7 +79,7 @@ function StepCard({
         <Icon className="w-5 h-5 text-yellow-400" />
       </div>
       
-      <h3 className="text-xl md:text-2xl font-bold text-white mt-4 mb-4 pr-12">{title}</h3>
+      <h3 className="text-xl md:text-2xl font-bold mt-4 mb-4 pr-12 gold-shimmer">{title}</h3>
       <div className="text-gray-300 space-y-3">
         {children}
       </div>
@@ -130,10 +129,22 @@ export default function HowItWorks() {
         
         {/* Hero Section */}
         <section className="relative pt-44 pb-20 overflow-hidden">
-          <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
+          <MapBackground showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
           
           <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-4xl mx-auto text-center space-y-8">
+              {/* Car Icon - Above heading, never overlapping */}
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="flex justify-center mb-4"
+              >
+                <div className="w-16 h-16 md:w-20 md:h-20 opacity-40">
+                  <CashCarIcon width={80} height={40} glowIntensity="medium" />
+                </div>
+              </motion.div>
+              
               {/* Main Heading */}
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
@@ -149,7 +160,7 @@ export default function HowItWorks() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto"
+                className="text-xl md:text-2xl max-w-3xl mx-auto gold-shimmer"
               >
                 A simple step-by-step flow for riders and independent drivers to connect, negotiate, and ride with confidence.
               </motion.p>
@@ -205,7 +216,7 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 gold-shimmer">
                 For Riders: Requesting a Trip
               </h2>
               <p className="text-gray-400 text-lg">How riders post trips, negotiate, and connect with drivers</p>
@@ -306,7 +317,7 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-emerald-400 to-yellow-500 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 gold-shimmer">
                 For Drivers: Accepting & Negotiating Trips
               </h2>
               <p className="text-gray-400 text-lg">How drivers find trips, negotiate fares, and earn more</p>
@@ -376,7 +387,7 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4 gold-shimmer">
                 A Community-First Approach
               </h2>
             </motion.div>
@@ -429,7 +440,7 @@ export default function HowItWorks() {
               viewport={{ once: true }}
               className="text-center mt-16 max-w-3xl mx-auto"
             >
-              <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              <h3 className="text-2xl md:text-3xl font-bold mb-4 gold-shimmer">
                 Thank You for Supporting Your Community
               </h3>
               <p className="text-gray-300 text-lg">
@@ -439,43 +450,6 @@ export default function HowItWorks() {
           </div>
         </section>
         
-        {/* FAQ Placeholder Section */}
-        <section id="faq" className="relative py-24 bg-gradient-to-b from-black via-gray-900 to-black overflow-hidden">
-          <div className="container mx-auto px-4 relative z-10">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-emerald-500 bg-clip-text text-transparent">
-                Frequently Asked Questions
-              </h2>
-              <p className="text-gray-400 text-lg">Have questions? We've got answers.</p>
-            </motion.div>
-            
-            <div className="max-w-3xl mx-auto space-y-4">
-              {[
-                { q: 'Is CashRidez free to use?', a: 'Yes! Posting and accepting trips on CashRidez is completely free. There are no upfront costs or hidden fees.' },
-                { q: 'How do payments work?', a: 'Payments are made directly between riders and drivers at the agreed-upon price. CashRidez does not process payments.' },
-                { q: 'How is my privacy protected?', a: 'CashRidez uses in-app calling and messaging so you never have to share your personal phone number with strangers.' },
-                { q: 'What if I need to cancel a trip?', a: 'You can cancel trips through the app. We encourage clear communication between riders and drivers.' },
-              ].map((faq, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="bg-gradient-to-br from-gray-900/80 to-black/80 border border-yellow-500/20 rounded-xl p-6"
-                >
-                  <h4 className="text-lg font-bold text-yellow-400 mb-2">{faq.q}</h4>
-                  <p className="text-gray-300">{faq.a}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
         
         {/* CTA Section */}
         <section className="relative py-24 overflow-hidden">
