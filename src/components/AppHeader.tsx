@@ -155,6 +155,10 @@ const AppHeader = ({
                     <Lightbulb className="mr-2 h-4 w-4" />
                     Rider Tips
                   </DropdownMenuItem>}
+                {profile?.active_role === 'driver' && <DropdownMenuItem onClick={() => navigate("/driver/tips")} className="cursor-pointer">
+                    <Lightbulb className="mr-2 h-4 w-4" />
+                    Driver Tips
+                  </DropdownMenuItem>}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setSupportDialogOpen(true)} className="cursor-pointer">
                   <HeadphonesIcon className="mr-2 h-4 w-4" />
