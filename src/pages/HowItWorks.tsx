@@ -131,7 +131,7 @@ export default function HowItWorks() {
         <section className="relative pt-44 pb-20 overflow-hidden">
           <MapBackground showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
           
-          {/* Animated Car - Background layer, positioned below all text */}
+          {/* Animated Car - Background layer, positioned below tabs */}
           <motion.div
             initial={{ opacity: 0, x: -100 }}
             animate={{ 
@@ -145,7 +145,7 @@ export default function HowItWorks() {
             className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
             style={{ 
               maxWidth: '100px',
-              top: 'calc(100% - 80px)',
+              top: 'calc(100% - 48px)',
               zIndex: -1,
               opacity: 0.15
             }}
