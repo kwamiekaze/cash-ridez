@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import RoleGuard from "@/components/RoleGuard";
 import AppHeader from "@/components/AppHeader";
@@ -12,6 +13,7 @@ import {
   Star,
   Lightbulb
 } from "lucide-react";
+import { useAnalyticsEvents } from "@/hooks/useAnalyticsEvents";
 
 const tips = [
   {
@@ -53,6 +55,17 @@ const tips = [
 ];
 
 const RiderTipsContent = () => {
+  const { trackEvent } = useAnalyticsEvents();
+
+  // Track page view on mount
+  useEffect(() => {
+    trackEvent({
+      eventName: 'tips_page_view',
+      pagePath: '/rider/tips',
+      role: 'rider'
+    });
+  }, [trackEvent]);
+
   return (
     <div className="min-h-screen bg-background">
       <Helmet>

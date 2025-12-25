@@ -120,8 +120,8 @@ export function Navigation() {
         opacity: 0,
         y: -20
       }} className="md:hidden mt-4 pb-4 border-t border-yellow-500/20 pt-4">
-            <div className="flex flex-col gap-4">
-              {menuItems.map(item => <button key={item.label} onClick={() => handleMenuClick(item.href)} className={`${item.color} hover:scale-105 transition-all duration-300 text-left font-medium`}>
+            <div className="flex flex-col gap-4 items-center text-center">
+              {menuItems.map(item => <button key={item.label} onClick={() => handleMenuClick(item.href)} className={`${item.color} hover:scale-105 transition-all duration-300 font-medium w-full text-center`}>
                   {item.label}
                 </button>)}
               <div className="flex flex-col gap-2 mt-4 border-t border-yellow-500/20 pt-4">

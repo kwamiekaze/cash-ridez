@@ -20,6 +20,7 @@ import { DashboardCar } from "@/components/DashboardCar";
 import { useSubscription } from "@/hooks/useSubscription";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { AddressLink } from "@/components/AddressLink";
+import { DriverTipsBanner } from "@/components/DriverTipsBanner";
 
 const DriverDashboard = () => {
   const { user } = useAuth();
@@ -72,10 +73,10 @@ const DriverDashboard = () => {
   const fetchProfile = async () => {
     if (!user) return;
     
-    // Force fresh fetch with explicit column selection
+    // Force fresh fetch with explicit column selection including banner flag
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_driver, is_rider, phone_number, car_make, car_model, car_year")
+      .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_driver, is_rider, phone_number, car_make, car_model, car_year, driver_tips_banner_seen")
       .eq("id", user.id)
       .single();
     
@@ -343,6 +344,9 @@ const DriverDashboard = () => {
         <AppHeader showCar={false} />
         <DashboardCar />
         <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          {/* Driver Tips Banner - shown once */}
+          <DriverTipsBanner profile={profile} />
+          
           <div className="mb-6">
             <h1 className="text-2xl font-bold">My Trips</h1>
           </div>
