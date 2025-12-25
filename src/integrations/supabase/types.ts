@@ -1796,6 +1796,10 @@ export type Database = {
           driver_rating_count: number | null
           driver_tips_banner_seen: boolean | null
           driver_tips_banner_seen_at: string | null
+          driver_tips_dismissed: boolean | null
+          driver_tips_dismissed_at: string | null
+          driver_tips_visited: boolean | null
+          driver_tips_visited_at: string | null
           email: string
           free_uses_remaining: number | null
           full_name: string | null
@@ -1824,6 +1828,10 @@ export type Database = {
           referred_by_user_id: string | null
           rider_rating_avg: number | null
           rider_rating_count: number | null
+          rider_tips_dismissed: boolean | null
+          rider_tips_dismissed_at: string | null
+          rider_tips_visited: boolean | null
+          rider_tips_visited_at: string | null
           role_set_at: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -1871,6 +1879,10 @@ export type Database = {
           driver_rating_count?: number | null
           driver_tips_banner_seen?: boolean | null
           driver_tips_banner_seen_at?: string | null
+          driver_tips_dismissed?: boolean | null
+          driver_tips_dismissed_at?: string | null
+          driver_tips_visited?: boolean | null
+          driver_tips_visited_at?: string | null
           email: string
           free_uses_remaining?: number | null
           full_name?: string | null
@@ -1899,6 +1911,10 @@ export type Database = {
           referred_by_user_id?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
+          rider_tips_dismissed?: boolean | null
+          rider_tips_dismissed_at?: string | null
+          rider_tips_visited?: boolean | null
+          rider_tips_visited_at?: string | null
           role_set_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -1946,6 +1962,10 @@ export type Database = {
           driver_rating_count?: number | null
           driver_tips_banner_seen?: boolean | null
           driver_tips_banner_seen_at?: string | null
+          driver_tips_dismissed?: boolean | null
+          driver_tips_dismissed_at?: string | null
+          driver_tips_visited?: boolean | null
+          driver_tips_visited_at?: string | null
           email?: string
           free_uses_remaining?: number | null
           full_name?: string | null
@@ -1974,6 +1994,10 @@ export type Database = {
           referred_by_user_id?: string | null
           rider_rating_avg?: number | null
           rider_rating_count?: number | null
+          rider_tips_dismissed?: boolean | null
+          rider_tips_dismissed_at?: string | null
+          rider_tips_visited?: boolean | null
+          rider_tips_visited_at?: string | null
           role_set_at?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null

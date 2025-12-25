@@ -15,6 +15,7 @@ import {
   Lightbulb
 } from "lucide-react";
 import { useAnalyticsEvents } from "@/hooks/useAnalyticsEvents";
+import { supabase } from "@/integrations/supabase/client";
 
 const tips = [
   {
@@ -101,10 +102,24 @@ const tips = [
 const DriverTipsContent = () => {
   const { trackEvent } = useAnalyticsEvents();
 
-  // Track page view on mount
+  // Mark tips as visited on mount and track page view
   useEffect(() => {
+    const markVisited = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({
+            driver_tips_visited: true,
+            driver_tips_visited_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+      }
+    };
+    
+    markVisited();
     trackEvent({
-      eventName: 'tips_page_view',
+      eventName: 'tips_page_viewed',
       pagePath: '/driver/tips',
       role: 'driver'
     });

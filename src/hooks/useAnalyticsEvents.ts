@@ -4,9 +4,11 @@ import { useCallback } from "react";
 
 export type AnalyticsEventName = 
   | 'tips_page_view'
+  | 'tips_page_viewed'
   | 'tips_banner_shown'
   | 'tips_banner_dismissed'
-  | 'tips_banner_clicked_view_tips';
+  | 'tips_banner_clicked_view_tips'
+  | 'tips_banner_learn_more_clicked';
 
 interface TrackEventParams {
   eventName: AnalyticsEventName;

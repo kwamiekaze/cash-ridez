@@ -76,7 +76,7 @@ const DriverDashboard = () => {
     // Force fresh fetch with explicit column selection including banner flag
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_driver, is_rider, phone_number, car_make, car_model, car_year, driver_tips_banner_seen")
+      .select("id, email, display_name, completed_trips_count, free_uses_remaining, subscription_active, is_verified, verification_status, active_role, paused, blocked, photo_url, rider_rating_avg, rider_rating_count, driver_rating_avg, driver_rating_count, is_driver, is_rider, phone_number, car_make, car_model, car_year, driver_tips_visited, driver_tips_dismissed")
       .eq("id", user.id)
       .single();
     
