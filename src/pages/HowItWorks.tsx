@@ -131,21 +131,26 @@ export default function HowItWorks() {
         <section className="relative pt-44 pb-20 overflow-hidden">
           <MapBackground showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
           
-          {/* Animated Car - Background layer with smooth easing */}
+          {/* Animated Car - Background layer, positioned below all text */}
           <motion.div
             initial={{ opacity: 0, x: -100 }}
             animate={{ 
-              opacity: 0.25, 
+              opacity: 0.15, 
               x: [0, 20, 0],
             }}
             transition={{ 
               opacity: { duration: 1, ease: "easeOut" },
               x: { duration: 8, repeat: Infinity, ease: "easeInOut" }
             }}
-            className="absolute top-32 left-1/2 -translate-x-1/2 z-0 pointer-events-none md:top-36"
-            style={{ maxWidth: '120px' }}
+            className="absolute left-1/2 -translate-x-1/2 pointer-events-none"
+            style={{ 
+              maxWidth: '100px',
+              top: 'calc(100% - 80px)',
+              zIndex: -1,
+              opacity: 0.15
+            }}
           >
-            <CashCarIcon width={100} height={50} glowIntensity="medium" />
+            <CashCarIcon width={80} height={40} glowIntensity="medium" />
           </motion.div>
           
           <div className="container mx-auto px-4 relative z-10">
