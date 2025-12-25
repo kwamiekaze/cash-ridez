@@ -131,20 +131,25 @@ export default function HowItWorks() {
         <section className="relative pt-44 pb-20 overflow-hidden">
           <MapBackground showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
           
+          {/* Animated Car - Background layer with smooth easing */}
+          <motion.div
+            initial={{ opacity: 0, x: -100 }}
+            animate={{ 
+              opacity: 0.25, 
+              x: [0, 20, 0],
+            }}
+            transition={{ 
+              opacity: { duration: 1, ease: "easeOut" },
+              x: { duration: 8, repeat: Infinity, ease: "easeInOut" }
+            }}
+            className="absolute top-32 left-1/2 -translate-x-1/2 z-0 pointer-events-none md:top-36"
+            style={{ maxWidth: '120px' }}
+          >
+            <CashCarIcon width={100} height={50} glowIntensity="medium" />
+          </motion.div>
+          
           <div className="container mx-auto px-4 relative z-10">
-            <div className="max-w-4xl mx-auto text-center space-y-8">
-              {/* Car Icon - Above heading, never overlapping */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="flex justify-center mb-4"
-              >
-                <div className="w-16 h-16 md:w-20 md:h-20 opacity-40">
-                  <CashCarIcon width={80} height={40} glowIntensity="medium" />
-                </div>
-              </motion.div>
-              
+            <div className="max-w-4xl mx-auto text-center">
               {/* Main Heading */}
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
@@ -155,35 +160,47 @@ export default function HowItWorks() {
                 How CashRidez Works
               </motion.h1>
               
-              {/* Subtitle */}
+              {/* Subtitle - with breathing room */}
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-xl md:text-2xl max-w-3xl mx-auto gold-shimmer"
+                className="text-xl md:text-2xl max-w-3xl mx-auto gold-shimmer mt-6 mb-12"
               >
                 A simple step-by-step flow for riders and independent drivers to connect, negotiate, and ride with confidence.
               </motion.p>
               
-              {/* Pill Buttons */}
+              {/* Divider + Buttons Group - Raised upward */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="flex flex-wrap items-center justify-center gap-4"
+                className="relative -mt-4"
               >
-                <button
-                  onClick={() => document.getElementById('rider-flow')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-bold rounded-full hover:scale-105 transition-all shadow-lg shadow-yellow-500/30"
-                >
-                  Rider Flow
-                </button>
-                <button
-                  onClick={() => document.getElementById('driver-flow')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-black font-bold rounded-full hover:scale-105 transition-all shadow-lg shadow-emerald-500/30"
-                >
-                  Driver Flow
-                </button>
+                {/* Thin divider line */}
+                <div className="w-32 h-px bg-gradient-to-r from-transparent via-yellow-500/50 to-transparent mx-auto mb-6" />
+                
+                {/* Flow Buttons */}
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                  <button
+                    onClick={() => document.getElementById('rider-flow')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-bold rounded-full hover:scale-105 transition-all shadow-lg shadow-yellow-500/30"
+                  >
+                    Rider Flow
+                  </button>
+                  <button
+                    onClick={() => document.getElementById('driver-flow')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-black font-bold rounded-full hover:scale-105 transition-all shadow-lg shadow-emerald-500/30"
+                  >
+                    Driver Flow
+                  </button>
+                  <button
+                    onClick={() => document.getElementById('community')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-bold rounded-full hover:scale-105 transition-all shadow-lg shadow-purple-500/30"
+                  >
+                    Community-First
+                  </button>
+                </div>
               </motion.div>
             </div>
           </div>
