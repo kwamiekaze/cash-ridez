@@ -103,13 +103,23 @@ serve(async (req) => {
     }
 
     // Update campaign status
+    const updateData: Record<string, any> = {
+      status: newStatus,
+      started_at: action === 'start' && !campaign.started_at ? new Date().toISOString() : campaign.started_at,
+      finished_at: action === 'stop' ? new Date().toISOString() : null,
+    };
+
+    // When starting/resuming, ensure 30-second spacing and set next_run_at to now
+    if (newStatus === 'running') {
+      updateData.call_spacing_seconds = campaign.call_spacing_seconds || 30;
+      updateData.next_run_at = new Date().toISOString(); // Allow immediate first call
+      updateData.lock_owner = null;
+      updateData.lock_expires_at = null;
+    }
+
     await supabase
       .from('admin_call_campaigns')
-      .update({
-        status: newStatus,
-        started_at: action === 'start' && !campaign.started_at ? new Date().toISOString() : campaign.started_at,
-        finished_at: action === 'stop' ? new Date().toISOString() : null,
-      })
+      .update(updateData)
       .eq('id', campaignId);
 
     // If starting, immediately trigger first tick
