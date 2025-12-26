@@ -83,9 +83,9 @@ serve(async (req) => {
         const activeRecipient = activeRecipients[0];
         const callStartTime = new Date(activeRecipient.call_started_at).getTime();
         const callDuration = Date.now() - callStartTime;
-        const MAX_CALL_DURATION_MS = 120000; // 2 minutes max
+        const MAX_CALL_DURATION_MS = 90000; // 90 seconds max (reduced from 120)
 
-        // If call has been active for more than 2 minutes, force-complete it
+        // If call has been active too long, force-complete it
         if (callDuration > MAX_CALL_DURATION_MS) {
           console.log(`[call-center-tick] Campaign ${campaign.id}: Call to ${activeRecipient.phone_e164} stuck for ${Math.round(callDuration/1000)}s, force-completing`);
           
@@ -123,13 +123,7 @@ serve(async (req) => {
             },
           });
 
-          // Reset last_call_at to allow next call
-          await supabase
-            .from('admin_call_campaigns')
-            .update({ last_call_at: null })
-            .eq('id', campaign.id);
-
-          // Recalculate stats
+          // Recalculate stats immediately
           const { data: allRecipients } = await supabase
             .from('admin_call_campaign_recipients')
             .select('status')
@@ -149,11 +143,12 @@ serve(async (req) => {
                 voicemail_count: voicemailCount,
                 failed_count: failedCount,
                 called_count: allRecipients.length - queuedCount,
+                last_call_at: null, // Allow immediate next call
               })
               .eq('id', campaign.id);
           }
 
-          // Don't place another call this tick, let it handle next iteration
+          // Don't place another call this tick, let next tick handle it
           continue;
         }
 
@@ -216,6 +211,31 @@ serve(async (req) => {
       const recordingCallbackUrl = `${APP_BASE_URL}/functions/v1/call-center-recording`;
 
       try {
+        // CRITICAL FIX: Twilio requires StatusCallbackEvent to be passed as separate repeated params
+        // Using URLSearchParams.append() multiple times for the same key creates the proper format
+        const params = new URLSearchParams();
+        params.append('To', recipient.phone_e164);
+        params.append('From', TWILIO_PHONE_NUMBER);
+        params.append('Url', twimlUrl);
+        params.append('StatusCallback', statusCallbackUrl);
+        params.append('StatusCallbackMethod', 'POST');
+        // CRITICAL: Each StatusCallbackEvent must be appended separately for Twilio to accept
+        params.append('StatusCallbackEvent', 'initiated');
+        params.append('StatusCallbackEvent', 'ringing');
+        params.append('StatusCallbackEvent', 'answered');
+        params.append('StatusCallbackEvent', 'completed');
+        // AMD configuration
+        params.append('MachineDetection', 'DetectMessageEnd');
+        params.append('AsyncAmd', 'true');
+        params.append('AsyncAmdStatusCallback', amdCallbackUrl);
+        params.append('AsyncAmdStatusCallbackMethod', 'POST');
+        // Recording
+        params.append('Record', 'true');
+        params.append('RecordingStatusCallback', recordingCallbackUrl);
+        params.append('RecordingStatusCallbackEvent', 'completed');
+
+        console.log(`[call-center-tick] Calling Twilio with StatusCallback: ${statusCallbackUrl}`);
+
         const twilioResponse = await fetch(
           `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Calls.json`,
           {
@@ -224,23 +244,7 @@ serve(async (req) => {
               'Authorization': 'Basic ' + btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`),
               'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: new URLSearchParams({
-              To: recipient.phone_e164,
-              From: TWILIO_PHONE_NUMBER,
-              Url: twimlUrl,
-              StatusCallback: statusCallbackUrl,
-              // CRITICAL: Twilio Voice API only accepts these 4 event types
-              // Terminal outcomes (busy/no-answer/failed/canceled) come as CallStatus in the 'completed' callback
-              StatusCallbackEvent: 'initiated ringing answered completed',
-              StatusCallbackMethod: 'POST',
-              MachineDetection: 'DetectMessageEnd',
-              AsyncAmd: 'true',
-              AsyncAmdStatusCallback: amdCallbackUrl,
-              AsyncAmdStatusCallbackMethod: 'POST',
-              Record: 'true',
-              RecordingStatusCallback: recordingCallbackUrl,
-              RecordingStatusCallbackEvent: 'completed',
-            }),
+            body: params,
           }
         );
 
@@ -289,6 +293,7 @@ serve(async (req) => {
             details: { 
               attempt: (recipient.attempt_count || 0) + 1,
               latency_ms: Date.now() - startTime,
+              status_callback_url: statusCallbackUrl,
             },
           });
 

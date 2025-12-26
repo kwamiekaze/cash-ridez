@@ -756,9 +756,9 @@ const AutoCallTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Currently Calling Indicator - only show if there's an active non-terminal call */}
+            {/* Currently Calling Indicator - show for any active campaign with an active recipient */}
             {activeRecipient && activeCampaign.status === 'running' && 
-             ['calling', 'ringing', 'in-progress'].includes(activeRecipient.status) && (
+             ['calling', 'ringing', 'in-progress', 'answered'].includes(activeRecipient.status) && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
