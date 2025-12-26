@@ -72,13 +72,90 @@ serve(async (req) => {
       // Check if there's already an active call for this campaign
       const { data: activeRecipients } = await supabase
         .from('admin_call_campaign_recipients')
-        .select('id, phone_e164, status')
+        .select('id, phone_e164, status, call_started_at, twilio_call_sid')
         .eq('campaign_id', campaign.id)
         .in('status', ['calling', 'ringing', 'in-progress'])
         .limit(1);
 
       if (activeRecipients && activeRecipients.length > 0) {
-        console.log(`[call-center-tick] Campaign ${campaign.id}: Active call in progress (${activeRecipients[0].phone_e164})`);
+        const activeRecipient = activeRecipients[0];
+        const callStartTime = new Date(activeRecipient.call_started_at).getTime();
+        const callDuration = Date.now() - callStartTime;
+        const MAX_CALL_DURATION_MS = 120000; // 2 minutes max
+
+        // If call has been active for more than 2 minutes, force-complete it
+        if (callDuration > MAX_CALL_DURATION_MS) {
+          console.log(`[call-center-tick] Campaign ${campaign.id}: Call to ${activeRecipient.phone_e164} stuck for ${Math.round(callDuration/1000)}s, force-completing`);
+          
+          // Mark as answered (call was placed, assume it went through)
+          await supabase
+            .from('admin_call_campaign_recipients')
+            .update({
+              status: 'answered',
+              call_ended_at: new Date().toISOString(),
+              error_message: 'Auto-completed after timeout',
+            })
+            .eq('id', activeRecipient.id);
+
+          // Update call log
+          await supabase
+            .from('admin_call_logs')
+            .update({
+              status: 'completed',
+              call_ended_at: new Date().toISOString(),
+            })
+            .eq('twilio_call_sid', activeRecipient.twilio_call_sid);
+
+          // Log event
+          await supabase.from('call_events').insert({
+            source: 'tick-timeout',
+            campaign_id: campaign.id,
+            campaign_recipient_id: activeRecipient.id,
+            phone_e164: activeRecipient.phone_e164,
+            twilio_call_sid: activeRecipient.twilio_call_sid,
+            twilio_call_status: 'timeout',
+            mapped_status: 'answered',
+            details: { 
+              duration_ms: callDuration,
+              reason: 'No status callback received within timeout',
+            },
+          });
+
+          // Reset last_call_at to allow next call
+          await supabase
+            .from('admin_call_campaigns')
+            .update({ last_call_at: null })
+            .eq('id', campaign.id);
+
+          // Recalculate stats
+          const { data: allRecipients } = await supabase
+            .from('admin_call_campaign_recipients')
+            .select('status')
+            .eq('campaign_id', campaign.id);
+
+          if (allRecipients) {
+            const queuedCount = allRecipients.filter(r => r.status === 'queued').length;
+            const answeredCount = allRecipients.filter(r => r.status === 'answered').length;
+            const voicemailCount = allRecipients.filter(r => r.status === 'voicemail').length;
+            const failedCount = allRecipients.filter(r => ['failed', 'skipped'].includes(r.status)).length;
+
+            await supabase
+              .from('admin_call_campaigns')
+              .update({
+                queued_count: queuedCount,
+                answered_count: answeredCount,
+                voicemail_count: voicemailCount,
+                failed_count: failedCount,
+                called_count: allRecipients.length - queuedCount,
+              })
+              .eq('id', campaign.id);
+          }
+
+          // Don't place another call this tick, let it handle next iteration
+          continue;
+        }
+
+        console.log(`[call-center-tick] Campaign ${campaign.id}: Active call in progress (${activeRecipient.phone_e164}, ${Math.round(callDuration/1000)}s)`);
         continue;
       }
 
