@@ -123,14 +123,14 @@ serve(async (req) => {
 
     } else if (answeredBy === 'human') {
       // Human answered - the gather flow is already in progress from call-center-twiml
-      // Just update status and log
+      // Mark as in-progress (NOT answered - that's a terminal state set by call-center-status)
       console.log(`[call-center-amd] Human answered ${callSid}, gather flow in progress`);
 
       if (callLog) {
         await supabase
           .from('admin_call_logs')
           .update({
-            status: 'answered',
+            status: 'in-progress',
             call_answered_at: new Date().toISOString(),
           })
           .eq('id', callLog.id);
@@ -139,11 +139,12 @@ serve(async (req) => {
           await supabase
             .from('admin_call_campaign_recipients')
             .update({
-              status: 'answered',
+              status: 'in-progress', // NOT 'answered' - that's terminal
             })
             .eq('id', callLog.campaign_recipient_id);
         }
       }
+
 
     } else if (answeredBy === 'fax') {
       // Fax machine - hang up immediately

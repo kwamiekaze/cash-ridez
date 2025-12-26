@@ -70,11 +70,13 @@ serve(async (req) => {
       }
 
       // Check if there's already an active call for this campaign
+      // Include 'answered' since AMD may mark it answered before call-center-status finalizes
       const { data: activeRecipients } = await supabase
         .from('admin_call_campaign_recipients')
-        .select('id, phone_e164, status, call_started_at, twilio_call_sid')
+        .select('id, phone_e164, status, call_started_at, call_ended_at, twilio_call_sid')
         .eq('campaign_id', campaign.id)
-        .in('status', ['calling', 'ringing', 'in-progress'])
+        .in('status', ['calling', 'ringing', 'in-progress', 'answered'])
+        .is('call_ended_at', null) // Only consider calls without end timestamp
         .limit(1);
 
       if (activeRecipients && activeRecipients.length > 0) {
