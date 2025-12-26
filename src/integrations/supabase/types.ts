@@ -1013,6 +1013,48 @@ export type Database = {
         }
         Relationships: []
       }
+      call_events: {
+        Row: {
+          call_log_id: string | null
+          campaign_id: string | null
+          campaign_recipient_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          mapped_status: string | null
+          phone_e164: string | null
+          source: string
+          twilio_call_sid: string | null
+          twilio_call_status: string | null
+        }
+        Insert: {
+          call_log_id?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          mapped_status?: string | null
+          phone_e164?: string | null
+          source: string
+          twilio_call_sid?: string | null
+          twilio_call_status?: string | null
+        }
+        Update: {
+          call_log_id?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          mapped_status?: string | null
+          phone_e164?: string | null
+          source?: string
+          twilio_call_sid?: string | null
+          twilio_call_status?: string | null
+        }
+        Relationships: []
+      }
       calls: {
         Row: {
           created_at: string

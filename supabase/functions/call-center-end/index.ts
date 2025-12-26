@@ -100,14 +100,44 @@ serve(async (req) => {
       throw new Error(`Twilio API error: ${errorText}`);
     }
 
-    // Update our database
-    await supabase
+    // Update our database - call log
+    const { data: callLog } = await supabase
       .from('admin_call_logs')
       .update({ 
         status: 'completed',
         call_ended_at: new Date().toISOString(),
       })
-      .eq('twilio_call_sid', twilioCallSid);
+      .eq('twilio_call_sid', twilioCallSid)
+      .select('campaign_id, campaign_recipient_id')
+      .single();
+
+    // Also update campaign recipient if linked
+    if (callLog?.campaign_recipient_id) {
+      await supabase
+        .from('admin_call_campaign_recipients')
+        .update({
+          status: 'answered', // Manually ended = answered
+          call_ended_at: new Date().toISOString(),
+        })
+        .eq('id', callLog.campaign_recipient_id);
+      
+      // Trigger next call if campaign is running
+      if (callLog.campaign_id) {
+        const { data: campaign } = await supabase
+          .from('admin_call_campaigns')
+          .select('status')
+          .eq('id', callLog.campaign_id)
+          .single();
+        
+        if (campaign?.status === 'running') {
+          const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+          fetch(`${APP_BASE_URL}/functions/v1/call-center-tick`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          }).catch(err => console.error('[call-center-end] Failed to trigger tick:', err));
+        }
+      }
+    }
 
     console.log(`Call ${twilioCallSid} ended successfully`);
 

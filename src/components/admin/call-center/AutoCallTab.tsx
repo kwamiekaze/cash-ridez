@@ -265,7 +265,7 @@ const AutoCallTab = () => {
   };
 
   const loadActiveRecipient = async (campaignId: string) => {
-    // Find the recipient currently being called (or recently active)
+    // Find the recipient currently being called (active non-terminal status)
     const { data } = await supabase
       .from('admin_call_campaign_recipients')
       .select('id, first_name, phone_e164, status, twilio_call_sid')
@@ -274,6 +274,17 @@ const AutoCallTab = () => {
       .order('last_attempt_at', { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    // If no active call found, check if we had one before and log the terminal state
+    if (!data && activeRecipient) {
+      addDebugLog({
+        campaignId,
+        phoneNumber: activeRecipient.phone_e164,
+        callSid: activeRecipient.twilio_call_sid,
+        status: 'cleared-from-active',
+        source: 'poll',
+      });
+    }
 
     setActiveRecipient(data || null);
   };
@@ -745,8 +756,9 @@ const AutoCallTab = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Currently Calling Indicator */}
-            {activeRecipient && activeCampaign.status === 'running' && (
+            {/* Currently Calling Indicator - only show if there's an active non-terminal call */}
+            {activeRecipient && activeCampaign.status === 'running' && 
+             ['calling', 'ringing', 'in-progress'].includes(activeRecipient.status) && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -760,7 +772,7 @@ const AutoCallTab = () => {
                     size="sm"
                     variant="destructive"
                     onClick={handleEndActiveCall}
-                    disabled={isEndingCall}
+                    disabled={isEndingCall || !activeRecipient.twilio_call_sid}
                     className="gap-1"
                   >
                     {isEndingCall ? (
