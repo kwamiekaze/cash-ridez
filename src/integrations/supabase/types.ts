@@ -118,6 +118,7 @@ export type Database = {
       admin_call_campaigns: {
         Row: {
           answered_count: number | null
+          call_spacing_seconds: number | null
           called_count: number | null
           created_at: string
           created_by: string
@@ -134,6 +135,7 @@ export type Database = {
         }
         Insert: {
           answered_count?: number | null
+          call_spacing_seconds?: number | null
           called_count?: number | null
           created_at?: string
           created_by: string
@@ -150,6 +152,7 @@ export type Database = {
         }
         Update: {
           answered_count?: number | null
+          call_spacing_seconds?: number | null
           called_count?: number | null
           created_at?: string
           created_by?: string
