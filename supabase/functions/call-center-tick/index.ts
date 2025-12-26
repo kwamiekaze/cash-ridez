@@ -3,7 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * Campaign Tick Handler - Processes one recipient at a time
- * Called periodically by cron or manually to advance campaigns
+ * Called periodically by cron or triggered by call-center-status after call completion
+ * 
+ * CRITICAL: When triggered after a call completes, last_call_at is reset to null
+ * to allow immediate next call placement (no spacing delay).
  */
 
 const corsHeaders = {
@@ -21,6 +24,8 @@ serve(async (req) => {
   const TWILIO_AUTH_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN')!;
   const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')!;
 
+  const startTime = Date.now();
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -28,12 +33,21 @@ serve(async (req) => {
     );
 
     // Find running campaigns
-    const { data: campaigns } = await supabase
+    const { data: campaigns, error: campaignsError } = await supabase
       .from('admin_call_campaigns')
       .select('*')
       .eq('status', 'running');
 
+    if (campaignsError) {
+      console.error('[call-center-tick] Failed to fetch campaigns:', campaignsError);
+      return new Response(JSON.stringify({ error: campaignsError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!campaigns || campaigns.length === 0) {
+      console.log('[call-center-tick] No running campaigns');
       return new Response(JSON.stringify({ message: 'No running campaigns' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -42,14 +56,30 @@ serve(async (req) => {
     let callsPlaced = 0;
 
     for (const campaign of campaigns) {
-      // Check if we can place a call (respect spacing)
+      // Check call spacing ONLY if last_call_at is set
+      // When a call completes, call-center-status resets last_call_at to null
       if (campaign.last_call_at) {
         const lastCall = new Date(campaign.last_call_at);
-        const spacing = (campaign.call_spacing_seconds || 90) * 1000;
-        if (Date.now() - lastCall.getTime() < spacing) {
-          console.log(`Campaign ${campaign.id}: Too soon since last call`);
+        const spacing = (campaign.call_spacing_seconds || 5) * 1000; // Default 5 seconds
+        const timeSinceLastCall = Date.now() - lastCall.getTime();
+        
+        if (timeSinceLastCall < spacing) {
+          console.log(`[call-center-tick] Campaign ${campaign.id}: Spacing not met (${Math.round(timeSinceLastCall/1000)}s < ${campaign.call_spacing_seconds || 5}s)`);
           continue;
         }
+      }
+
+      // Check if there's already an active call for this campaign
+      const { data: activeRecipients } = await supabase
+        .from('admin_call_campaign_recipients')
+        .select('id, phone_e164, status')
+        .eq('campaign_id', campaign.id)
+        .in('status', ['calling', 'ringing', 'in-progress'])
+        .limit(1);
+
+      if (activeRecipients && activeRecipients.length > 0) {
+        console.log(`[call-center-tick] Campaign ${campaign.id}: Active call in progress (${activeRecipients[0].phone_e164})`);
+        continue;
       }
 
       // Get next queued recipient
@@ -64,6 +94,8 @@ serve(async (req) => {
 
       if (recipientError || !recipient) {
         // No more recipients - mark campaign complete
+        console.log(`[call-center-tick] Campaign ${campaign.id}: No more queued recipients, marking complete`);
+        
         await supabase
           .from('admin_call_campaigns')
           .update({ 
@@ -72,11 +104,10 @@ serve(async (req) => {
           })
           .eq('id', campaign.id);
         
-        console.log(`Campaign ${campaign.id}: Completed (no more recipients)`);
         continue;
       }
 
-      console.log(`Calling recipient ${recipient.id}: ${recipient.phone_e164}`);
+      console.log(`[call-center-tick] Placing call to ${recipient.phone_e164} for campaign ${campaign.id}`);
 
       // Create call log first
       const { data: callLog, error: logError } = await supabase
@@ -89,19 +120,21 @@ serve(async (req) => {
           phone_e164: recipient.phone_e164,
           status: 'initiated',
           call_type: 'outbound',
+          direction: 'outbound',
         })
         .select()
         .single();
 
       if (logError) {
-        console.error('Failed to create call log:', logError);
+        console.error('[call-center-tick] Failed to create call log:', logError);
         continue;
       }
 
-      // Place the call
+      // Build Twilio call parameters
       const twimlUrl = `${APP_BASE_URL}/functions/v1/call-center-twiml?callLogId=${callLog.id}&firstName=${encodeURIComponent(recipient.first_name || '')}`;
       const statusCallbackUrl = `${APP_BASE_URL}/functions/v1/call-center-status`;
       const amdCallbackUrl = `${APP_BASE_URL}/functions/v1/call-center-amd`;
+      const recordingCallbackUrl = `${APP_BASE_URL}/functions/v1/call-center-recording`;
 
       try {
         const twilioResponse = await fetch(
@@ -124,7 +157,7 @@ serve(async (req) => {
               AsyncAmdStatusCallback: amdCallbackUrl,
               AsyncAmdStatusCallbackMethod: 'POST',
               Record: 'true',
-              RecordingStatusCallback: `${APP_BASE_URL}/functions/v1/call-center-recording`,
+              RecordingStatusCallback: recordingCallbackUrl,
               RecordingStatusCallbackEvent: 'completed',
             }),
           }
@@ -132,38 +165,56 @@ serve(async (req) => {
 
         const twilioData = await twilioResponse.json();
 
-        if (twilioResponse.ok) {
-          // Update call log and recipient with call SID
+        if (twilioResponse.ok && twilioData.sid) {
+          console.log(`[call-center-tick] Call placed successfully: ${twilioData.sid}`);
+
+          // Update call log with Twilio SID
           await supabase
             .from('admin_call_logs')
             .update({ twilio_call_sid: twilioData.sid })
             .eq('id', callLog.id);
 
+          // Update recipient status to calling
           await supabase
             .from('admin_call_campaign_recipients')
             .update({
               status: 'calling',
               twilio_call_sid: twilioData.sid,
               call_started_at: new Date().toISOString(),
-              attempt_count: recipient.attempt_count + 1,
+              attempt_count: (recipient.attempt_count || 0) + 1,
               last_attempt_at: new Date().toISOString(),
             })
             .eq('id', recipient.id);
 
-          // Update campaign
+          // Update campaign last_call_at
           await supabase
             .from('admin_call_campaigns')
             .update({
               last_call_at: new Date().toISOString(),
-              called_count: campaign.called_count + 1,
+              called_count: (campaign.called_count || 0) + 1,
             })
             .eq('id', campaign.id);
 
+          // Log call event
+          await supabase.from('call_events').insert({
+            source: 'tick-placed',
+            campaign_id: campaign.id,
+            campaign_recipient_id: recipient.id,
+            call_log_id: callLog.id,
+            phone_e164: recipient.phone_e164,
+            twilio_call_sid: twilioData.sid,
+            twilio_call_status: 'initiated',
+            mapped_status: 'initiated',
+            details: { 
+              attempt: (recipient.attempt_count || 0) + 1,
+              latency_ms: Date.now() - startTime,
+            },
+          });
+
           callsPlaced++;
-          console.log(`Call placed successfully: ${twilioData.sid}`);
         } else {
-          // Call failed
-          console.error('Twilio call failed:', twilioData);
+          // Call placement failed
+          console.error('[call-center-tick] Twilio call failed:', twilioData);
           
           await supabase
             .from('admin_call_logs')
@@ -178,14 +229,48 @@ serve(async (req) => {
             .from('admin_call_campaign_recipients')
             .update({
               status: 'failed',
-              last_error: twilioData.message,
+              error_message: twilioData.message || 'Twilio call failed',
+              call_ended_at: new Date().toISOString(),
             })
             .eq('id', recipient.id);
+
+          // Log failure event
+          await supabase.from('call_events').insert({
+            source: 'tick-failed',
+            campaign_id: campaign.id,
+            campaign_recipient_id: recipient.id,
+            call_log_id: callLog.id,
+            phone_e164: recipient.phone_e164,
+            twilio_call_status: 'failed',
+            mapped_status: 'failed',
+            details: { 
+              error_code: twilioData.code,
+              error_message: twilioData.message,
+            },
+          });
+
+          // Reset last_call_at to allow immediate retry of next number
+          await supabase
+            .from('admin_call_campaigns')
+            .update({ last_call_at: null })
+            .eq('id', campaign.id);
         }
       } catch (callError) {
-        console.error('Call placement error:', callError);
+        console.error('[call-center-tick] Call placement exception:', callError);
+        
+        // Mark as failed
+        await supabase
+          .from('admin_call_campaign_recipients')
+          .update({
+            status: 'failed',
+            error_message: callError instanceof Error ? callError.message : 'Unknown error',
+            call_ended_at: new Date().toISOString(),
+          })
+          .eq('id', recipient.id);
       }
     }
+
+    console.log(`[call-center-tick] Completed in ${Date.now() - startTime}ms, placed ${callsPlaced} calls`);
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -196,7 +281,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Campaign tick error:', error);
+    console.error('[call-center-tick] Error:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
