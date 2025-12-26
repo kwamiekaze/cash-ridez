@@ -748,100 +748,125 @@ const AutoCallTab = () => {
 
       {/* Active Campaign Controls */}
       {activeCampaign && (
-        <Card className="border-primary">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>{activeCampaign.name}</span>
-              {getStatusBadge(activeCampaign.status)}
+        <Card className="border-primary overflow-hidden">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between gap-3 flex-wrap">
+              <span className="truncate min-w-0">{activeCampaign.name}</span>
+              <span className="shrink-0">{getStatusBadge(activeCampaign.status)}</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-0">
             {/* Currently Calling Indicator - show for any active campaign with an active recipient */}
             {activeRecipient && activeCampaign.status === 'running' && 
              ['calling', 'ringing', 'in-progress', 'answered'].includes(activeRecipient.status) && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-yellow-500 animate-pulse" />
-                    <span className="text-sm font-medium">
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 sm:p-4">
+                {/* Mobile: 2-line layout, Desktop: single row */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  {/* Left: Call label with phone */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Phone className="w-4 h-4 text-yellow-500 animate-pulse shrink-0" />
+                    <span className="text-sm font-medium truncate" title={`${activeRecipient.first_name || 'Unknown'} (${activeRecipient.phone_e164})`}>
                       Calling: {activeRecipient.first_name || 'Unknown'} ({activeRecipient.phone_e164})
                     </span>
-                    <Badge variant="outline" className="text-xs">{activeRecipient.status}</Badge>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={handleEndActiveCall}
-                    disabled={isEndingCall || !activeRecipient.twilio_call_sid}
-                    className="gap-1"
-                  >
-                    {isEndingCall ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <PhoneOff className="w-3 h-3" />
-                    )}
-                    End Call
-                  </Button>
+                  
+                  {/* Right: Status pill + End Call button */}
+                  <div className="flex items-center justify-between gap-3 sm:justify-end sm:shrink-0">
+                    <Badge variant="outline" className="text-xs shrink-0">{activeRecipient.status}</Badge>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={handleEndActiveCall}
+                      disabled={isEndingCall || !activeRecipient.twilio_call_sid}
+                      className="gap-1.5 h-9 px-3 min-w-[90px] max-w-[120px] shrink-0"
+                    >
+                      {isEndingCall ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <PhoneOff className="w-3.5 h-3.5" />
+                      )}
+                      <span>End Call</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2">
+            {/* Campaign control buttons - responsive grid */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
               {activeCampaign.status === 'draft' && (
-                <Button onClick={() => updateCampaignStatus(activeCampaign.id, 'running')} className="gap-2">
+                <Button 
+                  onClick={() => updateCampaignStatus(activeCampaign.id, 'running')} 
+                  className="gap-2 h-11 col-span-2 sm:col-span-1 sm:h-10"
+                >
                   <Play className="w-4 h-4" />
                   Start Campaign
                 </Button>
               )}
               {activeCampaign.status === 'running' && (
-                <Button onClick={() => updateCampaignStatus(activeCampaign.id, 'paused')} variant="outline" className="gap-2">
+                <Button 
+                  onClick={() => updateCampaignStatus(activeCampaign.id, 'paused')} 
+                  variant="outline" 
+                  className="gap-2 h-11 sm:h-10"
+                >
                   <Pause className="w-4 h-4" />
                   Pause
                 </Button>
               )}
               {activeCampaign.status === 'paused' && (
-                <Button onClick={() => updateCampaignStatus(activeCampaign.id, 'running')} className="gap-2">
+                <Button 
+                  onClick={() => updateCampaignStatus(activeCampaign.id, 'running')} 
+                  className="gap-2 h-11 sm:h-10"
+                >
                   <Play className="w-4 h-4" />
                   Resume
                 </Button>
               )}
               {(activeCampaign.status === 'running' || activeCampaign.status === 'paused') && (
-                <Button onClick={() => updateCampaignStatus(activeCampaign.id, 'cancelled')} variant="destructive" className="gap-2">
+                <Button 
+                  onClick={() => updateCampaignStatus(activeCampaign.id, 'cancelled')} 
+                  variant="destructive" 
+                  className="gap-2 h-11 sm:h-10"
+                >
                   <X className="w-4 h-4" />
                   Cancel Campaign
                 </Button>
               )}
             </div>
 
-            <div className="bg-muted/50 rounded-lg p-4">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+            {/* Stats grid - responsive */}
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 text-center">
                 <div>
-                  <p className="text-2xl font-bold">{activeCampaign.total_recipients}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
+                  <p className="text-xl sm:text-2xl font-bold">{activeCampaign.total_recipients}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Total</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{activeCampaign.queued_count}</p>
-                  <p className="text-xs text-muted-foreground">Queued</p>
+                  <p className="text-xl sm:text-2xl font-bold">{activeCampaign.queued_count}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Queued</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-green-500">{activeCampaign.answered_count}</p>
-                  <p className="text-xs text-muted-foreground">Answered</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-500">{activeCampaign.answered_count}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Answered</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-orange-500">{activeCampaign.voicemail_count}</p>
-                  <p className="text-xs text-muted-foreground">Voicemail</p>
+                  <p className="text-xl sm:text-2xl font-bold text-orange-500">{activeCampaign.voicemail_count}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Voicemail</p>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-red-500">{activeCampaign.failed_count}</p>
-                  <p className="text-xs text-muted-foreground">Failed</p>
+                <div className="col-span-3 sm:col-span-1">
+                  <p className="text-xl sm:text-2xl font-bold text-red-500">{activeCampaign.failed_count}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Failed</p>
                 </div>
               </div>
             </div>
 
-            <Progress value={progress} className="h-2" />
-            <p className="text-xs text-center text-muted-foreground">
-              {Math.round(progress)}% complete
-            </p>
+            {/* Progress */}
+            <div className="space-y-1.5">
+              <Progress value={progress} className="h-2" />
+              <p className="text-xs text-center text-muted-foreground">
+                {Math.round(progress)}% complete
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
