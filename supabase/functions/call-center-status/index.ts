@@ -18,7 +18,7 @@ serve(async (req) => {
     const callDuration = formData.get('CallDuration') as string;
     const timestamp = formData.get('Timestamp') as string;
 
-    console.log(`Call status update: ${callSid} -> ${callStatus}, duration: ${callDuration}s`);
+    console.log(`[call-center-status] Call status update: ${callSid} -> ${callStatus}, duration: ${callDuration}s`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -39,6 +39,9 @@ serve(async (req) => {
     };
 
     const mappedStatus = statusMap[callStatus] || callStatus;
+    const isTerminalStatus = ['completed', 'busy', 'no-answer', 'failed'].includes(mappedStatus);
+
+    console.log(`[call-center-status] Mapped status: ${mappedStatus}, isTerminal: ${isTerminalStatus}`);
 
     // Update call log
     const updateData: any = {
@@ -49,7 +52,7 @@ serve(async (req) => {
       updateData.call_answered_at = new Date().toISOString();
     }
 
-    if (callStatus === 'completed' || callStatus === 'busy' || callStatus === 'no-answer' || callStatus === 'failed') {
+    if (isTerminalStatus) {
       updateData.call_ended_at = new Date().toISOString();
       if (callDuration) {
         updateData.call_duration_seconds = parseInt(callDuration, 10);
@@ -65,32 +68,53 @@ serve(async (req) => {
       .single();
 
     if (error) {
-      console.error('Failed to update call log:', error);
+      console.error('[call-center-status] Failed to update call log:', error);
     } else {
-      console.log(`Updated call log ${callLog?.id} to status: ${mappedStatus}`);
+      console.log(`[call-center-status] Updated call log ${callLog?.id} to status: ${mappedStatus}`);
 
       // Also update campaign recipient if linked
       if (callLog?.campaign_recipient_id) {
-        const recipientStatus = callStatus === 'completed' && parseInt(callDuration || '0', 10) > 10 
-          ? 'answered' 
-          : callStatus === 'no-answer' || callStatus === 'busy'
-            ? 'failed'
-            : callStatus === 'in-progress'
-              ? 'answered'
-              : 'calling';
+        // Determine proper recipient status based on call outcome
+        let recipientStatus: string;
+        const durationSeconds = parseInt(callDuration || '0', 10);
+        
+        if (callStatus === 'in-progress') {
+          // Call answered and in progress
+          recipientStatus = 'answered';
+        } else if (callStatus === 'completed') {
+          // Call completed - check if it was actually answered (duration > 0)
+          recipientStatus = durationSeconds > 0 ? 'answered' : 'failed';
+        } else if (callStatus === 'busy' || callStatus === 'no-answer' || callStatus === 'failed' || callStatus === 'canceled') {
+          recipientStatus = 'failed';
+        } else if (callStatus === 'ringing') {
+          recipientStatus = 'ringing';
+        } else {
+          recipientStatus = 'calling';
+        }
+
+        console.log(`[call-center-status] Updating recipient ${callLog.campaign_recipient_id} to: ${recipientStatus}`);
+
+        const recipientUpdate: any = {
+          status: recipientStatus,
+        };
+
+        if (isTerminalStatus) {
+          recipientUpdate.call_ended_at = new Date().toISOString();
+          if (callDuration) {
+            recipientUpdate.call_duration_seconds = parseInt(callDuration, 10);
+          }
+        }
 
         await supabase
           .from('admin_call_campaign_recipients')
-          .update({
-            status: recipientStatus,
-            call_ended_at: updateData.call_ended_at || null,
-            call_duration_seconds: updateData.call_duration_seconds || null,
-          })
+          .update(recipientUpdate)
           .eq('id', callLog.campaign_recipient_id);
       }
 
-      // Update campaign counts if applicable
-      if (callLog?.campaign_id && (callStatus === 'completed' || callStatus === 'failed' || callStatus === 'no-answer' || callStatus === 'busy')) {
+      // Update campaign counts if applicable and this is a terminal status
+      if (callLog?.campaign_id && isTerminalStatus) {
+        console.log(`[call-center-status] Updating campaign ${callLog.campaign_id} stats`);
+        
         // Recalculate campaign stats
         const { data: recipients } = await supabase
           .from('admin_call_campaign_recipients')
@@ -98,20 +122,49 @@ serve(async (req) => {
           .eq('campaign_id', callLog.campaign_id);
 
         if (recipients) {
+          const queuedCount = recipients.filter(r => r.status === 'queued').length;
+          const calledCount = recipients.filter(r => r.status !== 'queued').length;
+          const answeredCount = recipients.filter(r => r.status === 'answered').length;
+          const voicemailCount = recipients.filter(r => r.status === 'voicemail').length;
+          const failedCount = recipients.filter(r => r.status === 'failed' || r.status === 'skipped').length;
+          
           const stats = {
-            called_count: recipients.filter(r => r.status !== 'queued').length,
-            answered_count: recipients.filter(r => r.status === 'answered').length,
-            voicemail_count: recipients.filter(r => r.status === 'voicemail').length,
-            failed_count: recipients.filter(r => r.status === 'failed' || r.status === 'skipped').length,
+            queued_count: queuedCount,
+            called_count: calledCount,
+            answered_count: answeredCount,
+            voicemail_count: voicemailCount,
+            failed_count: failedCount,
+            last_call_at: new Date().toISOString(),
           };
+
+          console.log(`[call-center-status] Campaign stats: queued=${queuedCount}, called=${calledCount}, answered=${answeredCount}, voicemail=${voicemailCount}, failed=${failedCount}`);
 
           await supabase
             .from('admin_call_campaigns')
-            .update({
-              ...stats,
-              last_call_at: new Date().toISOString(),
-            })
+            .update(stats)
             .eq('id', callLog.campaign_id);
+
+          // CRITICAL: Trigger the next call immediately after a terminal status
+          // This ensures the campaign advances without waiting for cron
+          const { data: campaign } = await supabase
+            .from('admin_call_campaigns')
+            .select('status')
+            .eq('id', callLog.campaign_id)
+            .single();
+
+          if (campaign?.status === 'running') {
+            console.log(`[call-center-status] Triggering next call for campaign ${callLog.campaign_id}`);
+            
+            const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
+            
+            // Trigger tick in background (fire and forget)
+            fetch(`${APP_BASE_URL}/functions/v1/call-center-tick`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }).catch(err => console.error('[call-center-status] Failed to trigger tick:', err));
+          }
         }
       }
     }
@@ -121,7 +174,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('Call status webhook error:', error);
+    console.error('[call-center-status] Call status webhook error:', error);
     return new Response('Error', {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'text/plain' },

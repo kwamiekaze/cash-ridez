@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, Play, Pause, X, Users, Phone, CheckCircle2, XCircle, Clock, Voicemail, Loader2, PhoneOff } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Upload, Play, Pause, X, Users, Phone, CheckCircle2, XCircle, Clock, Voicemail, Loader2, PhoneOff, ChevronDown, Bug } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,19 @@ interface ActiveRecipient {
   twilio_call_sid: string | null;
 }
 
+interface DebugLogEntry {
+  timestamp: string;
+  campaignId: string;
+  phoneNumber: string;
+  callSid: string | null;
+  status: string;
+  source: 'realtime' | 'poll' | 'failsafe' | 'manual';
+}
+
+// Failsafe constants
+const CALL_FAILSAFE_TIMEOUT_MS = 75000; // 75 seconds max per call
+const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds as backup
+
 const AutoCallTab = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -52,17 +66,44 @@ const AutoCallTab = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isEndingCall, setIsEndingCall] = useState(false);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [debugLog, setDebugLog] = useState<DebugLogEntry[]>([]);
+  const [debugOpen, setDebugOpen] = useState(false);
+  
+  const failsafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const addDebugLog = useCallback((entry: Omit<DebugLogEntry, 'timestamp'>) => {
+    const logEntry: DebugLogEntry = {
+      ...entry,
+      timestamp: new Date().toISOString(),
+    };
+    console.log('[AutoCall Debug]', logEntry);
+    setDebugLog(prev => [logEntry, ...prev.slice(0, 49)]); // Keep last 50 entries
+  }, []);
 
   useEffect(() => {
     loadCampaigns();
   }, []);
 
+  // Cleanup timers on unmount
   useEffect(() => {
-    if (!activeCampaign) return;
+    return () => {
+      if (failsafeTimerRef.current) clearTimeout(failsafeTimerRef.current);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeCampaign) {
+      // Clear timers when no campaign is active
+      if (failsafeTimerRef.current) clearTimeout(failsafeTimerRef.current);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      return;
+    }
 
     // Subscribe to campaign and recipient updates
     const channel = supabase
-      .channel('campaign-updates')
+      .channel(`campaign-updates-${activeCampaign.id}`)
       .on(
         'postgres_changes',
         {
@@ -71,7 +112,18 @@ const AutoCallTab = () => {
           table: 'admin_call_campaign_recipients',
           filter: `campaign_id=eq.${activeCampaign.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('[AutoCall] Recipient update:', payload);
+          const newData = payload.new as any;
+          if (newData) {
+            addDebugLog({
+              campaignId: activeCampaign.id,
+              phoneNumber: newData.phone_e164 || 'unknown',
+              callSid: newData.twilio_call_sid || null,
+              status: newData.status || 'unknown',
+              source: 'realtime',
+            });
+          }
           loadCampaignDetails(activeCampaign.id);
           loadActiveRecipient(activeCampaign.id);
         }
@@ -84,8 +136,32 @@ const AutoCallTab = () => {
           table: 'admin_call_campaigns',
           filter: `id=eq.${activeCampaign.id}`,
         },
-        () => {
+        (payload) => {
+          console.log('[AutoCall] Campaign update:', payload);
           loadCampaignDetails(activeCampaign.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'admin_call_logs',
+          filter: `campaign_id=eq.${activeCampaign.id}`,
+        },
+        (payload) => {
+          console.log('[AutoCall] Call log update:', payload);
+          const newData = payload.new as any;
+          if (newData) {
+            addDebugLog({
+              campaignId: activeCampaign.id,
+              phoneNumber: newData.phone_e164 || 'unknown',
+              callSid: newData.twilio_call_sid || null,
+              status: newData.status || 'unknown',
+              source: 'realtime',
+            });
+          }
+          loadActiveRecipient(activeCampaign.id);
         }
       )
       .subscribe();
@@ -93,10 +169,76 @@ const AutoCallTab = () => {
     // Initial load of active recipient
     loadActiveRecipient(activeCampaign.id);
 
+    // Start polling as a backup for realtime
+    pollTimerRef.current = setInterval(() => {
+      if (activeCampaign.status === 'running') {
+        loadCampaignDetails(activeCampaign.id);
+        loadActiveRecipient(activeCampaign.id);
+      }
+    }, POLL_INTERVAL_MS);
+
     return () => {
       supabase.removeChannel(channel);
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
     };
-  }, [activeCampaign?.id]);
+  }, [activeCampaign?.id, activeCampaign?.status, addDebugLog]);
+
+  // Failsafe timer for stuck calls
+  useEffect(() => {
+    if (!activeRecipient || !activeCampaign) {
+      if (failsafeTimerRef.current) {
+        clearTimeout(failsafeTimerRef.current);
+        failsafeTimerRef.current = null;
+      }
+      return;
+    }
+
+    // If there's an active call, start failsafe timer
+    if (['calling', 'ringing', 'in-progress'].includes(activeRecipient.status)) {
+      console.log('[AutoCall] Starting failsafe timer for:', activeRecipient.phone_e164);
+      
+      if (failsafeTimerRef.current) clearTimeout(failsafeTimerRef.current);
+      
+      failsafeTimerRef.current = setTimeout(async () => {
+        console.log('[AutoCall] Failsafe triggered for stuck call:', activeRecipient.phone_e164);
+        
+        addDebugLog({
+          campaignId: activeCampaign.id,
+          phoneNumber: activeRecipient.phone_e164,
+          callSid: activeRecipient.twilio_call_sid,
+          status: 'failsafe-timeout',
+          source: 'failsafe',
+        });
+
+        // Force mark the recipient as failed
+        await supabase
+          .from('admin_call_campaign_recipients')
+          .update({
+            status: 'failed',
+            call_ended_at: new Date().toISOString(),
+            error_message: 'Failsafe timeout - no status update received',
+          })
+          .eq('id', activeRecipient.id);
+
+        // Reload state
+        loadCampaignDetails(activeCampaign.id);
+        loadActiveRecipient(activeCampaign.id);
+
+        toast({
+          title: "Call timeout",
+          description: "Call marked as failed due to timeout. Campaign will proceed.",
+          variant: "destructive",
+        });
+      }, CALL_FAILSAFE_TIMEOUT_MS);
+    }
+
+    return () => {
+      if (failsafeTimerRef.current) {
+        clearTimeout(failsafeTimerRef.current);
+        failsafeTimerRef.current = null;
+      }
+    };
+  }, [activeRecipient?.id, activeRecipient?.status, activeCampaign?.id, addDebugLog, toast]);
 
   const loadCampaigns = async () => {
     const { data, error } = await supabase
@@ -123,14 +265,15 @@ const AutoCallTab = () => {
   };
 
   const loadActiveRecipient = async (campaignId: string) => {
-    // Find the recipient currently being called
+    // Find the recipient currently being called (or recently active)
     const { data } = await supabase
       .from('admin_call_campaign_recipients')
       .select('id, first_name, phone_e164, status, twilio_call_sid')
       .eq('campaign_id', campaignId)
       .in('status', ['calling', 'ringing', 'in-progress'])
+      .order('last_attempt_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     setActiveRecipient(data || null);
   };
@@ -339,6 +482,14 @@ const AutoCallTab = () => {
 
       const action = actionMap[status] || 'start';
 
+      addDebugLog({
+        campaignId,
+        phoneNumber: '-',
+        callSid: null,
+        status: `action:${action}`,
+        source: 'manual',
+      });
+
       const { data, error } = await supabase.functions.invoke('call-center-outbound-start', {
         body: { campaignId, action },
       });
@@ -376,6 +527,14 @@ const AutoCallTab = () => {
 
     setIsEndingCall(true);
 
+    addDebugLog({
+      campaignId: activeCampaign?.id || 'unknown',
+      phoneNumber: activeRecipient.phone_e164,
+      callSid: activeRecipient.twilio_call_sid,
+      status: 'ending',
+      source: 'manual',
+    });
+
     try {
       const { data, error } = await supabase.functions.invoke('call-center-end', {
         body: {
@@ -390,7 +549,19 @@ const AutoCallTab = () => {
           title: "Call ended",
           description: "The active call has been terminated.",
         });
+        
+        // Clear failsafe timer
+        if (failsafeTimerRef.current) {
+          clearTimeout(failsafeTimerRef.current);
+          failsafeTimerRef.current = null;
+        }
+        
         setActiveRecipient(null);
+        
+        // Reload campaign details
+        if (activeCampaign?.id) {
+          loadCampaignDetails(activeCampaign.id);
+        }
       } else {
         throw new Error(data.error || 'Failed to end call');
       }
@@ -662,6 +833,48 @@ const AutoCallTab = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Debug Log Panel */}
+      <Collapsible open={debugOpen} onOpenChange={setDebugOpen}>
+        <Card className="border-muted">
+          <CollapsibleTrigger className="w-full">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardTitle className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2">
+                  <Bug className="w-4 h-4" />
+                  Campaign Debug Log
+                </span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${debugOpen ? 'rotate-180' : ''}`} />
+              </CardTitle>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent>
+              {debugLog.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No events logged yet</p>
+              ) : (
+                <ScrollArea className="h-48">
+                  <div className="space-y-1 font-mono text-xs">
+                    {debugLog.map((entry, i) => (
+                      <div key={i} className="flex gap-2 py-1 border-b border-muted/50">
+                        <span className="text-muted-foreground w-20 shrink-0">
+                          {new Date(entry.timestamp).toLocaleTimeString()}
+                        </span>
+                        <Badge variant="outline" className="w-16 justify-center shrink-0">{entry.source}</Badge>
+                        <span className="text-primary shrink-0">{entry.status}</span>
+                        <span className="truncate">{entry.phoneNumber}</span>
+                        {entry.callSid && (
+                          <span className="text-muted-foreground truncate">{entry.callSid.slice(-8)}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Important Note */}
       <Card className="border-yellow-500/30 bg-yellow-500/5">
