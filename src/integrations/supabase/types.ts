@@ -117,6 +117,7 @@ export type Database = {
       }
       admin_call_campaigns: {
         Row: {
+          active_call_sid: string | null
           answered_count: number | null
           call_spacing_seconds: number | null
           called_count: number | null
@@ -126,7 +127,10 @@ export type Database = {
           finished_at: string | null
           id: string
           last_call_at: string | null
+          lock_expires_at: string | null
+          lock_owner: string | null
           name: string | null
+          next_run_at: string | null
           queued_count: number | null
           started_at: string | null
           status: string
@@ -134,6 +138,7 @@ export type Database = {
           voicemail_count: number | null
         }
         Insert: {
+          active_call_sid?: string | null
           answered_count?: number | null
           call_spacing_seconds?: number | null
           called_count?: number | null
@@ -143,7 +148,10 @@ export type Database = {
           finished_at?: string | null
           id?: string
           last_call_at?: string | null
+          lock_expires_at?: string | null
+          lock_owner?: string | null
           name?: string | null
+          next_run_at?: string | null
           queued_count?: number | null
           started_at?: string | null
           status?: string
@@ -151,6 +159,7 @@ export type Database = {
           voicemail_count?: number | null
         }
         Update: {
+          active_call_sid?: string | null
           answered_count?: number | null
           call_spacing_seconds?: number | null
           called_count?: number | null
@@ -160,7 +169,10 @@ export type Database = {
           finished_at?: string | null
           id?: string
           last_call_at?: string | null
+          lock_expires_at?: string | null
+          lock_owner?: string | null
           name?: string | null
+          next_run_at?: string | null
           queued_count?: number | null
           started_at?: string | null
           status?: string
