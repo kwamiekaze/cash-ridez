@@ -4,13 +4,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 /**
  * Call Center Status Webhook - Receives Twilio status callbacks
  * 
- * CRITICAL: Twilio Voice StatusCallbackEvent only supports: initiated, ringing, answered, completed
- * Terminal outcomes (busy, no-answer, failed, canceled) arrive as the CallStatus value 
- * in the 'completed' event callback, NOT as separate events.
+ * CRITICAL: This is the primary endpoint for call lifecycle management.
+ * Twilio sends callbacks for: initiated, ringing, answered, completed
+ * 
+ * The CallStatus field in the completed event tells us the final outcome:
+ * - completed: Call was answered and ended normally
+ * - busy: Callee was busy
+ * - no-answer: Callee didn't answer within timeout
+ * - failed: Call failed (network/carrier issues)
+ * - canceled: Call was canceled before connecting
  * 
  * This webhook must reliably:
  * 1. Update admin_call_logs with call status
- * 2. Update admin_call_campaign_recipients to terminal states (answered/failed/voicemail)
+ * 2. Update admin_call_campaign_recipients to terminal states
  * 3. Recalculate campaign stats
  * 4. Trigger call-center-tick to advance campaign to next number
  * 
@@ -23,6 +29,10 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('[call-center-status] ====== WEBHOOK RECEIVED ======');
+  console.log('[call-center-status] Method:', req.method);
+  console.log('[call-center-status] URL:', req.url);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -30,14 +40,31 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    // Parse form data from Twilio
     const formData = await req.formData();
+    
+    // Log all received parameters for debugging
+    const allParams: Record<string, string> = {};
+    formData.forEach((value, key) => {
+      allParams[key] = value.toString();
+    });
+    console.log('[call-center-status] All params:', JSON.stringify(allParams));
+    
     const callSid = formData.get('CallSid') as string;
     const callStatus = formData.get('CallStatus') as string;
     const callDuration = formData.get('CallDuration') as string;
     const timestamp = formData.get('Timestamp') as string;
-    const answeredBy = formData.get('AnsweredBy') as string; // From AMD
+    const answeredBy = formData.get('AnsweredBy') as string;
+    const sequenceNumber = formData.get('SequenceNumber') as string;
 
-    console.log(`[call-center-status] Webhook received: CallSid=${callSid}, CallStatus=${callStatus}, Duration=${callDuration}s, AnsweredBy=${answeredBy || 'N/A'}`);
+    console.log(`[call-center-status] Processing: CallSid=${callSid}, CallStatus=${callStatus}, Duration=${callDuration}s, AnsweredBy=${answeredBy || 'N/A'}, Seq=${sequenceNumber}`);
+
+    if (!callSid) {
+      console.log('[call-center-status] No CallSid provided, ignoring');
+      return new Response('OK', {
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' },
+      });
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -45,12 +72,6 @@ serve(async (req) => {
     );
 
     // Map Twilio CallStatus to our internal status
-    // CRITICAL: 'completed' is the event type, but CallStatus can be:
-    // - completed (call ended normally after being answered)
-    // - busy (callee was busy)
-    // - no-answer (callee didn't answer within timeout)
-    // - failed (call failed - network/carrier issues)
-    // - canceled (call was canceled before connecting)
     const statusMap: Record<string, string> = {
       'queued': 'initiated',
       'initiated': 'initiated',
@@ -69,14 +90,14 @@ serve(async (req) => {
     const isTerminalStatus = ['completed', 'busy', 'no-answer', 'failed', 'canceled'].includes(callStatus);
     const durationSeconds = parseInt(callDuration || '0', 10);
 
-    console.log(`[call-center-status] Processing: CallStatus=${callStatus}, mappedStatus=${mappedStatus}, isTerminal=${isTerminalStatus}, duration=${durationSeconds}s`);
+    console.log(`[call-center-status] Mapped: mappedStatus=${mappedStatus}, isTerminal=${isTerminalStatus}, duration=${durationSeconds}s`);
 
     // Build update data for call log
     const callLogUpdate: Record<string, any> = {
       status: mappedStatus,
     };
 
-    if (callStatus === 'in-progress') {
+    if (callStatus === 'in-progress' || callStatus === 'answered') {
       callLogUpdate.call_answered_at = new Date().toISOString();
     }
 
@@ -115,8 +136,10 @@ serve(async (req) => {
         duration_seconds: durationSeconds,
         answered_by: answeredBy || null,
         timestamp: timestamp,
+        sequence_number: sequenceNumber,
         latency_ms: Date.now() - startTime,
         is_terminal: isTerminalStatus,
+        all_params: allParams,
       },
     });
 
@@ -127,7 +150,7 @@ serve(async (req) => {
 
       if (callStatus === 'ringing') {
         recipientStatus = 'ringing';
-      } else if (callStatus === 'in-progress') {
+      } else if (callStatus === 'in-progress' || callStatus === 'answered') {
         recipientStatus = 'in-progress';
       } else if (isTerminalStatus) {
         // Determine final recipient status based on CallStatus
@@ -146,7 +169,7 @@ serve(async (req) => {
             recipientStatus = 'answered';
           }
         } else if (callStatus === 'busy') {
-          recipientStatus = 'failed'; // Could create 'busy' status if needed
+          recipientStatus = 'failed';
           recipientUpdate.error_message = 'Line busy';
         } else if (callStatus === 'no-answer') {
           recipientStatus = 'failed';
@@ -208,7 +231,7 @@ serve(async (req) => {
 
         console.log(`[call-center-status] Campaign stats: queued=${queuedCount}, inProgress=${inProgressCount}, called=${calledCount}, answered=${answeredCount}, voicemail=${voicemailCount}, failed=${failedCount}`);
 
-        // Update campaign stats
+        // Update campaign stats - CRITICAL: reset last_call_at to allow immediate next call
         const { error: statsError } = await supabase
           .from('admin_call_campaigns')
           .update({
@@ -217,6 +240,7 @@ serve(async (req) => {
             answered_count: answeredCount,
             voicemail_count: voicemailCount,
             failed_count: failedCount,
+            last_call_at: null, // Reset to allow immediate next call
           })
           .eq('id', callLog.campaign_id);
 
@@ -236,20 +260,14 @@ serve(async (req) => {
           if (campaign?.status === 'running') {
             console.log(`[call-center-status] Campaign ${callLog.campaign_id} is running with ${queuedCount} queued - triggering next call`);
 
-            // Reset last_call_at to allow immediate next call (bypass spacing delay)
-            await supabase
-              .from('admin_call_campaigns')
-              .update({ last_call_at: null })
-              .eq('id', callLog.campaign_id);
-
             const APP_BASE_URL = Deno.env.get('SUPABASE_URL') || 'https://wnajjqsqmrpwyffbpgsj.supabase.co';
 
-            // Trigger tick immediately - fire and forget
+            // Trigger tick immediately - fire and forget but log result
             fetch(`${APP_BASE_URL}/functions/v1/call-center-tick`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-            }).then(() => {
-              console.log(`[call-center-status] Triggered call-center-tick for campaign ${callLog.campaign_id}`);
+            }).then(response => {
+              console.log(`[call-center-status] Triggered call-center-tick: status=${response.status}`);
             }).catch(err => {
               console.error('[call-center-status] Failed to trigger tick:', err);
             });
@@ -271,7 +289,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[call-center-status] Completed in ${Date.now() - startTime}ms`);
+    console.log(`[call-center-status] ====== COMPLETED in ${Date.now() - startTime}ms ======`);
 
     return new Response('OK', {
       headers: { ...corsHeaders, 'Content-Type': 'text/plain' },

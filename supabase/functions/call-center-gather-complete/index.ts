@@ -10,7 +10,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * 
  * In both cases: Play the outbound MP3, then hang up.
  * 
- * CRITICAL: Uses ONLY the pre-recorded outbound MP3 from GitHub.
+ * CRITICAL: This also acts as a safeguard to ensure calls end properly.
+ * Uses ONLY the pre-recorded outbound MP3 from GitHub.
  * NO ElevenLabs, NO Twilio <Say>, NO Polly, NO AI voice generation.
  */
 
@@ -102,7 +103,9 @@ serve(async (req) => {
       },
     });
 
-    // Build TwiML response - Play MP3 then hang up
+    // Build TwiML response - Play MP3 then IMMEDIATELY hang up
+    // CRITICAL: The <Hangup/> after <Play/> ensures the call ends automatically
+    // This is essential for campaigns to advance without manual intervention
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Play>${OUTBOUND_MP3_URL}</Play>
@@ -110,7 +113,7 @@ serve(async (req) => {
   <Hangup/>
 </Response>`;
 
-    console.log(`[call-center-gather-complete] Returning play TwiML, latency=${Date.now() - startTime}ms`);
+    console.log(`[call-center-gather-complete] Returning play TwiML with auto-hangup, latency=${Date.now() - startTime}ms`);
 
     return new Response(twiml, {
       status: 200,
