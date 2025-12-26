@@ -227,9 +227,9 @@ serve(async (req) => {
               From: TWILIO_PHONE_NUMBER,
               Url: twimlUrl,
               StatusCallback: statusCallbackUrl,
-              // CRITICAL: Include ALL terminal status events for reliable campaign progression
-              // Without busy/no-answer/failed/canceled, webhook never fires for unanswered calls
-              StatusCallbackEvent: 'initiated ringing answered completed busy no-answer failed canceled',
+              // CRITICAL: Twilio Voice API only accepts these 4 event types
+              // Terminal outcomes (busy/no-answer/failed/canceled) come as CallStatus in the 'completed' callback
+              StatusCallbackEvent: 'initiated ringing answered completed',
               StatusCallbackMethod: 'POST',
               MachineDetection: 'DetectMessageEnd',
               AsyncAmd: 'true',
