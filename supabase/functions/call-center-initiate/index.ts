@@ -115,7 +115,9 @@ serve(async (req) => {
       From: TWILIO_PHONE_NUMBER,
       Url: twimlUrl,
       StatusCallback: statusCallbackUrl,
-      StatusCallbackEvent: 'initiated ringing answered completed',
+      // CRITICAL: Include ALL terminal status events for reliable UI updates
+      // Without busy/no-answer/failed/canceled, webhook never fires for unanswered calls
+      StatusCallbackEvent: 'initiated ringing answered completed busy no-answer failed canceled',
       StatusCallbackMethod: 'POST',
       Record: 'true',
       RecordingStatusCallback: `${APP_BASE_URL}/functions/v1/call-center-recording`,
