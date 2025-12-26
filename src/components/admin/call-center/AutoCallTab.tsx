@@ -892,11 +892,8 @@ const AutoCallTab = () => {
       <Card className="border-yellow-500/30 bg-yellow-500/5">
         <CardContent className="pt-4">
           <p className="text-sm text-muted-foreground">
-            <strong>🔄 Background Execution:</strong> Campaigns run automatically in the background with 30-second spacing between calls. 
-            You can safely close this page - the campaign will continue processing.
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            <strong>⚠️ Important:</strong> Each call delivers a short message and ends automatically. All calls are recorded for compliance.
+            <strong>⚠️ Important:</strong> Auto Call campaigns are processed one call at a time. 
+            Each call delivers a short message and ends automatically. All calls are recorded for compliance.
           </p>
         </CardContent>
       </Card>
