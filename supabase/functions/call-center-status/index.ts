@@ -40,6 +40,7 @@ serve(async (req) => {
     );
 
     // Map Twilio status to our internal status
+    // CRITICAL: Handle ALL Twilio terminal statuses for reliable campaign progression
     const statusMap: Record<string, string> = {
       'queued': 'initiated',
       'initiated': 'initiated',
@@ -48,15 +49,16 @@ serve(async (req) => {
       'completed': 'completed',
       'busy': 'busy',
       'no-answer': 'no-answer',
-      'canceled': 'failed',
+      'canceled': 'canceled',
       'failed': 'failed',
     };
 
     const mappedStatus = statusMap[callStatus] || callStatus;
-    const isTerminalStatus = ['completed', 'busy', 'no-answer', 'failed'].includes(mappedStatus);
+    // Terminal statuses that should finalize the call and trigger next campaign call
+    const isTerminalStatus = ['completed', 'busy', 'no-answer', 'failed', 'canceled'].includes(mappedStatus);
     const durationSeconds = parseInt(callDuration || '0', 10);
 
-    console.log(`[call-center-status] Mapped: ${mappedStatus}, isTerminal: ${isTerminalStatus}, duration: ${durationSeconds}s`);
+    console.log(`[call-center-status] Mapped: ${callStatus} -> ${mappedStatus}, isTerminal: ${isTerminalStatus}, duration: ${durationSeconds}s`);
 
     // Build update data for call log
     const callLogUpdate: Record<string, any> = {
@@ -118,12 +120,13 @@ serve(async (req) => {
       } else if (callStatus === 'in-progress') {
         recipientStatus = 'in-progress';
       } else if (isTerminalStatus) {
-        // Terminal status - mark as answered or failed
-        if (callStatus === 'completed') {
-          // Call completed = answered (even if 0 duration, it means call connected)
+        // Terminal status - map to final recipient status
+        // completed = call was answered and finished normally
+        // busy/no-answer/failed/canceled = call didn't connect
+        if (mappedStatus === 'completed') {
           recipientStatus = 'answered';
         } else {
-          // busy, no-answer, failed, canceled = failed
+          // busy, no-answer, failed, canceled all map to 'failed'
           recipientStatus = 'failed';
         }
         recipientUpdate.call_ended_at = new Date().toISOString();
@@ -136,7 +139,7 @@ serve(async (req) => {
 
       recipientUpdate.status = recipientStatus;
 
-      console.log(`[call-center-status] Updating recipient ${callLog.campaign_recipient_id} to: ${recipientStatus}`);
+      console.log(`[call-center-status] Updating recipient ${callLog.campaign_recipient_id}: ${recipientStatus} (from Twilio: ${callStatus})`);
 
       const { error: recipientError } = await supabase
         .from('admin_call_campaign_recipients')
