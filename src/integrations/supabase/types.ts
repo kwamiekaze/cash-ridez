@@ -1834,6 +1834,9 @@ export type Database = {
           admin_locked_fields: string[] | null
           bio: string | null
           blocked: boolean | null
+          blocked_at: string | null
+          blocked_by: string | null
+          blocked_reason: string | null
           blocked_until: string | null
           cancel_count: number
           car_make: string | null
@@ -1917,6 +1920,9 @@ export type Database = {
           admin_locked_fields?: string[] | null
           bio?: string | null
           blocked?: boolean | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           blocked_until?: string | null
           cancel_count?: number
           car_make?: string | null
@@ -2000,6 +2006,9 @@ export type Database = {
           admin_locked_fields?: string[] | null
           bio?: string | null
           blocked?: boolean | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          blocked_reason?: string | null
           blocked_until?: string | null
           cancel_count?: number
           car_make?: string | null

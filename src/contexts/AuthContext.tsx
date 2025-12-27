@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, lazy, Suspense } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode, lazy, Suspense, useCallback } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const VerificationWelcomeDialog = lazy(() => 
   import("@/components/VerificationWelcomeDialog").then(module => ({
@@ -41,6 +41,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const [showPhoneReminderForTrip, setShowPhoneReminderForTrip] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if user is blocked and redirect accordingly
+  const checkBlockedStatus = useCallback(async (userId: string) => {
+    // Don't check on blocked page to avoid loops
+    if (location.pathname === "/blocked") return false;
+
+    try {
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("blocked")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        console.error("Error checking blocked status:", error);
+        return false;
+      }
+
+      if (profile?.blocked) {
+        await supabase.auth.signOut();
+        navigate("/blocked", { replace: true });
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Error in blocked check:", err);
+      return false;
+    }
+  }, [navigate, location.pathname]);
 
   useEffect(() => {
     // Set up auth state listener
@@ -53,6 +83,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Handle navigation after auth state changes
       if (event === 'SIGNED_IN' && session) {
+        // Check if user is blocked before proceeding
+        const isBlocked = await checkBlockedStatus(session.user.id);
+        if (isBlocked) return;
+
         // Small delay to ensure profile is created
         setTimeout(async () => {
           // Process pending referral code if exists
@@ -73,9 +107,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           const { data: profile } = await supabase
             .from("profiles")
-            .select("active_role, is_verified, verification_status, verification_submitted_at, id_image_url")
+            .select("active_role, is_verified, verification_status, verification_submitted_at, id_image_url, blocked")
             .eq("id", session.user.id)
             .single();
+
+          // Check blocked status again from profile
+          if (profile?.blocked) {
+            await supabase.auth.signOut();
+            navigate("/blocked", { replace: true });
+            return;
+          }
           
           if (profile?.is_verified || profile?.verification_status === 'approved') {
             // Verified users go to their role-specific dashboard
@@ -100,14 +141,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Check blocked status on initial load
+      if (session?.user) {
+        await checkBlockedStatus(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, checkBlockedStatus]);
+
+  // Subscribe to blocked status changes for realtime enforcement
+  useEffect(() => {
+    if (!user || location.pathname === "/blocked") return;
+
+    const channel = supabase
+      .channel(`profile-blocked-check-${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        async (payload) => {
+          // If user was just blocked, sign them out
+          if ((payload.new as any).blocked === true && !(payload.old as any).blocked) {
+            await supabase.auth.signOut();
+            navigate("/blocked", { replace: true });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, navigate, location.pathname]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({

@@ -6,6 +6,7 @@ export interface UserFilters {
   roles: string[];
   verificationStatus: string;
   lastVisit: string;
+  blockedStatus: string;
 }
 
 interface AdminUserFiltersProps {
@@ -37,6 +38,12 @@ const lastVisitOptions = [
   { value: "never", label: "Never visited" },
 ];
 
+const blockedStatusOptions = [
+  { value: "all", label: "All Users" },
+  { value: "not_blocked", label: "Active Only" },
+  { value: "blocked", label: "Blocked Only" },
+];
+
 export function AdminUserFilters({ filters, onFiltersChange }: AdminUserFiltersProps) {
   const toggleRole = (role: string) => {
     const newRoles = filters.roles.includes(role)
@@ -50,10 +57,11 @@ export function AdminUserFilters({ filters, onFiltersChange }: AdminUserFiltersP
       roles: [],
       verificationStatus: "all",
       lastVisit: "all",
+      blockedStatus: "not_blocked",
     });
   };
 
-  const hasActiveFilters = filters.roles.length > 0 || filters.verificationStatus !== "all" || filters.lastVisit !== "all";
+  const hasActiveFilters = filters.roles.length > 0 || filters.verificationStatus !== "all" || filters.lastVisit !== "all" || filters.blockedStatus !== "not_blocked";
 
   return (
     <div className="space-y-3 p-3 bg-card/50 backdrop-blur-sm rounded-lg border border-border/50 mb-4">
@@ -107,6 +115,23 @@ export function AdminUserFilters({ filters, onFiltersChange }: AdminUserFiltersP
           </SelectTrigger>
           <SelectContent className="bg-card border-border z-50">
             {lastVisitOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value} className="text-xs">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Blocked Status */}
+        <Select
+          value={filters.blockedStatus}
+          onValueChange={(value) => onFiltersChange({ ...filters, blockedStatus: value })}
+        >
+          <SelectTrigger className="w-[140px] h-8 text-xs bg-background/50">
+            <SelectValue placeholder="Block Status" />
+          </SelectTrigger>
+          <SelectContent className="bg-card border-border z-50">
+            {blockedStatusOptions.map((option) => (
               <SelectItem key={option.value} value={option.value} className="text-xs">
                 {option.label}
               </SelectItem>
