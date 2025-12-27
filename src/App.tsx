@@ -41,6 +41,7 @@ const Updates = lazy(() => import("./pages/Updates"));
 const AdminSystemMessages = lazy(() => import("./pages/AdminSystemMessages"));
 const AdminSmsCenter = lazy(() => import("./pages/AdminSmsCenter"));
 const AdminCallCenter = lazy(() => import("./pages/AdminCallCenter"));
+const AdminDownloads = lazy(() => import("./pages/AdminDownloads"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const InstallApp = lazy(() => import("./pages/InstallApp"));
 const Referrals = lazy(() => import("./pages/Referrals"));
@@ -289,6 +290,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminCallCenter />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/downloads"
+              element={
+                <AdminRoute>
+                  <AdminDownloads />
                 </AdminRoute>
               }
             />

@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.call-center-gather-complete]
 verify_jwt = false
+
+[functions.admin-export-users]
+verify_jwt = true
