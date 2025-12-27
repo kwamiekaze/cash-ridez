@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock } from "lucide-react";
+import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock, ShieldX } from "lucide-react";
 import { UserChip } from "@/components/UserChip";
 import { AdminUserFilters, UserFilters } from "@/components/admin/AdminUserFilters";
+import { AdminBlockUserDialog } from "@/components/AdminBlockUserDialog";
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ interface User {
   photo_url: string;
   id_image_url: string;
   paused: boolean;
+  blocked: boolean;
   admin_locked_fields: string[] | null;
   full_name: string | null;
   created_at: string | null;
@@ -46,10 +48,12 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
     roles: [],
     verificationStatus: "all",
     lastVisit: "all",
+    blockedStatus: "not_blocked",
   });
   const [filteredUsers, setFilteredUsers] = useState<UserWithActivity[]>(users);
   const [userActivity, setUserActivity] = useState<Record<string, Date | null>>({});
   const [adminUsers, setAdminUsers] = useState<Set<string>>(new Set());
+  const [blockDialogUser, setBlockDialogUser] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch last visit data and admin status
   useEffect(() => {
@@ -140,6 +144,20 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
             return lastVisit && (now.getTime() - lastVisit.getTime()) <= 30 * 24 * 60 * 60 * 1000;
           case "never":
             return !lastVisit;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Blocked status filter
+    if (filters.blockedStatus !== "all") {
+      filtered = filtered.filter(u => {
+        switch (filters.blockedStatus) {
+          case "blocked":
+            return u.blocked === true;
+          case "not_blocked":
+            return u.blocked !== true;
           default:
             return true;
         }
@@ -340,14 +358,16 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
                 </TableCell>
                 <TableCell className="w-[90px]">
                   <div className="flex flex-col gap-1">
-                    {user.is_verified ? (
+                    {user.blocked ? (
+                      <Badge variant="destructive" className="text-xs whitespace-nowrap">Blocked</Badge>
+                    ) : user.is_verified ? (
                       <Badge className="bg-green-500 text-white text-xs whitespace-nowrap">Verified</Badge>
                     ) : user.verification_status === "rejected" ? (
                       <Badge variant="destructive" className="text-xs whitespace-nowrap">Rejected</Badge>
                     ) : (
                       <Badge variant="secondary" className="text-xs whitespace-nowrap">Pending</Badge>
                     )}
-                    {user.paused && <Badge variant="secondary" className="text-xs whitespace-nowrap mt-1">Paused</Badge>}
+                    {user.paused && !user.blocked && <Badge variant="secondary" className="text-xs whitespace-nowrap mt-1">Paused</Badge>}
                   </div>
                 </TableCell>
                 <TableCell className="w-auto">
@@ -434,6 +454,18 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
                         <Unlock className="h-3 w-3" />
                       )}
                     </Button>
+                    {!user.blocked && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setBlockDialogUser({ id: user.id, name: user.display_name || user.full_name || user.email })}
+                        disabled={loading === user.id}
+                        title="Block User"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <ShieldX className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -441,6 +473,17 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
           </TableBody>
         </Table>
       </div>
+      )}
+
+      {/* Block User Dialog */}
+      {blockDialogUser && (
+        <AdminBlockUserDialog
+          userId={blockDialogUser.id}
+          userName={blockDialogUser.name}
+          open={!!blockDialogUser}
+          onOpenChange={(open) => !open && setBlockDialogUser(null)}
+          onSuccess={onUpdate}
+        />
       )}
     </div>
   );
