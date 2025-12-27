@@ -12,7 +12,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { CommunityChat } from "@/components/CommunityChat";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search, Gift, Mail, Phone } from "lucide-react";
+import { Menu, Shield, Users, Crown, Car, MessageSquare, Megaphone, BarChart, Search, Gift, Mail, Phone, Download } from "lucide-react";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/input";
 // FloatingSupport and FloatingChat removed - now in AppHeader
@@ -95,6 +95,7 @@ const AdminDashboard = () => {
     { id: "emails", label: "Email Logs", icon: Mail },
     { id: "sms", label: "SMS Center", icon: Phone, isLink: true, href: "/admin/sms" },
     { id: "calls", label: "Call Center", icon: Phone, isLink: true, href: "/admin/calls" },
+    { id: "downloads", label: "Downloads", icon: Download, isLink: true, href: "/admin/downloads" },
     { id: "community", label: "Chat/Community", icon: MessageSquare },
     { id: "rooms", label: "Chat Rooms", icon: Users },
     { id: "messages", label: "System Messages", icon: Megaphone },
