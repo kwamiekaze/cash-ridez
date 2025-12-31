@@ -137,3 +137,15 @@ verify_jwt = false
 
 [functions.admin-export-users]
 verify_jwt = true
+
+[functions.admin-send-email]
+verify_jwt = true
+
+[functions.admin-bulk-email-worker]
+verify_jwt = false
+
+[functions.admin-bulk-email-runner]
+verify_jwt = false
+
+[functions.admin-email-control]
+verify_jwt = true

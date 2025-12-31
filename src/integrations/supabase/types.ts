@@ -271,6 +271,170 @@ export type Database = {
           },
         ]
       }
+      admin_email_campaign_recipients: {
+        Row: {
+          attempt_count: number
+          body_rendered: string
+          campaign_id: string
+          created_at: string
+          email: string
+          error: string | null
+          first_name: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          lock_id: string | null
+          locked_at: string | null
+          raw_line: string | null
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          subject_rendered: string
+        }
+        Insert: {
+          attempt_count?: number
+          body_rendered: string
+          campaign_id: string
+          created_at?: string
+          email: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lock_id?: string | null
+          locked_at?: string | null
+          raw_line?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject_rendered: string
+        }
+        Update: {
+          attempt_count?: number
+          body_rendered?: string
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          error?: string | null
+          first_name?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          last_error?: string | null
+          lock_id?: string | null
+          locked_at?: string | null
+          raw_line?: string | null
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          subject_rendered?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_email_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_email_campaigns: {
+        Row: {
+          body_template: string
+          created_at: string
+          created_by: string
+          failed_count: number | null
+          finished_at: string | null
+          id: string
+          last_error: string | null
+          last_run_at: string | null
+          name: string | null
+          next_send_at: string | null
+          queued_count: number | null
+          sender: string
+          sent_count: number | null
+          skipped_count: number | null
+          started_at: string | null
+          status: string
+          subject_template: string
+          throttle_seconds: number
+          total_recipients: number | null
+        }
+        Insert: {
+          body_template: string
+          created_at?: string
+          created_by: string
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          name?: string | null
+          next_send_at?: string | null
+          queued_count?: number | null
+          sender?: string
+          sent_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: string
+          subject_template: string
+          throttle_seconds?: number
+          total_recipients?: number | null
+        }
+        Update: {
+          body_template?: string
+          created_at?: string
+          created_by?: string
+          failed_count?: number | null
+          finished_at?: string | null
+          id?: string
+          last_error?: string | null
+          last_run_at?: string | null
+          name?: string | null
+          next_send_at?: string | null
+          queued_count?: number | null
+          sender?: string
+          sent_count?: number | null
+          skipped_count?: number | null
+          started_at?: string | null
+          status?: string
+          subject_template?: string
+          throttle_seconds?: number
+          total_recipients?: number | null
+        }
+        Relationships: []
+      }
+      admin_email_worker_runs: {
+        Row: {
+          duration_ms: number | null
+          errors: Json | null
+          id: string
+          processed_campaign_ids: Json
+          processed_recipients_count: number
+          ran_at: string
+          source: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          errors?: Json | null
+          id?: string
+          processed_campaign_ids?: Json
+          processed_recipients_count?: number
+          ran_at?: string
+          source?: string
+        }
+        Update: {
+          duration_ms?: number | null
+          errors?: Json | null
+          id?: string
+          processed_campaign_ids?: Json
+          processed_recipients_count?: number
+          ran_at?: string
+          source?: string
+        }
+        Relationships: []
+      }
       admin_notification_settings: {
         Row: {
           admin_id: string
@@ -1597,39 +1761,72 @@ export type Database = {
       }
       email_logs: {
         Row: {
+          admin_user_id: string | null
+          body_preview: string | null
+          campaign_id: string | null
+          campaign_recipient_id: string | null
           created_at: string
           email_type: string
           error_message: string | null
           id: string
           metadata: Json | null
           recipient_email: string | null
+          resend_message_id: string | null
           status: string
+          subject: string | null
           timestamp_sent: string
           user_id: string
         }
         Insert: {
+          admin_user_id?: string | null
+          body_preview?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
           created_at?: string
           email_type: string
           error_message?: string | null
           id?: string
           metadata?: Json | null
           recipient_email?: string | null
+          resend_message_id?: string | null
           status?: string
+          subject?: string | null
           timestamp_sent?: string
           user_id: string
         }
         Update: {
+          admin_user_id?: string | null
+          body_preview?: string | null
+          campaign_id?: string | null
+          campaign_recipient_id?: string | null
           created_at?: string
           email_type?: string
           error_message?: string | null
           id?: string
           metadata?: Json | null
           recipient_email?: string | null
+          resend_message_id?: string | null
           status?: string
+          subject?: string | null
           timestamp_sent?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_campaign_recipient_id_fkey"
+            columns: ["campaign_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "admin_email_campaign_recipients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kyc_submissions: {
         Row: {
@@ -2597,6 +2794,38 @@ export type Database = {
         Returns: boolean
       }
       check_active_ride: { Args: { _user_id: string }; Returns: boolean }
+      claim_email_recipient: {
+        Args: {
+          p_campaign_id: string
+          p_lock_id: string
+          p_stale_threshold?: unknown
+        }
+        Returns: {
+          attempt_count: number
+          body_rendered: string
+          campaign_id: string
+          created_at: string
+          email: string
+          error: string | null
+          first_name: string | null
+          id: string
+          last_attempt_at: string | null
+          last_error: string | null
+          lock_id: string | null
+          locked_at: string | null
+          raw_line: string | null
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          subject_rendered: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "admin_email_campaign_recipients"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_sms_recipient: {
         Args: {
           p_campaign_id: string
