@@ -14,6 +14,7 @@ import { useNotificationSound } from "./hooks/useNotificationSound";
 import { useVoicemailAudioSeed } from "@/hooks/useVoicemailAudioSeed";
 import { AppUpdateBanner } from "./components/AppUpdateBanner";
 import { AppPersistenceProvider } from "./components/AppPersistenceProvider";
+import { FloatingChatBubble } from "./components/FloatingChatBubble";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -136,6 +137,7 @@ const App = () => {
             
             <DeferMount>
               <NotificationPermissionDialog />
+              <FloatingChatBubble />
             </DeferMount>
             <Suspense fallback={<LoadingFallback />}>
               <Routes>
