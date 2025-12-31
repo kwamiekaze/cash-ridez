@@ -1731,30 +1731,54 @@ export type Database = {
           chat_name: string | null
           created_at: string
           created_by: string
+          ended_at: string | null
+          ended_by: string | null
           id: string
           participant_1_id: string
           participant_2_id: string
+          status: string | null
           updated_at: string
         }
         Insert: {
           chat_name?: string | null
           created_at?: string
           created_by: string
+          ended_at?: string | null
+          ended_by?: string | null
           id?: string
           participant_1_id: string
           participant_2_id: string
+          status?: string | null
           updated_at?: string
         }
         Update: {
           chat_name?: string | null
           created_at?: string
           created_by?: string
+          ended_at?: string | null
+          ended_by?: string | null
           id?: string
           participant_1_id?: string
           participant_2_id?: string
+          status?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "direct_chats_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_chats_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       direct_messages: {
         Row: {
@@ -1955,6 +1979,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          chat_id: string | null
           created_at: string | null
           id: string
           link: string | null
@@ -1967,6 +1992,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          chat_id?: string | null
           created_at?: string | null
           id?: string
           link?: string | null
@@ -1979,6 +2005,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          chat_id?: string | null
           created_at?: string | null
           id?: string
           link?: string | null
@@ -1991,6 +2018,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "direct_chats"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_related_ride_id_fkey"
             columns: ["related_ride_id"]
@@ -2131,6 +2165,7 @@ export type Database = {
           map_history_hidden_from_public: boolean | null
           must_change_password: boolean | null
           notification_preferences: Json | null
+          notify_chat_messages: boolean | null
           notify_new_driver: boolean | null
           paused: boolean | null
           phone_number: string | null
@@ -2218,6 +2253,7 @@ export type Database = {
           map_history_hidden_from_public?: boolean | null
           must_change_password?: boolean | null
           notification_preferences?: Json | null
+          notify_chat_messages?: boolean | null
           notify_new_driver?: boolean | null
           paused?: boolean | null
           phone_number?: string | null
@@ -2305,6 +2341,7 @@ export type Database = {
           map_history_hidden_from_public?: boolean | null
           must_change_password?: boolean | null
           notification_preferences?: Json | null
+          notify_chat_messages?: boolean | null
           notify_new_driver?: boolean | null
           paused?: boolean | null
           phone_number?: string | null
