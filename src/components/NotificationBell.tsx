@@ -188,37 +188,6 @@ export function NotificationBell() {
     await markAsRead(notification.id);
     setOpen(false);
     
-    // Handle direct_message notifications - deep link to chat bubble
-    if (notification.type === 'direct_message') {
-      // Extract chat_id from link or use related_user_id to find chat
-      const linkMatch = notification.link?.match(/openChat=([a-f0-9-]+)/i);
-      if (linkMatch) {
-        // Navigate with openChat param to trigger the floating chat bubble
-        navigate(`/dashboard?openChat=${linkMatch[1]}`);
-      } else if (notification.related_user_id) {
-        // Fallback: find or create chat with this user
-        try {
-          const { data: chatId } = await supabase.rpc('get_or_create_direct_chat', {
-            _participant_1_id: user?.id,
-            _participant_2_id: notification.related_user_id,
-          });
-          if (chatId) {
-            navigate(`/dashboard?openChat=${chatId}`);
-          }
-        } catch (error) {
-          console.error('Error finding chat:', error);
-        }
-      }
-      return;
-    }
-    
-    // Handle email_campaign_finished notifications
-    if (notification.type === 'email_campaign_finished') {
-      const link = notification.link || '/admin/email?tab=logs';
-      navigate(link);
-      return;
-    }
-    
     // For driver_available notifications, go to the drivers tab in rider dashboard
     if (notification.type === 'driver_available') {
       navigate('/rider?tab=chat');
@@ -283,8 +252,6 @@ export function NotificationBell() {
     // Default icons for other notification types
     const type = notification.type;
     switch (type) {
-      case 'direct_message':
-        return <div className={cn(iconClass, "bg-primary/20")}><MessageSquare className="w-4 h-4 text-primary" /></div>;
       case 'message':
         return <div className={cn(iconClass, "bg-blue-500/20")}><Bell className="w-4 h-4 text-blue-500" /></div>;
       case 'offer':
@@ -310,7 +277,6 @@ export function NotificationBell() {
       case 'sms_inbound':
         return <div className={cn(iconClass, "bg-blue-500/20")}><MessageSquare className="w-4 h-4 text-blue-500" /></div>;
       case 'campaign_complete':
-      case 'email_campaign_finished':
         return <div className={cn(iconClass, "bg-verified/20")}><CheckCircle2 className="w-4 h-4 text-verified" /></div>;
       default:
         return <div className={cn(iconClass, "bg-primary/20")}><Bell className="w-4 h-4 text-primary" /></div>;

@@ -95,17 +95,9 @@ export function NotificationPreferences() {
 
       setPrefs(newPrefs);
 
-      // Build update object - include notify_chat_messages for the messages preference
-      const updateData: Record<string, any> = { notification_preferences: newPrefs };
-      
-      // Sync messages preference to notify_chat_messages column for DM trigger
-      if (key === 'messages' || key === 'all_notifications') {
-        updateData.notify_chat_messages = newPrefs.messages;
-      }
-
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update({ notification_preferences: newPrefs })
         .eq('id', user?.id);
 
       if (error) throw error;

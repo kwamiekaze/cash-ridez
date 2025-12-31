@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,6 @@ import { AdminBlockUserDialog } from "@/components/AdminBlockUserDialog";
 import { RejectVerificationDialog } from "@/components/RejectVerificationDialog";
 import { DirectMessageDialog } from "@/components/DirectMessageDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { saveUIState, loadUIState } from "@/hooks/useAppPersistence";
 
 interface User {
   id: string;
@@ -60,24 +59,9 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
   const [rejectDialogUser, setRejectDialogUser] = useState<{ id: string; name: string } | null>(null);
   const [messageDialogUserId, setMessageDialogUserId] = useState<string | null>(null);
   
-  // Pagination state - restore from session storage if available
-  const [currentPage, setCurrentPage] = useState(() => {
-    const saved = loadUIState<number>('admin-users-page');
-    return saved ?? 1;
-  });
-  const [pageSize, setPageSize] = useState(() => {
-    const saved = loadUIState<number>('admin-users-pageSize');
-    return saved ?? 10;
-  });
-  
-  // Persist pagination state
-  useEffect(() => {
-    saveUIState('admin-users-page', currentPage);
-  }, [currentPage]);
-  
-  useEffect(() => {
-    saveUIState('admin-users-pageSize', pageSize);
-  }, [pageSize]);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Fetch last visit data and admin status
   useEffect(() => {

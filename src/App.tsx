@@ -13,8 +13,6 @@ import { PageViewTracker } from "./components/PageViewTracker";
 import { useNotificationSound } from "./hooks/useNotificationSound";
 import { useVoicemailAudioSeed } from "@/hooks/useVoicemailAudioSeed";
 import { AppUpdateBanner } from "./components/AppUpdateBanner";
-import { AppPersistenceProvider } from "./components/AppPersistenceProvider";
-import { FloatingChatBubble } from "./components/FloatingChatBubble";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
@@ -126,21 +124,19 @@ const App = () => {
         }}
       >
         <AuthProvider>
-          <AppPersistenceProvider>
-            <DomainRedirect />
-            <NotificationSoundInitializer />
-            <VoicemailAudioSeeder />
-            <AppUpdateBanner />
-            <Toaster />
-            <Sonner />
-            <PageViewTracker />
-            
-            <DeferMount>
-              <NotificationPermissionDialog />
-              <FloatingChatBubble />
-            </DeferMount>
-            <Suspense fallback={<LoadingFallback />}>
-              <Routes>
+          <DomainRedirect />
+          <NotificationSoundInitializer />
+          <VoicemailAudioSeeder />
+          <AppUpdateBanner />
+          <Toaster />
+          <Sonner />
+          <PageViewTracker />
+          
+          <DeferMount>
+            <NotificationPermissionDialog />
+          </DeferMount>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
               <Route path="/" element={<LandingNew />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -361,12 +357,11 @@ const App = () => {
               path="/live-map"
               element={<Navigate to="/map" replace />}
             />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </AppPersistenceProvider>
-        </AuthProvider>
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+          </AuthProvider>
         </BrowserRouter>
     </ThemeProvider>
   </QueryClientProvider>

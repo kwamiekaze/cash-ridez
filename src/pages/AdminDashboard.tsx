@@ -21,27 +21,21 @@ import { SystemMessageDialog } from "@/components/SystemMessageDialog";
 import { AdminChatRooms } from "@/components/AdminChatRooms";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import { AdminReferralsTab } from "@/components/AdminReferralsTab";
-import { saveUIState, loadUIState } from "@/hooks/useAppPersistence";
 
 
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(() => loadUIState<string>('admin-active-tab') || "verifications");
+  const [activeTab, setActiveTab] = useState("verifications");
   const [profile, setProfile] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(() => loadUIState<string>('admin-selected-user') || null);
-  const [userDialogOpen, setUserDialogOpen] = useState(() => loadUIState<boolean>('admin-user-dialog-open') || false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [systemMessageDialogOpen, setSystemMessageDialogOpen] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  
-  // Persist UI state
-  useEffect(() => { saveUIState('admin-active-tab', activeTab); }, [activeTab]);
-  useEffect(() => { saveUIState('admin-selected-user', selectedUserId); }, [selectedUserId]);
-  useEffect(() => { saveUIState('admin-user-dialog-open', userDialogOpen); }, [userDialogOpen]);
 
   useEffect(() => {
     const fetchProfile = async () => {

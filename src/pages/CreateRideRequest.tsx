@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeft, MapPin, Clock, DollarSign, Users, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, DollarSign, Users } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -19,7 +19,6 @@ import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
-import { useDraftPersistence, clearDraft } from "@/hooks/useAppPersistence";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -131,38 +130,6 @@ END:VCARD`;
     passengerCount: "1",
     tripDetails: "",
   });
-  const [draftRestored, setDraftRestored] = useState(false);
-  
-  // Draft persistence - auto-save and restore form data
-  const { hasDraft, discardDraft } = useDraftPersistence(
-    'create-trip-request',
-    formData,
-    setFormData,
-    {
-      debounceMs: 500,
-      onRestore: useCallback(() => {
-        setDraftRestored(true);
-        toast.info('Draft restored', { duration: 3000 });
-      }, []),
-    }
-  );
-  
-  const handleDiscardDraft = useCallback(() => {
-    discardDraft();
-    setFormData({
-      pickupAddress: "",
-      dropoffAddress: "",
-      pickupTime: "",
-      contactInfo: "",
-      emergencyName: "",
-      emergencyPhone: "",
-      priceOffer: "",
-      passengerCount: "1",
-      tripDetails: "",
-    });
-    setDraftRestored(false);
-    toast.success('Draft discarded');
-  }, [discardDraft]);
   
   // Estimate distance based on addresses (rough estimate for Georgia/Atlanta area)
   const estimatedDistance = useMemo(() => {
@@ -353,9 +320,6 @@ END:VCARD`;
           });
       }
 
-      // Clear draft on successful creation
-      discardDraft();
-      
       toast.success("Trip request created!");
       // Navigate immediately for snappier UX; the Rider page can refresh on mount
       navigate("/rider", { state: { refreshRequests: true, newRequestId: newTrip?.id, timestamp: Date.now() } });
@@ -388,21 +352,7 @@ END:VCARD`;
         
         <div className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold">Create Trip Request</h1>
-            {draftRestored && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleDiscardDraft}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Discard draft
-              </Button>
-            )}
-          </div>
+          <h1 className="text-3xl font-bold mb-6">Create Trip Request</h1>
           <p className="text-sm text-muted-foreground mb-6 text-center">
             Post your travel plans to connect with drivers in the community. For easy in app calling save{' '}
             <button
