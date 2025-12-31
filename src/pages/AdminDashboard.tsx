@@ -21,7 +21,7 @@ import { SystemMessageDialog } from "@/components/SystemMessageDialog";
 import { AdminChatRooms } from "@/components/AdminChatRooms";
 import AdminAnalytics from "@/pages/AdminAnalytics";
 import { AdminReferralsTab } from "@/components/AdminReferralsTab";
-import { EmailLogsPanel } from "@/components/admin/EmailLogsPanel";
+
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -92,13 +92,12 @@ const AdminDashboard = () => {
     { id: "referrals", label: "Referrals", icon: Gift },
     { id: "rides", label: "Rides", icon: Car },
     { id: "analytics", label: "Analytics", icon: BarChart },
-    { id: "emails", label: "Email Logs", icon: Mail },
+    { id: "rooms", label: "Chat Rooms", icon: MessageSquare },
+    { id: "messages", label: "System Messages", icon: Megaphone },
     { id: "sms", label: "SMS Center", icon: Phone, isLink: true, href: "/admin/sms" },
     { id: "calls", label: "Call Center", icon: Phone, isLink: true, href: "/admin/calls" },
+    { id: "emails", label: "Email Center", icon: Mail, isLink: true, href: "/admin/email" },
     { id: "downloads", label: "Downloads", icon: Download, isLink: true, href: "/admin/downloads" },
-    { id: "community", label: "Chat/Community", icon: MessageSquare },
-    { id: "rooms", label: "Chat Rooms", icon: Users },
-    { id: "messages", label: "System Messages", icon: Megaphone },
   ];
 
   const handleTabChange = (value: string, item?: any) => {
@@ -308,33 +307,30 @@ const AdminDashboard = () => {
               </motion.div>
             </TabsContent>
 
-            <TabsContent value="emails" className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <EmailLogsPanel />
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="community" className="space-y-6">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-              >
-                <CommunityChat />
-              </motion.div>
-            </TabsContent>
-
             <TabsContent value="rooms" className="space-y-6">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.1 }}
               >
-                <AdminChatRooms />
+                <Tabs defaultValue="chat-rooms" className="w-full">
+                  <TabsList className="mb-4 bg-card/50 backdrop-blur-sm border border-border/50">
+                    <TabsTrigger value="chat-rooms" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <Users className="h-4 w-4 mr-2" />
+                      Chat Rooms
+                    </TabsTrigger>
+                    <TabsTrigger value="community-chat" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Community Chat
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="chat-rooms">
+                    <AdminChatRooms />
+                  </TabsContent>
+                  <TabsContent value="community-chat">
+                    <CommunityChat />
+                  </TabsContent>
+                </Tabs>
               </motion.div>
             </TabsContent>
 
