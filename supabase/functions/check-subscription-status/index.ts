@@ -43,16 +43,19 @@ serve(async (req) => {
     // Get user profile
     const { data: profile } = await supabaseClient
       .from('profiles')
-      .select('stripe_customer_id, stripe_subscription_id, subscription_active, completed_trips_count')
+      .select('stripe_customer_id, stripe_subscription_id, subscription_active, completed_trips_count, connected_trips_count')
       .eq('id', user.id)
       .single();
+
+    const connectedTrips = profile?.connected_trips_count || 0;
 
     if (!profile?.stripe_customer_id) {
       console.log('[CHECK-SUB] No customer found');
       return new Response(JSON.stringify({ 
         subscribed: false,
         completed_trips: profile?.completed_trips_count || 0,
-        trips_remaining: Math.max(0, 3 - (profile?.completed_trips_count || 0))
+        connected_trips: connectedTrips,
+        trips_remaining: Math.max(0, 3 - connectedTrips)
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -85,7 +88,8 @@ serve(async (req) => {
           subscribed: isActive,
           subscription_end: new Date(subscription.current_period_end * 1000).toISOString(),
           completed_trips: profile.completed_trips_count || 0,
-          trips_remaining: isActive ? 'unlimited' : Math.max(0, 3 - (profile.completed_trips_count || 0))
+          connected_trips: connectedTrips,
+          trips_remaining: isActive ? 'unlimited' : Math.max(0, 3 - connectedTrips)
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -106,7 +110,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       subscribed: false,
       completed_trips: profile.completed_trips_count || 0,
-      trips_remaining: Math.max(0, 3 - (profile.completed_trips_count || 0))
+      connected_trips: connectedTrips,
+      trips_remaining: Math.max(0, 3 - connectedTrips)
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

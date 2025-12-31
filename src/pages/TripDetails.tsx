@@ -20,6 +20,7 @@ import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { useSubscription } from "@/hooks/useSubscription";
 import { calculateTripFares, formatCurrency, formatCurrencyRange } from "@/utils/fareEstimator";
 import { AddressLink } from "@/components/AddressLink";
+import { AdminTripMessages } from "@/components/AdminTripMessages";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -1263,6 +1264,15 @@ export default function TripDetails() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* Admin Trip Messages Section */}
+        {isAdmin && request && (
+          <AdminTripMessages 
+            tripId={id!} 
+            riderId={request.rider_id} 
+            driverId={request.assigned_driver_id} 
+          />
         )}
       </div>
       </div>

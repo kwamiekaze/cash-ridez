@@ -973,6 +973,62 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_user_notes: {
+        Row: {
+          created_at: string | null
+          notes: string | null
+          phone_override: string | null
+          updated_at: string | null
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          notes?: string | null
+          phone_override?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          notes?: string | null
+          phone_override?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_user_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_user_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "admin_user_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_user_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       analytics_events: {
         Row: {
           created_at: string | null
@@ -2044,6 +2100,7 @@ export type Database = {
           chat_muted: boolean | null
           chat_rooms_banned_from: string[] | null
           completed_trips_count: number | null
+          connected_trips_count: number
           consecutive_cancellations: number | null
           created_at: string | null
           current_lat: number | null
@@ -2130,6 +2187,7 @@ export type Database = {
           chat_muted?: boolean | null
           chat_rooms_banned_from?: string[] | null
           completed_trips_count?: number | null
+          connected_trips_count?: number
           consecutive_cancellations?: number | null
           created_at?: string | null
           current_lat?: number | null
@@ -2216,6 +2274,7 @@ export type Database = {
           chat_muted?: boolean | null
           chat_rooms_banned_from?: string[] | null
           completed_trips_count?: number | null
+          connected_trips_count?: number
           consecutive_cancellations?: number | null
           created_at?: string | null
           current_lat?: number | null

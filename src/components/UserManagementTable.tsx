@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock, ShieldX } from "lucide-react";
+import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock, ShieldX, MessageSquare } from "lucide-react";
 import { UserChip } from "@/components/UserChip";
 import { AdminUserFilters, UserFilters } from "@/components/admin/AdminUserFilters";
 import { AdminBlockUserDialog } from "@/components/AdminBlockUserDialog";
+import { RejectVerificationDialog } from "@/components/RejectVerificationDialog";
+import { DirectMessageDialog } from "@/components/DirectMessageDialog";
 
 interface User {
   id: string;
@@ -54,6 +56,8 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
   const [userActivity, setUserActivity] = useState<Record<string, Date | null>>({});
   const [adminUsers, setAdminUsers] = useState<Set<string>>(new Set());
   const [blockDialogUser, setBlockDialogUser] = useState<{ id: string; name: string } | null>(null);
+  const [rejectDialogUser, setRejectDialogUser] = useState<{ id: string; name: string } | null>(null);
+  const [messageDialogUserId, setMessageDialogUserId] = useState<string | null>(null);
 
   // Fetch last visit data and admin status
   useEffect(() => {
@@ -388,7 +392,7 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleRejectVerification(user.id)}
+                          onClick={() => setRejectDialogUser({ id: user.id, name: user.display_name || user.full_name || user.email })}
                           disabled={loading === user.id}
                           title="Reject"
                           className="h-8 w-8 p-0 sm:w-auto sm:px-3"
@@ -466,6 +470,15 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
                         <ShieldX className="h-3 w-3" />
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setMessageDialogUserId(user.id)}
+                      title="Message User"
+                      className="h-8 w-8 p-0"
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -483,6 +496,28 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
           open={!!blockDialogUser}
           onOpenChange={(open) => !open && setBlockDialogUser(null)}
           onSuccess={onUpdate}
+        />
+      )}
+
+      {/* Reject Verification Dialog */}
+      <RejectVerificationDialog
+        open={!!rejectDialogUser}
+        onOpenChange={(open) => !open && setRejectDialogUser(null)}
+        onConfirm={() => {
+          if (rejectDialogUser) {
+            handleRejectVerification(rejectDialogUser.id);
+            setRejectDialogUser(null);
+          }
+        }}
+        userName={rejectDialogUser?.name}
+      />
+
+      {/* Direct Message Dialog */}
+      {messageDialogUserId && (
+        <DirectMessageDialog
+          otherUserId={messageDialogUserId}
+          open={!!messageDialogUserId}
+          onOpenChange={(open) => !open && setMessageDialogUserId(null)}
         />
       )}
     </div>

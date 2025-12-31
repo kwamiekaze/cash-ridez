@@ -27,10 +27,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff } from "lucide-react";
+import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff, MessageSquare } from "lucide-react";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AdminUserNotes } from "@/components/AdminUserNotes";
+import { RejectVerificationDialog } from "@/components/RejectVerificationDialog";
+import { DirectMessageDialog } from "@/components/DirectMessageDialog";
 
 // Inline password validation to avoid module bundling issues
 const PASSWORD_POLICY = { minLength: 8, maxLength: 128 };
@@ -93,6 +96,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const [confirmResetEmailOpen, setConfirmResetEmailOpen] = useState(false);
   const [confirmTempPasswordOpen, setConfirmTempPasswordOpen] = useState(false);
   const [confirmRevokeSessionsOpen, setConfirmRevokeSessionsOpen] = useState(false);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
 
   useEffect(() => {
     if (userId && open) {
@@ -427,7 +432,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
             <div className="flex-1">
               <h3 className="text-lg font-semibold">{user.display_name}</h3>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-2 mt-2 flex-wrap">
                 {user.is_verified ? (
                   <Badge className="bg-green-500">Verified</Badge>
                 ) : (
@@ -437,7 +442,20 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                 {user.paused && <Badge variant="secondary">Paused</Badge>}
               </div>
             </div>
+            {/* Message User Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMessageDialogOpen(true)}
+              className="shrink-0"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Message
+            </Button>
           </div>
+
+          {/* Admin Notes Section */}
+          <AdminUserNotes userId={userId!} />
 
           {/* Referral Info */}
           <Card className="p-4">
@@ -500,7 +518,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={handleRejectVerification}
+                    onClick={() => setConfirmRejectOpen(true)}
                     disabled={saving}
                   >
                     Reject ID
@@ -905,6 +923,26 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reject Verification Dialog */}
+      <RejectVerificationDialog
+        open={confirmRejectOpen}
+        onOpenChange={setConfirmRejectOpen}
+        onConfirm={() => {
+          handleRejectVerification();
+          setConfirmRejectOpen(false);
+        }}
+        userName={user?.display_name || user?.full_name}
+      />
+
+      {/* Direct Message Dialog */}
+      {userId && (
+        <DirectMessageDialog
+          otherUserId={userId}
+          open={messageDialogOpen}
+          onOpenChange={setMessageDialogOpen}
+        />
+      )}
     </Dialog>
   );
 }

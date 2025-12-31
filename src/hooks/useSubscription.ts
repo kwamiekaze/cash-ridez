@@ -6,6 +6,7 @@ interface SubscriptionStatus {
   subscribed: boolean;
   subscription_end?: string;
   completed_trips: number;
+  connected_trips: number;
   trips_remaining: number | 'unlimited';
   loading: boolean;
 }
@@ -15,6 +16,7 @@ export const useSubscription = () => {
   const [status, setStatus] = useState<SubscriptionStatus>({
     subscribed: false,
     completed_trips: 0,
+    connected_trips: 0,
     trips_remaining: 3,
     loading: true,
   });
@@ -24,6 +26,7 @@ export const useSubscription = () => {
       setStatus({
         subscribed: false,
         completed_trips: 0,
+        connected_trips: 0,
         trips_remaining: 3,
         loading: false,
       });
@@ -42,21 +45,24 @@ export const useSubscription = () => {
         // Fallback to local data
         const { data: profile } = await supabase
           .from('profiles')
-          .select('subscription_active, completed_trips_count')
+          .select('subscription_active, completed_trips_count, connected_trips_count')
           .eq('id', user.id)
           .single();
 
+        const connectedTrips = profile?.connected_trips_count || 0;
         setStatus({
           subscribed: profile?.subscription_active || false,
           completed_trips: profile?.completed_trips_count || 0,
+          connected_trips: connectedTrips,
           trips_remaining: profile?.subscription_active 
             ? 'unlimited' 
-            : Math.max(0, 3 - (profile?.completed_trips_count || 0)),
+            : Math.max(0, 3 - connectedTrips),
           loading: false,
         });
       } else {
         setStatus({
           ...data,
+          connected_trips: data.connected_trips || 0,
           loading: false,
         });
       }
@@ -139,7 +145,7 @@ export const useSubscription = () => {
     checkStatus,
     startCheckout,
     manageSubscription,
-    canUseFeatures: status.subscribed || status.completed_trips < 3,
+    canUseFeatures: status.subscribed || status.connected_trips < 3,
     hasPremiumAccess: status.subscribed, // Helper for unlimited features
     isPremium: status.subscribed, // Alias for consistency
   };
