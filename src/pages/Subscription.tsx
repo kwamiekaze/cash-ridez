@@ -269,7 +269,7 @@ const Subscription = () => {
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>Unlimited ride requests and accepts</li>
                 <li>Your Member badge</li>
-                <li>You'll be limited to 3 free trips total</li>
+                <li>You'll be limited to 3 free connected trips total</li>
               </ul>
               <p className="text-sm mt-4">
                 Are you sure you want to cancel your subscription?

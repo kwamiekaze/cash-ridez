@@ -8,7 +8,7 @@ export const SubscriptionPanel = () => {
   const { 
     subscribed, 
     subscription_end, 
-    completed_trips, 
+    connected_trips, 
     trips_remaining,
     loading,
     startCheckout,
@@ -59,7 +59,7 @@ export const SubscriptionPanel = () => {
         <CardDescription>
           {subscribed 
             ? "You have unlimited access to all features" 
-            : "Get unlimited trips after your 3 free trips"}
+            : "Get unlimited trips after your 3 free connected trips"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -88,7 +88,7 @@ export const SubscriptionPanel = () => {
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg">
               <div className="text-sm space-y-2">
-                <p>Completed trips: {completed_trips} / 3 free</p>
+                <p>Connected trips: {connected_trips} / 3 free</p>
                 <p className="font-semibold">
                   {trips_remaining === 'unlimited' 
                     ? 'Unlimited trips remaining' 

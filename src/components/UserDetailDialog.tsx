@@ -432,16 +432,16 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[85vh] overflow-y-auto overflow-x-hidden">
+        <DialogHeader className="sticky top-0 z-10 bg-background pb-2 border-b">
           <DialogTitle>User Details</DialogTitle>
           <DialogDescription>View and edit user information</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-x-hidden">
           {/* User Header */}
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <Avatar className="h-16 w-16 sm:h-20 sm:w-20 shrink-0">
               <AvatarImage src={user.photo_url} />
               <AvatarFallback className="text-2xl">
                 {(user.display_name || user.email || "U")[0].toUpperCase()}
@@ -465,7 +465,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               variant="outline"
               size="sm"
               onClick={() => setMessageDialogOpen(true)}
-              className="shrink-0"
+              className="shrink-0 w-full sm:w-auto"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Message
