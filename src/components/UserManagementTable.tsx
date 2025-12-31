@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock, ShieldX, MessageSquare } from "lucide-react";
-import { UserChip } from "@/components/UserChip";
+import { Check, X, Eye, ExternalLink, Pause, Play, Lock, Unlock, ShieldX, MessageSquare, ChevronLeft, ChevronRight } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AdminUserFilters, UserFilters } from "@/components/admin/AdminUserFilters";
 import { AdminBlockUserDialog } from "@/components/AdminBlockUserDialog";
 import { RejectVerificationDialog } from "@/components/RejectVerificationDialog";
 import { DirectMessageDialog } from "@/components/DirectMessageDialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface User {
   id: string;
@@ -58,6 +58,10 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
   const [blockDialogUser, setBlockDialogUser] = useState<{ id: string; name: string } | null>(null);
   const [rejectDialogUser, setRejectDialogUser] = useState<{ id: string; name: string } | null>(null);
   const [messageDialogUserId, setMessageDialogUserId] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Fetch last visit data and admin status
   useEffect(() => {
@@ -174,7 +178,15 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
     });
     
     setFilteredUsers(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [users, filters, userActivity, adminUsers]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / pageSize);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, currentPage, pageSize]);
 
   const handleVerificationToggle = async (userId: string, currentStatus: boolean) => {
     setLoading(userId);
@@ -325,169 +337,230 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
     }
   };
 
+  const getInitials = (name: string | null, email: string) => {
+    if (name) {
+      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return email[0]?.toUpperCase() || '?';
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full max-w-full overflow-x-hidden">
       {showFilters && (
         <AdminUserFilters filters={filters} onFiltersChange={setFilters} />
       )}
+      
+      {/* Pagination controls - top */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Show</span>
+          <Select value={pageSize.toString()} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+            <SelectTrigger className="w-[70px] h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-muted-foreground">per page</span>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Showing {Math.min((currentPage - 1) * pageSize + 1, filteredUsers.length)} - {Math.min(currentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} users
+        </div>
+      </div>
       
       {filteredUsers.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground bg-card/50 backdrop-blur-sm rounded-lg border border-border/50">
           <p>No users match the current filters</p>
         </div>
       ) : (
-      <div className="rounded-md border overflow-hidden bg-card/50 backdrop-blur-sm">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border/50">
-              <TableHead className="text-white font-semibold w-[140px] sm:w-[180px] sticky left-0 bg-card/95 backdrop-blur-sm z-10">User</TableHead>
-              <TableHead className="text-white font-semibold w-[180px] hidden md:table-cell">Email</TableHead>
-              <TableHead className="text-white font-semibold w-[90px]">Status</TableHead>
-              <TableHead className="text-white font-semibold w-auto">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50 border-border/30" onClick={() => onViewUser(user.id)}>
-                <TableCell className="sticky left-0 bg-card/95 backdrop-blur-sm z-10 w-[140px] sm:w-[180px]">
-                  <UserChip 
-                    userId={user.id}
-                    displayName={user.display_name}
-                    fullName={user.full_name || undefined}
-                    photoUrl={user.photo_url}
-                    size="sm"
-                    showCancellationBadge={false}
-                  />
-                </TableCell>
-                <TableCell className="font-medium text-white text-xs sm:text-sm w-[180px] hidden md:table-cell">
-                  <div className="truncate max-w-[180px]" title={user.email}>{user.email}</div>
-                </TableCell>
-                <TableCell className="w-[90px]">
-                  <div className="flex flex-col gap-1">
-                    {user.blocked ? (
-                      <Badge variant="destructive" className="text-xs whitespace-nowrap">Blocked</Badge>
-                    ) : user.is_verified ? (
-                      <Badge className="bg-green-500 text-white text-xs whitespace-nowrap">Verified</Badge>
-                    ) : user.verification_status === "rejected" ? (
-                      <Badge variant="destructive" className="text-xs whitespace-nowrap">Rejected</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-xs whitespace-nowrap">Pending</Badge>
-                    )}
-                    {user.paused && !user.blocked && <Badge variant="secondary" className="text-xs whitespace-nowrap mt-1">Paused</Badge>}
-                  </div>
-                </TableCell>
-                <TableCell className="w-auto">
-                  <div className="flex gap-1 flex-wrap justify-end sm:justify-start" onClick={(e) => e.stopPropagation()}>
-                    {!user.is_verified && user.verification_status === "pending" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          onClick={() => handleVerificationToggle(user.id, user.is_verified)}
-                          disabled={loading === user.id}
-                          title="Approve"
-                          className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-                        >
-                          <Check className="h-3 w-3 sm:mr-1" />
-                          <span className="hidden sm:inline text-xs">Approve</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => setRejectDialogUser({ id: user.id, name: user.display_name || user.full_name || user.email })}
-                          disabled={loading === user.id}
-                          title="Reject"
-                          className="h-8 w-8 p-0 sm:w-auto sm:px-3"
-                        >
-                          <X className="h-3 w-3 sm:mr-1" />
-                          <span className="hidden sm:inline text-xs">Reject</span>
-                        </Button>
-                      </>
-                    )}
-                    {user.is_verified && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleVerificationToggle(user.id, user.is_verified)}
-                        disabled={loading === user.id}
-                        title="Unverify"
-                        className="h-8 w-8 p-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant={user.paused ? "default" : "outline"}
-                      onClick={() => handlePauseToggle(user.id, user.paused)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {paginatedUsers.map((user) => (
+            <div 
+              key={user.id} 
+              className="bg-card/80 backdrop-blur-sm rounded-xl border border-border/50 p-4 hover:bg-card transition-colors cursor-pointer"
+              onClick={() => onViewUser(user.id)}
+            >
+              {/* User Info Section */}
+              <div className="flex flex-col items-center mb-4">
+                <Avatar className="h-16 w-16 mb-3 ring-2 ring-border/50">
+                  <AvatarImage src={user.photo_url} alt={user.display_name || user.full_name || user.email} />
+                  <AvatarFallback className="bg-muted text-foreground text-lg font-semibold">
+                    {getInitials(user.full_name || user.display_name, user.email)}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <h3 className="text-foreground font-semibold text-center truncate max-w-full">
+                  {user.display_name || user.full_name || 'Unknown'}
+                </h3>
+                
+                <p className="text-muted-foreground text-sm truncate max-w-full mt-1">
+                  {user.email}
+                </p>
+                
+                {/* Status badges */}
+                <div className="flex flex-wrap gap-1 mt-2 justify-center">
+                  {user.blocked ? (
+                    <Badge variant="destructive" className="text-xs">Blocked</Badge>
+                  ) : user.is_verified ? (
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">Verified</Badge>
+                  ) : user.verification_status === "rejected" ? (
+                    <Badge variant="destructive" className="text-xs">Rejected</Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">Pending</Badge>
+                  )}
+                  {user.paused && !user.blocked && <Badge variant="secondary" className="text-xs">Paused</Badge>}
+                  {user.isAdmin && <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Admin</Badge>}
+                </div>
+              </div>
+              
+              {/* Divider */}
+              <div className="border-t border-primary/30 mb-3" />
+              
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+                {!user.is_verified && user.verification_status === "pending" && (
+                  <>
+                    <button
+                      onClick={() => handleVerificationToggle(user.id, user.is_verified)}
                       disabled={loading === user.id}
-                      title={user.paused ? "Unpause" : "Pause"}
-                      className="h-8 w-8 p-0"
+                      title="Approve"
+                      className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors disabled:opacity-50"
                     >
-                      {user.paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-                    </Button>
-                    {user.id_image_url && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleViewIdImage(user.id_image_url)}
-                        className="h-8 w-8 p-0"
-                        title="View ID"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onViewUser(user.id)}
-                      className="h-8 w-8 p-0"
-                      title="View User"
+                      <Check className="h-4 w-4 text-primary" />
+                    </button>
+                    <button
+                      onClick={() => setRejectDialogUser({ id: user.id, name: user.display_name || user.full_name || user.email })}
+                      disabled={loading === user.id}
+                      title="Reject"
+                      className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-destructive/10 transition-colors disabled:opacity-50"
                     >
-                      <Eye className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleLockNameToggle(user.id, user.admin_locked_fields)}
-                      disabled={loading === user.id || !user.full_name}
-                      title={user.admin_locked_fields?.includes('full_name') ? "Unlock" : "Lock"}
-                      className="h-8 w-8 p-0"
-                    >
-                      {user.admin_locked_fields?.includes('full_name') ? (
-                        <Lock className="h-3 w-3 text-destructive" />
-                      ) : (
-                        <Unlock className="h-3 w-3" />
-                      )}
-                    </Button>
-                    {!user.blocked && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setBlockDialogUser({ id: user.id, name: user.display_name || user.full_name || user.email })}
-                        disabled={loading === user.id}
-                        title="Block User"
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <ShieldX className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setMessageDialogUserId(user.id)}
-                      title="Message User"
-                      className="h-8 w-8 p-0"
-                    >
-                      <MessageSquare className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                      <X className="h-4 w-4 text-destructive" />
+                    </button>
+                  </>
+                )}
+                {user.is_verified && (
+                  <button
+                    onClick={() => handleVerificationToggle(user.id, user.is_verified)}
+                    disabled={loading === user.id}
+                    title="Unverify"
+                    className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4 text-foreground" />
+                  </button>
+                )}
+                <button
+                  onClick={() => handlePauseToggle(user.id, user.paused)}
+                  disabled={loading === user.id}
+                  title={user.paused ? "Unpause" : "Pause"}
+                  className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors disabled:opacity-50"
+                >
+                  {user.paused ? <Play className="h-4 w-4 text-foreground" /> : <Pause className="h-4 w-4 text-foreground" />}
+                </button>
+                {user.id_image_url && (
+                  <button
+                    onClick={() => handleViewIdImage(user.id_image_url)}
+                    title="View ID"
+                    className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4 text-foreground" />
+                  </button>
+                )}
+                <button
+                  onClick={() => onViewUser(user.id)}
+                  title="View User"
+                  className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors"
+                >
+                  <Eye className="h-4 w-4 text-foreground" />
+                </button>
+                <button
+                  onClick={() => handleLockNameToggle(user.id, user.admin_locked_fields)}
+                  disabled={loading === user.id || !user.full_name}
+                  title={user.admin_locked_fields?.includes('full_name') ? "Unlock Name" : "Lock Name"}
+                  className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors disabled:opacity-50"
+                >
+                  {user.admin_locked_fields?.includes('full_name') ? (
+                    <Lock className="h-4 w-4 text-destructive" />
+                  ) : (
+                    <Unlock className="h-4 w-4 text-foreground" />
+                  )}
+                </button>
+                {!user.blocked && (
+                  <button
+                    onClick={() => setBlockDialogUser({ id: user.id, name: user.display_name || user.full_name || user.email })}
+                    disabled={loading === user.id}
+                    title="Block User"
+                    className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                  >
+                    <ShieldX className="h-4 w-4 text-destructive" />
+                  </button>
+                )}
+                <button
+                  onClick={() => setMessageDialogUserId(user.id)}
+                  title="Message User"
+                  className="h-10 w-10 rounded-lg border-2 border-primary/60 bg-transparent flex items-center justify-center hover:bg-primary/10 transition-colors"
+                >
+                  <MessageSquare className="h-4 w-4 text-foreground" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination controls - bottom */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="h-8 w-8 p-0 text-xs"
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       )}
 
       {/* Block User Dialog */}
