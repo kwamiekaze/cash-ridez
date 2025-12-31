@@ -54,7 +54,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 mx-auto mb-4">
               <Lock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -75,11 +75,11 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
-                <Car className="w-4 h-4 text-[hsl(var(--premium-gold))]" />
+                <Car className="w-4 h-4 text-[hsl(var(--premium-gold))] flex-shrink-0" />
                 <span>Unlimited trip posts & acceptances</span>
               </div>
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[hsl(var(--premium-gold))]" />
+                <MessageSquare className="w-4 h-4 text-[hsl(var(--premium-gold))] flex-shrink-0" />
                 <span>Unlimited community chat</span>
               </div>
               <div className="flex items-center gap-2">

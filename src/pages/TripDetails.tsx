@@ -1271,7 +1271,11 @@ export default function TripDetails() {
           <AdminTripMessages 
             tripId={id!} 
             riderId={request.rider_id} 
-            driverId={request.assigned_driver_id} 
+            driverId={request.assigned_driver_id}
+            tripStatus={request.status}
+            cancelledBy={request.cancelled_by}
+            cancelledAt={request.cancelled_at}
+            cancelReasonCode={request.cancel_reason_code}
           />
         )}
       </div>

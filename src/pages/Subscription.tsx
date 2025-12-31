@@ -167,7 +167,7 @@ const Subscription = () => {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      You've used {completed_trips} of {typeof trips_remaining === 'number' ? 3 : 'unlimited'} free trips. 
+                      You've used {completed_trips} of 3 free connected trips. 
                       Subscribe to unlock unlimited access.
                     </AlertDescription>
                   </Alert>
@@ -241,7 +241,7 @@ const Subscription = () => {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Completed Trips</p>
+                  <p className="text-sm text-muted-foreground mb-1">Connected Trips</p>
                   <p className="text-2xl font-bold">{completed_trips}</p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
@@ -269,7 +269,7 @@ const Subscription = () => {
               <ul className="list-disc list-inside space-y-1 text-sm">
                 <li>Unlimited ride requests and accepts</li>
                 <li>Your Member badge</li>
-                <li>You'll be limited to 3 free trips total</li>
+                <li>You'll be limited to 3 free connected trips total</li>
               </ul>
               <p className="text-sm mt-4">
                 Are you sure you want to cancel your subscription?

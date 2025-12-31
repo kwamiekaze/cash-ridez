@@ -218,7 +218,7 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
     }
   };
 
-  const handleRejectVerification = async (userId: string) => {
+  const handleRejectVerification = async (userId: string, reason: string) => {
     setLoading(userId);
     try {
       const user = users.find(u => u.id === userId);
@@ -229,18 +229,20 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
         .update({
           is_verified: false,
           verification_status: "rejected",
+          verification_notes: reason,
         })
         .eq("id", userId);
 
       if (error) throw error;
 
-      // Send rejection notification email
+      // Send rejection notification email with reason
       try {
         await supabase.functions.invoke("send-status-notification", {
           body: {
             userEmail: user.email,
             displayName: user.display_name || user.email,
             status: "rejected",
+            reason: reason,
           },
         });
       } catch (emailError) {
@@ -503,9 +505,9 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
       <RejectVerificationDialog
         open={!!rejectDialogUser}
         onOpenChange={(open) => !open && setRejectDialogUser(null)}
-        onConfirm={() => {
+        onConfirm={(reason) => {
           if (rejectDialogUser) {
-            handleRejectVerification(rejectDialogUser.id);
+            handleRejectVerification(rejectDialogUser.id, reason);
             setRejectDialogUser(null);
           }
         }}

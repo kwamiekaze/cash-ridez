@@ -215,7 +215,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     }
   };
 
-  const handleRejectVerification = async () => {
+  const handleRejectVerification = async (reason: string) => {
     if (!userId) return;
 
     setSaving(true);
@@ -225,18 +225,20 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         .update({
           is_verified: false,
           verification_status: "rejected",
+          verification_notes: reason,
         })
         .eq("id", userId);
 
       if (error) throw error;
 
-      // Send rejection notification email
+      // Send rejection notification email with reason
       try {
         await supabase.functions.invoke("send-status-notification", {
           body: {
             userEmail: user.email,
             displayName: user.display_name || user.email,
             status: "rejected",
+            reason: reason,
           },
         });
       } catch (emailError) {
@@ -414,24 +416,24 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-background z-10 pb-4 border-b">
           <DialogTitle>User Details</DialogTitle>
           <DialogDescription>View and edit user information</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-6 pt-4">
           {/* User Header */}
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <Avatar className="h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0">
               <AvatarImage src={user.photo_url} />
-              <AvatarFallback className="text-2xl">
+              <AvatarFallback className="text-xl sm:text-2xl">
                 {(user.display_name || user.email || "U")[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold">{user.display_name}</h3>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold truncate">{user.display_name}</h3>
+              <p className="text-sm text-muted-foreground truncate">{user.email}</p>
               <div className="flex gap-2 mt-2 flex-wrap">
                 {user.is_verified ? (
                   <Badge className="bg-green-500">Verified</Badge>
@@ -447,7 +449,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               variant="outline"
               size="sm"
               onClick={() => setMessageDialogOpen(true)}
-              className="shrink-0"
+              className="w-full sm:w-auto shrink-0"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Message
@@ -928,8 +930,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
       <RejectVerificationDialog
         open={confirmRejectOpen}
         onOpenChange={setConfirmRejectOpen}
-        onConfirm={() => {
-          handleRejectVerification();
+        onConfirm={(reason) => {
+          handleRejectVerification(reason);
           setConfirmRejectOpen(false);
         }}
         userName={user?.display_name || user?.full_name}

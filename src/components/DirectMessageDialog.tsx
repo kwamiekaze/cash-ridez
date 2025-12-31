@@ -239,17 +239,18 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
     }
   }, [messages]);
 
-  if (!subscriptionActive && !isAdmin) {
+  // Admins always bypass subscription check
+  if (!subscriptionActive && !isAdmin && !loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent>
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Subscription Required</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground">
             Direct messaging is available for subscribed members only. Please upgrade your subscription to use this feature.
           </p>
-          <Button onClick={() => onOpenChange(false)}>Close</Button>
+          <Button onClick={() => onOpenChange(false)} className="w-full">Close</Button>
         </DialogContent>
       </Dialog>
     );
@@ -257,7 +258,7 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-[600px] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] sm:max-w-2xl h-[80vh] sm:h-[600px] flex flex-col p-0">
         <DialogHeader className="p-4 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

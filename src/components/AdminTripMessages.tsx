@@ -4,13 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageSquare, Loader2 } from "lucide-react";
+import { MessageSquare, Loader2, AlertCircle, XCircle, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 
 interface AdminTripMessagesProps {
   tripId: string;
   riderId: string;
   driverId: string | null;
+  tripStatus?: string;
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+  cancelReasonCode?: string | null;
 }
 
 interface Message {
@@ -28,7 +32,15 @@ interface UserProfile {
   photo_url: string | null;
 }
 
-export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessagesProps) {
+export function AdminTripMessages({ 
+  tripId, 
+  riderId, 
+  driverId, 
+  tripStatus,
+  cancelledBy,
+  cancelledAt,
+  cancelReasonCode
+}: AdminTripMessagesProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<Record<string, UserProfile>>({});
@@ -40,7 +52,6 @@ export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessag
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      // Fetch all messages for this trip
       const { data: messagesData, error } = await supabase
         .from('ride_messages')
         .select('*')
@@ -51,7 +62,6 @@ export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessag
 
       setMessages(messagesData || []);
 
-      // Fetch profiles for participants
       const userIds = new Set<string>();
       userIds.add(riderId);
       if (driverId) userIds.add(driverId);
@@ -87,6 +97,15 @@ export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessag
     return profile?.full_name || profile?.display_name || 'Unknown User';
   };
 
+  const getCancelledByLabel = () => {
+    if (!cancelledBy) return 'Unknown';
+    if (cancelledBy === 'rider') return getUserName(riderId);
+    if (cancelledBy === 'driver' && driverId) return getUserName(driverId);
+    if (cancelledBy === 'admin') return 'Admin';
+    if (cancelledBy === 'system') return 'System';
+    return cancelledBy;
+  };
+
   if (loading) {
     return (
       <Card className="border-primary/20">
@@ -106,7 +125,7 @@ export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessag
   return (
     <Card className="border-primary/20">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
+        <CardTitle className="flex items-center gap-2 text-sm flex-wrap">
           <MessageSquare className="h-4 w-4" />
           Trip Messages (Admin View)
           <Badge variant="secondary" className="ml-2">
@@ -114,7 +133,39 @@ export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessag
           </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* Cancellation Info */}
+        {tripStatus === 'cancelled' && (
+          <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <XCircle className="h-4 w-4 text-destructive mt-0.5 flex-shrink-0" />
+              <div className="text-sm space-y-1 min-w-0">
+                <p className="font-medium text-destructive">Trip Cancelled</p>
+                <p className="text-muted-foreground">
+                  Cancelled by: <span className="font-medium">{getCancelledByLabel()}</span>
+                  {cancelReasonCode && (
+                    <> • Reason: <span className="font-medium">{cancelReasonCode.replace(/_/g, ' ')}</span></>
+                  )}
+                </p>
+                {cancelledAt && (
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(cancelledAt), 'MMM d, yyyy h:mm a')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tripStatus === 'completed' && (
+          <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <div className="flex items-start gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm font-medium text-green-700 dark:text-green-400">Trip Completed</p>
+            </div>
+          </div>
+        )}
+
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No messages exchanged for this trip
@@ -135,7 +186,7 @@ export function AdminTripMessages({ tripId, riderId, driverId }: AdminTripMessag
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-sm font-medium truncate">
                           {getUserName(message.sender_id)}
                         </span>
