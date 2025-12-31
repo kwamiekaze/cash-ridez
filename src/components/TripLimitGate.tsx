@@ -20,7 +20,7 @@ interface TripLimitGateProps {
 }
 
 export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProps) => {
-  const { canUseFeatures, isPremium, completed_trips, startCheckout } = useSubscription();
+  const { canUseFeatures, isPremium, connected_trips, startCheckout } = useSubscription();
   const [showDialog, setShowDialog] = useState(false);
 
   const handleClick = () => {
@@ -63,7 +63,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
               Free Trip Limit Reached
             </DialogTitle>
             <DialogDescription className="text-center">
-              You've reached your limit of 3 free {action}. Upgrade to unlock unlimited trips and community chat!
+              You've used your 3 free connected trips. Upgrade to unlock unlimited trips and community chat!
             </DialogDescription>
           </DialogHeader>
 
