@@ -1,6 +1,5 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import { useSubscription } from "@/hooks/useSubscription";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
   DialogContent,
@@ -23,29 +22,8 @@ interface TripLimitGateProps {
 export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProps) => {
   const { canUseFeatures, isPremium, connected_trips, startCheckout } = useSubscription();
   const [showDialog, setShowDialog] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const checkAdmin = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase.rpc('has_role', {
-          _user_id: user.id,
-          _role: 'admin'
-        });
-        setIsAdmin(Boolean(data));
-      }
-    };
-    checkAdmin();
-  }, []);
 
   const handleClick = () => {
-    // Admins bypass all limits
-    if (isAdmin) {
-      onProceed();
-      return;
-    }
-    
     // Premium users bypass all limits
     if (isPremium) {
       onProceed();
@@ -76,7 +54,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="w-[95vw] max-w-md mx-auto max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 mx-auto mb-4">
               <Lock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -97,15 +75,15 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
-                <Car className="w-4 h-4 text-[hsl(var(--premium-gold))] shrink-0" />
+                <Car className="w-4 h-4 text-[hsl(var(--premium-gold))]" />
                 <span>Unlimited trip posts & acceptances</span>
               </div>
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[hsl(var(--premium-gold))] shrink-0" />
+                <MessageSquare className="w-4 h-4 text-[hsl(var(--premium-gold))]" />
                 <span>Unlimited community chat</span>
               </div>
               <div className="flex items-center gap-2">
-                <PremiumCrown size={14} className="shrink-0" />
+                <PremiumCrown size={14} />
                 <span>VIP crown badge</span>
               </div>
             </div>

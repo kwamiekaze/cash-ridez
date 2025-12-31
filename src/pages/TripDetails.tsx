@@ -553,33 +553,13 @@ export default function TripDetails() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between flex-wrap gap-2">
               <span>Trip Information</span>
-              <Badge variant={request.status === 'open' ? 'default' : request.status === 'cancelled' ? 'destructive' : 'secondary'}>
+              <Badge variant={request.status === 'open' ? 'default' : 'secondary'}>
                 {request.status}
               </Badge>
             </CardTitle>
             <CardDescription>
               Posted {new Date(request.created_at).toLocaleDateString()} at {new Date(request.created_at).toLocaleTimeString()}
             </CardDescription>
-            {/* Cancellation Info - visible to all */}
-            {request.status === 'cancelled' && (
-              <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <p className="text-sm font-medium text-destructive">Trip Cancelled</p>
-                <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                  {request.cancelled_by && (
-                    <p>Cancelled by: <span className="font-medium capitalize">{request.cancelled_by}</span></p>
-                  )}
-                  {request.cancelled_at && (
-                    <p>Cancelled at: {new Date(request.cancelled_at).toLocaleString()}</p>
-                  )}
-                  {request.cancel_reason_code && (
-                    <p>Reason: <span className="capitalize">{request.cancel_reason_code.replace(/_/g, ' ')}</span></p>
-                  )}
-                  {(request.cancel_reason_rider || request.cancel_reason_driver) && (
-                    <p className="italic">"{request.cancel_reason_rider || request.cancel_reason_driver}"</p>
-                  )}
-                </div>
-              </div>
-            )}
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Rider Info */}

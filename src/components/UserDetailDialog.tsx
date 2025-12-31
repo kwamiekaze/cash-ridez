@@ -101,9 +101,6 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
   useEffect(() => {
     if (userId && open) {
-      // Reset user state when opening with new userId
-      setUser(null);
-      setLoading(true);
       fetchUserDetails();
     }
   }, [userId, open]);
@@ -111,23 +108,15 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const fetchUserDetails = async () => {
     if (!userId) return;
     
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .maybeSingle();
+        .single();
 
-      if (error) {
-        console.error("Profile fetch error:", error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.error("No profile found for userId:", userId);
-        toast.error("User profile not found");
-        return;
-      }
+      if (error) throw error;
       
       setUser(data);
       setFormData({
@@ -226,7 +215,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     }
   };
 
-  const handleRejectVerification = async (reason?: string) => {
+  const handleRejectVerification = async () => {
     if (!userId) return;
 
     setSaving(true);
@@ -236,7 +225,6 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         .update({
           is_verified: false,
           verification_status: "rejected",
-          verification_notes: reason || null,
         })
         .eq("id", userId);
 
@@ -249,27 +237,10 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
             userEmail: user.email,
             displayName: user.display_name || user.email,
             status: "rejected",
-            rejectionReason: reason,
           },
         });
       } catch (emailError) {
         console.error("Error sending notification email:", emailError);
-      }
-
-      // Also create an in-app notification for the user
-      try {
-        const notificationMessage = reason 
-          ? `Your ID was rejected. Reason: ${reason}. Please resubmit a clear photo.`
-          : "Your ID verification was rejected. Please resubmit your documents.";
-        
-        await supabase.from("notifications").insert({
-          user_id: userId,
-          type: "verification_rejected",
-          title: "ID Verification Rejected",
-          message: notificationMessage,
-        });
-      } catch (notifError) {
-        console.error("Error creating notification:", notifError);
       }
 
       toast.success("Verification rejected - user notified to resubmit");
@@ -443,16 +414,16 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[85vh] overflow-y-auto overflow-x-hidden">
-        <DialogHeader className="sticky top-0 z-10 bg-background pb-2 border-b">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <DialogTitle>User Details</DialogTitle>
           <DialogDescription>View and edit user information</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 overflow-x-hidden">
+        <div className="space-y-6">
           {/* User Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <Avatar className="h-16 w-16 sm:h-20 sm:w-20 shrink-0">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-20 w-20">
               <AvatarImage src={user.photo_url} />
               <AvatarFallback className="text-2xl">
                 {(user.display_name || user.email || "U")[0].toUpperCase()}
@@ -476,7 +447,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
               variant="outline"
               size="sm"
               onClick={() => setMessageDialogOpen(true)}
-              className="shrink-0 w-full sm:w-auto"
+              className="shrink-0"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
               Message
@@ -957,8 +928,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
       <RejectVerificationDialog
         open={confirmRejectOpen}
         onOpenChange={setConfirmRejectOpen}
-        onConfirm={(reason) => {
-          handleRejectVerification(reason);
+        onConfirm={() => {
+          handleRejectVerification();
           setConfirmRejectOpen(false);
         }}
         userName={user?.display_name || user?.full_name}
