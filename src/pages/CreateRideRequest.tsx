@@ -103,12 +103,12 @@ END:VCARD`;
 
       // Check subscription and trip limit
       const subscriptionActive = profileData?.subscription_active || false;
-      const completedTrips = profileData?.completed_trips_count || 0;
-      const canCreate = subscriptionActive || completedTrips < 3;
+      const connectedTrips = profileData?.connected_trips_count || 0;
+      const canCreate = subscriptionActive || connectedTrips < 3;
       setCanCreateTrip(canCreate);
 
       if (!canCreate) {
-        toast.error("You've reached your free trip limit. Please subscribe to continue.");
+        toast.error("You've reached your free connected trip limit. Please subscribe to continue.");
         navigate("/subscription");
         return;
       }
@@ -248,8 +248,8 @@ END:VCARD`;
         setIsSubmitting(false);
         return;
       }
-      if (!currentProfile?.subscription_active && (currentProfile?.completed_trips_count ?? 0) >= 3) {
-        toast.error("You have reached your free trip limit. Please subscribe to continue creating trip requests.");
+      if (!currentProfile?.subscription_active && (currentProfile?.connected_trips_count ?? 0) >= 3) {
+        toast.error("You have reached your free connected trip limit. Please subscribe to continue creating trip requests.");
         setIsSubmitting(false);
         navigate("/subscription");
         return;
