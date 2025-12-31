@@ -105,7 +105,7 @@ export function AdminUserNotes({ userId }: AdminUserNotesProps) {
     return (
       <Card className="p-4 border-orange-500/20 bg-orange-500/5">
         <div className="flex items-center gap-2 mb-3">
-          <FileText className="h-4 w-4 text-orange-500" />
+          <FileText className="h-4 w-4 text-orange-500 flex-shrink-0" />
           <Label className="text-sm font-medium">Admin Notes (Private)</Label>
         </div>
         <div className="flex items-center justify-center py-4">
@@ -116,10 +116,10 @@ export function AdminUserNotes({ userId }: AdminUserNotesProps) {
   }
 
   return (
-    <Card className="p-4 border-orange-500/20 bg-orange-500/5">
+    <Card className="p-4 border-orange-500/20 bg-orange-500/5 overflow-hidden">
       <div className="flex items-center gap-2 mb-3">
-        <FileText className="h-4 w-4 text-orange-500" />
-        <Label className="text-sm font-medium">Admin Notes (Private)</Label>
+        <FileText className="h-4 w-4 text-orange-500 flex-shrink-0" />
+        <Label className="text-sm font-medium truncate">Admin Notes (Private)</Label>
       </div>
       
       <div className="space-y-4">
@@ -134,31 +134,31 @@ export function AdminUserNotes({ userId }: AdminUserNotesProps) {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add private notes about this user..."
             rows={3}
-            className="text-sm"
+            className="text-sm w-full resize-none"
           />
         </div>
 
         {/* Phone Override */}
         <div className="space-y-2">
-          <Label htmlFor="phone-override" className="text-xs text-muted-foreground flex items-center gap-1">
-            <Phone className="h-3 w-3" />
-            Phone Override (Calling Fallback)
+          <Label htmlFor="phone-override" className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+            <Phone className="h-3 w-3 flex-shrink-0" />
+            <span>Phone Override (Calling Fallback)</span>
           </Label>
           <Input
             id="phone-override"
             value={phoneOverride}
             onChange={(e) => setPhoneOverride(e.target.value)}
             placeholder="+1234567890"
-            className="text-sm"
+            className="text-sm w-full"
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground break-words">
             Used for in-app calling if user has no phone number set. Not visible to other users.
           </p>
         </div>
 
         {/* Last Updated Info */}
         {lastUpdated?.updated_at && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground break-words">
             Last updated: {format(new Date(lastUpdated.updated_at), 'MMM d, yyyy h:mm a')}
             {lastUpdated.updater_name && ` by ${lastUpdated.updater_name}`}
           </p>

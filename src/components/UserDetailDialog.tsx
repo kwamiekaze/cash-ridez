@@ -215,7 +215,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     }
   };
 
-  const handleRejectVerification = async () => {
+  const handleRejectVerification = async (reason?: string) => {
     if (!userId) return;
 
     setSaving(true);
@@ -225,6 +225,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         .update({
           is_verified: false,
           verification_status: "rejected",
+          verification_notes: reason || null,
         })
         .eq("id", userId);
 
@@ -237,10 +238,27 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
             userEmail: user.email,
             displayName: user.display_name || user.email,
             status: "rejected",
+            rejectionReason: reason,
           },
         });
       } catch (emailError) {
         console.error("Error sending notification email:", emailError);
+      }
+
+      // Also create an in-app notification for the user
+      try {
+        const notificationMessage = reason 
+          ? `Your ID was rejected. Reason: ${reason}. Please resubmit a clear photo.`
+          : "Your ID verification was rejected. Please resubmit your documents.";
+        
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          type: "verification_rejected",
+          title: "ID Verification Rejected",
+          message: notificationMessage,
+        });
+      } catch (notifError) {
+        console.error("Error creating notification:", notifError);
       }
 
       toast.success("Verification rejected - user notified to resubmit");
@@ -928,8 +946,8 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
       <RejectVerificationDialog
         open={confirmRejectOpen}
         onOpenChange={setConfirmRejectOpen}
-        onConfirm={() => {
-          handleRejectVerification();
+        onConfirm={(reason) => {
+          handleRejectVerification(reason);
           setConfirmRejectOpen(false);
         }}
         userName={user?.display_name || user?.full_name}
