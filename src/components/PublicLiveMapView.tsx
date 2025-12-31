@@ -159,7 +159,32 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
         isRider: row.is_rider === true,
       });
 
-      setAllUsers((allData || []).map(mapViewData));
+      const allMapped = (allData || []).map(mapViewData);
+      
+      // Separate online (active within 7 days) and offline users
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const onlineUsers = allMapped.filter(u => {
+        if (!u.location_updated_at) return false;
+        return new Date(u.location_updated_at) > sevenDaysAgo;
+      });
+      
+      const offlineUsers = allMapped
+        .filter(u => {
+          if (!u.location_updated_at) return true;
+          return new Date(u.location_updated_at) <= sevenDaysAgo;
+        })
+        // Sort by location_updated_at descending (most recent first)
+        .sort((a, b) => {
+          const aTime = a.location_updated_at ? new Date(a.location_updated_at).getTime() : 0;
+          const bTime = b.location_updated_at ? new Date(b.location_updated_at).getTime() : 0;
+          return bTime - aTime;
+        })
+        // Limit to 100 most recent offline users
+        .slice(0, 100);
+      
+      setAllUsers([...onlineUsers, ...offlineUsers]);
     } catch (err) {
       console.error("Error fetching public map data:", err);
       setError("Failed to load map data");
