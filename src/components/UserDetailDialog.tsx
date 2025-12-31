@@ -101,6 +101,9 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
   useEffect(() => {
     if (userId && open) {
+      // Reset user state when opening with new userId
+      setUser(null);
+      setLoading(true);
       fetchUserDetails();
     }
   }, [userId, open]);
@@ -108,15 +111,23 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const fetchUserDetails = async () => {
     if (!userId) return;
     
-    setLoading(true);
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Profile fetch error:", error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error("No profile found for userId:", userId);
+        toast.error("User profile not found");
+        return;
+      }
       
       setUser(data);
       setFormData({
