@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Upload, CheckCircle, Loader2, User, LogOut, XCircle } from "lucide-react";
+import { Upload, CheckCircle, Loader2, User, LogOut, XCircle, Camera, ImagePlus } from "lucide-react";
 import { motion } from "motion/react";
 import { SportsCar } from "@/components/SportsCar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -339,22 +339,46 @@ const Onboarding = () => {
               <div className="mt-6">
                 <h2 className="text-xl font-semibold mb-4">Resubmit ID</h2>
                 <Card className="p-6">
-                  <Label htmlFor="id-upload-pending" className="cursor-pointer">
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
-                      {idFile ? <div className="flex flex-col items-center gap-2">
-                          <CheckCircle className="w-12 h-12 text-success" />
-                          <p className="font-medium">{idFile.name}</p>
-                          <p className="text-sm text-muted-foreground">Click to change</p>
-                        </div> : <div className="flex flex-col items-center gap-2">
-                          <Upload className="w-12 h-12 text-muted-foreground" />
-                          <p className="font-medium">Upload New Government-Issued ID</p>
-                          <p className="text-sm text-muted-foreground">
-                            JPG, PNG, or WebP (Max 5MB)
-                          </p>
-                        </div>}
+                  {idFile ? (
+                    <div className="border-2 border-dashed border-success rounded-lg p-6 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <CheckCircle className="w-12 h-12 text-success" />
+                        <p className="font-medium">{idFile.name}</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setIdFile(null)}
+                          className="mt-2"
+                        >
+                          Remove & Choose Different
+                        </Button>
+                      </div>
                     </div>
-                    <input id="id-upload-pending" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
-                  </Label>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-center text-sm text-muted-foreground mb-4">
+                        JPG, PNG, or WebP (Max 5MB)
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Label htmlFor="id-camera-pending" className="flex-1 cursor-pointer">
+                          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col items-center justify-center gap-2">
+                            <Camera className="w-10 h-10 text-primary" />
+                            <p className="font-medium">Take Photo</p>
+                            <p className="text-xs text-muted-foreground">Use camera</p>
+                          </div>
+                          <input id="id-camera-pending" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
+                        </Label>
+                        <Label htmlFor="id-upload-pending" className="flex-1 cursor-pointer">
+                          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col items-center justify-center gap-2">
+                            <ImagePlus className="w-10 h-10 text-primary" />
+                            <p className="font-medium">Upload Photo</p>
+                            <p className="text-xs text-muted-foreground">Choose from device</p>
+                          </div>
+                          <input id="id-upload-pending" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                        </Label>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               </div>
             </div> : profile?.verification_status === "rejected" ? <div>
@@ -392,24 +416,48 @@ const Onboarding = () => {
               <div className="mt-6">
                 <h2 className="text-xl font-semibold mb-4">Resubmit ID for Verification</h2>
                 <Card className="p-6">
-                  <Label htmlFor="id-upload-rejected" className="cursor-pointer">
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
-                      {idFile ? <div className="flex flex-col items-center gap-2">
-                          <CheckCircle className="w-12 h-12 text-success" />
-                          <p className="font-medium">{idFile.name}</p>
-                          <p className="text-sm text-muted-foreground">Click to change</p>
-                        </div> : <div className="flex flex-col items-center gap-2">
-                          <Upload className="w-12 h-12 text-muted-foreground" />
-                          <p className="font-medium">Upload Government-Issued ID</p>
-                          <p className="text-sm text-muted-foreground">
-                            JPG, PNG, or WebP (Max 5MB)
-                          </p>
-                        </div>}
+                  {idFile ? (
+                    <div className="border-2 border-dashed border-success rounded-lg p-6 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <CheckCircle className="w-12 h-12 text-success" />
+                        <p className="font-medium">{idFile.name}</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => setIdFile(null)}
+                          className="mt-2"
+                        >
+                          Remove & Choose Different
+                        </Button>
+                      </div>
                     </div>
-                    <input id="id-upload-rejected" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
-                  </Label>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-center text-sm text-muted-foreground mb-4">
+                        JPG, PNG, or WebP (Max 5MB)
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Label htmlFor="id-camera-rejected" className="flex-1 cursor-pointer">
+                          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col items-center justify-center gap-2">
+                            <Camera className="w-10 h-10 text-primary" />
+                            <p className="font-medium">Take Photo</p>
+                            <p className="text-xs text-muted-foreground">Use camera</p>
+                          </div>
+                          <input id="id-camera-rejected" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
+                        </Label>
+                        <Label htmlFor="id-upload-rejected" className="flex-1 cursor-pointer">
+                          <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col items-center justify-center gap-2">
+                            <ImagePlus className="w-10 h-10 text-primary" />
+                            <p className="font-medium">Upload Photo</p>
+                            <p className="text-xs text-muted-foreground">Choose from device</p>
+                          </div>
+                          <input id="id-upload-rejected" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                        </Label>
+                      </div>
+                    </div>
+                  )}
                 </Card>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-muted-foreground mt-2 text-center">
                   Ensure your ID is clearly visible, well-lit, and all information is readable.
                 </p>
               </div>
@@ -445,22 +493,46 @@ const Onboarding = () => {
               
               <h2 className="text-xl font-semibold mb-4 text-center">Upload Your ID</h2>
               <Card className="p-6">
-                <Label htmlFor="id-upload" className="cursor-pointer">
-                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
-                    {idFile ? <div className="flex flex-col items-center gap-2">
-                        <CheckCircle className="w-12 h-12 text-success" />
-                        <p className="font-medium">{idFile.name}</p>
-                        <p className="text-sm text-muted-foreground">Click to change</p>
-                      </div> : <div className="flex flex-col items-center gap-2">
-                        <Upload className="w-12 h-12 text-muted-foreground" />
-                        <p className="font-medium">Upload Government-Issued ID</p>
-                        <p className="text-sm text-muted-foreground">
-                          JPG, PNG, or WebP (Max 5MB)
-                        </p>
-                      </div>}
+                {idFile ? (
+                  <div className="border-2 border-dashed border-success rounded-lg p-6 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle className="w-12 h-12 text-success" />
+                      <p className="font-medium">{idFile.name}</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setIdFile(null)}
+                        className="mt-2"
+                      >
+                        Remove & Choose Different
+                      </Button>
+                    </div>
                   </div>
-                  <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
-                </Label>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-center text-sm text-muted-foreground mb-4">
+                      JPG, PNG, or WebP (Max 5MB)
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <Label htmlFor="id-camera" className="flex-1 cursor-pointer">
+                        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col items-center justify-center gap-2">
+                          <Camera className="w-10 h-10 text-primary" />
+                          <p className="font-medium">Take Photo</p>
+                          <p className="text-xs text-muted-foreground">Use camera</p>
+                        </div>
+                        <input id="id-camera" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={handleFileChange} />
+                      </Label>
+                      <Label htmlFor="id-upload" className="flex-1 cursor-pointer">
+                        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors h-full flex flex-col items-center justify-center gap-2">
+                          <ImagePlus className="w-10 h-10 text-primary" />
+                          <p className="font-medium">Upload Photo</p>
+                          <p className="text-xs text-muted-foreground">Choose from device</p>
+                        </div>
+                        <input id="id-upload" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+                      </Label>
+                    </div>
+                  </div>
+                )}
               </Card>
               <p className="text-xs text-muted-foreground mt-2 text-center">
                 Your ID will be reviewed by our team. Only verified users can post or connect with trip requests.
