@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { getMapPresenceRingStatus, getRingColor, isActiveRecently } from "@/lib/mapPresenceUtils";
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -52,7 +52,7 @@ const getJitteredCoords = (lat: number, lng: number, id: string, jitterMiles = 0
   };
 };
 
-// Create avatar-based divIcon with first-letter fallback and 7-day ring coloring
+// Create avatar-based divIcon with first-letter fallback and 21-day ring coloring
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
@@ -69,7 +69,7 @@ const createAvatarDivIcon = (
   const size = 48;
   const borderWidth = 2;
   
-  // 7-day ring coloring: gold for active, grey for stale
+  // 21-day ring coloring: gold for Active Recently, grey for inactive
   const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
   const borderColor = getRingColor(ringStatus);
 
@@ -117,8 +117,10 @@ interface PublicLiveMapViewProps {
 
 /**
  * PublicLiveMapView - Anonymous visitor view of the live map
- * Shows ALL users with location data permanently (unless they toggled invisible)
- * Ring color indicates recency: gold = active within 7 days, grey = older
+ * Shows users with location data, with inactive users capped relative to Active Recently users.
+ * Ring color indicates recency: gold = Active Recently (within 21 days), grey = inactive
+ * 
+ * Inactive cap rule: inactive_count_displayed <= floor(activeRecentlyCount / 2)
  */
 export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -126,13 +128,13 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Public view: show ALL users with location data
-  const [allUsers, setAllUsers] = useState<PublicMapUser[]>([]);
+  // Public view: Active Recently users (all) + capped inactive users
+  const [displayUsers, setDisplayUsers] = useState<PublicMapUser[]>([]);
 
-  // Fetch public map data - get ALL users with location (no time filter)
+  // Fetch public map data with inactive cap logic
   const fetchPublicMapData = useCallback(async () => {
     try {
-      // Query the public view for ALL users with location data (no time filter)
+      // Query the public view for ALL users with location data
       // The view already filters by is_map_visible and map_history_hidden_from_public
       const { data: allData, error: allError } = await supabase
         .from("public_map_presence" as any)
@@ -159,7 +161,28 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
         isRider: row.is_rider === true,
       });
 
-      setAllUsers((allData || []).map(mapViewData));
+      const allUsers = (allData || []).map(mapViewData);
+      
+      // Separate Active Recently users from inactive users
+      const activeRecentlyUsers = allUsers.filter(u => isActiveRecently(u.location_updated_at));
+      const inactiveUsers = allUsers.filter(u => !isActiveRecently(u.location_updated_at));
+      
+      // Calculate max inactive to display: floor(activeRecentlyCount / 2)
+      const maxInactive = Math.floor(activeRecentlyUsers.length / 2);
+      
+      // Sort inactive by most recent activity first, then cap
+      const sortedInactive = inactiveUsers.sort((a, b) => {
+        const aTime = a.location_updated_at ? new Date(a.location_updated_at).getTime() : 0;
+        const bTime = b.location_updated_at ? new Date(b.location_updated_at).getTime() : 0;
+        return bTime - aTime; // Most recent first
+      });
+      
+      const cappedInactive = sortedInactive.slice(0, maxInactive);
+      
+      // Combine: all Active Recently + capped inactive
+      const finalUsers = [...activeRecentlyUsers, ...cappedInactive];
+      
+      setDisplayUsers(finalUsers);
     } catch (err) {
       console.error("Error fetching public map data:", err);
       setError("Failed to load map data");
@@ -249,7 +272,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
     }
   }, [fetchPublicMapData]);
 
-  // Update markers - show ALL users with ring coloring based on 7-day recency
+  // Update markers - show Active Recently users + capped inactive users with ring coloring based on 21-day recency
   useEffect(() => {
     if (!mapInstanceRef.current || !L) return;
 
@@ -260,8 +283,8 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       }
     });
 
-    // Show ALL users - ring color indicates recency (gold = within 7 days, grey = older)
-    allUsers.forEach((mapUser) => {
+    // Show users (Active Recently + capped inactive) - ring color indicates recency (gold = Active Recently within 21 days, grey = inactive)
+    displayUsers.forEach((mapUser) => {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
 
       const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -271,7 +294,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       const firstName = fullName.split(' ')[0];
       
       const variant = getMarkerVariant(mapUser);
-      // Pass locationUpdatedAt for 7-day ring coloring
+      // Pass locationUpdatedAt for 21-day ring coloring
       const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at);
 
       // Public popup: first name only, no roles, no stats, no timestamps
@@ -287,7 +310,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
           </div>
         `);
     });
-  }, [allUsers]);
+  }, [displayUsers]);
 
   // Center on Georgia
   const handleCenterOnGeorgia = () => {

@@ -174,7 +174,7 @@ const getOnlineStatus = (locationUpdatedAt: string | null): { isOnline: boolean;
 
 // Helper to create avatar-based divIcon with transparent background and status styling
 // Includes first-letter fallback when no profile photo exists
-// Updated to use 7-day ring coloring for non-admin views
+// Non-admin views use 21-day "Active Recently" ring coloring (gold for active, grey for inactive)
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
@@ -189,7 +189,7 @@ const createAvatarDivIcon = (
     admin: '/assets/map/driver-car-icon.png', // Admin uses same as driver, no crown
   };
 
-  // Admin view uses detailed status styling, non-admin uses 72h ring coloring
+  // Admin view uses detailed status styling, non-admin uses 21-day "Active Recently" ring coloring
   let borderColor: string;
   let opacity: number;
   let onlineIndicator = '';
@@ -205,7 +205,7 @@ const createAvatarDivIcon = (
       onlineIndicator = `<div style="position:absolute;top:0;right:0;width:12px;height:12px;background:#10B981;border-radius:50%;border:2px solid #1a1a2e;"></div>`;
     }
   } else {
-    // Non-admin view: 7-day ring coloring (gold for active, grey for stale)
+    // Non-admin view: 21-day "Active Recently" ring coloring (gold for active, grey for inactive)
     const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
     borderColor = getRingColor(ringStatus);
     opacity = 1; // No opacity change for non-admins
@@ -276,11 +276,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
   const [showAdminOnPublicMap, setShowAdminOnPublicMap] = useState(false);
   const [adminLocations, setAdminLocations] = useState<AdminLocation[]>([]);
   const [allMapUsers, setAllMapUsers] = useState<AllMapUser[]>([]);
-  const [onlineUsers, setOnlineUsers] = useState<AllMapUser[]>([]); // For non-admin shared visibility
+  const [onlineUsers, setOnlineUsers] = useState<AllMapUser[]>([]); // For non-admin "Active Recently" filter
   const [allUsersForNonAdmin, setAllUsersForNonAdmin] = useState<AllMapUser[]>([]); // All users who have ever updated pin (for non-admin filter)
   const [selectedUser, setSelectedUser] = useState<AllMapUser | null>(null);
   const [showUserInfoPanel, setShowUserInfoPanel] = useState(false);
-  const [userFilter, setUserFilter] = useState<'online' | 'all'>('online'); // Filter between online vs all users
+  const [userFilter, setUserFilter] = useState<'online' | 'all'>('online'); // Filter between Active Recently vs all users
   // Admin time range filter for "All Users" mode
   const [adminTimeRange, setAdminTimeRange] = useState<'all' | 'month' | 'week' | '72h' | '24h' | '5h' | '1h'>('24h');
 
@@ -520,7 +520,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       // For NON-ADMIN users (drivers and riders): fetch ALL users with location data (no time filter)
       // Ring color will indicate recency. Filter by is_map_visible = true for other users, but ALWAYS include the current user
       if (!isAdmin && user) {
-        // First, get online users (recent location within 60 min) for "Online Now" filter
+        // First, get recently active users (recent location within 60 min) for admin's "Online Now" compatibility
         const { data: onlineProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
@@ -532,7 +532,7 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
 
         // Fetch ALL users with any location data (no time filter - show everyone permanently)
-        // Ring color will indicate if they're active (within 7 days) or stale (grey)
+        // Ring color will indicate if they're Active Recently (within 21 days) or inactive (grey)
         const { data: allVisibleProfiles } = await supabase
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
