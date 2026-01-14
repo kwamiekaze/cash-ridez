@@ -2521,6 +2521,7 @@ export type Database = {
       }
       ride_requests: {
         Row: {
+          admin_cancellation_note: string | null
           assigned_driver_id: string | null
           cancel_reason_code:
             | Database["public"]["Enums"]["cancel_reason_code"]
@@ -2561,6 +2562,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          admin_cancellation_note?: string | null
           assigned_driver_id?: string | null
           cancel_reason_code?:
             | Database["public"]["Enums"]["cancel_reason_code"]
@@ -2601,6 +2603,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          admin_cancellation_note?: string | null
           assigned_driver_id?: string | null
           cancel_reason_code?:
             | Database["public"]["Enums"]["cancel_reason_code"]

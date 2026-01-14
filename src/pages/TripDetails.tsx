@@ -21,6 +21,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { calculateTripFares, formatCurrency, formatCurrencyRange } from "@/utils/fareEstimator";
 import { AddressLink } from "@/components/AddressLink";
 import { AdminTripMessages } from "@/components/AdminTripMessages";
+import { AdminCancelRideDialog } from "@/components/AdminCancelRideDialog";
 
 export default function TripDetails() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +43,7 @@ export default function TripDetails() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedOffer, setEditedOffer] = useState("");
+  const [adminCancelDialogOpen, setAdminCancelDialogOpen] = useState(false);
   const { checkStatus } = useSubscription();
 
   useEffect(() => {
@@ -844,81 +846,56 @@ export default function TripDetails() {
             )}
             
             {/* Admin Actions */}
-            {isAdmin && request.status === 'assigned' && (
+            {isAdmin && (
               <div className="pt-4 border-t space-y-2">
                 <p className="text-sm font-medium text-primary">Admin Actions</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const { error } = await supabase
-                          .from('ride_requests')
-                          .update({ status: 'completed' })
-                          .eq('id', id);
-                        
-                        if (error) throw error;
-                        
-                        toast({
-                          title: "Success",
-                          description: "Trip marked as completed",
-                        });
-                        fetchTripData();
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message,
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                    variant="default"
-                    className="flex-1"
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Complete Trip
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const { error } = await supabase
-                          .from('ride_requests')
-                          .update({ 
-                            status: 'cancelled',
-                            cancelled_by: 'admin',
-                            cancelled_at: new Date().toISOString()
-                          })
-                          .eq('id', id);
-                        
-                        if (error) throw error;
-                        
-                        // Clear driver's active ride
-                        if (request.assigned_driver_id) {
-                          await supabase
-                            .from('profiles')
-                            .update({ active_assigned_ride_id: null })
-                            .eq('id', request.assigned_driver_id);
-                        }
-                        
-                        toast({
-                          title: "Success",
-                          description: "Trip cancelled by admin",
-                        });
-                        fetchTripData();
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: error.message,
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                    variant="destructive"
-                    className="flex-1"
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Trip
-                  </Button>
-                </div>
+                {['open', 'assigned', 'pending', 'matched', 'accepted', 'in_progress'].includes(request.status) ? (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {request.status === 'assigned' && (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const { error } = await supabase
+                              .from('ride_requests')
+                              .update({ status: 'completed' })
+                              .eq('id', id);
+                            
+                            if (error) throw error;
+                            
+                            toast({
+                              title: "Success",
+                              description: "Trip marked as completed",
+                            });
+                            fetchTripData();
+                          } catch (error: any) {
+                            toast({
+                              title: "Error",
+                              description: error.message,
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        variant="default"
+                        className="flex-1"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Complete Trip
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => setAdminCancelDialogOpen(true)}
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Cancel Ride
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Ride already finalized ({request.status}).
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
@@ -947,6 +924,21 @@ export default function TripDetails() {
             }
           }}
         />
+
+        {/* Admin Cancel Dialog */}
+        {isAdmin && request && (
+          <AdminCancelRideDialog
+            request={{
+              id: request.id,
+              status: request.status,
+              rider_id: request.rider_id,
+              assigned_driver_id: request.assigned_driver_id,
+            }}
+            open={adminCancelDialogOpen}
+            onOpenChange={setAdminCancelDialogOpen}
+            onSuccess={fetchTripData}
+          />
+        )}
 
         {/* Offers Section */}
         <Card className="mb-6">
