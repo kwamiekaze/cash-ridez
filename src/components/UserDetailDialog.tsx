@@ -27,7 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff, MessageSquare } from "lucide-react";
+import { ExternalLink, Users, Mail, Shield, Key, LogOut, Eye, EyeOff, MessageSquare, Link, Car, UserCheck, Crown, CheckCircle } from "lucide-react";
 import { RatingDisplay } from "@/components/RatingDisplay";
 import { CancellationBadge } from "@/components/CancellationBadge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -84,6 +84,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
   const [idPreviewOpen, setIdPreviewOpen] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; referrerName: string | null; referralCode: string | null; totalReferredTrips: number }>({ count: 0, referrerName: null, referralCode: null, totalReferredTrips: 0 });
+  const [connectionStats, setConnectionStats] = useState<{ asRider: number; asDriver: number; total: number }>({ asRider: 0, asDriver: 0, total: 0 });
   
   // Security section state
   const [sendingResetEmail, setSendingResetEmail] = useState(false);
@@ -102,8 +103,37 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
   useEffect(() => {
     if (userId && open) {
       fetchUserDetails();
+      fetchConnectionStats();
     }
   }, [userId, open]);
+
+  const fetchConnectionStats = async () => {
+    if (!userId) return;
+    
+    try {
+      // Count connections as rider (trips where this user is rider and status is assigned or beyond)
+      const { count: riderCount } = await supabase
+        .from("ride_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("rider_id", userId)
+        .in("status", ["assigned", "completed", "cancelled"]);
+      
+      // Count connections as driver (trips where this user is assigned driver)
+      const { count: driverCount } = await supabase
+        .from("ride_requests")
+        .select("*", { count: "exact", head: true })
+        .eq("assigned_driver_id", userId)
+        .in("status", ["assigned", "completed", "cancelled"]);
+      
+      setConnectionStats({
+        asRider: riderCount || 0,
+        asDriver: driverCount || 0,
+        total: (riderCount || 0) + (driverCount || 0),
+      });
+    } catch (error) {
+      console.error("Error fetching connection stats:", error);
+    }
+  };
 
   const fetchUserDetails = async () => {
     if (!userId) return;
@@ -458,6 +488,62 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
           {/* Admin Notes Section */}
           <AdminUserNotes userId={userId!} />
+
+          {/* Connections & Subscription Status */}
+          <Card className="p-4 border-primary/20 bg-primary/5">
+            <div className="flex items-center gap-2 mb-3">
+              <Link className="h-4 w-4 text-primary" />
+              <Label className="text-sm font-medium">Connections & Subscription</Label>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="bg-background rounded-lg p-3 border">
+                <div className="flex items-center gap-2 mb-1">
+                  <UserCheck className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">As Rider</span>
+                </div>
+                <div className="text-2xl font-bold">{connectionStats.asRider}</div>
+                <span className="text-xs text-muted-foreground">connected trips</span>
+              </div>
+              <div className="bg-background rounded-lg p-3 border">
+                <div className="flex items-center gap-2 mb-1">
+                  <Car className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">As Driver</span>
+                </div>
+                <div className="text-2xl font-bold">{connectionStats.asDriver}</div>
+                <span className="text-xs text-muted-foreground">connected trips</span>
+              </div>
+            </div>
+            
+            {/* Subscription Status */}
+            <div className="space-y-2 pt-3 border-t">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Subscription Status:</span>
+                {user.subscription_active ? (
+                  <Badge className="bg-[hsl(var(--premium-gold))] text-[hsl(var(--premium-gold-foreground))]">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Premium
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary">Free</Badge>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Total Connections:</span>
+                <span className="font-medium">{user.connected_trips_count || connectionStats.total}</span>
+              </div>
+              {!user.subscription_active && (
+                <div className="flex items-center gap-2 mt-2 p-2 rounded bg-muted text-xs">
+                  <CheckCircle className="h-3 w-3 text-primary flex-shrink-0" />
+                  <span>Subscription wall: Enabled after 3 connected trips</span>
+                </div>
+              )}
+              {user.subscription_active && user.subscription_expires_at && (
+                <div className="text-xs text-muted-foreground">
+                  Expires: {format(new Date(user.subscription_expires_at), "MMM d, yyyy")}
+                </div>
+              )}
+            </div>
+          </Card>
 
           {/* Referral Info */}
           <Card className="p-4">
