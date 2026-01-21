@@ -33,6 +33,10 @@ const twimlEmptyResponse = `<?xml version="1.0" encoding="UTF-8"?><Response></Re
 // CASH keyword auto-reply message (~95 chars - fits in 1 SMS segment)
 const CASH_AUTO_REPLY = "Welcome to CashRidez! Verify your ID at cashridez.com, then update your map pin to connect!💰🚗🎉";
 
+// STOP/opt-out keywords and A2P 10DLC compliant opt-out response with business name
+const OPT_OUT_KEYWORDS = ['STOP', 'END', 'CANCEL', 'UNSUBSCRIBE', 'QUIT'];
+const OPT_OUT_REPLY = "You have been opted out of CashRidez messages. You will no longer receive SMS notifications from CashRidez.";
+
 // Rate limit: 1 CASH reply per phone number per 24 hours
 const CASH_RATE_LIMIT_HOURS = 24;
 
@@ -604,6 +608,81 @@ Deno.serve(async (req) => {
       
     } catch (err: any) {
       console.error('[v2] CASH handling error:', err);
+    }
+  }
+
+  // =========================================================================
+  // STOP/OPT-OUT KEYWORD HANDLING - A2P 10DLC Compliant with Business Name
+  // =========================================================================
+  // Handle opt-out keywords: STOP, END, CANCEL, UNSUBSCRIBE, QUIT
+  // Send branded opt-out confirmation as required by Twilio A2P 10DLC
+  // =========================================================================
+  if (OPT_OUT_KEYWORDS.includes(normalizedBody) && fromE164 && toE164) {
+    console.log(`[v2] OPT-OUT keyword "${normalizedBody}" detected from ${fromE164}`);
+    
+    try {
+      // Record the opt-out in admin_sms_opt_outs table
+      const { error: optOutError } = await supabase
+        .from('admin_sms_opt_outs')
+        .upsert({
+          phone_e164: fromE164,
+          opted_out_at: new Date().toISOString(),
+          source: `keyword:${normalizedBody}`
+        }, {
+          onConflict: 'phone_e164'
+        });
+      
+      if (optOutError) {
+        console.error('[v2] Failed to record opt-out:', optOutError);
+      } else {
+        console.log(`[v2] Opt-out recorded for ${fromE164}`);
+      }
+      
+      // Send the A2P 10DLC compliant opt-out confirmation with business name
+      const twilioFromNumber = Deno.env.get('TWILIO_PHONE_NUMBER') || toE164;
+      const statusCallbackUrl = `${supabaseUrl}/functions/v1/twilio-sms-status-webhook`;
+      
+      console.log(`[v2] Sending opt-out confirmation to ${fromE164}: "${OPT_OUT_REPLY}"`);
+      
+      const sendResult = await sendTwilioSms(
+        fromE164,           // To: the person who texted STOP
+        OPT_OUT_REPLY,      // A2P compliant opt-out message with CashRidez name
+        twilioFromNumber,   // From: our Twilio number
+        statusCallbackUrl   // Status callback for delivery tracking
+      );
+      
+      // Log the opt-out confirmation message
+      if (conversationId) {
+        const { error: logError } = await supabase
+          .from('admin_sms_messages')
+          .insert({
+            conversation_id: conversationId,
+            direction: 'outbound',
+            from_e164: twilioFromNumber,
+            to_e164: fromE164,
+            body: OPT_OUT_REPLY,
+            twilio_message_sid: sendResult.sid || null,
+            status: sendResult.success ? (sendResult.status || 'queued') : 'failed',
+            error_code: sendResult.errorCode || null,
+            error_message: sendResult.error || null,
+            created_at: new Date().toISOString()
+          });
+        
+        if (logError) {
+          console.error('[v2] Failed to log opt-out confirmation message:', logError);
+        } else {
+          console.log('[v2] Opt-out confirmation logged to messages with SID:', sendResult.sid);
+        }
+      }
+      
+      if (sendResult.success) {
+        console.log(`[v2] Opt-out confirmation sent successfully! SID: ${sendResult.sid}, Body: "${OPT_OUT_REPLY}"`);
+      } else {
+        console.error(`[v2] Opt-out confirmation FAILED: ${sendResult.error}`);
+      }
+      
+    } catch (err: any) {
+      console.error('[v2] Opt-out handling error:', err);
     }
   }
 
