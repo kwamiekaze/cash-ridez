@@ -66,6 +66,11 @@ export function PhoneNumberReminderDialog({
             <p className="text-xs text-muted-foreground">
               A phone number is needed for in-app calling during trips.
             </p>
+            
+            {/* A2P 10DLC Compliance - SMS Consent Disclosure */}
+            <p className="text-xs text-muted-foreground/80 p-2 bg-muted/30 rounded border border-border/50">
+              By providing your phone number, you agree to receive SMS messages from CashRidez related to account activity, trip connections, and notifications. Message &amp; data rates may apply. Reply STOP to opt out at any time.
+            </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
