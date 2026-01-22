@@ -22,6 +22,7 @@ import { MapBackground } from "@/components/MapBackground";
 import { PremiumCrown } from "@/components/PremiumCrown";
 import { PhoneNumberReminderDialog } from "@/components/PhoneNumberReminderDialog";
 import { AdminVisitAlertToggle } from "@/components/AdminVisitAlertToggle";
+import { SmsConsentCheckbox } from "@/components/SmsConsentCheckbox";
 
 
 const Profile = () => {
@@ -56,6 +57,7 @@ const Profile = () => {
     total_driver_earnings: 0,
     total_driver_extra_vs_competitor: 0,
     total_rider_savings_vs_competitor: 0,
+    sms_opt_in: false,
   });
   const [adminLockedFields, setAdminLockedFields] = useState<string[]>([]);
   const [originalName, setOriginalName] = useState("");
@@ -104,6 +106,7 @@ const Profile = () => {
           total_driver_earnings: data.total_driver_earnings || 0,
           total_driver_extra_vs_competitor: data.total_driver_extra_vs_competitor || 0,
           total_rider_savings_vs_competitor: data.total_rider_savings_vs_competitor || 0,
+          sms_opt_in: data.sms_opt_in || false,
         });
         setAdminLockedFields(data.admin_locked_fields || []);
         setOriginalName(data.full_name || "");
@@ -246,6 +249,7 @@ const Profile = () => {
     // Add other fields (these can always be updated by the user)
     updates.phone_number = profile.phone_number;
     updates.bio = profile.bio;
+    updates.sms_opt_in = profile.sms_opt_in;
     
     // Add vehicle information if user is a driver
     if (profile.is_driver) {
@@ -494,10 +498,12 @@ const Profile = () => {
               <p className="text-xs text-muted-foreground">
                 Your phone number is only visible to admins and will never be publicly displayed or shared with other users.
               </p>
-              {/* A2P 10DLC Compliance - SMS Consent Disclosure */}
-              <p className="text-xs text-muted-foreground/80 mt-2 p-2 bg-muted/30 rounded border border-border/50">
-                By providing your phone number, you agree to receive SMS messages from CashRidez related to account activity, trip connections, and notifications. Message &amp; data rates may apply. Reply STOP to opt out at any time.
-              </p>
+              {/* A2P 10DLC Compliance - SMS Consent Checkbox */}
+              <SmsConsentCheckbox
+                checked={profile.sms_opt_in}
+                onCheckedChange={(checked) => setProfile({ ...profile, sms_opt_in: checked })}
+                id="profile-sms-consent"
+              />
             </div>
 
             {/* Bio */}

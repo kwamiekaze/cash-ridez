@@ -594,6 +594,19 @@ END:VCARD`;
                 value={formData.contactInfo}
                 onChange={(e) => setFormData({ ...formData, contactInfo: e.target.value })}
               />
+              {/* A2P 10DLC Compliance - SMS Consent Info */}
+              <p className="text-xs text-muted-foreground/80 p-2 bg-muted/30 rounded border border-border/50">
+                By providing your mobile number, you agree to receive SMS messages from CashRidez related to account activity, trip connections, and notifications. Message frequency may vary. Message and data rates may apply. Reply STOP to opt out or HELP for help.
+                <br />
+                <a 
+                  href="https://cashridez.com/privacy-policy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-primary/80 underline underline-offset-2 mt-1 inline-block"
+                >
+                  Privacy Policy
+                </a>
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

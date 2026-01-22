@@ -2182,6 +2182,7 @@ export type Database = {
           rider_tips_visited: boolean | null
           rider_tips_visited_at: string | null
           role_set_at: string | null
+          sms_opt_in: boolean
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           subscription_active: boolean | null
@@ -2270,6 +2271,7 @@ export type Database = {
           rider_tips_visited?: boolean | null
           rider_tips_visited_at?: string | null
           role_set_at?: string | null
+          sms_opt_in?: boolean
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_active?: boolean | null
@@ -2358,6 +2360,7 @@ export type Database = {
           rider_tips_visited?: boolean | null
           rider_tips_visited_at?: string | null
           role_set_at?: string | null
+          sms_opt_in?: boolean
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           subscription_active?: boolean | null
