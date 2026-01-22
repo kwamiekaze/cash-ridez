@@ -68,9 +68,19 @@ export function PhoneNumberReminderDialog({
             </p>
             
             {/* A2P 10DLC Compliance - SMS Consent Disclosure */}
-            <p className="text-xs text-muted-foreground/80 p-2 bg-muted/30 rounded border border-border/50">
-              By providing your phone number, you agree to receive SMS messages from CashRidez related to account activity, trip connections, and notifications. Message &amp; data rates may apply. Reply STOP to opt out at any time.
-            </p>
+            <div className="p-2 bg-muted/30 rounded border border-border/50 space-y-1">
+              <p className="text-xs text-muted-foreground/80">
+                By providing your mobile number, you agree to receive SMS messages from CashRidez related to account activity, trip connections, and notifications. Message frequency may vary. Message and data rates may apply. Reply STOP to opt out or HELP for help.
+              </p>
+              <a 
+                href="https://cashridez.com/privacy-policy" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:text-primary/80 underline underline-offset-2"
+              >
+                Privacy Policy
+              </a>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col gap-2 sm:flex-row">

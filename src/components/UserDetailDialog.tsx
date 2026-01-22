@@ -80,6 +80,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
     active_role: null as string | null,
     is_rider: false,
     is_driver: false,
+    sms_opt_in: false,
   });
   const [idPreviewUrl, setIdPreviewUrl] = useState<string | null>(null);
   const [idPreviewOpen, setIdPreviewOpen] = useState(false);
@@ -161,6 +162,7 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
         active_role: data.active_role || null,
         is_rider: data.is_rider || false,
         is_driver: data.is_driver || false,
+        sms_opt_in: data.sms_opt_in || false,
       });
       
       // Fetch referral stats
@@ -828,6 +830,26 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
                 value={formData.phone_number}
                 onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
               />
+              {/* SMS Opt-In Status Display */}
+              <div className={`flex items-center gap-2 p-2 rounded border ${formData.sms_opt_in ? 'bg-success/10 border-success/30' : 'bg-muted/30 border-border/50'}`}>
+                <div className={`w-2 h-2 rounded-full ${formData.sms_opt_in ? 'bg-success' : 'bg-muted-foreground'}`} />
+                <span className="text-xs font-medium">
+                  SMS Consent: {formData.sms_opt_in ? 'Opted In ✓' : 'Not Opted In'}
+                </span>
+              </div>
+              {/* A2P 10DLC Compliance - SMS Consent Disclosure for Admin */}
+              <p className="text-xs text-muted-foreground/80 p-2 bg-muted/30 rounded border border-border/50">
+                Note: SMS messages to this number require user's explicit SMS opt-in consent. By providing a mobile number, the user agrees to receive SMS messages from CashRidez related to account activity, trip connections, and notifications. Message frequency may vary. Message and data rates may apply. Reply STOP to opt out or HELP for help.
+                <br />
+                <a 
+                  href="https://cashridez.com/privacy-policy" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:text-primary/80 underline underline-offset-2 mt-1 inline-block"
+                >
+                  Privacy Policy
+                </a>
+              </p>
             </div>
 
             <div className="space-y-2">
