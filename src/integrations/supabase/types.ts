@@ -2900,7 +2900,7 @@ export type Database = {
         Args: {
           p_campaign_id: string
           p_lock_id: string
-          p_stale_threshold?: unknown
+          p_stale_threshold?: string
         }
         Returns: {
           attempt_count: number
@@ -2932,7 +2932,7 @@ export type Database = {
         Args: {
           p_campaign_id: string
           p_lock_id: string
-          p_stale_threshold?: unknown
+          p_stale_threshold?: string
         }
         Returns: {
           attempt_count: number
@@ -3020,7 +3020,7 @@ export type Database = {
       }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
       release_stale_sms_locks: {
-        Args: { p_stale_threshold?: unknown }
+        Args: { p_stale_threshold?: string }
         Returns: number
       }
       repair_user_trip_counts: { Args: never; Returns: undefined }
