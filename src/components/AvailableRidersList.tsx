@@ -29,7 +29,7 @@ export const AvailableRidersList = () => {
       loadOnlineRiders();
       
       // Subscribe to ride_requests changes for realtime updates (debounced to 3s)
-      let refreshTimer: NodeJS.Timeout | null = null;
+      let refreshTimer: ReturnType<typeof setTimeout> | null = null;
       const channel = supabase
         .channel('ride_requests_changes')
         .on(

@@ -69,8 +69,8 @@ const AutoCallTab = () => {
   const [debugLog, setDebugLog] = useState<DebugLogEntry[]>([]);
   const [debugOpen, setDebugOpen] = useState(false);
   
-  const failsafeTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const failsafeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addDebugLog = useCallback((entry: Omit<DebugLogEntry, 'timestamp'>) => {
     const logEntry: DebugLogEntry = {

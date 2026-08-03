@@ -55,7 +55,7 @@ function getDeviceType(): string {
 export function usePageViewTracking() {
   const location = useLocation();
   const lastTrackedPath = useRef<string | null>(null);
-  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const trackPageView = async () => {

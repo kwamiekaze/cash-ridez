@@ -52,7 +52,7 @@ export const useRiderTrips = (userId: string | undefined) => {
     fetchRequests();
 
     // Debounced realtime subscription
-    let refreshTimer: NodeJS.Timeout | null = null;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
       .channel(`rider_requests_${userId}`)
       .on(

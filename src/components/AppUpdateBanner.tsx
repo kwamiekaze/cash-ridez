@@ -20,7 +20,7 @@ export function AppUpdateBanner() {
   const isInCriticalFlow = useCriticalFlow();
   const { trackEvent } = useAnalyticsEvents();
   const hasTrackedShow = useRef(false);
-  const autoUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Track when update banner is shown
   useEffect(() => {

@@ -40,7 +40,7 @@ export default function ChatPage() {
   const { typingUsers, setTyping } = useTypingIndicator(id || '', 'ride', currentUserId);
   const { markAsRead, getReadBy } = useReadReceipts('ride_message', currentUserId, readReceiptsEnabled);
   
-  let typingTimeout: NodeJS.Timeout;
+  let typingTimeout: ReturnType<typeof setTimeout>;
 
   useEffect(() => {
     getCurrentUser();

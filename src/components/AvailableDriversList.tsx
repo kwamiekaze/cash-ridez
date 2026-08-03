@@ -33,7 +33,7 @@ export const AvailableDriversList = () => {
       loadAvailableDrivers();
       
       // Subscribe to driver_status changes for realtime updates (debounced to 5s)
-      let refreshTimer: NodeJS.Timeout | null = null;
+      let refreshTimer: ReturnType<typeof setTimeout> | null = null;
       const channel = supabase
         .channel('driver_status_changes')
         .on(

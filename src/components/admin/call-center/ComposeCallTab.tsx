@@ -28,7 +28,7 @@ const ComposeCallTab = () => {
   const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'ringing' | 'answered' | 'voicemail' | 'failed' | 'completed'>('idle');
   const [lastCallSid, setLastCallSid] = useState<string | null>(null);
   const [lastCallLogId, setLastCallLogId] = useState<string | null>(null);
-  const failsafeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const failsafeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Subscribe to realtime updates for call status
   useEffect(() => {
