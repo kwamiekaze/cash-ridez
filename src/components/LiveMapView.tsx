@@ -1317,7 +1317,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <Crosshair className="h-5 w-5" />
             </Button>
           </div>
+
+          {/* Ring color legend */}
+          {!isAdmin && <MapRingLegend className="pt-3" />}
         </CardContent>
+
       </Card>
 
       <LocationConsentDialog
