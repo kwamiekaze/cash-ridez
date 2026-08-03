@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { MEMBERSHIP_PRICE_DISPLAY } from "@/lib/config";
 import { MemberBadge } from "@/components/MemberBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -119,7 +120,7 @@ const Subscription = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">$9.99</p>
+                      <p className="font-bold text-lg">{MEMBERSHIP_PRICE_DISPLAY}</p>
                       <p className="text-xs text-muted-foreground">per month</p>
                     </div>
                   </div>
@@ -189,7 +190,7 @@ const Subscription = () => {
                       </div>
                       <div className="flex-1">
                         <h3 className="text-xl font-bold mb-2">CashRidez Member</h3>
-                        <p className="text-2xl font-bold text-primary mb-1">$9.99<span className="text-base font-normal text-muted-foreground">/month</span></p>
+                        <p className="text-2xl font-bold text-primary mb-1">{MEMBERSHIP_PRICE_DISPLAY}<span className="text-base font-normal text-muted-foreground">/month</span></p>
                         <p className="text-sm text-muted-foreground mb-4">
                           Get unlimited rides and help us maintain a safe, reliable platform for everyone
                         </p>
