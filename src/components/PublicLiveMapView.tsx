@@ -360,7 +360,11 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
               <Crosshair className="h-5 w-5" />
             </Button>
           </div>
+
+          {/* Ring color legend */}
+          <MapRingLegend className="px-4 pb-4" />
         </div>
+
       </CardContent>
     </Card>
   );
