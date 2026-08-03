@@ -271,7 +271,8 @@ const createAvatarDivIcon = (
  * Fetches the LIVE_MAP_MAX_USERS (100) most recently active users with coordinates,
  * ordered server-side by location_updated_at DESC (nulls last).
  * No user is dropped for being "stale" — recency is shown by ring color only
- * (gold = active within 21 days, grey = older). Visibility is still governed by
+ * (green = the LIVE_MAP_ONLINE_RING_COUNT most recently updated, gold = active within
+ * 21 days, grey = older). Visibility is still governed by
  * is_map_visible / map_history_hidden_from_public, and coordinates stay jittered.
  */
 export function LiveMapView({ className }: LiveMapViewProps) {
