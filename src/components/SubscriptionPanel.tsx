@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { MEMBERSHIP_PRICE_LABEL } from "@/lib/config";
 
 export const SubscriptionPanel = () => {
   const { 
