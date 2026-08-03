@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { LocationConsentDialog } from "./LocationConsentDialog";
 import { AdminMapUserInfoPanel } from "./AdminMapUserInfoPanel";
 import { canUserUpdateMapPin } from "@/lib/mapPermissions";
-import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { getMapPresenceRingStatusByRank, getRingColor } from "@/lib/mapPresenceUtils";
+import { MapRingLegend } from "@/components/MapRingLegend";
 import { LIVE_MAP_MAX_USERS } from "@/lib/config";
 
 // Leaflet imports (lazy loaded)
