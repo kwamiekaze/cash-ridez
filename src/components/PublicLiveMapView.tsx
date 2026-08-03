@@ -128,7 +128,8 @@ interface PublicLiveMapViewProps {
  * PublicLiveMapView - Anonymous visitor view of the live map
  * Shows the LIVE_MAP_MAX_USERS (100) most recently active users that have coordinates.
  * No user is dropped for being "stale" — recency is communicated by ring color only:
- * gold = Active Recently (within 21 days), grey = older.
+ * green = the LIVE_MAP_ONLINE_RING_COUNT most recently updated, gold = active within 21 days,
+ * grey = older.
  *
  * Privacy: the public_map_presence view remains the authority on who is hidden
  * (is_map_visible / map_history_hidden_from_public), coordinates are jittered,
