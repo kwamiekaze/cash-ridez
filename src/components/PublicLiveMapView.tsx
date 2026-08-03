@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { getMapPresenceRingStatus, getRingColor, isActiveRecently } from "@/lib/mapPresenceUtils";
+import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { LIVE_MAP_MAX_USERS } from "@/lib/config";
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
