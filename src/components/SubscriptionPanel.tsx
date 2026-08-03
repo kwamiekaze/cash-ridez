@@ -101,7 +101,7 @@ export const SubscriptionPanel = () => {
               <div className="flex items-start gap-3">
                 <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-1" />
                 <div>
-                  <p className="font-semibold text-sm mb-1">Unlimited Use - $9.99/month</p>
+                  <p className="font-semibold text-sm mb-1">Unlimited Use - {MEMBERSHIP_PRICE_LABEL}</p>
                   <p className="text-xs text-muted-foreground">
                     Subscribe to unlock unlimited rides and help us cover hosting, support, and new safety features that keep our community moving, saving, and earning.
                   </p>
