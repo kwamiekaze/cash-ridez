@@ -116,7 +116,7 @@ export const SubscriptionPanel = () => {
               size="lg"
             >
               <Crown className="w-4 h-4 mr-2" />
-              Subscribe for $9.99/month
+              Subscribe for {MEMBERSHIP_PRICE_LABEL}
             </Button>
           </div>
         )}
