@@ -25,3 +25,7 @@ export const MEMBERSHIP_PRICE_LABEL = "$1.99/month";
 
 // Live map: maximum number of most-recently-active users shown
 export const LIVE_MAP_MAX_USERS = 100;
+
+// Live map: how many of the most recently active users get the green ring
+export const LIVE_MAP_ONLINE_RING_COUNT = 30;
+
