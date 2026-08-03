@@ -147,7 +147,7 @@ export default function Terms() {
                 Monthly Communication Fee
               </h3>
               <p className="mb-3">
-                To maintain active access to the platform's communication features, users agree to pay a $9.99 monthly communication fee ("Membership Fee").
+                To maintain active access to the platform's communication features, users agree to pay a $1.99 monthly communication fee ("Membership Fee").
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4 mb-3">
                 <li>This fee grants access to messaging, trip posting, and community interaction tools.</li>

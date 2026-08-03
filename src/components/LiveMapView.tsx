@@ -12,6 +12,7 @@ import { LocationConsentDialog } from "./LocationConsentDialog";
 import { AdminMapUserInfoPanel } from "./AdminMapUserInfoPanel";
 import { canUserUpdateMapPin } from "@/lib/mapPermissions";
 import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { LIVE_MAP_MAX_USERS } from "@/lib/config";
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -256,6 +257,14 @@ const createAvatarDivIcon = (
   });
 };
 
+/**
+ * LiveMapView - Authenticated view of the live map.
+ * Fetches the LIVE_MAP_MAX_USERS (100) most recently active users with coordinates,
+ * ordered server-side by location_updated_at DESC (nulls last).
+ * No user is dropped for being "stale" — recency is shown by ring color only
+ * (gold = active within 21 days, grey = older). Visibility is still governed by
+ * is_map_visible / map_history_hidden_from_public, and coordinates stay jittered.
+ */
 export function LiveMapView({ className }: LiveMapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -480,7 +489,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .from("profiles")
           .select("id, display_name, full_name, photo_url, current_lat, current_lng, location_updated_at, is_verified, verification_status, email, phone_number, subscription_active, active_role, car_make, car_model, car_year, is_map_visible, is_driver, is_rider, map_history_hidden_from_public")
           .not("current_lat", "is", null)
-          .not("current_lng", "is", null);
+          .not("current_lng", "is", null)
+          .order("location_updated_at", { ascending: false, nullsFirst: false })
+          .limit(LIVE_MAP_MAX_USERS);
 
         // Get all admin user IDs
         const { data: adminRoles } = await supabase
@@ -540,7 +551,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           .not("current_lng", "is", null)
           // Treat NULL as visible
           .or("is_map_visible.eq.true,is_map_visible.is.null")
-          .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false");
+          .or("map_history_hidden_from_public.is.null,map_history_hidden_from_public.eq.false")
+          .order("location_updated_at", { ascending: false, nullsFirst: false })
+          .limit(LIVE_MAP_MAX_USERS);
 
         // Also fetch the current user's profile separately to ensure they always see themselves
         const { data: ownProfile } = await supabase

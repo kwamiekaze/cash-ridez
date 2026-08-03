@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/hooks/useSubscription";
 import { Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { MEMBERSHIP_PRICE_LABEL } from "@/lib/config";
 
 export const SubscriptionPanel = () => {
   const { 
@@ -101,7 +102,7 @@ export const SubscriptionPanel = () => {
               <div className="flex items-start gap-3">
                 <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-1" />
                 <div>
-                  <p className="font-semibold text-sm mb-1">Unlimited Use - $9.99/month</p>
+                  <p className="font-semibold text-sm mb-1">Unlimited Use - {MEMBERSHIP_PRICE_LABEL}</p>
                   <p className="text-xs text-muted-foreground">
                     Subscribe to unlock unlimited rides and help us cover hosting, support, and new safety features that keep our community moving, saving, and earning.
                   </p>
@@ -115,7 +116,7 @@ export const SubscriptionPanel = () => {
               size="lg"
             >
               <Crown className="w-4 h-4 mr-2" />
-              Subscribe for $9.99/month
+              Subscribe for {MEMBERSHIP_PRICE_LABEL}
             </Button>
           </div>
         )}

@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { getMapPresenceRingStatus, getRingColor, isActiveRecently } from "@/lib/mapPresenceUtils";
+import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { LIVE_MAP_MAX_USERS } from "@/lib/config";
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -117,10 +118,13 @@ interface PublicLiveMapViewProps {
 
 /**
  * PublicLiveMapView - Anonymous visitor view of the live map
- * Shows users with location data, with inactive users capped relative to Active Recently users.
- * Ring color indicates recency: gold = Active Recently (within 21 days), grey = inactive
- * 
- * Inactive cap rule: inactive_count_displayed <= floor(activeRecentlyCount / 2)
+ * Shows the LIVE_MAP_MAX_USERS (100) most recently active users that have coordinates.
+ * No user is dropped for being "stale" — recency is communicated by ring color only:
+ * gold = Active Recently (within 21 days), grey = older.
+ *
+ * Privacy: the public_map_presence view remains the authority on who is hidden
+ * (is_map_visible / map_history_hidden_from_public), coordinates are jittered,
+ * and popups show first name only.
  */
 export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -128,19 +132,20 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Public view: Active Recently users (all) + capped inactive users
+  // Public view: the 100 most recently active users with coordinates
   const [displayUsers, setDisplayUsers] = useState<PublicMapUser[]>([]);
 
-  // Fetch public map data with inactive cap logic
+  // Fetch the most recent LIVE_MAP_MAX_USERS users with coordinates
   const fetchPublicMapData = useCallback(async () => {
     try {
-      // Query the public view for ALL users with location data
-      // The view already filters by is_map_visible and map_history_hidden_from_public
+      // Query the public view — it already filters by is_map_visible and map_history_hidden_from_public
       const { data: allData, error: allError } = await supabase
         .from("public_map_presence" as any)
         .select("*")
         .not("current_lat", "is", null)
-        .not("current_lng", "is", null);
+        .not("current_lng", "is", null)
+        .order("location_updated_at", { ascending: false, nullsFirst: false })
+        .limit(LIVE_MAP_MAX_USERS);
 
       if (allError) {
         console.error("Error fetching users:", allError);
@@ -161,28 +166,7 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
         isRider: row.is_rider === true,
       });
 
-      const allUsers = (allData || []).map(mapViewData);
-      
-      // Separate Active Recently users from inactive users
-      const activeRecentlyUsers = allUsers.filter(u => isActiveRecently(u.location_updated_at));
-      const inactiveUsers = allUsers.filter(u => !isActiveRecently(u.location_updated_at));
-      
-      // Calculate max inactive to display: floor(activeRecentlyCount / 2)
-      const maxInactive = Math.floor(activeRecentlyUsers.length / 2);
-      
-      // Sort inactive by most recent activity first, then cap
-      const sortedInactive = inactiveUsers.sort((a, b) => {
-        const aTime = a.location_updated_at ? new Date(a.location_updated_at).getTime() : 0;
-        const bTime = b.location_updated_at ? new Date(b.location_updated_at).getTime() : 0;
-        return bTime - aTime; // Most recent first
-      });
-      
-      const cappedInactive = sortedInactive.slice(0, maxInactive);
-      
-      // Combine: all Active Recently + capped inactive
-      const finalUsers = [...activeRecentlyUsers, ...cappedInactive];
-      
-      setDisplayUsers(finalUsers);
+      setDisplayUsers((allData || []).map(mapViewData));
     } catch (err) {
       console.error("Error fetching public map data:", err);
       setError("Failed to load map data");
