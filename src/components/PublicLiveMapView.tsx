@@ -3,8 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { getMapPresenceRingStatusByRank, getRingColor } from "@/lib/mapPresenceUtils";
+import { MapRingLegend } from "@/components/MapRingLegend";
 import { LIVE_MAP_MAX_USERS } from "@/lib/config";
+
 
 // Leaflet imports (lazy loaded)
 let L: any = null;
@@ -53,13 +55,15 @@ const getJitteredCoords = (lat: number, lng: number, id: string, jitterMiles = 0
   };
 };
 
-// Create avatar-based divIcon with first-letter fallback and 21-day ring coloring
+// Create avatar-based divIcon with first-letter fallback and rank-based ring coloring
+// (green = most recently active, gold = active within 21 days, grey = older)
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
   variant: 'driver' | 'rider' | 'admin',
   userName?: string | null,
-  locationUpdatedAt?: string | null
+  locationUpdatedAt?: string | null,
+  rank: number = -1
 ): any => {
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
@@ -68,18 +72,21 @@ const createAvatarDivIcon = (
   };
 
   const size = 48;
-  const borderWidth = 2;
-  
-  // 21-day ring coloring: gold for Active Recently, grey for inactive
-  const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
+
+  // Rank-based ring coloring: green for the most recent, gold within 21 days, grey otherwise
+  const ringStatus = getMapPresenceRingStatusByRank(rank, locationUpdatedAt);
   const borderColor = getRingColor(ringStatus);
+  const borderWidth = ringStatus === 'online' ? 3 : 2;
+  const boxShadow = ringStatus === 'online'
+    ? '0 0 8px rgba(34,197,94,0.6), 0 2px 8px rgba(0,0,0,0.4)'
+    : '0 2px 8px rgba(0,0,0,0.4)';
 
   // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
     const firstLetter = userName?.trim()?.charAt(0)?.toUpperCase() || '';
     
     if (firstLetter) {
-      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div></div>`;
+      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:${boxShadow};"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div></div>`;
       
       return L.divIcon({
         html,
@@ -90,7 +97,7 @@ const createAvatarDivIcon = (
       });
     }
     
-    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div></div>`;
+    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:${boxShadow};overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div></div>`;
 
     return L.divIcon({
       html,
@@ -101,7 +108,8 @@ const createAvatarDivIcon = (
     });
   }
 
-  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:0 2px 8px rgba(0,0,0,0.4);" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" /></div>`;
+  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:${boxShadow};" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" /></div>`;
+
 
   return L.divIcon({
     html,
@@ -120,7 +128,8 @@ interface PublicLiveMapViewProps {
  * PublicLiveMapView - Anonymous visitor view of the live map
  * Shows the LIVE_MAP_MAX_USERS (100) most recently active users that have coordinates.
  * No user is dropped for being "stale" — recency is communicated by ring color only:
- * gold = Active Recently (within 21 days), grey = older.
+ * green = the LIVE_MAP_ONLINE_RING_COUNT most recently updated, gold = active within 21 days,
+ * grey = older.
  *
  * Privacy: the public_map_presence view remains the authority on who is hidden
  * (is_map_visible / map_history_hidden_from_public), coordinates are jittered,
@@ -267,8 +276,9 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       }
     });
 
-    // Show users (Active Recently + capped inactive) - ring color indicates recency (gold = Active Recently within 21 days, grey = inactive)
-    displayUsers.forEach((mapUser) => {
+    // Show all fetched users - ring color indicates recency (green = most recently active,
+    // gold = active within 21 days, grey = older). Array index is the recency rank.
+    displayUsers.forEach((mapUser, rank) => {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
 
       const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -278,8 +288,9 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       const firstName = fullName.split(' ')[0];
       
       const variant = getMarkerVariant(mapUser);
-      // Pass locationUpdatedAt for 21-day ring coloring
-      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at);
+      // Pass rank + locationUpdatedAt for tiered ring coloring
+      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at, rank);
+
 
       // Public popup: first name only, no roles, no stats, no timestamps
       L.marker([jittered.lat, jittered.lng], { icon })
@@ -349,7 +360,11 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
               <Crosshair className="h-5 w-5" />
             </Button>
           </div>
+
+          {/* Ring color legend */}
+          <MapRingLegend className="px-4 pb-4" />
         </div>
+
       </CardContent>
     </Card>
   );

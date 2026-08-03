@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { LocationConsentDialog } from "./LocationConsentDialog";
 import { AdminMapUserInfoPanel } from "./AdminMapUserInfoPanel";
 import { canUserUpdateMapPin } from "@/lib/mapPermissions";
-import { getMapPresenceRingStatus, getRingColor } from "@/lib/mapPresenceUtils";
+import { getMapPresenceRingStatusByRank, getRingColor } from "@/lib/mapPresenceUtils";
+import { MapRingLegend } from "@/components/MapRingLegend";
 import { LIVE_MAP_MAX_USERS } from "@/lib/config";
 
 // Leaflet imports (lazy loaded)
@@ -175,14 +176,16 @@ const getOnlineStatus = (locationUpdatedAt: string | null): { isOnline: boolean;
 
 // Helper to create avatar-based divIcon with transparent background and status styling
 // Includes first-letter fallback when no profile photo exists
-// Non-admin views use 21-day "Active Recently" ring coloring (gold for active, grey for inactive)
+// Non-admin views use rank-based ring coloring: green for the most recently active,
+// gold for active within 21 days, grey for older
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
   variant: 'driver' | 'rider' | 'admin',
   locationUpdatedAt?: string | null,
   isAdminView: boolean = false,
-  userName?: string | null
+  userName?: string | null,
+  rank: number = -1
 ): any => {
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
@@ -190,10 +193,11 @@ const createAvatarDivIcon = (
     admin: '/assets/map/driver-car-icon.png', // Admin uses same as driver, no crown
   };
 
-  // Admin view uses detailed status styling, non-admin uses 21-day "Active Recently" ring coloring
+  // Admin view uses detailed status styling, non-admin uses rank-based ring coloring
   let borderColor: string;
   let opacity: number;
   let onlineIndicator = '';
+  let isOnlineRing = false;
   
   if (isAdminView) {
     // Admin view: detailed online status (green/yellow/grey with opacity)
@@ -206,14 +210,18 @@ const createAvatarDivIcon = (
       onlineIndicator = `<div style="position:absolute;top:0;right:0;width:12px;height:12px;background:#10B981;border-radius:50%;border:2px solid #1a1a2e;"></div>`;
     }
   } else {
-    // Non-admin view: 21-day "Active Recently" ring coloring (gold for active, grey for inactive)
-    const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
+    // Non-admin view: rank-based ring coloring
+    const ringStatus = getMapPresenceRingStatusByRank(rank, locationUpdatedAt);
     borderColor = getRingColor(ringStatus);
+    isOnlineRing = ringStatus === 'online';
     opacity = 1; // No opacity change for non-admins
   }
   
   const size = 48;
-  const borderWidth = 2;
+  const borderWidth = isOnlineRing ? 3 : 2;
+  const boxShadow = isOnlineRing
+    ? '0 0 8px rgba(34,197,94,0.6), 0 2px 8px rgba(0,0,0,0.4)'
+    : '0 2px 8px rgba(0,0,0,0.4)';
 
   // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
@@ -222,7 +230,7 @@ const createAvatarDivIcon = (
     
     if (firstLetter) {
       // Show letter-based avatar with ring color
-      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div>${onlineIndicator}</div>`;
+      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:${boxShadow};"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div>${onlineIndicator}</div>`;
       
       return L.divIcon({
         html,
@@ -234,7 +242,7 @@ const createAvatarDivIcon = (
     }
     
     // No name available, use fallback icon
-    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div>${onlineIndicator}</div>`;
+    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:${boxShadow};overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div>${onlineIndicator}</div>`;
 
     return L.divIcon({
       html,
@@ -246,7 +254,8 @@ const createAvatarDivIcon = (
   }
 
   // Create divIcon with avatar
-  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:0 2px 8px rgba(0,0,0,0.4);" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" />${onlineIndicator}</div>`;
+  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;opacity:${opacity};"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:${boxShadow};" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" />${onlineIndicator}</div>`;
+
 
   return L.divIcon({
     html,
@@ -262,7 +271,8 @@ const createAvatarDivIcon = (
  * Fetches the LIVE_MAP_MAX_USERS (100) most recently active users with coordinates,
  * ordered server-side by location_updated_at DESC (nulls last).
  * No user is dropped for being "stale" — recency is shown by ring color only
- * (gold = active within 21 days, grey = older). Visibility is still governed by
+ * (green = the LIVE_MAP_ONLINE_RING_COUNT most recently updated, gold = active within
+ * 21 days, grey = older). Visibility is still governed by
  * is_map_visible / map_history_hidden_from_public, and coordinates stay jittered.
  */
 export function LiveMapView({ className }: LiveMapViewProps) {
@@ -893,14 +903,14 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       };
     }
 
-    // NON-ADMIN: Always show all users within 72h (no filter buttons for non-admins)
-    // Ring color indicates recency: gold = active within 72h, grey = older
+    // NON-ADMIN: Show all fetched users (no filter buttons for non-admins)
+    // Ring color indicates recency: green = most recently active, gold = within 21 days, grey = older
     if (!isAdmin) {
       // Always show all users for non-admins (filter buttons removed)
       const usersToShow = allUsersForNonAdmin;
       
       if (usersToShow.length > 0) {
-        usersToShow.forEach((mapUser) => {
+        usersToShow.forEach((mapUser, rank) => {
           if (!mapUser.current_lat || !mapUser.current_lng) return;
 
           const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -911,8 +921,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           // Determine variant using helper
           const variant = getMarkerVariant(mapUser);
 
-          // Use subtle status styling for non-admins (no timestamps shown)
-          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false, name);
+          // Rank-based ring coloring for non-admins (no timestamps shown)
+          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false, name, rank);
+
 
           // Non-admins see "Admin" for admin users, full role labels for others
           const roleLabel = getRoleLabel(mapUser, false);
@@ -1307,7 +1318,11 @@ export function LiveMapView({ className }: LiveMapViewProps) {
               <Crosshair className="h-5 w-5" />
             </Button>
           </div>
+
+          {/* Ring color legend */}
+          {!isAdmin && <MapRingLegend className="pt-3" />}
         </CardContent>
+
       </Card>
 
       <LocationConsentDialog
