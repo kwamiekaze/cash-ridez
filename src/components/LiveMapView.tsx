@@ -902,14 +902,14 @@ export function LiveMapView({ className }: LiveMapViewProps) {
       };
     }
 
-    // NON-ADMIN: Always show all users within 72h (no filter buttons for non-admins)
-    // Ring color indicates recency: gold = active within 72h, grey = older
+    // NON-ADMIN: Show all fetched users (no filter buttons for non-admins)
+    // Ring color indicates recency: green = most recently active, gold = within 21 days, grey = older
     if (!isAdmin) {
       // Always show all users for non-admins (filter buttons removed)
       const usersToShow = allUsersForNonAdmin;
       
       if (usersToShow.length > 0) {
-        usersToShow.forEach((mapUser) => {
+        usersToShow.forEach((mapUser, rank) => {
           if (!mapUser.current_lat || !mapUser.current_lng) return;
 
           const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -920,8 +920,9 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           // Determine variant using helper
           const variant = getMarkerVariant(mapUser);
 
-          // Use subtle status styling for non-admins (no timestamps shown)
-          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false, name);
+          // Rank-based ring coloring for non-admins (no timestamps shown)
+          const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, mapUser.location_updated_at, false, name, rank);
+
 
           // Non-admins see "Admin" for admin users, full role labels for others
           const roleLabel = getRoleLabel(mapUser, false);
