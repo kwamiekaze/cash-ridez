@@ -275,8 +275,9 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       }
     });
 
-    // Show users (Active Recently + capped inactive) - ring color indicates recency (gold = Active Recently within 21 days, grey = inactive)
-    displayUsers.forEach((mapUser) => {
+    // Show all fetched users - ring color indicates recency (green = most recently active,
+    // gold = active within 21 days, grey = older). Array index is the recency rank.
+    displayUsers.forEach((mapUser, rank) => {
       if (!mapUser.current_lat || !mapUser.current_lng) return;
 
       const jittered = getJitteredCoords(mapUser.current_lat, mapUser.current_lng, mapUser.id);
@@ -286,8 +287,9 @@ export function PublicLiveMapView({ className }: PublicLiveMapViewProps) {
       const firstName = fullName.split(' ')[0];
       
       const variant = getMarkerVariant(mapUser);
-      // Pass locationUpdatedAt for 21-day ring coloring
-      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at);
+      // Pass rank + locationUpdatedAt for tiered ring coloring
+      const icon = createAvatarDivIcon(L, mapUser.photo_url, variant, fullName, mapUser.location_updated_at, rank);
+
 
       // Public popup: first name only, no roles, no stats, no timestamps
       L.marker([jittered.lat, jittered.lng], { icon })
