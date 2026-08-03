@@ -55,13 +55,15 @@ const getJitteredCoords = (lat: number, lng: number, id: string, jitterMiles = 0
   };
 };
 
-// Create avatar-based divIcon with first-letter fallback and 21-day ring coloring
+// Create avatar-based divIcon with first-letter fallback and rank-based ring coloring
+// (green = most recently active, gold = active within 21 days, grey = older)
 const createAvatarDivIcon = (
   L: any,
   avatarUrl: string | null | undefined,
   variant: 'driver' | 'rider' | 'admin',
   userName?: string | null,
-  locationUpdatedAt?: string | null
+  locationUpdatedAt?: string | null,
+  rank: number = -1
 ): any => {
   const fallbackIcons: Record<string, string> = {
     driver: '/assets/map/driver-car-icon.png',
@@ -70,18 +72,21 @@ const createAvatarDivIcon = (
   };
 
   const size = 48;
-  const borderWidth = 2;
-  
-  // 21-day ring coloring: gold for Active Recently, grey for inactive
-  const ringStatus = getMapPresenceRingStatus(locationUpdatedAt);
+
+  // Rank-based ring coloring: green for the most recent, gold within 21 days, grey otherwise
+  const ringStatus = getMapPresenceRingStatusByRank(rank, locationUpdatedAt);
   const borderColor = getRingColor(ringStatus);
+  const borderWidth = ringStatus === 'online' ? 3 : 2;
+  const boxShadow = ringStatus === 'online'
+    ? '0 0 8px rgba(34,197,94,0.6), 0 2px 8px rgba(0,0,0,0.4)'
+    : '0 2px 8px rgba(0,0,0,0.4)';
 
   // If no avatar, show first-letter badge or fallback icon
   if (!avatarUrl) {
     const firstLetter = userName?.trim()?.charAt(0)?.toUpperCase() || '';
     
     if (firstLetter) {
-      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div></div>`;
+      const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:${boxShadow};"><span style="font-size:22px;font-weight:bold;color:${borderColor};">${firstLetter}</span></div></div>`;
       
       return L.divIcon({
         html,
@@ -92,7 +97,7 @@ const createAvatarDivIcon = (
       });
     }
     
-    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.4);overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div></div>`;
+    const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><div style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};background:transparent;display:flex;align-items:center;justify-content:center;box-shadow:${boxShadow};overflow:hidden;"><img src="${fallbackIcons[variant]}" style="width:${size - 8}px;height:${size - 8}px;object-fit:contain;" /></div></div>`;
 
     return L.divIcon({
       html,
@@ -103,7 +108,8 @@ const createAvatarDivIcon = (
     });
   }
 
-  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:0 2px 8px rgba(0,0,0,0.4);" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" /></div>`;
+  const html = `<div class="map-avatar-marker" style="position:relative;width:${size}px;height:${size}px;"><img src="${avatarUrl}" style="width:${size}px;height:${size}px;border-radius:50%;border:${borderWidth}px solid ${borderColor};object-fit:cover;background-color:#374151;box-shadow:${boxShadow};" onerror="this.onerror=null;this.src='${fallbackIcons[variant]}';" /></div>`;
+
 
   return L.divIcon({
     html,
