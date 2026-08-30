@@ -115,12 +115,10 @@ function RoofSign() {
 
 function CarModel({
   autoRotate,
-  fixedRotY,
   parallax,
   onMeasured,
 }: {
   autoRotate: boolean;
-  fixedRotY?: number;
   parallax: boolean;
   onMeasured?: (info: { size: THREE.Vector3; scale: number; meshes: string[] }) => void;
 }) {
@@ -155,7 +153,6 @@ function CarModel({
   useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     if (autoRotate && groupRef.current) groupRef.current.rotation.y += 0.15 * dt;
-    if (!autoRotate && groupRef.current) groupRef.current.rotation.y = fixedRotY ?? 0;
     if (parallax && tiltRef.current) {
       const k = 1 - Math.exp(-5 * dt);
       tiltRef.current.rotation.x +=
@@ -177,13 +174,9 @@ function CarModel({
 
 export interface CashRidezCar3DProps {
   className?: string;
-  /** TEMP dev-only camera override for visual verification. */
-  __cam?: [number, number, number];
-  /** TEMP dev-only rotation override. */
-  __rotY?: number;
 }
 
-export default function CashRidezCar3D({ className, __cam, __rotY }: CashRidezCar3DProps) {
+export default function CashRidezCar3D({ className }: CashRidezCar3DProps) {
   const [loading, setLoading] = useState(true);
   const [isTouch, setIsTouch] = useState(false);
 
@@ -203,7 +196,7 @@ export default function CashRidezCar3D({ className, __cam, __rotY }: CashRidezCa
         dpr={[1, 2]}
         shadows
         gl={{ alpha: true, antialias: true }}
-        camera={{ position: __cam ?? [4, 1.8, 5], fov: 35 }}
+        camera={{ position: [4, 1.8, 5], fov: 35 }}
         onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
       >
         <ambientLight intensity={0.3} />
@@ -225,9 +218,8 @@ export default function CashRidezCar3D({ className, __cam, __rotY }: CashRidezCa
 
         <Suspense fallback={null}>
           <CarModel
-            autoRotate={__cam === undefined}
-            fixedRotY={__rotY}
-            parallax={__cam === undefined && !isTouch}
+            autoRotate
+            parallax={!isTouch}
             onMeasured={(info) => {
               console.log("[CashRidezCar3D] meshes:", info.meshes);
               console.log(
