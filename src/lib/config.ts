@@ -29,3 +29,7 @@ export const LIVE_MAP_MAX_USERS = 100;
 // Live map: how many of the most recently active users get the green ring
 export const LIVE_MAP_ONLINE_RING_COUNT = 30;
 
+
+// 3D car hero model (temporary CDN URL; swap to /models/cashridez-car.glb later)
+export const CAR_MODEL_URL =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_2zkin0wWd1fqvOlkf1ZVTn9Up98/hf_20260830_030320_a8b2fb99-21b3-4361-b761-198189c5950d.glb";
