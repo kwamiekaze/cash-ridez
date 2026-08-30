@@ -22,13 +22,13 @@ const TARGET_SIZE = 4;
 
 /** Sign transform in the model's NATIVE units (bbox X 1.8988 / Y 0.7177 / Z 0.8988). */
 const ROOF_SIGN = {
-  x: 0.09,
-  y: 0.315,
+  x: 0.045,
+  y: 0.3,
   z: 0,
   rotY: Math.PI / 2,
-  width: 0.4,
-  height: 0.14,
-  depth: 0.3,
+  width: 0.36,
+  height: 0.12,
+  depth: 0.22,
 } as const;
 
 function useWordmarkTexture() {
