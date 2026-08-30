@@ -358,6 +358,8 @@ const App = () => {
               path="/live-map"
               element={<Navigate to="/map" replace />}
             />
+            {/* TEMPORARY: 3D car hero preview */}
+            <Route path="/car-preview" element={<CarPreview />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
