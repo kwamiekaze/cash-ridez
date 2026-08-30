@@ -22,8 +22,8 @@ const TARGET_SIZE = 4;
 
 /** Sign transform in the model's NATIVE units (bbox X 1.8988 / Y 0.7177 / Z 0.8988). */
 const ROOF_SIGN = {
-  x: 0.06,
-  y: 0.404,
+  x: 0.085,
+  y: 0.345,
   z: 0,
   rotY: Math.PI / 2,
   width: 0.36,
