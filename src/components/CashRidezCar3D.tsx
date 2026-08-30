@@ -5,13 +5,14 @@
  * - Auto-centers the model at the origin and auto-scales it so its longest
  *   dimension equals 4 units (scale is derived, never hardcoded).
  * - Slow Y auto-rotation + damped pointer parallax (parallax off on touch).
- * - RoofSign overlays a runtime canvas wordmark ("CASHRIDEZ") over the
- *   garbled baked roof-sign texture, backed by an opaque matte-black box.
- * - debug prop (or ?debug=1) shows OrbitControls + sliders to dial the sign in.
+ * - RoofSign is a solid matte-black taxi topper box seated flush on the roof,
+ *   fully covering the garbled baked roof-sign texture. Its two long faces
+ *   (facing the front and rear of the car) carry a runtime canvas wordmark
+ *   reading "CASHRIDEZ". Coordinates are in the model's NATIVE units.
  */
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, OrbitControls, useGLTF } from "@react-three/drei";
+import { ContactShadows, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { CAR_MODEL_URL } from "@/lib/config";
 
@@ -19,23 +20,16 @@ useGLTF.preload(CAR_MODEL_URL);
 
 const TARGET_SIZE = 4;
 
-export interface RoofSignTransform {
-  x: number;
-  y: number;
-  z: number;
-  rotY: number;
-  width: number;
-  height: number;
-}
-
-const DEFAULT_SIGN: RoofSignTransform = {
-  x: 0,
-  y: 1.1,
-  z: 0.2,
-  rotY: 0,
-  width: 1.2,
-  height: 0.3,
-};
+/** Sign transform in the model's NATIVE units (bbox X 1.8988 / Y 0.7177 / Z 0.8988). */
+const ROOF_SIGN = {
+  x: 0.06,
+  y: 0.404,
+  z: 0,
+  rotY: Math.PI / 2,
+  width: 0.36,
+  height: 0.115,
+  depth: 0.14,
+} as const;
 
 function useWordmarkTexture() {
   return useMemo(() => {
@@ -47,11 +41,10 @@ function useWordmarkTexture() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const text = "CASHRIDEZ";
-    const letterSpacing = 18;
+    const letterSpacing = 14;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#FACC15";
 
-    // Fit the font size so the spaced text fills ~90% of the canvas width.
     let fontSize = 200;
     const measure = (size: number) => {
       ctx.font = `900 ${size}px "Arial Narrow", "Helvetica Neue", Impact, sans-serif`;
@@ -59,7 +52,7 @@ function useWordmarkTexture() {
       for (const ch of text) w += ctx.measureText(ch).width + letterSpacing;
       return w - letterSpacing;
     };
-    while (fontSize > 10 && measure(fontSize) > canvas.width * 0.9) fontSize -= 2;
+    while (fontSize > 10 && measure(fontSize) > canvas.width * 0.88) fontSize -= 2;
 
     const total = measure(fontSize);
     let x = (canvas.width - total) / 2;
@@ -77,44 +70,43 @@ function useWordmarkTexture() {
   }, []);
 }
 
-function RoofSign({ transform }: { transform: RoofSignTransform }) {
+function RoofSign() {
   const texture = useWordmarkTexture();
-  const { width, height } = transform;
+  const { width, height, depth } = ROOF_SIGN;
 
   return (
     <group
-      position={[transform.x, transform.y, transform.z]}
-      rotation={[0, transform.rotY, 0]}
+      position={[ROOF_SIGN.x, ROOF_SIGN.y, ROOF_SIGN.z]}
+      rotation={[0, ROOF_SIGN.rotY, 0]}
     >
-      {/* Opaque matte-black blocker: slightly larger than the text planes */}
-      <mesh>
-        <boxGeometry args={[width * 1.08, height * 1.18, 0.06]} />
-        <meshStandardMaterial color="#0A0A0A" roughness={0.9} metalness={0} />
-      </mesh>
-
-      {/* Front-facing wordmark */}
-      <mesh position={[0, 0, 0.032]}>
-        <planeGeometry args={[width, height]} />
+      {/* Single solid topper box. Long faces (+/-Z of this group, which after
+          rotY = 90deg point along the car's +/-X) carry the wordmark. */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[width, height, depth]} />
+        {/* face order: +X, -X, +Y, -Y, +Z, -Z */}
+        <meshStandardMaterial attach="material-0" color="#0A0A0A" roughness={0.9} metalness={0} />
+        <meshStandardMaterial attach="material-1" color="#0A0A0A" roughness={0.9} metalness={0} />
+        <meshStandardMaterial attach="material-2" color="#0A0A0A" roughness={0.9} metalness={0} />
+        <meshStandardMaterial attach="material-3" color="#0A0A0A" roughness={0.9} metalness={0} />
         <meshStandardMaterial
+          attach="material-4"
           map={texture}
           emissive={new THREE.Color("#FACC15")}
           emissiveMap={texture}
           emissiveIntensity={0.8}
           toneMapped={false}
           roughness={0.6}
+          metalness={0}
         />
-      </mesh>
-
-      {/* Back-facing wordmark */}
-      <mesh position={[0, 0, -0.032]} rotation={[0, Math.PI, 0]}>
-        <planeGeometry args={[width, height]} />
         <meshStandardMaterial
+          attach="material-5"
           map={texture}
           emissive={new THREE.Color("#FACC15")}
           emissiveMap={texture}
           emissiveIntensity={0.8}
           toneMapped={false}
           roughness={0.6}
+          metalness={0}
         />
       </mesh>
     </group>
@@ -122,12 +114,10 @@ function RoofSign({ transform }: { transform: RoofSignTransform }) {
 }
 
 function CarModel({
-  sign,
   autoRotate,
   parallax,
   onMeasured,
 }: {
-  sign: RoofSignTransform;
   autoRotate: boolean;
   parallax: boolean;
   onMeasured?: (info: { size: THREE.Vector3; scale: number; meshes: string[] }) => void;
@@ -176,76 +166,19 @@ function CarModel({
     <group ref={tiltRef}>
       <group ref={groupRef} scale={scale}>
         <primitive object={model} />
-        <RoofSign transform={sign} />
+        <RoofSign />
       </group>
     </group>
   );
 }
 
-function DebugPanel({
-  sign,
-  setSign,
-}: {
-  sign: RoofSignTransform;
-  setSign: (s: RoofSignTransform) => void;
-}) {
-  const rows: Array<[keyof RoofSignTransform, number, number, number]> = [
-    ["x", -3, 3, 0.01],
-    ["y", -3, 3, 0.01],
-    ["z", -3, 3, 0.01],
-    ["rotY", -Math.PI, Math.PI, 0.01],
-    ["width", 0.1, 3, 0.01],
-    ["height", 0.1, 3, 0.01],
-  ];
-
-  return (
-    <div className="absolute left-4 top-4 z-20 w-72 rounded-lg border border-yellow-400/40 bg-black/80 p-3 text-xs text-yellow-400 backdrop-blur">
-      <div className="mb-2 font-bold tracking-wide">ROOF SIGN DEBUG</div>
-      {rows.map(([key, min, max, step]) => (
-        <label key={key} className="mb-2 flex items-center gap-2">
-          <span className="w-12 shrink-0">{key}</span>
-          <input
-            type="range"
-            min={min}
-            max={max}
-            step={step}
-            value={sign[key]}
-            onChange={(e) => setSign({ ...sign, [key]: parseFloat(e.target.value) })}
-            className="flex-1 accent-yellow-400"
-          />
-          <span className="w-12 shrink-0 text-right tabular-nums">
-            {sign[key].toFixed(2)}
-          </span>
-        </label>
-      ))}
-      <button
-        type="button"
-        onClick={() =>
-          navigator.clipboard?.writeText(JSON.stringify(sign, null, 2))
-        }
-        className="mt-1 w-full rounded bg-yellow-400 py-1 font-semibold text-black"
-      >
-        Copy values
-      </button>
-    </div>
-  );
-}
-
 export interface CashRidezCar3DProps {
-  debug?: boolean;
   className?: string;
 }
 
-export default function CashRidezCar3D({ debug = false, className }: CashRidezCar3DProps) {
-  const [sign, setSign] = useState<RoofSignTransform>(DEFAULT_SIGN);
+export default function CashRidezCar3D({ className }: CashRidezCar3DProps) {
   const [loading, setLoading] = useState(true);
   const [isTouch, setIsTouch] = useState(false);
-
-  const debugOn = useMemo(() => {
-    if (debug) return true;
-    if (typeof window === "undefined") return false;
-    return new URLSearchParams(window.location.search).get("debug") === "1";
-  }, [debug]);
 
   useEffect(() => {
     setIsTouch(window.matchMedia("(hover: none)").matches);
@@ -258,8 +191,6 @@ export default function CashRidezCar3D({ debug = false, className }: CashRidezCa
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-yellow-400 border-t-transparent" />
         </div>
       )}
-
-      {debugOn && <DebugPanel sign={sign} setSign={setSign} />}
 
       <Canvas
         dpr={[1, 2]}
@@ -287,9 +218,8 @@ export default function CashRidezCar3D({ debug = false, className }: CashRidezCa
 
         <Suspense fallback={null}>
           <CarModel
-            sign={sign}
-            autoRotate={!debugOn}
-            parallax={!debugOn && !isTouch}
+            autoRotate
+            parallax={!isTouch}
             onMeasured={(info) => {
               console.log("[CashRidezCar3D] meshes:", info.meshes);
               console.log(
@@ -310,8 +240,6 @@ export default function CashRidezCar3D({ debug = false, className }: CashRidezCa
             color="#000000"
           />
         </Suspense>
-
-        {debugOn && <OrbitControls makeDefault enableDamping />}
       </Canvas>
     </div>
   );
