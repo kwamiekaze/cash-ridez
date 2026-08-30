@@ -52,6 +52,7 @@ const RiderTips = lazy(() => import("./pages/RiderTips"));
 const DriverTips = lazy(() => import("./pages/DriverTips"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const BlockedPage = lazy(() => import("./pages/BlockedPage"));
+const CarPreview = lazy(() => import("./pages/CarPreview"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -357,6 +358,8 @@ const App = () => {
               path="/live-map"
               element={<Navigate to="/map" replace />}
             />
+            {/* TEMPORARY: 3D car hero preview */}
+            <Route path="/car-preview" element={<CarPreview />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
