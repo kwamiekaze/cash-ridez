@@ -14,21 +14,35 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { CAR_MODEL_URL } from "@/lib/config";
+import { CAR_MODEL_URL, ROOF_SIGN_TEXT } from "@/lib/config";
 
 useGLTF.preload(CAR_MODEL_URL);
 
 const TARGET_SIZE = 4;
 
-/** Sign transform in the model's NATIVE units (bbox X 1.8988 / Y 0.7177 / Z 0.8988). */
+/**
+ * Roof sign placement, in the model's NATIVE units.
+ *
+ * IMPORTANT: these values are tied to the bounding box of the model currently
+ * referenced by CAR_MODEL_URL. Whenever CAR_MODEL_URL changes, the sign MUST be
+ * re-verified visually on /car-preview and these values fine-tuned.
+ *
+ * Sizing is expressed as FRACTIONS of the measured bounding box so the sign
+ * lands approximately correctly on any similarly-proportioned car model:
+ *  - widthFrac  -> fraction of bbox.z (car width); sign spans across the roof
+ *  - heightFrac -> fraction of bbox.y (car height)
+ *  - depthFrac  -> fraction of bbox.x (car length)
+ *  - yOffsetFrac-> fraction of bbox.y added to bbox.max.y (negative = sunk in)
+ * x and rotY stay explicit constants.
+ */
 const ROOF_SIGN = {
   x: 0.1,
-  y: 0.315,
   z: 0,
   rotY: Math.PI / 2,
-  width: 0.4,
-  height: 0.14,
-  depth: 0.26,
+  widthFrac: 0.445,
+  heightFrac: 0.195,
+  depthFrac: 0.137,
+  yOffsetFrac: -0.061,
 } as const;
 
 function useWordmarkTexture() {
@@ -40,19 +54,26 @@ function useWordmarkTexture() {
     ctx.fillStyle = "#0A0A0A";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const text = "CASHRIDEZ";
-    const letterSpacing = 14;
+    const text = ROOF_SIGN_TEXT;
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#FACC15";
 
-    let fontSize = 200;
+    // Letter-spacing scales with the word length so short words still fill the face.
+    const letterSpacing = Math.max(10, 90 - text.length * 8);
+
+    let fontSize = 240;
     const measure = (size: number) => {
       ctx.font = `900 ${size}px "Arial Narrow", "Helvetica Neue", Impact, sans-serif`;
       let w = 0;
       for (const ch of text) w += ctx.measureText(ch).width + letterSpacing;
       return w - letterSpacing;
     };
+    // Grow or shrink until the word fills ~88% of the canvas width, capped by height.
+    const maxFont = canvas.height * 0.86;
+    while (fontSize < maxFont && measure(fontSize + 2) <= canvas.width * 0.88) fontSize += 2;
     while (fontSize > 10 && measure(fontSize) > canvas.width * 0.88) fontSize -= 2;
+    fontSize = Math.min(fontSize, maxFont);
+    measure(fontSize);
 
     const total = measure(fontSize);
     let x = (canvas.width - total) / 2;
@@ -70,15 +91,16 @@ function useWordmarkTexture() {
   }, []);
 }
 
-function RoofSign() {
+function RoofSign({ bbox }: { bbox: THREE.Vector3 }) {
   const texture = useWordmarkTexture();
-  const { width, height, depth } = ROOF_SIGN;
+  const width = bbox.z * ROOF_SIGN.widthFrac;
+  const height = bbox.y * ROOF_SIGN.heightFrac;
+  const depth = bbox.x * ROOF_SIGN.depthFrac;
+  // Model is centered at the origin, so bbox.max.y === bbox.y / 2.
+  const y = bbox.y / 2 + bbox.y * ROOF_SIGN.yOffsetFrac;
 
   return (
-    <group
-      position={[ROOF_SIGN.x, ROOF_SIGN.y, ROOF_SIGN.z]}
-      rotation={[0, ROOF_SIGN.rotY, 0]}
-    >
+    <group position={[ROOF_SIGN.x, y, ROOF_SIGN.z]} rotation={[0, ROOF_SIGN.rotY, 0]}>
       {/* Single solid topper box. Long faces (+/-Z of this group, which after
           rotY = 90deg point along the car's +/-X) carry the wordmark. */}
       <mesh castShadow receiveShadow>
@@ -127,7 +149,7 @@ function CarModel({
   const tiltRef = useRef<THREE.Group>(null);
   const { pointer } = useThree();
 
-  const { model, scale } = useMemo(() => {
+  const { model, scale, bbox } = useMemo(() => {
     const clone = scene.clone(true);
     const box = new THREE.Box3().setFromObject(clone);
     const size = new THREE.Vector3();
@@ -146,7 +168,7 @@ function CarModel({
       }
     });
     onMeasured?.({ size, scale: s, meshes });
-    return { model: clone, scale: s };
+    return { model: clone, scale: s, bbox: size };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene]);
 
@@ -166,7 +188,7 @@ function CarModel({
     <group ref={tiltRef}>
       <group ref={groupRef} scale={scale}>
         <primitive object={model} />
-        <RoofSign />
+        <RoofSign bbox={bbox} />
       </group>
     </group>
   );
