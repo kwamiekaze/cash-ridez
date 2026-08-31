@@ -36,7 +36,7 @@ const TARGET_SIZE = 4;
  * x and rotY stay explicit constants.
  */
 const ROOF_SIGN = {
-  x: 0.1,
+  x: -0.16,
   z: 0,
   rotY: Math.PI / 2,
   widthFrac: 0.445,
