@@ -42,7 +42,7 @@ const ROOF_SIGN = {
   widthFrac: 0.445,
   heightFrac: 0.195,
   depthFrac: 0.137,
-  yOffsetFrac: -0.085,
+  yOffsetFrac: -0.105,
 } as const;
 
 function useWordmarkTexture() {
