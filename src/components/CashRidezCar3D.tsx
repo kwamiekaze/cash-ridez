@@ -40,11 +40,11 @@ const ROOF_SIGN = {
   rotY: Math.PI / 2,
   widthFrac: 0.52,
   heightFrac: 0.065,
-  depthFrac: 0.075,
+  depthFrac: 0.095,
 } as const;
 
 /** Small tunable vertical nudge (fraction of bbox.y). Negative sinks the bar. */
-const SEAT_NUDGE = -0.05;
+const SEAT_NUDGE = 0.005;
 
 function useWordmarkTexture() {
   return useMemo(() => {
