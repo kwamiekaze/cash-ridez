@@ -36,13 +36,13 @@ const TARGET_SIZE = 4;
  * x and rotY stay explicit constants.
  */
 const ROOF_SIGN = {
-  x: -0.03,
+  x: -0.145,
   z: 0,
   rotY: Math.PI / 2,
-  widthFrac: 0.445,
-  heightFrac: 0.195,
-  depthFrac: 0.137,
-  yOffsetFrac: -0.105,
+  widthFrac: 0.52,
+  heightFrac: 0.24,
+  depthFrac: 0.2,
+  yOffsetFrac: -0.09,
 } as const;
 
 function useWordmarkTexture() {
