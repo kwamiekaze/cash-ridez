@@ -36,3 +36,6 @@ export const CAR_MODEL_URL =
 
 // Roof sign wordmark text (rendered on the 3D car topper)
 export const ROOF_SIGN_TEXT = "CASH";
+
+// Roof sign wordmark color (bright lime green, like a lit taxi display)
+export const ROOF_SIGN_COLOR = "#4ADE80";

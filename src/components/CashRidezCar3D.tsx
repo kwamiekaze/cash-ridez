@@ -14,7 +14,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { CAR_MODEL_URL, ROOF_SIGN_TEXT } from "@/lib/config";
+import { CAR_MODEL_URL, ROOF_SIGN_TEXT, ROOF_SIGN_COLOR } from "@/lib/config";
 
 useGLTF.preload(CAR_MODEL_URL);
 
@@ -32,18 +32,19 @@ const TARGET_SIZE = 4;
  *  - widthFrac  -> fraction of bbox.z (car width); sign spans across the roof
  *  - heightFrac -> fraction of bbox.y (car height)
  *  - depthFrac  -> fraction of bbox.x (car length)
- *  - yOffsetFrac-> fraction of bbox.y added to bbox.max.y (negative = sunk in)
  * x and rotY stay explicit constants.
  */
 const ROOF_SIGN = {
   x: 0.126,
   z: 0,
   rotY: Math.PI / 2,
-  widthFrac: 0.42,
-  heightFrac: 0.24,
-  depthFrac: 0.1,
-  yOffsetFrac: -0.11,
+  widthFrac: 0.52,
+  heightFrac: 0.065,
+  depthFrac: 0.095,
 } as const;
+
+/** Small tunable vertical nudge (fraction of bbox.y). Negative sinks the bar. */
+const SEAT_NUDGE = 0.005;
 
 function useWordmarkTexture() {
   return useMemo(() => {
@@ -56,7 +57,7 @@ function useWordmarkTexture() {
 
     const text = ROOF_SIGN_TEXT;
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#FACC15";
+    ctx.fillStyle = ROOF_SIGN_COLOR;
 
     // Letter-spacing scales with the word length so short words still fill the face.
     const letterSpacing = Math.max(10, 90 - text.length * 8);
@@ -97,7 +98,8 @@ function RoofSign({ bbox }: { bbox: THREE.Vector3 }) {
   const height = bbox.y * ROOF_SIGN.heightFrac;
   const depth = bbox.x * ROOF_SIGN.depthFrac;
   // Model is centered at the origin, so bbox.max.y === bbox.y / 2.
-  const y = bbox.y / 2 + bbox.y * ROOF_SIGN.yOffsetFrac;
+  // Align the TOP of the sign box with the top of the model bounds.
+  const y = bbox.y / 2 - height / 2 + bbox.y * SEAT_NUDGE;
 
   return (
     <group position={[ROOF_SIGN.x, y, ROOF_SIGN.z]} rotation={[0, ROOF_SIGN.rotY, 0]}>
@@ -113,7 +115,7 @@ function RoofSign({ bbox }: { bbox: THREE.Vector3 }) {
         <meshStandardMaterial
           attach="material-4"
           map={texture}
-          emissive={new THREE.Color("#FACC15")}
+          emissive={new THREE.Color(ROOF_SIGN_COLOR)}
           emissiveMap={texture}
           emissiveIntensity={0.8}
           toneMapped={false}
@@ -123,7 +125,7 @@ function RoofSign({ bbox }: { bbox: THREE.Vector3 }) {
         <meshStandardMaterial
           attach="material-5"
           map={texture}
-          emissive={new THREE.Color("#FACC15")}
+          emissive={new THREE.Color(ROOF_SIGN_COLOR)}
           emissiveMap={texture}
           emissiveIntensity={0.8}
           toneMapped={false}
