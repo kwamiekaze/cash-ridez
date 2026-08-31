@@ -149,7 +149,7 @@ function CarModel({
   const tiltRef = useRef<THREE.Group>(null);
   const { pointer } = useThree();
 
-  const { model, scale } = useMemo(() => {
+  const { model, scale, bbox } = useMemo(() => {
     const clone = scene.clone(true);
     const box = new THREE.Box3().setFromObject(clone);
     const size = new THREE.Vector3();
@@ -168,7 +168,7 @@ function CarModel({
       }
     });
     onMeasured?.({ size, scale: s, meshes });
-    return { model: clone, scale: s };
+    return { model: clone, scale: s, bbox: size };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene]);
 
@@ -188,7 +188,7 @@ function CarModel({
     <group ref={tiltRef}>
       <group ref={groupRef} scale={scale}>
         <primitive object={model} />
-        <RoofSign />
+        <RoofSign bbox={bbox} />
       </group>
     </group>
   );
