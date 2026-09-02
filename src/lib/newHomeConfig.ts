@@ -3,6 +3,9 @@
 export const CAR_MODEL_URL = "/models/cashridez-car.glb";
 export const CAR_MODEL_URL_MOBILE = "/models/cashridez-car-mobile.glb";
 
+// Header lockup (placeholder — swap for the real uploaded asset)
+export const HEADER_LOGO_URL = "/branding/cashridez-topper.png";
+
 // Particle field
 export const PARTICLE_COUNT = 60;
 export const PARTICLE_COLOR_GREEN = "#4ADE80";
