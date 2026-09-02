@@ -53,6 +53,7 @@ const DriverTips = lazy(() => import("./pages/DriverTips"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const BlockedPage = lazy(() => import("./pages/BlockedPage"));
 const CarPreview = lazy(() => import("./pages/CarPreview"));
+const NewHome = lazy(() => import("./pages/NewHome"));
 
 // Loading fallback component
 const LoadingFallback = () => (
