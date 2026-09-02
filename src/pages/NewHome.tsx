@@ -219,7 +219,7 @@ const NewHome = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.25 }}
-              className="flex justify-center mb-14"
+              className="flex justify-center mb-12"
             >
               <Button
                 size="lg"
@@ -229,6 +229,18 @@ const NewHome = () => {
               >
                 Respond to Trips
               </Button>
+            </motion.div>
+
+            <motion.div {...reveal}>
+              <div className="border-l-4 border-primary pl-6 py-4 mb-8 max-w-3xl mx-auto text-left">
+                <p className="text-foreground/90 text-lg italic">
+                  "Powered by people, Driven by Cash. Earn More, Save More with Cash Ridez. Your Community Travel Network."
+                </p>
+              </div>
+
+              <p className="text-lg text-foreground/80 mb-10 max-w-2xl mx-auto">
+                Connect with locals. Coordinate travel. Move together.
+              </p>
             </motion.div>
 
             {/* Trust Badges */}
