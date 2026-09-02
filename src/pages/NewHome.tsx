@@ -8,6 +8,7 @@ import { CarIcon } from "@/components/CarIcon";
 import { motion } from "motion/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SupportDialog from "@/components/SupportDialog";
+import { HEADER_LOGO_URL } from "@/lib/newHomeConfig";
 
 // three.js kept out of the main bundle
 const CashCar3D = lazy(() => import("@/components/newhome/CashCar3D"));
@@ -48,6 +49,7 @@ const NewHome = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -61,23 +63,31 @@ const NewHome = () => {
       <CarIcon />
 
       {/* Header */}
-      <header className="border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-primary/15 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <motion.span
-              className="text-2xl font-bold text-primary lowercase"
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              cashridez
-            </motion.span>
+              {logoFailed ? (
+                <span className="text-2xl font-bold text-primary lowercase">cashridez</span>
+              ) : (
+                <img
+                  src={HEADER_LOGO_URL}
+                  alt="CashRidez"
+                  onError={() => setLogoFailed(true)}
+                  className="h-9 md:h-10 w-auto transition-all duration-300 hover:scale-[1.03] hover:drop-shadow-[0_0_14px_hsl(51_100%_50%/0.55)]"
+                />
+              )}
+            </motion.div>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
+              <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-all duration-300">
                 How It Works
               </a>
-              <a href="/community" className="text-foreground hover:text-primary font-medium transition-colors">
+              <a href="/community" className="text-foreground hover:text-primary font-medium transition-all duration-300">
                 Community
               </a>
               <DropdownMenu>
