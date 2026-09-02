@@ -34,15 +34,16 @@ function CarModel({
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
-    const longest = Math.max(size.x, size.y, size.z) || 1;
+    const footprint = Math.max(size.x, size.z) || 1;
     clone.position.sub(center);
+    clone.position.y += size.y / 2;
     clone.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
         o.castShadow = true;
         o.receiveShadow = true;
       }
     });
-    return { model: clone, scale: CAR_TARGET_SIZE / longest };
+    return { model: clone, scale: CAR_TARGET_SIZE / footprint };
   }, [scene]);
 
   useEffect(() => {
@@ -186,7 +187,7 @@ export default function CashCarScene({
       dpr={[1, 2]}
       shadows
       frameloop={frameloop}
-      camera={{ fov: 34, position: [3.2, 1.4, 3.2] }}
+      camera={{ fov: 34, position: [3.2, 1.6, 3.2] }}
     >
       <ambientLight intensity={0.45} />
       <directionalLight
@@ -221,14 +222,15 @@ export default function CashCarScene({
 
       <OrbitControls
         ref={controlsRef}
+        target={[0, 0.5, 0]}
         autoRotate={!reducedMotion}
-        autoRotateSpeed={0.7}
+        autoRotateSpeed={-2.778}
         enablePan={false}
         enableZoom={allowZoom}
         enableDamping
-        dampingFactor={0.06}
-        minPolarAngle={Math.PI / 6}
-        maxPolarAngle={Math.PI / 2.05}
+        dampingFactor={0.08}
+        minDistance={1.5}
+        maxDistance={8}
         onStart={handleStart}
         onEnd={handleEnd}
       />
