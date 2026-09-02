@@ -64,12 +64,12 @@ export default function NewHome() {
           <NewHomeNavigation />
 
           {/* Hero Section — 3D car centerpiece */}
-          <section className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden pt-24 pb-16 md:pt-28">
+          <section className="relative overflow-hidden">
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
-            <div className="relative z-50 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Tight button–car–button unit */}
-              <div className="flex flex-col items-center gap-2 md:gap-3">
+            {/* Viewport-centered button–car–button group */}
+            <div className="relative z-50 flex min-h-[100svh] flex-col items-center justify-center px-4 pt-24 pb-8 md:pt-28">
+              <div className="flex w-full max-w-7xl flex-col items-center gap-2 md:gap-3">
                 {/* 1. Post a Trip — above the car */}
                 <motion.div initial={{
                 opacity: 0,
@@ -88,7 +88,7 @@ export default function NewHome() {
                 </motion.div>
 
                 {/* 2. The 3D car — the focal point */}
-                <div className="relative flex justify-center w-full">
+                <div className="relative flex w-full justify-center">
                   <Suspense fallback={<div className="h-[320px] w-[320px] sm:h-[400px] sm:w-[400px] md:h-[500px] md:w-[500px] lg:h-[600px] lg:w-[600px]" />}>
                     <CashCar3D className="mx-auto" />
                   </Suspense>
@@ -111,9 +111,11 @@ export default function NewHome() {
                   </button>
                 </motion.div>
               </div>
+            </div>
 
-              {/* 4. Brand copy */}
-              <div className="text-center space-y-4 pt-12">
+            {/* Brand copy below the fold */}
+            <div className="relative z-50 mx-auto max-w-7xl px-4 pb-16 text-center sm:px-6 lg:px-8">
+              <div className="space-y-4 pt-12">
                 <motion.h1 initial={{
                   opacity: 0,
                   y: 30
@@ -125,7 +127,7 @@ export default function NewHome() {
                   delay: 0.4
                 }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">Keep 100% of your earnings💰</motion.h1>
 
-                  <motion.p initial={{
+                <motion.p initial={{
                   opacity: 0,
                   y: 20
                 }} animate={{
@@ -135,11 +137,10 @@ export default function NewHome() {
                   duration: 0.8,
                   delay: 0.5
                 }} className="text-xl md:text-2xl max-w-3xl mx-auto pt-4 text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID-verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
-                </div>
+              </div>
 
-
-                {/* 5. Trust Badges */}
-                <motion.div initial={{
+              {/* Trust Badges */}
+              <motion.div initial={{
                 opacity: 0,
                 y: 10
               }} animate={{
@@ -148,23 +149,23 @@ export default function NewHome() {
               }} transition={{
                 duration: 0.8,
                 delay: 0.65
-              }} className="flex flex-wrap justify-center gap-6 text-sm sm:text-base pt-10">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
-                    <span className="font-medium text-neutral-50">ID Verified</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
-                    <span className="font-medium text-green-700">Safe Connections</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
-                    <span className="font-medium text-amber-400">Community-Driven</span>
-                  </div>
-                </motion.div>
+              }} className="flex flex-wrap justify-center gap-6 pt-10 text-sm sm:text-base">
+                <div className="flex items-center gap-2">
+                  <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
+                  <span className="font-medium text-neutral-50">ID Verified</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
+                  <span className="font-medium text-green-700">Safe Connections</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
+                  <span className="font-medium text-amber-400">Community-Driven</span>
+                </div>
+              </motion.div>
 
-                {/* Slogan */}
-                <motion.p initial={{
+              {/* Slogan */}
+              <motion.p initial={{
                 opacity: 0,
                 y: 10
               }} animate={{
@@ -173,9 +174,9 @@ export default function NewHome() {
               }} transition={{
                 duration: 0.8,
                 delay: 0.75
-              }} className="text-center text-2xl md:text-3xl font-bold text-emerald-600 dark:text-emerald-400 pt-10">
-                  Powered by People, driven by cash. Earn more, save more.
-                </motion.p>
+              }} className="pt-10 text-center text-2xl font-bold text-emerald-600 dark:text-emerald-400 md:text-3xl">
+                Powered by People, driven by cash. Earn more, save more.
+              </motion.p>
             </div>
           </section>
 
