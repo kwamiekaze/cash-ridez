@@ -179,22 +179,12 @@ const NewHome = () => {
                 Powered by People - Driven by Cash 💵
               </p>
 
-              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight tracking-tight">
                 <span className="text-primary">Your Community</span>
                 <br />
                 <span className="text-primary">Travel </span>
                 <span className="text-accent">Network</span>
               </h1>
-
-              <div className="border-l-4 border-primary pl-6 py-4 mb-8 max-w-3xl mx-auto text-left">
-                <p className="text-foreground/90 text-lg italic">
-                  "Powered by people, Driven by Cash. Earn More, Save More with Cash Ridez. Your Community Travel Network."
-                </p>
-              </div>
-
-              <p className="text-lg text-foreground/80 mb-10 max-w-2xl mx-auto">
-                Connect with locals. Coordinate travel. Move together.
-              </p>
             </motion.div>
 
             {/* Primary CTA — above the car */}
