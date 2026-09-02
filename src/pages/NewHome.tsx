@@ -204,10 +204,10 @@ const NewHome = () => {
             </motion.div>
 
             {/* 3D car centerpiece */}
-            <div className="my-4 md:my-6">
+            <div className="-mt-2 mb-2 md:-mt-4 md:mb-4">
               <Suspense
                 fallback={
-                  <div className="h-[320px] w-full sm:h-[420px] md:h-[520px] lg:h-[560px]" />
+                  <div className="h-[440px] w-full sm:h-[560px] md:h-[680px] lg:h-[760px]" />
                 }
               >
                 <CashCar3D />
