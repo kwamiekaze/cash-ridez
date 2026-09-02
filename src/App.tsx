@@ -361,6 +361,8 @@ const App = () => {
             />
             {/* TEMPORARY: 3D car hero preview */}
             <Route path="/car-preview" element={<CarPreview />} />
+            {/* WIP homepage mockup — not linked in nav */}
+            <Route path="/newhome" element={<NewHome />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
