@@ -127,7 +127,7 @@ export default function CashCar3D({ className }: CashCar3DProps) {
       ref={containerRef}
       className={
         className ??
-        "relative h-[320px] w-full sm:h-[420px] md:h-[520px] lg:h-[560px]"
+        "relative h-[440px] w-full sm:h-[560px] md:h-[680px] lg:h-[760px]"
       }
     >
       {/* Ambient glow behind the car */}
@@ -135,7 +135,7 @@ export default function CashCar3D({ className }: CashCar3DProps) {
         aria-hidden
         className="pointer-events-none absolute inset-0 flex items-center justify-center"
       >
-        <div className="h-[60%] w-[75%] rounded-full bg-primary/15 blur-[90px]" />
+        <div className="h-[85%] w-[110%] rounded-full bg-primary/20 blur-[140px]" />
       </div>
 
       {webgl === false ? (

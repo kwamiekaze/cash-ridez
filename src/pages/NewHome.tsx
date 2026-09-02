@@ -8,6 +8,7 @@ import { CarIcon } from "@/components/CarIcon";
 import { motion } from "motion/react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SupportDialog from "@/components/SupportDialog";
+import { HEADER_LOGO_URL } from "@/lib/newHomeConfig";
 
 // three.js kept out of the main bundle
 const CashCar3D = lazy(() => import("@/components/newhome/CashCar3D"));
@@ -48,6 +49,7 @@ const NewHome = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [supportDialogOpen, setSupportDialogOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -61,23 +63,31 @@ const NewHome = () => {
       <CarIcon />
 
       {/* Header */}
-      <header className="border-b border-border/30 bg-background/95 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-primary/15 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <motion.span
-              className="text-2xl font-bold text-primary lowercase"
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              cashridez
-            </motion.span>
+              {logoFailed ? (
+                <span className="text-2xl font-bold text-primary lowercase">cashridez</span>
+              ) : (
+                <img
+                  src={HEADER_LOGO_URL}
+                  alt="CashRidez"
+                  onError={() => setLogoFailed(true)}
+                  className="h-9 md:h-10 w-auto transition-all duration-300 hover:scale-[1.03] hover:drop-shadow-[0_0_14px_hsl(51_100%_50%/0.55)]"
+                />
+              )}
+            </motion.div>
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-colors">
+              <a href="#how-it-works" className="text-foreground/80 hover:text-primary font-medium transition-all duration-300">
                 How It Works
               </a>
-              <a href="/community" className="text-foreground hover:text-primary font-medium transition-colors">
+              <a href="/community" className="text-foreground hover:text-primary font-medium transition-all duration-300">
                 Community
               </a>
               <DropdownMenu>
@@ -169,22 +179,12 @@ const NewHome = () => {
                 Powered by People - Driven by Cash 💵
               </p>
 
-              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight tracking-tight">
                 <span className="text-primary">Your Community</span>
                 <br />
                 <span className="text-primary">Travel </span>
                 <span className="text-accent">Network</span>
               </h1>
-
-              <div className="border-l-4 border-primary pl-6 py-4 mb-8 max-w-3xl mx-auto text-left">
-                <p className="text-foreground/90 text-lg italic">
-                  "Powered by people, Driven by Cash. Earn More, Save More with Cash Ridez. Your Community Travel Network."
-                </p>
-              </div>
-
-              <p className="text-lg text-foreground/80 mb-10 max-w-2xl mx-auto">
-                Connect with locals. Coordinate travel. Move together.
-              </p>
             </motion.div>
 
             {/* Primary CTA — above the car */}
@@ -204,10 +204,10 @@ const NewHome = () => {
             </motion.div>
 
             {/* 3D car centerpiece */}
-            <div className="my-4 md:my-6">
+            <div className="-mt-2 mb-2 md:-mt-4 md:mb-4">
               <Suspense
                 fallback={
-                  <div className="h-[320px] w-full sm:h-[420px] md:h-[520px] lg:h-[560px]" />
+                  <div className="h-[440px] w-full sm:h-[560px] md:h-[680px] lg:h-[760px]" />
                 }
               >
                 <CashCar3D />
@@ -219,7 +219,7 @@ const NewHome = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.25 }}
-              className="flex justify-center mb-14"
+              className="flex justify-center mb-12"
             >
               <Button
                 size="lg"
@@ -229,6 +229,18 @@ const NewHome = () => {
               >
                 Respond to Trips
               </Button>
+            </motion.div>
+
+            <motion.div {...reveal}>
+              <div className="border-l-4 border-primary pl-6 py-4 mb-8 max-w-3xl mx-auto text-left">
+                <p className="text-foreground/90 text-lg italic">
+                  "Powered by people, Driven by Cash. Earn More, Save More with Cash Ridez. Your Community Travel Network."
+                </p>
+              </div>
+
+              <p className="text-lg text-foreground/80 mb-10 max-w-2xl mx-auto">
+                Connect with locals. Coordinate travel. Move together.
+              </p>
             </motion.div>
 
             {/* Trust Badges */}
