@@ -69,8 +69,49 @@ export default function NewHome() {
 
             <div className="relative z-50 pt-36">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* 1. Brand copy */}
-                <div className="text-center space-y-4">
+                {/* 1. Post a Trip — above the car */}
+                <motion.div initial={{
+                opacity: 0,
+                y: 20
+              }} animate={{
+                opacity: 1,
+                y: 0
+              }} transition={{
+                duration: 0.8,
+                delay: 0.2
+              }} className="flex justify-center">
+                  <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 text-black shadow-lg shadow-yellow-500/50 hover:shadow-yellow-500/70">
+                    <span>📍</span>
+                    Post a Trip
+                  </button>
+                </motion.div>
+
+                {/* 2. The 3D car — the focal point */}
+                <div className="relative flex justify-center py-2">
+                  <Suspense fallback={<div className="h-[320px] w-[320px] sm:h-[400px] sm:w-[400px] md:h-[500px] md:w-[500px] lg:h-[600px] lg:w-[600px]" />}>
+                    <CashCar3D />
+                  </Suspense>
+                </div>
+
+                {/* 3. Respond to Trips — below the car */}
+                <motion.div initial={{
+                opacity: 0,
+                y: 20
+              }} animate={{
+                opacity: 1,
+                y: 0
+              }} transition={{
+                duration: 0.8,
+                delay: 0.3
+              }} className="flex justify-center">
+                  <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
+                    <CashCarIcon width={48} height={24} glowIntensity="low" />
+                    Respond to Trips
+                  </button>
+                </motion.div>
+
+                {/* 4. Brand copy */}
+                <div className="text-center space-y-4 pt-12">
                   <motion.h1 initial={{
                   opacity: 0,
                   y: 30
@@ -79,7 +120,7 @@ export default function NewHome() {
                   y: 0
                 }} transition={{
                   duration: 0.8,
-                  delay: 0.2
+                  delay: 0.4
                 }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">Keep 100% of your earnings💰</motion.h1>
 
                   <motion.p initial={{
@@ -90,50 +131,10 @@ export default function NewHome() {
                   y: 0
                 }} transition={{
                   duration: 0.8,
-                  delay: 0.35
+                  delay: 0.5
                 }} className="text-xl md:text-2xl max-w-3xl mx-auto pt-4 text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID-verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
                 </div>
 
-                {/* 2. Post a Trip — above the car */}
-                <motion.div initial={{
-                opacity: 0,
-                y: 20
-              }} animate={{
-                opacity: 1,
-                y: 0
-              }} transition={{
-                duration: 0.8,
-                delay: 0.45
-              }} className="flex justify-center pt-8">
-                  <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 text-black shadow-lg shadow-yellow-500/50 hover:shadow-yellow-500/70">
-                    <span>📍</span>
-                    Post a Trip
-                  </button>
-                </motion.div>
-
-                {/* 3. The 3D car — the focal point */}
-                <div className="relative -mt-2">
-                  <Suspense fallback={<div className="h-[440px] w-full sm:h-[560px] md:h-[680px] lg:h-[760px]" />}>
-                    <CashCar3D />
-                  </Suspense>
-                </div>
-
-                {/* 4. Respond to Trips — below the car */}
-                <motion.div initial={{
-                opacity: 0,
-                y: 20
-              }} animate={{
-                opacity: 1,
-                y: 0
-              }} transition={{
-                duration: 0.8,
-                delay: 0.55
-              }} className="flex justify-center -mt-2">
-                  <button onClick={() => navigate("/auth")} className="w-full sm:w-auto px-16 py-6 text-2xl font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
-                    <CashCarIcon width={48} height={24} glowIntensity="low" />
-                    Respond to Trips
-                  </button>
-                </motion.div>
 
                 {/* 5. Trust Badges */}
                 <motion.div initial={{
