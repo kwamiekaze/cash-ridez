@@ -91,11 +91,26 @@ export interface CashCar3DProps {
   className?: string;
 }
 
+function useContainerSize() {
+  const [size, setSize] = useState(320);
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth;
+      setSize(w >= 1024 ? 600 : w >= 768 ? 500 : w >= 640 ? 400 : 320);
+    };
+    compute();
+    window.addEventListener("resize", compute);
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+  return size;
+}
+
 export default function CashCar3D({ className }: CashCar3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const [ready, setReady] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
+  const containerSize = useContainerSize();
 
   const mobile = useMemo(() => isMobileDevice(), []);
   const modelUrl = mobile ? CAR_MODEL_URL_MOBILE : CAR_MODEL_URL;
@@ -122,38 +137,54 @@ export default function CashCar3D({ className }: CashCar3DProps) {
     return () => io.disconnect();
   }, []);
 
+  const layerSize = containerSize * 0.58;
+  const canvasSize = layerSize * 1.45;
+
   return (
     <div
       ref={containerRef}
-      className={
-        className ??
-        "relative h-[440px] w-full sm:h-[560px] md:h-[680px] lg:h-[760px]"
-      }
+      className={className ?? "relative mx-auto"}
+      style={{ width: containerSize, height: containerSize }}
     >
       {/* Ambient glow behind the car */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 flex items-center justify-center"
       >
-        <div className="h-[85%] w-[110%] rounded-full bg-primary/20 blur-[140px]" />
+        <div
+          className="rounded-full bg-primary/20 blur-[80px]"
+          style={{ width: layerSize, height: layerSize }}
+        />
       </div>
 
-      {webgl === false ? (
-        <Placeholder />
-      ) : webgl === true ? (
-        <CarErrorBoundary fallback={<Placeholder />}>
-          <Suspense fallback={<Spinner visible />}>
-            <CarScene
-              modelUrl={modelUrl}
-              frameloop={visible ? "always" : "never"}
-              allowZoom={!mobile}
-              reducedMotion={reducedMotion}
-              onReady={() => setReady(true)}
-            />
-            <Spinner visible={!ready} />
-          </Suspense>
-        </CarErrorBoundary>
-      ) : null}
+      <div
+        className="absolute"
+        style={{
+          width: canvasSize,
+          height: canvasSize,
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+      >
+        {webgl === false ? (
+          <Placeholder />
+        ) : webgl === true ? (
+          <CarErrorBoundary fallback={<Placeholder />}>
+            <Suspense fallback={<Spinner visible />}>
+              <CarScene
+                modelUrl={modelUrl}
+                frameloop={visible ? "always" : "never"}
+                allowZoom={!mobile}
+                reducedMotion={reducedMotion}
+                onReady={() => setReady(true)}
+              />
+              <Spinner visible={!ready} />
+            </Suspense>
+          </CarErrorBoundary>
+        ) : null}
+      </div>
     </div>
   );
 }
+
