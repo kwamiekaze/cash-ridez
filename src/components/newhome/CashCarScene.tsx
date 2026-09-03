@@ -23,7 +23,7 @@ function CarModel({
   onReady: () => void;
   reducedMotion: boolean;
 }) {
-  const { scene } = useGLTF(url);
+  const { scene } = useGLTF(url, true);
   const groupRef = useRef<THREE.Group>(null);
   const elapsed = useRef(0);
 
@@ -157,7 +157,7 @@ export default function CashCarScene({
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    useGLTF.preload(modelUrl);
+    useGLTF.preload(modelUrl, true);
   }, [modelUrl]);
 
   useEffect(

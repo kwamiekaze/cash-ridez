@@ -1,6 +1,6 @@
 // Config for the /newhome work-in-progress homepage.
 // Placeholder GLB paths — replace with the real uploaded models.
-export const CAR_MODEL_URL = "/models/cashridez-car.glb";
+export const CAR_MODEL_URL = "/models/cashridez-car-desktop.glb";
 export const CAR_MODEL_URL_MOBILE = "/models/cashridez-car-mobile.glb";
 
 // Header lockup (placeholder — swap for the real uploaded asset)
