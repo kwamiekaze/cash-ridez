@@ -104,19 +104,20 @@ export default function NewHome() {
                 </h1>
               </motion.div>
 
-              {/* Square wheel container: car centered, buttons on the ring */}
+              {/* Car-shaped frame: car fills it, buttons on top/bottom edges */}
               <div className="relative flex w-full flex-col items-center">
                 <div className="relative overflow-visible" style={{
                   width: wheelSize,
-                  height: wheelSize
+                  height: wheelSize * 0.52
                 }}>
-                  {/* CAR LAYER — 88% of container, absolutely centered */}
+                  {/* CAR LAYER — fills the frame, absolutely centered */}
                   <div className="absolute left-1/2 top-1/2 z-10" style={{
-                    width: "88%",
-                    height: "88%",
+                    width: "100%",
+                    height: "100%",
                     transform: "translate(-50%, -50%)"
 
                   }}>
+
                     <Suspense fallback={null}>
                       <CashCar3D />
                     </Suspense>
