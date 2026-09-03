@@ -13,7 +13,7 @@ export const PARTICLE_COLOR_GREEN = "#4ADE80";
 export const PARTICLE_COLOR_GOLD = "#F5D142";
 
 // Auto-scale target: longest bounding-box dimension in world units
-export const CAR_TARGET_SIZE = 2.1;
+export const CAR_TARGET_SIZE = 2.4;
 
 // Delay before autoRotate resumes after user interaction (ms)
 export const AUTOROTATE_RESUME_MS = 3000;
