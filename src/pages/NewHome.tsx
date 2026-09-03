@@ -67,11 +67,10 @@ export default function NewHome() {
           <section className="relative overflow-hidden">
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
-            {/* Viewport-centered button–car–button group */}
+            {/* Viewport-height wheel region: brand block + square wheel */}
             <div className="relative z-50 flex min-h-[100svh] flex-col items-center justify-center px-4 pt-24 pb-8 md:pt-28">
-              <div className="flex w-full max-w-7xl flex-col items-center gap-2 md:gap-3">
-                {/* 1. Post a Trip — above the car */}
-                <motion.div initial={{
+              {/* Brand block above the wheel */}
+              <motion.div initial={{
                 opacity: 0,
                 y: 20
               }} animate={{
@@ -79,37 +78,56 @@ export default function NewHome() {
                 y: 0
               }} transition={{
                 duration: 0.8,
-                delay: 0.2
-              }} className="flex justify-center">
-                  <button onClick={() => navigate("/auth")} className="px-5 py-2.5 md:px-7 md:py-3 text-sm md:text-base font-bold rounded-2xl transition-all hover:scale-105 flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 text-black shadow-lg shadow-yellow-500/50 hover:shadow-yellow-500/70">
-                    <span className="text-base md:text-lg">📍</span>
+                delay: 0.15
+              }} className="mb-4 flex flex-col items-center gap-2 text-center md:mb-6">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-400 md:text-xs">
+                  📍 Atlanta
+                </span>
+                <p className="text-xs font-medium text-emerald-400 md:text-sm">
+                  Powered by People - Driven by Cash 💵
+                </p>
+                <h1 className="gold-shimmer text-2xl font-bold leading-tight md:text-4xl lg:text-5xl">
+                  Keep 100% of your earnings💰
+                </h1>
+              </motion.div>
+
+              {/* Square wheel container: car centered, buttons on the ring */}
+              <div className="relative flex w-full flex-col items-center">
+                <div className="relative overflow-visible" style={{
+                  width: wheelSize,
+                  height: wheelSize
+                }}>
+                  {/* CAR LAYER — 58% of container, absolutely centered */}
+                  <div className="absolute left-1/2 top-1/2 z-10" style={{
+                    width: "58%",
+                    height: "58%",
+                    transform: "translate(-50%, -50%)"
+                  }}>
+                    <Suspense fallback={null}>
+                      <CashCar3D />
+                    </Suspense>
+                  </div>
+
+                  {/* Post a Trip — 12 o'clock on the ring */}
+                  <button onClick={() => navigate("/auth")} style={{
+                    left: "50%",
+                    top: "calc(50% - 50%)",
+                    transform: "translate(-50%, -50%)"
+                  }} className="absolute z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
+                    <span className="text-xs md:text-base">📍</span>
                     Post a Trip
                   </button>
-                </motion.div>
 
-                {/* 2. The 3D car — the focal point */}
-                <div className="relative flex w-full justify-center">
-                  <Suspense fallback={<div className="h-[320px] w-[320px] sm:h-[400px] sm:w-[400px] md:h-[500px] md:w-[500px] lg:h-[600px] lg:w-[600px]" />}>
-                    <CashCar3D className="mx-auto" />
-                  </Suspense>
-                </div>
-
-                {/* 3. Respond to Trips — below the car */}
-                <motion.div initial={{
-                opacity: 0,
-                y: 20
-              }} animate={{
-                opacity: 1,
-                y: 0
-              }} transition={{
-                duration: 0.8,
-                delay: 0.3
-              }} className="flex justify-center">
-                  <button onClick={() => navigate("/auth")} className="px-5 py-2.5 md:px-7 md:py-3 text-sm md:text-base font-bold rounded-2xl border-2 border-emerald-400 transition-all hover:scale-105 flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 backdrop-blur-sm text-white hover:from-emerald-500/30 hover:to-yellow-500/30">
-                    <CashCarIcon width={28} height={14} glowIntensity="low" />
+                  {/* Respond to Trips — 6 o'clock on the ring */}
+                  <button onClick={() => navigate("/auth")} style={{
+                    left: "50%",
+                    top: "calc(50% + 50%)",
+                    transform: "translate(-50%, -50%)"
+                  }} className="absolute z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-emerald-400 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 px-4 py-2 text-[11px] font-bold text-white backdrop-blur-sm transition-all hover:scale-105 hover:from-emerald-500/30 hover:to-yellow-500/30 md:px-6 md:py-2.5 md:text-sm">
+                    <CashCarIcon width={22} height={11} glowIntensity="low" />
                     Respond to Trips
                   </button>
-                </motion.div>
+                </div>
               </div>
             </div>
 
