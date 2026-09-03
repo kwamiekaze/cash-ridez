@@ -23,7 +23,7 @@ function CarModel({
   onReady: () => void;
   reducedMotion: boolean;
 }) {
-  const { scene } = useGLTF(url);
+  const { scene } = useGLTF(url, true);
   const groupRef = useRef<THREE.Group>(null);
   const elapsed = useRef(0);
 
