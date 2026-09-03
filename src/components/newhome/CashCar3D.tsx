@@ -407,12 +407,12 @@ export default function CashCar3D({ className }: CashCar3DProps) {
       ref={containerRef}
       className={`relative h-full w-full overflow-visible ${className ?? ""}`}
     >
-      {/* Canvas wrapper expands to 145% of the layout slot, like the reference. */}
+      {/* Canvas wrapper fills the car-shaped slot. */}
       <div
         className="absolute left-1/2 top-1/2"
         style={{
-          width: "145%",
-          height: "145%",
+          width: "100%",
+          height: "100%",
           transform: "translate(-50%, -50%)",
         }}
       >
