@@ -1,8 +1,9 @@
 /**
- * CashCar3D — isolated cinematic car showcase for the /newhome mockup.
+ * CashCar3D — cinematic car showcase for the /newhome mockup.
  *
- * The model is centered and scaled from its native bounding box, uses the
- * desktop/mobile CDN asset by device, and pauses rendering when off-screen.
+ * Mirrors the DrivingKlass `CarShowcase` composition: the component fills its
+ * parent box and the canvas wrapper expands to 145% of it, so the rendered car
+ * overflows the layout slot the way the reference does.
  */
 import React, {
   Component,
@@ -56,7 +57,7 @@ function hasWebGL() {
   }
 }
 
-class CarErrorBoundary extends Component<
+class SafeBoundary extends Component<
   { fallback: ReactNode; children: ReactNode },
   { hasError: boolean }
 > {
@@ -67,12 +68,34 @@ class CarErrorBoundary extends Component<
   }
 
   componentDidCatch(error: unknown) {
-    console.warn("[CashCar3D] 3D scene failed, showing placeholder:", error);
+    console.warn("[CashCar3D] subtree failed, using fallback:", error);
   }
 
   render() {
     return this.state.hasError ? this.props.fallback : this.props.children;
   }
+}
+
+function LocalEnvironment() {
+  return (
+    <Environment resolution={256}>
+      <Lightformer intensity={2} position={[0, 5, 0]} scale={[10, 10, 1]} />
+      <Lightformer
+        intensity={1}
+        color={PARTICLE_COLOR_GREEN}
+        position={[-5, 1, -1]}
+        rotation-y={Math.PI / 2}
+        scale={[20, 1, 1]}
+      />
+      <Lightformer
+        intensity={1}
+        color={PARTICLE_COLOR_GOLD}
+        position={[5, 1, 1]}
+        rotation-y={-Math.PI / 2}
+        scale={[20, 1, 1]}
+      />
+    </Environment>
+  );
 }
 
 function Placeholder() {
@@ -97,7 +120,10 @@ function Spinner({ visible }: { visible: boolean }) {
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div
+        className="animate-spin rounded-full border-2 border-primary border-t-transparent"
+        style={{ width: 42, height: 42 }}
+      />
     </div>
   );
 }
@@ -124,20 +150,26 @@ function CarModel({
     bounds.getCenter(center);
 
     clone.position.sub(center);
+    clone.position.y += size.y / 2;
+
     clone.traverse((object) => {
       const mesh = object as THREE.Mesh;
       if (!mesh.isMesh) return;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
-      const materials = Array.isArray(mesh.material)
-        ? mesh.material.map((material) => material.clone())
-        : mesh.material.clone();
-      mesh.material = materials;
+      const clone1 = (material: THREE.Material) => {
+        const next = material.clone() as THREE.MeshStandardMaterial;
+        if ("envMapIntensity" in next) next.envMapIntensity = 1.35;
+        return next;
+      };
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(clone1)
+        : clone1(mesh.material);
     });
 
     return {
       model: clone,
-      scale: CAR_TARGET_SIZE / (Math.max(size.x, size.y, size.z) || 1),
+      scale: CAR_TARGET_SIZE / (Math.max(size.x, size.z) || 1),
       nativeSize: size,
     };
   }, [scene]);
@@ -160,8 +192,8 @@ function CarModel({
     entrance.current = Math.min(entrance.current + delta, 1.6);
     const progress = entrance.current / 1.6;
     const eased = 1 - Math.pow(1 - progress, 3);
-    modelGroup.position.y = -0.3 * (1 - eased);
-    modelGroup.rotation.y = -0.12 * (1 - eased);
+    modelGroup.position.y = -0.35 * (1 - eased);
+    modelGroup.rotation.y = (-25 * Math.PI) / 180 * (1 - eased);
 
     modelGroup.traverse((object) => {
       const mesh = object as THREE.Mesh;
@@ -278,8 +310,9 @@ function CarScene({
       frameloop={frameloop}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, position: [3.2, 1.6, 3.2] }}
-      onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
+      onCreated={({ camera }) => camera.lookAt(0, 0.5, 0)}
     >
+      {/* Five-light rig */}
       <ambientLight intensity={0.45} />
       <directionalLight
         position={[-5, 6, 5]}
@@ -296,21 +329,19 @@ function CarScene({
         color={PARTICLE_COLOR_GOLD}
       />
       <directionalLight position={[0, -3, 2]} intensity={0.2} color={PARTICLE_COLOR_GREEN} />
-      <Environment resolution={256}>
-        <Lightformer intensity={2} position={[0, 5, 0]} scale={[10, 10, 1]} />
-        <Lightformer
-          intensity={1}
-          color={PARTICLE_COLOR_GREEN}
-          position={[-5, 1, -1]}
-          rotation-y={Math.PI / 2}
-          scale={[20, 1, 1]}
-        />
-      </Environment>
+      <pointLight position={[0, 3, -4]} intensity={6} color="#ffffff" />
+
+      {/* Env map is mandatory for the metallic body; fall back to Lightformers. */}
+      <SafeBoundary fallback={<LocalEnvironment />}>
+        <Suspense fallback={<LocalEnvironment />}>
+          <Environment preset="city" />
+        </Suspense>
+      </SafeBoundary>
 
       <Suspense fallback={null}>
         <CarModel url={modelUrl} reducedMotion={reducedMotion} onReady={onReady} />
         <ContactShadows
-          position={[0, -1.15, 0]}
+          position={[0, -0.02, 0]}
           opacity={0.55}
           scale={12}
           blur={2.6}
@@ -321,9 +352,9 @@ function CarScene({
       <Particles animate={!reducedMotion} />
       <OrbitControls
         ref={controlsRef}
-        target={[0, 0, 0]}
+        target={[0, 0.5, 0]}
         autoRotate={!reducedMotion}
-        autoRotateSpeed={-2.4}
+        autoRotateSpeed={-2.778}
         enablePan={false}
         enableZoom={allowZoom}
         enableDamping
@@ -346,7 +377,6 @@ export default function CashCar3D({ className }: CashCar3DProps) {
   const [visible, setVisible] = useState(true);
   const [ready, setReady] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const [containerSize, setContainerSize] = useState(320);
   const mobile = useMemo(() => isMobileDevice(), []);
   const reducedMotion = useMemo(
     () =>
@@ -359,13 +389,6 @@ export default function CashCar3D({ className }: CashCar3DProps) {
 
   useEffect(() => {
     setWebgl(hasWebGL());
-    const updateSize = () => {
-      const width = window.innerWidth;
-      setContainerSize(width >= 1024 ? 600 : width >= 768 ? 500 : width >= 640 ? 400 : 320);
-    };
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
   }, []);
 
   useEffect(() => {
@@ -379,35 +402,24 @@ export default function CashCar3D({ className }: CashCar3DProps) {
     return () => observer.disconnect();
   }, []);
 
-  const glowSize = containerSize * 0.64;
-  const canvasSize = containerSize * 0.84;
-
   return (
     <div
       ref={containerRef}
-      className={className ?? "relative mx-auto"}
-      style={{ width: containerSize, height: containerSize }}
+      className={`relative h-full w-full overflow-visible ${className ?? ""}`}
     >
-      <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div
-          className="rounded-full bg-primary/20 blur-[90px]"
-          style={{ width: glowSize, height: glowSize }}
-        />
-      </div>
+      {/* Canvas wrapper expands to 145% of the layout slot, like the reference. */}
       <div
-        className="absolute"
+        className="absolute left-1/2 top-1/2"
         style={{
-          width: canvasSize,
-          height: canvasSize,
-          top: "50%",
-          left: "50%",
+          width: "145%",
+          height: "145%",
           transform: "translate(-50%, -50%)",
         }}
       >
         {webgl === false ? (
           <Placeholder />
         ) : webgl === true ? (
-          <CarErrorBoundary fallback={<Placeholder />}>
+          <SafeBoundary fallback={<Placeholder />}>
             <CarScene
               modelUrl={modelUrl}
               frameloop={visible ? "always" : "never"}
@@ -416,7 +428,7 @@ export default function CashCar3D({ className }: CashCar3DProps) {
               onReady={onReady}
             />
             <Spinner visible={!ready} />
-          </CarErrorBoundary>
+          </SafeBoundary>
         ) : (
           <Spinner visible />
         )}
