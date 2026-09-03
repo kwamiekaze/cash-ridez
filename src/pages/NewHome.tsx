@@ -146,16 +146,7 @@ export default function NewHome() {
             {/* Brand copy below the fold */}
             <div className="relative z-50 mx-auto max-w-7xl px-4 pb-16 text-center sm:px-6 lg:px-8">
               <div className="space-y-4 pt-12">
-                <motion.h1 initial={{
-                  opacity: 0,
-                  y: 30
-                }} animate={{
-                  opacity: 1,
-                  y: 0
-                }} transition={{
-                  duration: 0.8,
-                  delay: 0.4
-                }} className="text-5xl md:text-7xl lg:text-8xl font-bold gold-shimmer">Keep 100% of your earnings💰</motion.h1>
+
 
                 <motion.p initial={{
                   opacity: 0,
