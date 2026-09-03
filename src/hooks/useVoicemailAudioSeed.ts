@@ -44,7 +44,8 @@ export function useVoicemailAudioSeed() {
 
         localStorage.setItem(VOICEMAIL_SEED_KEY, "1");
       } catch (e) {
-        // Silent fail; we'll retry on next load until it succeeds.
+        // Don't retry on every page load — one failure is enough signal.
+        localStorage.setItem(VOICEMAIL_SEED_FAILED_KEY, "1");
         console.warn("[voicemail-seed] failed", e);
       }
     };
