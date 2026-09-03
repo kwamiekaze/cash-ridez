@@ -20,18 +20,19 @@ const CashCar3D = lazy(() => import('@/components/newhome/CashCar3D'));
 export default function NewHome() {
   const [showSplash, setShowSplash] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [wheelSize, setWheelSize] = useState(320);
+  const [wheelSize, setWheelSize] = useState(366);
   const navigate = useNavigate();
 
   useEffect(() => {
     const updateSize = () => {
-      const width = window.innerWidth;
-      setWheelSize(width >= 1024 ? 600 : width >= 768 ? 500 : width >= 640 ? 400 : 320);
+      // Car-shaped frame: nearly viewport-wide, capped at 620px.
+      setWheelSize(Math.min(window.innerWidth - 24, 620));
     };
     updateSize();
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
+
 
   const steps = [{
     number: '01',
