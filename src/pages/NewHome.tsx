@@ -4,7 +4,7 @@
  * composition (3D car between the two primary CTAs) and the header logo differ.
  * `/` and LandingNew.tsx are untouched.
  */
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { CheckCircle2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
