@@ -109,11 +109,12 @@ export default function NewHome() {
                   width: wheelSize,
                   height: wheelSize
                 }}>
-                  {/* CAR LAYER — 58% of container, absolutely centered */}
+                  {/* CAR LAYER — 88% of container, absolutely centered */}
                   <div className="absolute left-1/2 top-1/2 z-10" style={{
-                    width: "58%",
-                    height: "58%",
+                    width: "88%",
+                    height: "88%",
                     transform: "translate(-50%, -50%)"
+
                   }}>
                     <Suspense fallback={null}>
                       <CashCar3D />
