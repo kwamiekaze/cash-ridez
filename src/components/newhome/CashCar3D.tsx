@@ -183,16 +183,11 @@ function CarModel({
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
     const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
 
-    // Target is expressed against the VIEWPORT width (the canvas is a few px
-    // narrower because of the page gutter).
-    const vw = typeof window !== "undefined" ? window.innerWidth : viewport.width;
+    const vw = viewport.width; // canvas width, CSS px
     const frac = vw >= 1024 ? 0.62 : vw >= 768 ? 0.7 : 0.75;
-    const targetPx = vw * frac;
-    // Perspective gain: the near flank of the car sits closer than the look-at
-    // plane, so it projects ~15% longer than the flat frame maths predicts.
-    const PERSPECTIVE_GAIN = 1.15;
-    const fill = targetPx / (PERSPECTIVE_GAIN * viewport.width);
+    const fill = frac;
     const dist = halfLen / fill / Math.tan(hFov / 2);
+
 
 
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
@@ -236,7 +231,32 @@ function CarModel({
         material.opacity = eased;
       });
     });
+
+    // TEMP-MEASURE
+    const w = (window as any);
+    if (w.__measureCar) {
+      const cam = camera as THREE.PerspectiveCamera;
+      cam.updateMatrixWorld();
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      const v = new THREE.Vector3();
+      modelGroup.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh) return;
+        mesh.updateWorldMatrix(true, false);
+        const pos = mesh.geometry.getAttribute("position");
+        for (let i = 0; i < pos.count; i += 3) {
+          v.fromBufferAttribute(pos as THREE.BufferAttribute, i).applyMatrix4(mesh.matrixWorld).project(cam);
+          const px = (v.x * 0.5 + 0.5) * viewport.width;
+          const py = (-v.y * 0.5 + 0.5) * viewport.height;
+          if (px < minX) minX = px; if (px > maxX) maxX = px;
+          if (py < minY) minY = py; if (py > maxY) maxY = py;
+        }
+      });
+      w.__carMeasure = { minX, maxX, minY, maxY, cw: viewport.width, ch: viewport.height, dist: cam.position.length() };
+    }
+
   });
+
 
   return (
     <group ref={modelRef} name="carRoot">
@@ -314,9 +334,9 @@ function CarScene({
 }) {
   const controlsRef = useRef<any>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [fit, setFit] = useState<{ target: [number, number, number]; dist: number }>({
+  const [fit, setFit] = useState<{ target: [number, number, number]; dist: number | null }>({
     target: [0, 0.5, 0],
-    dist: 4,
+    dist: null,
   });
 
   const handleCameraFit = useCallback((target: THREE.Vector3, dist: number) => {
@@ -327,11 +347,14 @@ function CarScene({
       const controls = controlsRef.current;
       if (!controls) return;
       const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
-      controls.minDistance = dist * 0.7;
-      controls.maxDistance = dist * 1.4;
+      controls.minDistance = 0.01;
+      controls.maxDistance = 10000;
       controls.target.copy(target);
       controls.object.position.copy(target).addScaledVector(dir, dist);
       controls.object.lookAt(target);
+      controls.update();
+      controls.minDistance = dist * 0.7;
+      controls.maxDistance = dist * 1.4;
       controls.update();
     };
     requestAnimationFrame(() => {
@@ -418,8 +441,8 @@ function CarScene({
         enableZoom={allowZoom}
         enableDamping
         dampingFactor={0.08}
-        minDistance={fit.dist * 0.7}
-        maxDistance={fit.dist * 1.4}
+        minDistance={fit.dist ? fit.dist * 0.7 : 0.01}
+        maxDistance={fit.dist ? fit.dist * 1.4 : 10000}
         onStart={pauseRotation}
         onEnd={resumeRotation}
       />
