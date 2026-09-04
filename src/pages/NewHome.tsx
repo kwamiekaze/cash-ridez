@@ -27,7 +27,7 @@ export default function NewHome() {
     const updateSize = () => {
       // Car stage: full-bleed, effectively the whole viewport width.
       const width = Math.min(window.innerWidth - 24, 1600);
-      const height = Math.min(width * 0.46, window.innerHeight * 0.6);
+      const height = Math.min(width * 0.46, window.innerHeight * 0.52);
       setStage({ width, height });
     };
     updateSize();
@@ -107,8 +107,8 @@ export default function NewHome() {
               </motion.div>
 
               {/* Simple stacked composition: button / car stage / button */}
-              <div className="flex w-full flex-col items-center gap-2.5">
-                <button onClick={() => navigate("/auth")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
+              <div className="flex w-full flex-col items-center gap-6">
+                <button onClick={() => navigate("/auth")} className="relative z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
                   <span className="text-xs md:text-base">📍</span>
                   Post a Trip
                 </button>
@@ -119,14 +119,17 @@ export default function NewHome() {
                     height: stage.height
                   }}>
                     <Suspense fallback={null}>
-                      <CashCar3D className="absolute inset-0" />
+                      {/* Canvas bleeds vertically past the stage box so the car is
+                          never cropped by a frame edge. Buttons sit above it. */}
+                      <CashCar3D className="absolute left-0 w-full" style={{ top: -stage.height * 0.15, height: stage.height * 1.3 }} />
                     </Suspense>
                   </div>
                 </div>
 
 
 
-                <button onClick={() => navigate("/auth")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-emerald-400 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 px-4 py-2 text-[11px] font-bold text-white backdrop-blur-sm transition-all hover:scale-105 hover:from-emerald-500/30 hover:to-yellow-500/30 md:px-6 md:py-2.5 md:text-sm">
+
+                <button onClick={() => navigate("/auth")} className="relative z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-emerald-400 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 px-4 py-2 text-[11px] font-bold text-white backdrop-blur-sm transition-all hover:scale-105 hover:from-emerald-500/30 hover:to-yellow-500/30 md:px-6 md:py-2.5 md:text-sm">
                   <CashCarIcon width={22} height={11} glowIntensity="low" />
                   Respond to Trips
                 </button>
