@@ -166,15 +166,17 @@ export function DraftsTab() {
 
     // Subscribe to drafts changes
     const draftsChannel = supabase
-      .channel('drafts-changes')
+      .channel(`drafts-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_sms_drafts' }, () => {
         fetchDrafts();
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     // Subscribe to send lock changes
     const lockChannel = supabase
-      .channel('lock-changes')
+      .channel(`lock-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_sms_send_lock' }, (payload) => {
         if (payload.new) {
           const newLock = payload.new as SendLock;
@@ -182,7 +184,9 @@ export function DraftsTab() {
           updateCooldown(newLock.locked_until);
         }
       })
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(draftsChannel);

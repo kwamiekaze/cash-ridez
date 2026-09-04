@@ -164,7 +164,9 @@ const AutoCallTab = () => {
           loadActiveRecipient(activeCampaign.id);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     // Initial load of active recipient
     loadActiveRecipient(activeCampaign.id);

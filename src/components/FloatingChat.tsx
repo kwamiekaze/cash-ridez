@@ -41,7 +41,7 @@ export function FloatingChat({ inChatTab = false }: FloatingChatProps) {
 
     // Subscribe to ride updates
     const channel = supabase
-      .channel('active-rides-updates')
+      .channel(`active-rides-updates-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -69,7 +69,9 @@ export function FloatingChat({ inChatTab = false }: FloatingChatProps) {
           fetchActiveRides();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

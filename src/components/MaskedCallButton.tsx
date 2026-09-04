@@ -151,7 +151,9 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
           fetchLastCall();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

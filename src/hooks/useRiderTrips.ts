@@ -71,7 +71,9 @@ export const useRiderTrips = (userId: string | undefined) => {
           }, 1000); // 1 second debounce
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);

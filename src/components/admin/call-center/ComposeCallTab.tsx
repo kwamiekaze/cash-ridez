@@ -52,7 +52,9 @@ const ComposeCallTab = () => {
           handleStatusUpdate(newStatus, payload.new);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       console.log('Unsubscribing from realtime updates');

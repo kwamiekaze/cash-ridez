@@ -354,7 +354,7 @@ export function AutoTextTab() {
   // Realtime subscriptions
   useEffect(() => {
     const campaignChannel = supabase
-      .channel('campaign-changes')
+      .channel(`campaign-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_sms_campaigns' },
@@ -371,7 +371,9 @@ export function AutoTextTab() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(campaignChannel);
@@ -399,7 +401,9 @@ export function AutoTextTab() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(recipientChannel);

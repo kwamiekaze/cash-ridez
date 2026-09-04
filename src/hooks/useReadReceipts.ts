@@ -32,7 +32,9 @@ export const useReadReceipts = (messageType: string, currentUserId: string | nul
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

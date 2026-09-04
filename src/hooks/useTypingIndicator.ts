@@ -34,7 +34,9 @@ export const useTypingIndicator = (roomId: string, roomType: string, currentUser
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

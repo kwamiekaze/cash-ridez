@@ -66,11 +66,13 @@ export default function TripDetails() {
           fetchTripData();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     // Subscribe to realtime updates for offers
     const offersChannel = supabase
-      .channel('counter-offers-changes')
+      .channel(`counter-offers-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -83,7 +85,9 @@ export default function TripDetails() {
           fetchOffers();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(tripChannel);

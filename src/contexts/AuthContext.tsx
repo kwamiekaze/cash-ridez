@@ -177,7 +177,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -225,7 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     const channel = supabase
-      .channel('profile-verification-dialog')
+      .channel(`profile-verification-dialog-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -263,7 +265,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -275,7 +279,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
 
     const channel = supabase
-      .channel('trip-connection-phone-reminder')
+      .channel(`trip-connection-phone-reminder-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -307,7 +311,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

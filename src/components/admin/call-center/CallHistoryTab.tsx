@@ -62,7 +62,7 @@ const CallHistoryTab = () => {
 
     // Subscribe to new calls
     const channel = supabase
-      .channel('call-history')
+      .channel(`call-history-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -74,7 +74,9 @@ const CallHistoryTab = () => {
           loadCalls();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

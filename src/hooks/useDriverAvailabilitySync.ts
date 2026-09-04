@@ -15,7 +15,7 @@ export const useDriverAvailabilitySync = () => {
 
     // Subscribe to driver_status changes in realtime
     const channel = supabase
-      .channel('driver-availability-sync')
+      .channel(`driver-availability-sync-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -32,7 +32,9 @@ export const useDriverAvailabilitySync = () => {
           // This hook is just for logging and potential future enhancements
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

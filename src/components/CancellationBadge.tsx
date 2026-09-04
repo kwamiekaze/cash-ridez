@@ -49,7 +49,9 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

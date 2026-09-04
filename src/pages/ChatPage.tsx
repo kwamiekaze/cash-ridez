@@ -52,7 +52,7 @@ export default function ChatPage() {
 
     // Subscribe to realtime messages
     const channel = supabase
-      .channel('ride-messages-changes')
+      .channel(`ride-messages-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -74,7 +74,9 @@ export default function ChatPage() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

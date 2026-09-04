@@ -81,7 +81,7 @@ export function useBrowserNotifications() {
     if (!user || permission !== 'granted') return;
 
     const channel = supabase
-      .channel('browser-notifications')
+      .channel(`browser-notifications-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -100,7 +100,9 @@ export function useBrowserNotifications() {
           });
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

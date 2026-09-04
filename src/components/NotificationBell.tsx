@@ -68,7 +68,7 @@ export function NotificationBell() {
 
     // Set up real-time subscription
     const channel = supabase
-      .channel('notifications-channel')
+      .channel(`notifications-channel-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -88,7 +88,9 @@ export function NotificationBell() {
           playNotificationSound();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

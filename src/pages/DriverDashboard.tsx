@@ -42,7 +42,7 @@ const DriverDashboard = () => {
       
       // Set up realtime subscription for profile updates
       const profileChannel = supabase
-        .channel('driver-profile-changes')
+        .channel(`driver-profile-changes-${Math.random().toString(36).slice(2, 10)}`)
         .on(
           'postgres_changes',
           {
@@ -56,7 +56,9 @@ const DriverDashboard = () => {
             setProfile(payload.new);
           }
         )
-        .subscribe();
+        .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
       
       return () => {
         profileChannel.unsubscribe();

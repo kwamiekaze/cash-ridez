@@ -163,7 +163,9 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
             setMessages((prev) => [...prev, newMsg]);
           }
         )
-        .subscribe();
+        .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
       return () => {
         supabase.removeChannel(channel);

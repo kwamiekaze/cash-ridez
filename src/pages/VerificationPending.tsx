@@ -37,7 +37,7 @@ export default function VerificationPending() {
 
     // Subscribe to profile changes to detect verification updates
     const channel = supabase
-      .channel("profile-verification-changes")
+      .channel(`profile-verification-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         "postgres_changes",
         {
@@ -65,7 +65,9 @@ export default function VerificationPending() {
           setVerificationStatus(newStatus);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
