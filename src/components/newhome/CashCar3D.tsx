@@ -203,7 +203,6 @@ function CarModel({
     cam.near = Math.max(0.01, dist / 100);
     cam.far = dist * 20;
     cam.updateProjectionMatrix();
-    console.log('FIT', JSON.stringify({vw:viewport.width,vh:viewport.height,frac,targetPx,dist,nat:[nativeSize.x,nativeSize.y,nativeSize.z],fov:cam.fov}));
     onCameraFit?.(target, dist);
 
   }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);

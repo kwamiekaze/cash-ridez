@@ -1,8 +1,8 @@
 // Config for the /newhome work-in-progress homepage.
 import car from "@/assets/cashridez-car-v7.glb.asset.json";
 
-export const CAR_MODEL_URL = "/tmp-car.glb";
-export const CAR_MODEL_URL_MOBILE = "/tmp-car.glb";
+export const CAR_MODEL_URL = car.url;
+export const CAR_MODEL_URL_MOBILE = car.url;
 
 // Header lockup (placeholder — swap for the real uploaded asset)
 export const HEADER_LOGO_URL = "/branding/cashridez-topper.webp";
