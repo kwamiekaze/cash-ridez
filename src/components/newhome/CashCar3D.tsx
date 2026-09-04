@@ -317,6 +317,8 @@ function CarScene({
       const controls = controlsRef.current;
       if (!controls) return;
       const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
+      controls.minDistance = dist * 0.7;
+      controls.maxDistance = dist * 1.4;
       controls.target.copy(target);
       controls.object.position.copy(target).addScaledVector(dir, dist);
       controls.object.lookAt(target);
