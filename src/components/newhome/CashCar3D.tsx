@@ -15,7 +15,7 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   ContactShadows,
   Environment,
@@ -29,7 +29,6 @@ import {
   AUTOROTATE_RESUME_MS,
   CAR_MODEL_URL,
   CAR_MODEL_URL_MOBILE,
-  CAR_TARGET_SIZE,
   PARTICLE_COLOR_GOLD,
   PARTICLE_COLOR_GREEN,
   PARTICLE_COUNT,
@@ -132,16 +131,19 @@ function CarModel({
   url,
   reducedMotion,
   onReady,
+  onCameraFit,
 }: {
   url: string;
   reducedMotion: boolean;
   onReady: () => void;
+  onCameraFit?: (target: THREE.Vector3, dist: number) => void;
 }) {
   const { scene } = useGLTF(url, true);
   const modelRef = useRef<THREE.Group>(null);
   const entrance = useRef(0);
+  const { camera, size: viewport } = useThree();
 
-  const { model, scale, nativeSize } = useMemo(() => {
+  const { model, nativeSize } = useMemo(() => {
     const clone = scene.clone(true);
     const bounds = new THREE.Box3().setFromObject(clone);
     const size = new THREE.Vector3();
@@ -167,17 +169,40 @@ function CarModel({
         : clone1(mesh.material);
     });
 
-    return {
-      model: clone,
-      scale: CAR_TARGET_SIZE / (Math.max(size.x, size.z) || 1),
-      nativeSize: size,
-    };
+    return { model: clone, nativeSize: size };
   }, [scene]);
 
+  // Fit-to-frame camera: distance derived from the car length and the canvas
+  // aspect ratio so the car always fills ~90% of the frame width.
   useEffect(() => {
-    console.log("[CashCar3D] native size:", nativeSize.toArray(), "auto scale:", scale);
+    const cam = camera as THREE.PerspectiveCamera;
+    if (!viewport.width || !viewport.height) return;
+    const aspect = viewport.width / viewport.height;
+    cam.aspect = aspect;
+    const vFov = THREE.MathUtils.degToRad(cam.fov);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+    const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
+    // Fraction of the frame width the car's length should occupy at its widest
+    // (side-on) angle. Tuned by measurement: the auto-rotating car never sits
+    // perfectly broadside to the fixed 45deg view direction, so the effective
+    // on-screen fill lands ~87% of the viewport at this value.
+    const fill = 1.0;
+    const dist = halfLen / fill / Math.tan(hFov / 2);
+    const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
+    const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
+    cam.position.copy(target).addScaledVector(dir, dist);
+    cam.lookAt(target);
+    cam.near = Math.max(0.01, dist / 100);
+    cam.far = dist * 20;
+    cam.updateProjectionMatrix();
+    onCameraFit?.(target, dist);
+
+  }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
+
+  useEffect(() => {
+    console.log("[CashCar3D] native size:", nativeSize.toArray());
     onReady();
-  }, [nativeSize, onReady, scale]);
+  }, [nativeSize, onReady]);
 
   useFrame((_, rawDelta) => {
     const modelGroup = modelRef.current;
@@ -207,11 +232,12 @@ function CarModel({
   });
 
   return (
-    <group ref={modelRef} scale={scale}>
+    <group ref={modelRef} name="carRoot">
       <primitive object={model} />
     </group>
   );
 }
+
 
 function Particles({ animate }: { animate: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
@@ -281,6 +307,32 @@ function CarScene({
 }) {
   const controlsRef = useRef<any>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fit, setFit] = useState<{ target: [number, number, number]; dist: number }>({
+    target: [0, 0.5, 0],
+    dist: 4,
+  });
+
+  const handleCameraFit = useCallback((target: THREE.Vector3, dist: number) => {
+    setFit({ target: [target.x, target.y, target.z], dist });
+    // Push the fitted distance through OrbitControls after its own clamping /
+    // damping has settled, otherwise the previous min/maxDistance wins.
+    const apply = () => {
+      const controls = controlsRef.current;
+      if (!controls) return;
+      const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
+      controls.minDistance = dist * 0.7;
+      controls.maxDistance = dist * 1.4;
+      controls.target.copy(target);
+      controls.object.position.copy(target).addScaledVector(dir, dist);
+      controls.object.lookAt(target);
+      controls.update();
+    };
+    requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(apply);
+    });
+  }, []);
+
 
   useEffect(() => {
     useGLTF.preload(modelUrl, true);
@@ -339,7 +391,7 @@ function CarScene({
       </SafeBoundary>
 
       <Suspense fallback={null}>
-        <CarModel url={modelUrl} reducedMotion={reducedMotion} onReady={onReady} />
+        <CarModel url={modelUrl} reducedMotion={reducedMotion} onReady={onReady} onCameraFit={handleCameraFit} />
         <ContactShadows
           position={[0, -0.02, 0]}
           opacity={0.55}
@@ -352,15 +404,15 @@ function CarScene({
       <Particles animate={!reducedMotion} />
       <OrbitControls
         ref={controlsRef}
-        target={[0, 0.5, 0]}
+        target={fit.target}
         autoRotate={!reducedMotion}
         autoRotateSpeed={-2.778}
         enablePan={false}
         enableZoom={allowZoom}
         enableDamping
         dampingFactor={0.08}
-        minDistance={1.5}
-        maxDistance={8}
+        minDistance={fit.dist * 0.7}
+        maxDistance={fit.dist * 1.4}
         onStart={pauseRotation}
         onEnd={resumeRotation}
       />

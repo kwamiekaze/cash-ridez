@@ -25,8 +25,9 @@ export default function NewHome() {
 
   useEffect(() => {
     const updateSize = () => {
-      // Car-shaped frame: nearly viewport-wide, capped at 620px.
-      setWheelSize(Math.min(window.innerWidth - 24, 620));
+      // Car stage: nearly viewport-wide, capped at 640px.
+      setWheelSize(Math.min(window.innerWidth - 16, 640));
+
     };
     updateSize();
     window.addEventListener('resize', updateSize);
@@ -104,46 +105,28 @@ export default function NewHome() {
                 </h1>
               </motion.div>
 
-              {/* Car-shaped frame: car fills it, buttons on top/bottom edges */}
-              <div className="relative flex w-full flex-col items-center">
+              {/* Simple stacked composition: button / car stage / button */}
+              <div className="flex w-full flex-col items-center gap-2.5">
+                <button onClick={() => navigate("/auth")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
+                  <span className="text-xs md:text-base">📍</span>
+                  Post a Trip
+                </button>
+
                 <div className="relative overflow-visible" style={{
                   width: wheelSize,
-                  height: wheelSize * 0.52
+                  height: wheelSize * 0.5
                 }}>
-                  {/* CAR LAYER — fills the frame, absolutely centered */}
-                  <div className="absolute left-1/2 top-1/2 z-10" style={{
-                    width: "100%",
-                    height: "100%",
-                    transform: "translate(-50%, -50%)"
-
-                  }}>
-
-                    <Suspense fallback={null}>
-                      <CashCar3D />
-                    </Suspense>
-                  </div>
-
-                  {/* Post a Trip — 12 o'clock on the ring */}
-                  <button onClick={() => navigate("/auth")} style={{
-                    left: "50%",
-                    top: "calc(50% - 50%)",
-                    transform: "translate(-50%, -50%)"
-                  }} className="absolute z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
-                    <span className="text-xs md:text-base">📍</span>
-                    Post a Trip
-                  </button>
-
-                  {/* Respond to Trips — 6 o'clock on the ring */}
-                  <button onClick={() => navigate("/auth")} style={{
-                    left: "50%",
-                    top: "calc(50% + 50%)",
-                    transform: "translate(-50%, -50%)"
-                  }} className="absolute z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-emerald-400 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 px-4 py-2 text-[11px] font-bold text-white backdrop-blur-sm transition-all hover:scale-105 hover:from-emerald-500/30 hover:to-yellow-500/30 md:px-6 md:py-2.5 md:text-sm">
-                    <CashCarIcon width={22} height={11} glowIntensity="low" />
-                    Respond to Trips
-                  </button>
+                  <Suspense fallback={null}>
+                    <CashCar3D className="absolute inset-0" />
+                  </Suspense>
                 </div>
+
+                <button onClick={() => navigate("/auth")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-emerald-400 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 px-4 py-2 text-[11px] font-bold text-white backdrop-blur-sm transition-all hover:scale-105 hover:from-emerald-500/30 hover:to-yellow-500/30 md:px-6 md:py-2.5 md:text-sm">
+                  <CashCarIcon width={22} height={11} glowIntensity="low" />
+                  Respond to Trips
+                </button>
               </div>
+
             </div>
 
             {/* Brand copy below the fold */}
