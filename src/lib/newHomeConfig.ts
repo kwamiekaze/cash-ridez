@@ -1,5 +1,5 @@
 // Config for the /newhome work-in-progress homepage.
-import car from "@/assets/cashridez-car-v5.glb.asset.json";
+import car from "@/assets/cashridez-car-v6.glb.asset.json";
 
 export const CAR_MODEL_URL = car.url;
 export const CAR_MODEL_URL_MOBILE = car.url;
