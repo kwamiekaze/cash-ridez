@@ -192,7 +192,7 @@ function CarModel({
     // The elevated view makes the body sit low in frame; drop the look-at point
     // slightly so the car reads optically centred in the canvas.
     const frameHeight = 2 * dist * Math.tan(vFov / 2);
-    const target = new THREE.Vector3(0, nativeSize.y / 2 - frameHeight * 0.13, 0);
+    const target = new THREE.Vector3(0, nativeSize.y / 2 + frameHeight * 0.13, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
     cam.lookAt(target);
     cam.near = Math.max(0.01, dist / 100);
