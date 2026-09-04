@@ -20,14 +20,15 @@ const CashCar3D = lazy(() => import('@/components/newhome/CashCar3D'));
 export default function NewHome() {
   const [showSplash, setShowSplash] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
-  const [wheelSize, setWheelSize] = useState(366);
+  const [stage, setStage] = useState({ width: 366, height: 168 });
   const navigate = useNavigate();
 
   useEffect(() => {
     const updateSize = () => {
-      // Car stage: nearly viewport-wide, capped at 640px.
-      setWheelSize(Math.min(window.innerWidth - 16, 640));
-
+      // Car stage: full-bleed, effectively the whole viewport width.
+      const width = Math.min(window.innerWidth - 24, 1600);
+      const height = Math.min(width * 0.46, window.innerHeight * 0.6);
+      setStage({ width, height });
     };
     updateSize();
     window.addEventListener('resize', updateSize);
@@ -78,7 +79,7 @@ export default function NewHome() {
           <NewHomeNavigation />
 
           {/* Hero Section — 3D car centerpiece */}
-          <section className="relative overflow-hidden">
+          <section className="relative overflow-x-hidden">
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
             {/* Viewport-height wheel region: brand block + square wheel */}
@@ -112,14 +113,18 @@ export default function NewHome() {
                   Post a Trip
                 </button>
 
-                <div className="relative overflow-visible" style={{
-                  width: wheelSize,
-                  height: wheelSize * 0.5
-                }}>
-                  <Suspense fallback={null}>
-                    <CashCar3D className="absolute inset-0" />
-                  </Suspense>
+                <div className="relative left-1/2 w-screen -translate-x-1/2 flex justify-center overflow-visible">
+                  <div className="relative overflow-visible" style={{
+                    width: stage.width,
+                    height: stage.height
+                  }}>
+                    <Suspense fallback={null}>
+                      <CashCar3D className="absolute inset-0" />
+                    </Suspense>
+                  </div>
                 </div>
+
+
 
                 <button onClick={() => navigate("/auth")} className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-2 border-emerald-400 bg-gradient-to-r from-emerald-500/20 to-yellow-500/20 px-4 py-2 text-[11px] font-bold text-white backdrop-blur-sm transition-all hover:scale-105 hover:from-emerald-500/30 hover:to-yellow-500/30 md:px-6 md:py-2.5 md:text-sm">
                   <CashCarIcon width={22} height={11} glowIntensity="low" />
