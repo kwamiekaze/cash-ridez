@@ -203,7 +203,6 @@ function CarModel({
   }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
 
   useEffect(() => {
-    console.log("[CashCar3D] native size:", nativeSize.toArray());
     onReady();
   }, [nativeSize, onReady]);
 
