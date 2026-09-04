@@ -191,7 +191,9 @@ function CarModel({
     cam.near = Math.max(0.01, dist / 100);
     cam.far = dist * 20;
     cam.updateProjectionMatrix();
+    console.log("[CashCar3D] fit", { aspect, dist, halfLen, canvas: [viewport.width, viewport.height] });
     onCameraFit?.(target, dist);
+
   }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
 
   useEffect(() => {
