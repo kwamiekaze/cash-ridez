@@ -227,7 +227,7 @@ function CarModel({
   });
 
   return (
-    <group ref={modelRef}>
+    <group ref={modelRef} name="carRoot">
       <primitive object={model} />
     </group>
   );
