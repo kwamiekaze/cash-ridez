@@ -195,7 +195,6 @@ function CarModel({
     cam.near = Math.max(0.01, dist / 100);
     cam.far = dist * 20;
     cam.updateProjectionMatrix();
-    console.log("[CashCar3D] fit", { aspect, dist, halfLen, canvas: [viewport.width, viewport.height] });
     onCameraFit?.(target, dist);
 
   }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
@@ -363,7 +362,7 @@ function CarScene({
       frameloop={frameloop}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, position: [3.2, 1.6, 3.2] }}
-      onCreated={(state) => { (window as any).__r3fState = state; state.camera.lookAt(0, 0.5, 0); }}
+      onCreated={({ camera }) => camera.lookAt(0, 0.5, 0)}
     >
       {/* Five-light rig */}
       <ambientLight intensity={0.45} />
