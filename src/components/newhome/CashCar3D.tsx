@@ -183,13 +183,15 @@ function CarModel({
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
     const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
     // Fraction of the frame width the car's length should occupy at its widest
-    // (side-on) angle. Tuned by measurement: the auto-rotating car never sits
-    // perfectly broadside to the fixed 45deg view direction, so the effective
-    // on-screen fill lands ~87% of the viewport at this value.
-    const fill = 1.07;
+    // (side-on) angle. Tuned by measurement so the rendered car reads ~60-68%
+    // of the viewport width across phone and desktop sizes.
+    const fill = 0.75;
     const dist = halfLen / fill / Math.tan(hFov / 2);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
-    const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
+    // The elevated view makes the body sit low in frame; drop the look-at point
+    // slightly so the car reads optically centred in the canvas.
+    const frameHeight = 2 * dist * Math.tan(vFov / 2);
+    const target = new THREE.Vector3(0, nativeSize.y / 2 - frameHeight * 0.20, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
     cam.lookAt(target);
     cam.near = Math.max(0.01, dist / 100);
@@ -200,7 +202,6 @@ function CarModel({
   }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
 
   useEffect(() => {
-    console.log("[CashCar3D] native size:", nativeSize.toArray());
     onReady();
   }, [nativeSize, onReady]);
 
@@ -422,9 +423,10 @@ function CarScene({
 
 export interface CashCar3DProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export default function CashCar3D({ className }: CashCar3DProps) {
+export default function CashCar3D({ className, style }: CashCar3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   const [ready, setReady] = useState(false);
@@ -458,6 +460,7 @@ export default function CashCar3D({ className }: CashCar3DProps) {
     <div
       ref={containerRef}
       className={`relative h-full w-full overflow-visible ${className ?? ""}`}
+      style={style}
     >
       {/* Canvas wrapper fills the car-shaped slot. */}
       <div
