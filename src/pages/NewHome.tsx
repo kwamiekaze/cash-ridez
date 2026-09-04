@@ -121,7 +121,7 @@ export default function NewHome() {
                     <Suspense fallback={null}>
                       {/* Canvas bleeds vertically past the stage box so the car is
                           never cropped by a frame edge. Buttons sit above it. */}
-                      <CashCar3D className="absolute left-0 w-full" style={{ top: -stage.height * 0.15, height: stage.height * 1.3 }} />
+                      <CashCar3D className="absolute left-0 w-full" style={{ top: -stage.height * 0.3, height: stage.height * 1.6 }} />
                     </Suspense>
                   </div>
                 </div>
