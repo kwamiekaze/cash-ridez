@@ -172,8 +172,10 @@ function CarModel({
     return { model: clone, nativeSize: size };
   }, [scene]);
 
-  // Fit-to-frame camera: distance derived from the car length and the canvas
-  // aspect ratio so the car always fills ~90% of the frame width.
+  // Fit-to-frame camera: the camera distance is derived from a TARGET RENDERED
+  // CAR LENGTH IN CSS PIXELS (breakpoint based, like the DrivingKlass reference)
+  // rather than a percentage of the viewport, so the car keeps a fixed physical
+  // size on wide monitors instead of ballooning.
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
     if (!viewport.width || !viewport.height) return;
@@ -182,11 +184,25 @@ function CarModel({
     const vFov = THREE.MathUtils.degToRad(cam.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
     const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
-    // Fraction of the frame width the car's length should occupy at its widest
-    // (side-on) angle. Tuned by measurement so the rendered car reads ~60-68%
-    // of the viewport width across phone and desktop sizes.
-    const fill = 0.75;
+    // Target rendered car length in CSS px, by breakpoint (~10% larger than the
+    // DrivingKlass reference of ~269px mobile / ~505px desktop). Breakpoints are
+    // judged on the window width; the fill fraction is computed against the
+    // canvas width so the projection maths stays correct when they differ.
+    const screenWidth = typeof window !== "undefined" ? window.innerWidth : viewport.width;
+    const targetPx =
+      screenWidth >= 1024
+        ? 555
+        : screenWidth >= 768
+          ? 470
+          : Math.min(295, screenWidth * 0.76);
+    // The projected bounding-box maths slightly over-estimates the visible body
+    // length (rounded nose/tail, perspective). Measured correction so the car
+    // renders at the target px on screen.
+    const ROTATION_FORESHORTENING = 1.18;
+    const fill = (targetPx * ROTATION_FORESHORTENING) / viewport.width;
     const dist = halfLen / fill / Math.tan(hFov / 2);
+
+
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     // The elevated view makes the body sit low in frame; drop the look-at point
     // slightly so the car reads optically centred in the canvas.
