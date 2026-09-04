@@ -37,7 +37,7 @@ const ComposeCallTab = () => {
     console.log('Subscribing to realtime updates for call:', lastCallLogId);
 
     const channel = supabase
-      .channel(`call-status-${lastCallLogId}`)
+      .channel(`call-status-${lastCallLogId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {

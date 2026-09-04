@@ -384,7 +384,7 @@ export function AutoTextTab() {
     if (!selectedCampaign) return;
 
     const recipientChannel = supabase
-      .channel(`recipient-changes-${selectedCampaign.id}`)
+      .channel(`recipient-changes-${selectedCampaign.id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         { 

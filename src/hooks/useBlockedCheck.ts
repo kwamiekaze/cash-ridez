@@ -41,7 +41,7 @@ export function useBlockedCheck(userId: string | null) {
     if (!userId) return;
 
     const channel = supabase
-      .channel(`profile-blocked-${userId}`)
+      .channel(`profile-blocked-${userId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         "postgres_changes",
         {

@@ -139,7 +139,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
     
     // Subscribe to changes in calls table for this trip
     const channel = supabase
-      .channel(`calls-${tripId}`)
+      .channel(`calls-${tripId}-${Math.random().toString(36).slice(2, 10)}`)
       .on('postgres_changes', 
         { 
           event: '*', 

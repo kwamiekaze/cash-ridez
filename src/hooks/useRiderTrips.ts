@@ -54,7 +54,7 @@ export const useRiderTrips = (userId: string | undefined) => {
     // Debounced realtime subscription
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
-      .channel(`rider_requests_${userId}`)
+      .channel(`rider_requests_${userId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         "postgres_changes",
         {

@@ -307,7 +307,7 @@ const AdminSmsCenter = () => {
     if (!selectedConversation) return;
 
     const channel = supabase
-      .channel(`sms-messages-${selectedConversation.id}`)
+      .channel(`sms-messages-${selectedConversation.id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         { 

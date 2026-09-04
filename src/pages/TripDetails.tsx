@@ -52,7 +52,7 @@ export default function TripDetails() {
 
     // Subscribe to realtime updates for the trip itself (for status changes)
     const tripChannel = supabase
-      .channel(`trip-${id}`)
+      .channel(`trip-${id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {

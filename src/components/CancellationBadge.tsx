@@ -32,7 +32,7 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
 
     // Subscribe to realtime updates
     const channel = supabase
-      .channel(`cancellation_stats:${userId}`)
+      .channel(`cancellation_stats:${userId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {

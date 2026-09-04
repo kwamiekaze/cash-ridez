@@ -160,7 +160,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!user || location.pathname === "/blocked") return;
 
     const channel = supabase
-      .channel(`profile-blocked-check-${user.id}`)
+      .channel(`profile-blocked-check-${user.id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {

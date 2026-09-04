@@ -9,7 +9,7 @@ export const useReadReceipts = (messageType: string, currentUserId: string | nul
 
     // Subscribe to read receipts
     const channel = supabase
-      .channel(`read-receipts-${messageType}`)
+      .channel(`read-receipts-${messageType}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {

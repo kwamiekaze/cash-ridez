@@ -68,7 +68,7 @@ export function NotificationBell() {
 
     // Set up real-time subscription
     const channel = supabase
-      .channel(`notifications-channel-${Math.random().toString(36).slice(2, 10)}`)
+      .channel(`notifications-${user.id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
