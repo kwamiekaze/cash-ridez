@@ -198,7 +198,7 @@ const AdminEmailCenter = () => {
   // Realtime subscriptions for campaigns
   useEffect(() => {
     const channel = supabase
-      .channel('email-campaign-changes')
+      .channel(`email-campaign-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_email_campaigns' },
@@ -215,7 +215,9 @@ const AdminEmailCenter = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

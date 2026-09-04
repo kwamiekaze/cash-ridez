@@ -32,7 +32,7 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
 
     // Subscribe to realtime updates
     const channel = supabase
-      .channel(`cancellation_stats:${userId}`)
+      .channel(`cancellation_stats:${userId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -49,7 +49,9 @@ export function CancellationBadge({ userId, role = "both", size = "sm", showIcon
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

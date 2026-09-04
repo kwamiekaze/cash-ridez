@@ -242,7 +242,7 @@ const AdminSmsCenter = () => {
     if (activeTab !== "inbox") return;
 
     const channel = supabase
-      .channel('sms-conversations-changes')
+      .channel(`sms-conversations-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_sms_conversations' },
@@ -250,7 +250,9 @@ const AdminSmsCenter = () => {
           fetchConversations();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -305,7 +307,7 @@ const AdminSmsCenter = () => {
     if (!selectedConversation) return;
 
     const channel = supabase
-      .channel(`sms-messages-${selectedConversation.id}`)
+      .channel(`sms-messages-${selectedConversation.id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         { 
@@ -324,7 +326,9 @@ const AdminSmsCenter = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

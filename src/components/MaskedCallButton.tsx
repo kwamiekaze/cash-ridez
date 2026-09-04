@@ -139,7 +139,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
     
     // Subscribe to changes in calls table for this trip
     const channel = supabase
-      .channel(`calls-${tripId}`)
+      .channel(`calls-${tripId}-${Math.random().toString(36).slice(2, 10)}`)
       .on('postgres_changes', 
         { 
           event: '*', 
@@ -151,7 +151,9 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
           fetchLastCall();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

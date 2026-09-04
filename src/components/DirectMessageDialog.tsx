@@ -145,7 +145,7 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
 
       // Set up realtime subscription
       const channel = supabase
-        .channel(`direct-chat-${chatIdData}`)
+        .channel(`direct-chat-${chatIdData}-${Math.random().toString(36).slice(2, 10)}`)
         .on(
           "postgres_changes",
           {
@@ -163,7 +163,9 @@ export function DirectMessageDialog({ otherUserId, open, onOpenChange }: DirectM
             setMessages((prev) => [...prev, newMsg]);
           }
         )
-        .subscribe();
+        .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
       return () => {
         supabase.removeChannel(channel);

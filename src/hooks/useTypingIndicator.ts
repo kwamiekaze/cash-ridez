@@ -9,7 +9,7 @@ export const useTypingIndicator = (roomId: string, roomType: string, currentUser
 
     // Subscribe to typing indicators
     const channel = supabase
-      .channel(`typing-${roomType}-${roomId}`)
+      .channel(`typing-${roomType}-${roomId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -34,7 +34,9 @@ export const useTypingIndicator = (roomId: string, roomType: string, currentUser
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

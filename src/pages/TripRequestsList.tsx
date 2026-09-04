@@ -45,7 +45,7 @@ export default function TripRequestsList() {
     // Subscribe to realtime updates with throttling
     let refreshTimer: any = null;
     const channel = supabase
-      .channel('trip-requests-changes')
+      .channel(`trip-requests-changes-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -61,7 +61,9 @@ export default function TripRequestsList() {
           }, 1500);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);

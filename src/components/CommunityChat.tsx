@@ -139,7 +139,7 @@ export function CommunityChat() {
 
     // Set up realtime subscription
     const channel = supabase
-      .channel('community_chat')
+      .channel(`community_chat-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -173,7 +173,9 @@ export function CommunityChat() {
           }]);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       supabase.removeChannel(channel);

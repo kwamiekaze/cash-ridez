@@ -35,7 +35,7 @@ export const AvailableDriversList = () => {
       // Subscribe to driver_status changes for realtime updates (debounced to 5s)
       let refreshTimer: ReturnType<typeof setTimeout> | null = null;
       const channel = supabase
-        .channel('driver_status_changes')
+        .channel(`driver_status_changes-${Math.random().toString(36).slice(2, 10)}`)
         .on(
           'postgres_changes',
           {
@@ -51,7 +51,9 @@ export const AvailableDriversList = () => {
             }, 5000); // 5 second debounce - driver status changes less frequently
           }
         )
-        .subscribe();
+        .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
       return () => {
         if (refreshTimer) clearTimeout(refreshTimer);

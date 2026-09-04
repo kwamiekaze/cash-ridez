@@ -37,7 +37,7 @@ const ComposeCallTab = () => {
     console.log('Subscribing to realtime updates for call:', lastCallLogId);
 
     const channel = supabase
-      .channel(`call-status-${lastCallLogId}`)
+      .channel(`call-status-${lastCallLogId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -52,7 +52,9 @@ const ComposeCallTab = () => {
           handleStatusUpdate(newStatus, payload.new);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       console.log('Unsubscribing from realtime updates');

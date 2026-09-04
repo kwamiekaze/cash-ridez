@@ -54,7 +54,7 @@ export const useRiderTrips = (userId: string | undefined) => {
     // Debounced realtime subscription
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     const channel = supabase
-      .channel(`rider_requests_${userId}`)
+      .channel(`rider_requests_${userId}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         "postgres_changes",
         {
@@ -71,7 +71,9 @@ export const useRiderTrips = (userId: string | undefined) => {
           }, 1000); // 1 second debounce
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer);

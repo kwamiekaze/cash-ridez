@@ -31,7 +31,7 @@ export const AvailableRidersList = () => {
       // Subscribe to ride_requests changes for realtime updates (debounced to 3s)
       let refreshTimer: ReturnType<typeof setTimeout> | null = null;
       const channel = supabase
-        .channel('ride_requests_changes')
+        .channel(`ride_requests_changes-${Math.random().toString(36).slice(2, 10)}`)
         .on(
           'postgres_changes',
           {
@@ -66,7 +66,9 @@ export const AvailableRidersList = () => {
             }, 3000);
           }
         )
-        .subscribe();
+        .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
       return () => {
         if (refreshTimer) clearTimeout(refreshTimer);

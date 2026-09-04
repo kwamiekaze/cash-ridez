@@ -103,7 +103,7 @@ const AutoCallTab = () => {
 
     // Subscribe to campaign and recipient updates
     const channel = supabase
-      .channel(`campaign-updates-${activeCampaign.id}`)
+      .channel(`campaign-updates-${activeCampaign.id}-${Math.random().toString(36).slice(2, 10)}`)
       .on(
         'postgres_changes',
         {
@@ -164,7 +164,9 @@ const AutoCallTab = () => {
           loadActiveRecipient(activeCampaign.id);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.warn('[realtime] subscription error:', err);
+      });
 
     // Initial load of active recipient
     loadActiveRecipient(activeCampaign.id);
