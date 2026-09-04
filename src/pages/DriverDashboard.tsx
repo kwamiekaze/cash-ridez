@@ -61,7 +61,7 @@ const DriverDashboard = () => {
       });
       
       return () => {
-        profileChannel.unsubscribe();
+        supabase.removeChannel(profileChannel);
       };
     }
 

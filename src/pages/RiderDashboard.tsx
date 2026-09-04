@@ -206,7 +206,7 @@ const RiderDashboard = () => {
       });
 
     return () => {
-      profileChannel.unsubscribe();
+      supabase.removeChannel(profileChannel);
       supabase.removeChannel(channel);
     };
   }, [user]);
