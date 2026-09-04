@@ -232,29 +232,6 @@ function CarModel({
       });
     });
 
-    // TEMP-MEASURE
-    const w = (window as any);
-    if (w.__measureCar) {
-      const cam = camera as THREE.PerspectiveCamera;
-      cam.updateMatrixWorld();
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      const v = new THREE.Vector3();
-      modelGroup.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        mesh.updateWorldMatrix(true, false);
-        const pos = mesh.geometry.getAttribute("position");
-        for (let i = 0; i < pos.count; i += 3) {
-          v.fromBufferAttribute(pos as THREE.BufferAttribute, i).applyMatrix4(mesh.matrixWorld).project(cam);
-          const px = (v.x * 0.5 + 0.5) * viewport.width;
-          const py = (-v.y * 0.5 + 0.5) * viewport.height;
-          if (px < minX) minX = px; if (px > maxX) maxX = px;
-          if (py < minY) minY = py; if (py > maxY) maxY = py;
-        }
-      });
-      w.__carMeasure = { minX, maxX, minY, maxY, cw: viewport.width, ch: viewport.height, dist: cam.position.length() };
-    }
-
   });
 
 
