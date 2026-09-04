@@ -186,7 +186,7 @@ function CarModel({
     // (side-on) angle. Tuned by measurement: the auto-rotating car never sits
     // perfectly broadside to the fixed 45deg view direction, so the effective
     // on-screen fill lands ~87% of the viewport at this value.
-    const fill = 0.71;
+    const fill = 0.75;
     const dist = halfLen / fill / Math.tan(hFov / 2);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     // The elevated view makes the body sit low in frame; drop the look-at point
