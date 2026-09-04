@@ -311,11 +311,23 @@ function CarScene({
 
   const handleCameraFit = useCallback((target: THREE.Vector3, dist: number) => {
     setFit({ target: [target.x, target.y, target.z], dist });
-    if (controlsRef.current) {
-      controlsRef.current.target.copy(target);
-      controlsRef.current.update();
-    }
+    // Push the fitted distance through OrbitControls after its own clamping /
+    // damping has settled, otherwise the previous min/maxDistance wins.
+    const apply = () => {
+      const controls = controlsRef.current;
+      if (!controls) return;
+      const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
+      controls.target.copy(target);
+      controls.object.position.copy(target).addScaledVector(dir, dist);
+      controls.object.lookAt(target);
+      controls.update();
+    };
+    requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(apply);
+    });
   }, []);
+
 
   useEffect(() => {
     useGLTF.preload(modelUrl, true);
