@@ -362,7 +362,7 @@ function CarScene({
       frameloop={frameloop}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, position: [3.2, 1.6, 3.2] }}
-      onCreated={({ camera }) => camera.lookAt(0, 0.5, 0)}
+      onCreated={(state) => { (window as any).__r3fState = state; state.camera.lookAt(0, 0.5, 0); }}
     >
       {/* Five-light rig */}
       <ambientLight intensity={0.45} />
