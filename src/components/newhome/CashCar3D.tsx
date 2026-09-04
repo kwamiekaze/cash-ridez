@@ -183,13 +183,9 @@ function CarModel({
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
     const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
 
-    const vw = viewport.width; // canvas width, CSS px
-    const frac = vw >= 1024 ? 0.62 : vw >= 768 ? 0.7 : 0.75;
-    const fill = frac;
+    const vw = viewport.width;
+    const fill = vw >= 1024 ? 0.62 : vw >= 768 ? 0.70 : 0.75;
     const dist = halfLen / fill / Math.tan(hFov / 2);
-
-
-
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
@@ -318,8 +314,8 @@ function CarScene({
 
   const handleCameraFit = useCallback((target: THREE.Vector3, dist: number) => {
     setFit({ target: [target.x, target.y, target.z], dist });
-    // Push the fitted distance through OrbitControls after its own clamping /
-    // damping has settled, otherwise the previous min/maxDistance wins.
+    // Widen OrbitControls' clamps before applying the fitted camera, then
+    // restore the fitted interaction range after the camera is in place.
     const apply = () => {
       const controls = controlsRef.current;
       if (!controls) return;
