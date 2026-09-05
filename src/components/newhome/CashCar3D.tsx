@@ -433,14 +433,35 @@ export default function CashCar3D({ className, style }: CashCar3DProps) {
   const [visible, setVisible] = useState(true);
   const [ready, setReady] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const mobile = useMemo(() => isMobileDevice(), []);
-  const reducedMotion = useMemo(
+  const [mobile, setMobile] = useState(() => isMobileDevice());
+  const [reducedMotion, setReducedMotion] = useState(
     () =>
       typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-    []
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px), (pointer: coarse)");
+    const update = () => setMobile(isMobileDevice());
+    mq.addEventListener("change", update);
+    window.addEventListener("resize", update);
+    return () => {
+      mq.removeEventListener("change", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(mq.matches);
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Only changes when the resolved URL string actually differs, so equal
+  // desktop/mobile constants never trigger a reload on resize.
   const modelUrl = mobile ? CAR_MODEL_URL_MOBILE : CAR_MODEL_URL;
+
   const onReady = useCallback(() => setReady(true), []);
 
   useEffect(() => {
