@@ -137,8 +137,8 @@ serve(async (req) => {
     }
 
     // Verify price exists in Stripe
-    console.log("[CHECKOUT] Verifying price exists in Stripe:", priceId);
-    const price = await stripe.prices.retrieve(priceId);
+    console.log("[CHECKOUT] Verifying price exists in Stripe:", effectivePriceId);
+    const price = await stripe.prices.retrieve(effectivePriceId);
     console.log("[CHECKOUT] Price verified:", {
       id: price.id,
       product: price.product,
@@ -148,7 +148,7 @@ serve(async (req) => {
     });
     
     if (!price.active) {
-      throw new Error(`Price ${priceId} exists but is not active in Stripe`);
+      throw new Error(`Price ${effectivePriceId} exists but is not active in Stripe`);
     }
 
     // Determine URLs
@@ -163,7 +163,7 @@ serve(async (req) => {
       customer: customerId,
       line_items: [
         {
-          price: priceId,
+          price: effectivePriceId,
           quantity: 1,
         },
       ],
@@ -182,7 +182,7 @@ serve(async (req) => {
       await supabaseClient.from('billing_logs').insert({
         user_id: user.id,
         event_type: 'checkout_session_created',
-        request_body: { priceId },
+        request_body: { priceId: effectivePriceId },
         response_body: { sessionId: session.id, url: session.url },
         error_code: null,
         error_message: null,
