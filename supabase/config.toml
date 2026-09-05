@@ -149,3 +149,7 @@ verify_jwt = false
 
 [functions.admin-email-control]
 verify_jwt = true
+
+[functions.admin-create-price]
+verify_jwt = false
+

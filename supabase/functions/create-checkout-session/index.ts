@@ -88,9 +88,30 @@ serve(async (req) => {
       subscriptionActive: profile?.subscription_active 
     });
 
+    // Prefer the price id stored in app_config (service role only); fall back to env var
+    let effectivePriceId = priceId;
+    try {
+      const { data: cfg, error: cfgError } = await supabaseClient
+        .from("app_config")
+        .select("value")
+        .eq("key", "membership_price_id")
+        .maybeSingle();
+      if (cfgError) {
+        console.warn("[CHECKOUT] app_config lookup failed, using env price:", cfgError.message);
+      } else if (cfg?.value && String(cfg.value).trim() !== "") {
+        effectivePriceId = String(cfg.value).trim();
+        console.log("[CHECKOUT] Using price id from app_config:", effectivePriceId);
+      } else {
+        console.log("[CHECKOUT] No app_config price id, using env STRIPE_PRICE_ID");
+      }
+    } catch (cfgErr) {
+      console.warn("[CHECKOUT] app_config lookup threw, using env price:", (cfgErr as any)?.message);
+    }
+
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     console.log("[CHECKOUT] Stripe initialized");
+
 
     let customerId = profile?.stripe_customer_id;
 
