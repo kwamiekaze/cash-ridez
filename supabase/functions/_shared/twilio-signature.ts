@@ -29,6 +29,7 @@ export function externalRequestUrl(rawUrl: string, headers: Headers): string {
   const forwardedHost = headers.get("x-forwarded-host") || headers.get("host");
   const forwardedProto = headers.get("x-forwarded-proto") || "https";
   if (forwardedHost) {
+    url.port = "";
     url.host = forwardedHost;
     url.protocol = `${forwardedProto}:`;
   }
