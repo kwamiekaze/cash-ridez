@@ -88,9 +88,30 @@ serve(async (req) => {
       subscriptionActive: profile?.subscription_active 
     });
 
+    // Prefer the price id stored in app_config (service role only); fall back to env var
+    let effectivePriceId = priceId;
+    try {
+      const { data: cfg, error: cfgError } = await supabaseClient
+        .from("app_config")
+        .select("value")
+        .eq("key", "membership_price_id")
+        .maybeSingle();
+      if (cfgError) {
+        console.warn("[CHECKOUT] app_config lookup failed, using env price:", cfgError.message);
+      } else if (cfg?.value && String(cfg.value).trim() !== "") {
+        effectivePriceId = String(cfg.value).trim();
+        console.log("[CHECKOUT] Using price id from app_config:", effectivePriceId);
+      } else {
+        console.log("[CHECKOUT] No app_config price id, using env STRIPE_PRICE_ID");
+      }
+    } catch (cfgErr) {
+      console.warn("[CHECKOUT] app_config lookup threw, using env price:", (cfgErr as any)?.message);
+    }
+
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     console.log("[CHECKOUT] Stripe initialized");
+
 
     let customerId = profile?.stripe_customer_id;
 
@@ -116,8 +137,8 @@ serve(async (req) => {
     }
 
     // Verify price exists in Stripe
-    console.log("[CHECKOUT] Verifying price exists in Stripe:", priceId);
-    const price = await stripe.prices.retrieve(priceId);
+    console.log("[CHECKOUT] Verifying price exists in Stripe:", effectivePriceId);
+    const price = await stripe.prices.retrieve(effectivePriceId);
     console.log("[CHECKOUT] Price verified:", {
       id: price.id,
       product: price.product,
@@ -127,7 +148,7 @@ serve(async (req) => {
     });
     
     if (!price.active) {
-      throw new Error(`Price ${priceId} exists but is not active in Stripe`);
+      throw new Error(`Price ${effectivePriceId} exists but is not active in Stripe`);
     }
 
     // Determine URLs
@@ -142,7 +163,7 @@ serve(async (req) => {
       customer: customerId,
       line_items: [
         {
-          price: priceId,
+          price: effectivePriceId,
           quantity: 1,
         },
       ],
@@ -161,7 +182,7 @@ serve(async (req) => {
       await supabaseClient.from('billing_logs').insert({
         user_id: user.id,
         event_type: 'checkout_session_created',
-        request_body: { priceId },
+        request_body: { priceId: effectivePriceId },
         response_body: { sessionId: session.id, url: session.url },
         error_code: null,
         error_message: null,
