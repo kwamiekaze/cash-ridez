@@ -9,7 +9,8 @@ export const SubscriptionPanel = () => {
   const { 
     subscribed, 
     subscription_end, 
-    completed_trips, 
+    cancel_at_period_end, 
+    connected_trips, 
     trips_remaining,
     loading,
     startCheckout,
@@ -73,7 +74,7 @@ export const SubscriptionPanel = () => {
               </div>
               {subscription_end && (
                 <p className="text-sm text-muted-foreground">
-                  Renews on {new Date(subscription_end).toLocaleDateString()}
+                  {cancel_at_period_end ? "Ends on" : "Renews on"} {new Date(subscription_end).toLocaleDateString()}
                 </p>
               )}
             </div>
@@ -89,7 +90,7 @@ export const SubscriptionPanel = () => {
           <div className="space-y-4">
             <div className="p-4 bg-muted rounded-lg">
               <div className="text-sm space-y-2">
-                <p>Connected trips: {completed_trips} / 3 free</p>
+                <p>Connected trips: {connected_trips} / 3 free</p>
                 <p className="font-semibold">
                   {trips_remaining === 'unlimited' 
                     ? 'Unlimited trips remaining' 

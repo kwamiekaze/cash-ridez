@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, Car, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { PremiumCrown } from "@/components/PremiumCrown";
+import { MEMBERSHIP_PRICE_LABEL } from "@/lib/config";
 
 interface TripLimitGateProps {
   children: ReactNode;
@@ -71,7 +72,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
             <div className="text-center mb-2">
               <PremiumCrown size={32} className="inline-block" />
               <p className="font-bold text-lg mt-2 text-[hsl(var(--premium-gold))]">CashRidez Unlimited</p>
-              <p className="text-xl font-bold">$9/month</p>
+              <p className="text-xl font-bold">{MEMBERSHIP_PRICE_LABEL}</p>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
@@ -96,7 +97,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
               className="w-full bg-gradient-to-r from-primary to-[hsl(var(--premium-gold))] hover:opacity-90"
             >
               <PremiumCrown className="mr-2" />
-              Upgrade to Unlimited – $9/month
+              Upgrade to Unlimited – {MEMBERSHIP_PRICE_LABEL}
             </Button>
             <Button onClick={() => setShowDialog(false)} variant="outline" className="w-full">
               Maybe Later
