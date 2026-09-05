@@ -8,6 +8,7 @@ import {
   isActiveStatus,
   isGrantedPremium,
   isMembershipSubscription,
+  isCancelScheduled,
   periodEndToIso,
   shouldRevokeOnError,
 } from "../stripe-compat";
@@ -107,8 +108,8 @@ describe("membership scoping by product", () => {
     expect(getSubscriptionProductIds(other)).toEqual(["prod_other"]);
   });
 
-  it("does not exclude anything when the product is unknown", () => {
-    expect(isMembershipSubscription(basilSubscription, null)).toBe(true);
+  it("fails closed when the membership product is unknown", () => {
+    expect(() => isMembershipSubscription(basilSubscription, null)).toThrow(/unknown/i);
   });
 });
 
@@ -166,5 +167,17 @@ describe("never revoke on transport errors", () => {
     expect(shouldRevokeOnError({ type: "StripeRateLimitError", statusCode: 429 })).toBe(false);
     expect(shouldRevokeOnError(new TypeError("boom") as any)).toBe(false);
     expect(shouldRevokeOnError(null)).toBe(false);
+  });
+});
+
+describe("cancellation scheduled", () => {
+  it("detects cancel_at_period_end", () => {
+    expect(isCancelScheduled({ cancel_at_period_end: true })).toBe(true);
+    expect(isCancelScheduled({ cancel_at: 1800000000 })).toBe(true);
+  });
+
+  it("is false for a normally renewing subscription", () => {
+    expect(isCancelScheduled(basilSubscription)).toBe(false);
+    expect(isCancelScheduled(null)).toBe(false);
   });
 });

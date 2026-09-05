@@ -2,35 +2,34 @@
 // STRIPE WEBHOOK ENDPOINT FOR CASHRIDEZ
 // ============================================================================
 //
-// This Supabase Edge Function handles Stripe webhook events for subscriptions.
+// WEBHOOK URL: <project>/functions/v1/stripe-webhook
 //
-// WEBHOOK URL (configure in Stripe Dashboard):
-//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/stripe-webhook
+// SIGNING SECRETS (any configured one is accepted):
+//   - STRIPE_WEBHOOK_SECRET           (legacy endpoint)
+//   - STRIPE_WEBHOOK_SECRET_SNAPSHOT  (snapshot endpoint)
+//   - STRIPE_WEBHOOK_SECRET_THIN      (thin endpoint)
 //
-// REQUIRED SECRETS (already configured in Lovable Cloud):
-//   - STRIPE_SECRET_KEY: Your live Stripe secret key
-//   - STRIPE_WEBHOOK_SECRET_SNAPSHOT: Primary webhook signing secret (Snapshot endpoint)
-//   - STRIPE_WEBHOOK_SECRET_THIN: Secondary webhook signing secret (Thin endpoint)
-//
-// EVENTS HANDLED:
-//   - checkout.session.completed: New subscription purchased
-//   - customer.created: New customer created in Stripe
-//   - invoice.payment_succeeded: Subscription renewed successfully
-//   - invoice.payment_failed: Payment failed (deactivates subscription)
-//   - customer.subscription.updated: Subscription status changed
-//   - customer.subscription.deleted: Subscription cancelled
-//
-// IMPORTANT:
-//   - This endpoint supports TWO webhook secrets for flexibility
-//   - Always returns HTTP 200 to prevent Stripe retry storms
-//   - Logs all events for debugging (check Supabase logs)
-//   - Updates profiles table with subscription_active and subscription_status
-//
+// Semantics:
+//   - Signature is verified BEFORE any processing. Invalid/missing -> 400.
+//   - Processing failures -> 5xx so Stripe retries.
+//   - Idempotent: an event id already recorded in billing_logs is skipped.
+//   - Entitlement is scoped to the membership PRODUCT (legacy prices included)
+//     and always re-read authoritatively from Stripe, so stale deliveries and
+//     unrelated invoices/old canceled subs cannot revoke a live membership.
+//   - No full payload logging.
 // ============================================================================
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  buildEntitlementUpdate,
+  getInvoiceSubscriptionId,
+  isActiveStatus,
+  isGrantedPremium,
+  isMembershipSubscription,
+} from "../_shared/stripe-compat.ts";
+import { MembershipConfigError, resolveMembershipProductId } from "../_shared/membership.ts";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2025-08-27.basil",
@@ -38,9 +37,16 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-const logBillingEvent = async (supabase: any, userId: string | null, eventType: string, eventId: string, data: any, error?: any) => {
+const logBillingEvent = async (
+  supabase: any,
+  userId: string | null,
+  eventType: string,
+  eventId: string,
+  data: any,
+  error?: any,
+) => {
   try {
-    await supabase.from('billing_logs').insert({
+    await supabase.from("billing_logs").insert({
       user_id: userId,
       event_type: eventType,
       stripe_event_id: eventId,
@@ -49,280 +55,309 @@ const logBillingEvent = async (supabase: any, userId: string | null, eventType: 
       error_message: error?.message || null,
     });
   } catch (logError) {
-    console.error('Failed to log billing event:', logError);
+    console.error("[WEBHOOK] Failed to log billing event:", (logError as any)?.message);
   }
+};
+
+/** True when this event id has already been processed successfully. */
+const alreadyProcessed = async (supabase: any, eventId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from("billing_logs")
+      .select("id")
+      .eq("stripe_event_id", eventId)
+      .is("error_message", null)
+      .limit(1);
+    if (error) {
+      console.warn("[WEBHOOK] Idempotency lookup failed:", error.message);
+      return false;
+    }
+    return !!(data && data.length);
+  } catch {
+    return false;
+  }
+};
+
+const findProfileByCustomer = async (supabase: any, customerId: string) => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, subscription_active, subscription_status, stripe_subscription_id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+  if (error) throw new Error(`Profile lookup failed: ${error.message}`);
+  return data;
+};
+
+const applyEntitlement = async (supabase: any, profile: any, subscription: any) => {
+  if (isGrantedPremium(profile)) {
+    console.log("[WEBHOOK] Granted premium preserved for", profile.id);
+    return;
+  }
+  const update = buildEntitlementUpdate(subscription);
+  const { error } = await supabase.from("profiles").update(update).eq("id", profile.id);
+  if (error) throw new Error(`Entitlement update failed: ${error.message}`);
+  console.log(`[WEBHOOK] Entitlement synced for ${profile.id}: ${update.subscription_status}`);
+};
+
+/**
+ * Read the CURRENT state of a subscription from Stripe (never trust the event
+ * snapshot, which may be stale) and confirm it belongs to the membership.
+ */
+const authoritativeMembership = async (
+  subscriptionId: string,
+  membershipProductId: string,
+): Promise<any | null> => {
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ["items.data.price"],
+  });
+  return isMembershipSubscription(subscription, membershipProductId) ? subscription : null;
 };
 
 serve(async (req) => {
   const signature = req.headers.get("Stripe-Signature");
-  
-  // Get both webhook secrets
-  const primarySecret = Deno.env.get("STRIPE_WEBHOOK_SECRET_SNAPSHOT");
-  const thinSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET_THIN");
 
-  console.log(`🔥 [WEBHOOK] Stripe webhook received`);
-  console.log(`[WEBHOOK] Signature present: ${!!signature}`);
-  console.log(`[WEBHOOK] Snapshot secret available: ${!!primarySecret}`);
-  console.log(`[WEBHOOK] Thin secret available: ${!!thinSecret}`);
+  const secrets = [
+    ["LEGACY", Deno.env.get("STRIPE_WEBHOOK_SECRET")],
+    ["SNAPSHOT", Deno.env.get("STRIPE_WEBHOOK_SECRET_SNAPSHOT")],
+    ["THIN", Deno.env.get("STRIPE_WEBHOOK_SECRET_THIN")],
+  ].filter(([, value]) => !!value) as [string, string][];
 
-  // CRITICAL: Always return 200 to Stripe, even on errors, to prevent retry storms
   if (!signature) {
     console.error("[WEBHOOK] Missing Stripe-Signature header");
-    return new Response(JSON.stringify({ received: false, error: "Missing signature" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: "Missing signature" }), { status: 400 });
   }
 
-  if (!primarySecret && !thinSecret) {
-    console.error("[WEBHOOK] No webhook secrets configured");
-    return new Response(JSON.stringify({ received: false, error: "No webhook secrets configured" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+  if (secrets.length === 0) {
+    console.error("[WEBHOOK] No webhook signing secrets configured");
+    // Configuration problem on our side -> let Stripe retry.
+    return new Response(JSON.stringify({ error: "No webhook secrets configured" }), { status: 500 });
   }
 
   const body = await req.text();
-  let event: Stripe.Event;
-  let verifiedSecret: string | null = null;
+  let event: Stripe.Event | null = null;
+  let verifiedWith: string | null = null;
 
-  // Try primary secret first (Snapshot)
-  if (primarySecret) {
+  for (const [name, secret] of secrets) {
     try {
-      console.log("[WEBHOOK] Attempting verification with SNAPSHOT secret");
-      event = await stripe.webhooks.constructEventAsync(
-        body,
-        signature,
-        primarySecret,
-        undefined,
-        cryptoProvider
-      );
-      verifiedSecret = "SNAPSHOT";
-      console.log("[WEBHOOK] ✓ Verification successful with SNAPSHOT secret");
-    } catch (err) {
-      console.log("[WEBHOOK] Snapshot secret verification failed, trying thin secret...");
+      event = await stripe.webhooks.constructEventAsync(body, signature, secret, undefined, cryptoProvider);
+      verifiedWith = name;
+      break;
+    } catch {
+      // try the next configured secret
     }
   }
 
-  // Try thin secret if primary failed or wasn't available
-  if (!event && thinSecret) {
-    try {
-      console.log("[WEBHOOK] Attempting verification with THIN secret");
-      event = await stripe.webhooks.constructEventAsync(
-        body,
-        signature,
-        thinSecret,
-        undefined,
-        cryptoProvider
-      );
-      verifiedSecret = "THIN";
-      console.log("[WEBHOOK] ✓ Verification successful with THIN secret");
-    } catch (err) {
-      console.log("[WEBHOOK] Thin secret verification also failed");
-    }
+  if (!event) {
+    console.error("[WEBHOOK] Signature verification failed against all configured secrets");
+    return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 400 });
   }
 
-  // If both secrets failed
-  if (!event!) {
-    console.error("[WEBHOOK] ✗ Signature verification failed with both secrets");
-    // Return 200 even on signature failure to prevent Stripe retry storms
-    return new Response(JSON.stringify({ received: false, error: "Signature verification failed" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  console.log(`🔥 [WEBHOOK] Stripe event received: ${event.type} (verified with ${verifiedSecret} secret)`);
-  console.log(`[WEBHOOK] Event ID: ${event.id}`);
-  console.log(`[WEBHOOK] Full event payload:`, JSON.stringify(event, null, 2));
+  console.log(`[WEBHOOK] ${event.type} (${event.id}) verified with ${verifiedWith} secret`);
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
+    { auth: { persistSession: false } },
   );
 
+  if (await alreadyProcessed(supabase, event.id)) {
+    console.log(`[WEBHOOK] Event ${event.id} already processed, skipping`);
+    return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 });
+  }
+
   try {
+    let membershipProductId: string | null = null;
+    const needsMembershipScope = event.type !== "customer.created";
+    if (needsMembershipScope) {
+      membershipProductId = await resolveMembershipProductId(stripe, supabase);
+    }
+
     switch (event.type) {
       case "customer.created": {
         const customer = event.data.object as Stripe.Customer;
-        console.log(`[WEBHOOK] Customer created - ID: ${customer.id}, Email: ${customer.email}`);
-        
-        // Store customer ID if we have user metadata
         const userId = customer.metadata?.supabase_user_id;
         if (userId) {
-          const { error: updateError } = await supabase
+          const { error } = await supabase
             .from("profiles")
             .update({ stripe_customer_id: customer.id })
             .eq("id", userId);
-
-          if (updateError) {
-            console.error(`[WEBHOOK] Failed to update customer ID for user ${userId}:`, updateError);
-          } else {
-            console.log(`[WEBHOOK] ✓ Stored customer ID ${customer.id} for user ${userId}`);
-          }
-          await logBillingEvent(supabase, userId, event.type, event.id, { customerId: customer.id });
-        } else {
-          console.log(`[WEBHOOK] No user ID in customer metadata, skipping profile update`);
-          await logBillingEvent(supabase, null, event.type, event.id, { customerId: customer.id });
+          if (error) throw new Error(`Customer id update failed: ${error.message}`);
         }
+        await logBillingEvent(supabase, userId ?? null, event.type, event.id, { customerId: customer.id });
         break;
       }
 
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log(`[WEBHOOK] Checkout completed - Customer: ${session.customer}, Subscription: ${session.subscription}`);
-
-        const userId = session.metadata?.supabase_user_id;
-        if (!userId) {
-          console.error("[WEBHOOK] ✗ No user ID in session metadata");
-          await logBillingEvent(supabase, null, event.type, event.id, session, { message: 'No user ID in metadata' });
+        const subscriptionId =
+          typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+        if (!subscriptionId) {
+          console.log("[WEBHOOK] Checkout session without subscription, ignoring");
+          await logBillingEvent(supabase, null, event.type, event.id, { sessionId: session.id });
           break;
         }
 
-        // Get subscription details
-        if (session.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
-          
+        const subscription = await authoritativeMembership(subscriptionId, membershipProductId!);
+        if (!subscription) {
+          console.log("[WEBHOOK] Checkout for a non-membership product, ignoring");
+          await logBillingEvent(supabase, null, event.type, event.id, { sessionId: session.id, skipped: "non_membership" });
+          break;
+        }
+
+        let profile: any = null;
+        const userId = session.metadata?.supabase_user_id;
+        if (userId) {
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("id, subscription_active, subscription_status, stripe_subscription_id")
+            .eq("id", userId)
+            .maybeSingle();
+          if (error) throw new Error(`Profile lookup failed: ${error.message}`);
+          profile = data;
+        }
+        if (!profile && session.customer) {
+          profile = await findProfileByCustomer(supabase, session.customer as string);
+        }
+        if (!profile) {
+          console.error("[WEBHOOK] No profile for completed checkout");
+          await logBillingEvent(supabase, null, event.type, event.id, { sessionId: session.id }, {
+            message: "No matching profile",
+          });
+          break;
+        }
+
+        if (session.customer) {
           await supabase
             .from("profiles")
-            .update({
-              stripe_subscription_id: subscription.id,
-              subscription_active: ['active', 'trialing'].includes(subscription.status),
-              subscription_status: subscription.status,
-              subscription_current_period_end: subscription.current_period_end,
-              is_member: true,
-            })
-            .eq("id", userId);
-
-          console.log(`[WEBHOOK] ✓ Subscription activated for user ${userId}, status: ${subscription.status}`);
-          await logBillingEvent(supabase, userId, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status });
+            .update({ stripe_customer_id: session.customer as string })
+            .eq("id", profile.id);
         }
+        await applyEntitlement(supabase, profile, subscription);
+        await logBillingEvent(supabase, profile.id, event.type, event.id, {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+        });
         break;
       }
 
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object as Stripe.Invoice;
-        console.log(`[WEBHOOK] Payment succeeded - Customer: ${invoice.customer}, Invoice: ${invoice.id}`);
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const raw = event.data.object as Stripe.Subscription;
+        const profile = await findProfileByCustomer(supabase, raw.customer as string);
+        if (!profile) {
+          console.log("[WEBHOOK] No profile for customer, ignoring");
+          await logBillingEvent(supabase, null, event.type, event.id, { subscriptionId: raw.id });
+          break;
+        }
 
-        if (invoice.subscription) {
-          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-          
-          // Find user by customer ID
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("stripe_customer_id", invoice.customer as string)
-            .single();
-
-          if (profile) {
-            await supabase
-              .from("profiles")
-              .update({
-                subscription_active: ['active', 'trialing'].includes(subscription.status),
-                subscription_status: subscription.status,
-                subscription_current_period_end: subscription.current_period_end,
-                is_member: true,
-              })
-              .eq("id", profile.id);
-
-            console.log(`[WEBHOOK] ✓ Subscription renewed for user ${profile.id}, status: ${subscription.status}`);
-            await logBillingEvent(supabase, profile.id, event.type, event.id, { invoiceId: invoice.id, status: subscription.status });
+        // Re-read current state; a stale delivery must not overwrite newer state.
+        let subscription: any = null;
+        try {
+          subscription = await authoritativeMembership(raw.id, membershipProductId!);
+        } catch (err) {
+          if ((err as any)?.code === "resource_missing") {
+            subscription = null;
+          } else {
+            throw err;
           }
         }
+
+        if (subscription === null) {
+          const isKnownMembership = profile.stripe_subscription_id === raw.id;
+          if (!isKnownMembership) {
+            console.log("[WEBHOOK] Non-membership / unknown subscription, ignoring");
+            await logBillingEvent(supabase, profile.id, event.type, event.id, {
+              subscriptionId: raw.id,
+              skipped: "non_membership",
+            });
+            break;
+          }
+          if (!isGrantedPremium(profile)) {
+            const { error } = await supabase
+              .from("profiles")
+              .update({
+                subscription_active: false,
+                subscription_status: "canceled",
+                is_member: false,
+              })
+              .eq("id", profile.id);
+            if (error) throw new Error(`Cancel update failed: ${error.message}`);
+          }
+          await logBillingEvent(supabase, profile.id, event.type, event.id, { subscriptionId: raw.id, status: "canceled" });
+          break;
+        }
+
+        // An old canceled membership must not deactivate a different live one.
+        if (
+          !isActiveStatus(subscription.status) &&
+          profile.stripe_subscription_id &&
+          profile.stripe_subscription_id !== subscription.id &&
+          profile.subscription_active
+        ) {
+          console.log("[WEBHOOK] Ignoring inactive event for a superseded subscription");
+          await logBillingEvent(supabase, profile.id, event.type, event.id, {
+            subscriptionId: subscription.id,
+            skipped: "superseded",
+          });
+          break;
+        }
+
+        await applyEntitlement(supabase, profile, subscription);
+        await logBillingEvent(supabase, profile.id, event.type, event.id, {
+          subscriptionId: subscription.id,
+          status: subscription.status,
+        });
         break;
       }
 
+      case "invoice.payment_succeeded":
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log(`[WEBHOOK] ✗ Payment failed - Customer: ${invoice.customer}, Invoice: ${invoice.id}`);
+        const subscriptionId = getInvoiceSubscriptionId(invoice);
+        if (!subscriptionId) {
+          console.log("[WEBHOOK] Non-subscription invoice, ignoring");
+          await logBillingEvent(supabase, null, event.type, event.id, { invoiceId: invoice.id });
+          break;
+        }
 
-        // Find user by customer ID
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("stripe_customer_id", invoice.customer as string)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({
-              subscription_active: false,
-              subscription_status: 'past_due',
-              is_member: false,
-            })
-            .eq("id", profile.id);
-
-          console.log(`[WEBHOOK] ✗ Subscription deactivated for user ${profile.id} due to payment failure`);
-          await logBillingEvent(supabase, profile.id, event.type, event.id, { invoiceId: invoice.id });
-          
-          // Create notification
-          await supabase.rpc('create_notification', {
-            p_user_id: profile.id,
-            p_type: 'payment_failed',
-            p_title: 'Payment Failed',
-            p_message: 'Your unlimited access payment failed. Please update your payment method to restore access.',
-            p_link: '/subscription',
+        const subscription = await authoritativeMembership(subscriptionId, membershipProductId!);
+        if (!subscription) {
+          console.log("[WEBHOOK] Invoice for an unrelated product, ignoring");
+          await logBillingEvent(supabase, null, event.type, event.id, {
+            invoiceId: invoice.id,
+            skipped: "non_membership",
           });
+          break;
         }
-        break;
-      }
 
-      case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log(`[WEBHOOK] Subscription updated - ID: ${subscription.id}, Status: ${subscription.status}`);
-
-        // Find user by customer ID
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("stripe_customer_id", subscription.customer as string)
-          .single();
-
-        if (profile) {
-          const isActive = ['active', 'trialing'].includes(subscription.status);
-          
-          await supabase
-            .from("profiles")
-            .update({
-              subscription_active: isActive,
-              subscription_status: subscription.status, // FIX: Also update subscription_status
-              subscription_current_period_end: subscription.current_period_end,
-              is_member: isActive,
-            })
-            .eq("id", profile.id);
-
-          console.log(`[WEBHOOK] ✓ Subscription status updated for user ${profile.id}: ${isActive ? 'active' : 'inactive'}, status: ${subscription.status}`);
-          await logBillingEvent(supabase, profile.id, event.type, event.id, { subscriptionId: subscription.id, status: subscription.status });
+        const profile = await findProfileByCustomer(supabase, invoice.customer as string);
+        if (!profile) {
+          await logBillingEvent(supabase, null, event.type, event.id, { invoiceId: invoice.id });
+          break;
         }
-        break;
-      }
 
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log(`[WEBHOOK] Subscription deleted - ID: ${subscription.id}`);
+        await applyEntitlement(supabase, profile, subscription);
 
-        // Find user by customer ID
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("stripe_customer_id", subscription.customer as string)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({
-              subscription_active: false,
-              subscription_status: 'canceled', // FIX: Also update subscription_status
-              is_member: false,
-            })
-            .eq("id", profile.id);
-
-          console.log(`[WEBHOOK] ✓ Subscription cancelled for user ${profile.id}`);
-          await logBillingEvent(supabase, profile.id, event.type, event.id, { subscriptionId: subscription.id });
+        if (event.type === "invoice.payment_failed" && !isGrantedPremium(profile)) {
+          // One notification per failed invoice: the event-id idempotency guard
+          // above already prevents duplicates on Stripe retries.
+          const { error: notifyError } = await supabase.rpc("create_notification", {
+            p_user_id: profile.id,
+            p_type: "payment_failed",
+            p_title: "Payment Failed",
+            p_message:
+              "Your unlimited access payment failed. Please update your payment method to restore access.",
+            p_link: "/subscription",
+          });
+          if (notifyError) console.error("[WEBHOOK] Notification failed:", notifyError.message);
         }
+
+        await logBillingEvent(supabase, profile.id, event.type, event.id, {
+          invoiceId: invoice.id,
+          status: subscription.status,
+        });
         break;
       }
 
@@ -330,19 +365,12 @@ serve(async (req) => {
         console.log(`[WEBHOOK] Unhandled event type: ${event.type}`);
     }
 
-    return new Response(JSON.stringify({ received: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[WEBHOOK] Error processing event: ${errorMessage}`);
-    await logBillingEvent(supabase, null, event.type, event.id, event.data.object, error);
-    
-    // CRITICAL: Return 200 even on processing errors to prevent Stripe retry storms
-    return new Response(JSON.stringify({ received: true, error: errorMessage }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[WEBHOOK] Processing error for ${event.type} (${event.id}): ${message}`);
+    await logBillingEvent(supabase, null, event.type, event.id, { eventType: event.type }, error);
+    const status = error instanceof MembershipConfigError ? 503 : 500;
+    return new Response(JSON.stringify({ error: "Processing failed" }), { status });
   }
 });

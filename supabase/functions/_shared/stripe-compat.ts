@@ -119,13 +119,24 @@ export function getSubscriptionPriceIds(subscription: UnknownRecord | null | und
  * A subscription belongs to the membership when it references the membership
  * PRODUCT. Scoping by product (not by the current price) keeps legacy $9.99
  * subscribers entitled after the price change.
+ *
+ * FAILS CLOSED: when the membership product is unknown this throws, because
+ * accepting every subscription would entitle unrelated purchases. Callers must
+ * treat the throw as a retryable configuration error and never revoke access.
  */
 export function isMembershipSubscription(
   subscription: UnknownRecord | null | undefined,
   membershipProductId: string | null,
 ): boolean {
-  if (!membershipProductId) return true; // unknown product -> do not exclude
+  if (!membershipProductId) {
+    throw new Error("Membership product id is unknown - cannot classify subscription (retryable config error)");
+  }
   return getSubscriptionProductIds(subscription).includes(membershipProductId);
+}
+
+/** True when the subscription is set to end at the current period end. */
+export function isCancelScheduled(subscription: UnknownRecord | null | undefined): boolean {
+  return subscription?.cancel_at_period_end === true || typeof subscription?.cancel_at === "number";
 }
 
 /**

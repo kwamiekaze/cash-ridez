@@ -27,7 +27,7 @@ import { formatCurrency } from "@/utils/fareEstimator";
 const Subscription = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { subscribed, subscription_end, completed_trips, trips_remaining, loading, startCheckout, manageSubscription } = useSubscription();
+  const { subscribed, subscription_end, cancel_at_period_end, connected_trips, trips_remaining, loading, startCheckout, manageSubscription } = useSubscription();
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [totalSavings, setTotalSavings] = useState(0);
@@ -128,7 +128,7 @@ const Subscription = () => {
                   {subscription_end && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="w-4 h-4" />
-                      <span>Renews on {format(new Date(subscription_end), "MMMM d, yyyy")}</span>
+                      <span>{cancel_at_period_end ? "Ends on" : "Renews on"} {format(new Date(subscription_end), "MMMM d, yyyy")}</span>
                     </div>
                   )}
 
@@ -168,7 +168,7 @@ const Subscription = () => {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      You've used {completed_trips} of 3 free connected trips. 
+                      You've used {connected_trips} of 3 free connected trips. 
                       Subscribe to unlock unlimited access.
                     </AlertDescription>
                   </Alert>
@@ -243,7 +243,7 @@ const Subscription = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Connected Trips</p>
-                  <p className="text-2xl font-bold">{completed_trips}</p>
+                  <p className="text-2xl font-bold">{connected_trips}</p>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Trips Remaining</p>

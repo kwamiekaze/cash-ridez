@@ -1,152 +1,184 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface SubscriptionStatus {
   subscribed: boolean;
+  subscription_status?: string | null;
   subscription_end?: string;
+  cancel_at_period_end: boolean;
+  has_billing_account: boolean;
   completed_trips: number;
   connected_trips: number;
   trips_remaining: number | 'unlimited';
   loading: boolean;
+  /** True when the status could not be confirmed (network/server problem). */
+  unknown: boolean;
 }
+
+const FREE_CONNECTIONS = 3;
+
+const EMPTY: SubscriptionStatus = {
+  subscribed: false,
+  subscription_status: null,
+  subscription_end: undefined,
+  cancel_at_period_end: false,
+  has_billing_account: false,
+  completed_trips: 0,
+  connected_trips: 0,
+  trips_remaining: FREE_CONNECTIONS,
+  loading: false,
+  unknown: false,
+};
 
 export const useSubscription = () => {
   const { user } = useAuth();
-  const [status, setStatus] = useState<SubscriptionStatus>({
-    subscribed: false,
-    completed_trips: 0,
-    connected_trips: 0,
-    trips_remaining: 3,
-    loading: true,
-  });
+  const [status, setStatus] = useState<SubscriptionStatus>({ ...EMPTY, loading: true });
 
-  const checkStatus = async () => {
-    if (!user) {
-      setStatus({
-        subscribed: false,
-        completed_trips: 0,
-        connected_trips: 0,
-        trips_remaining: 3,
-        loading: false,
-      });
+  // Guards against applying a response that belongs to a previous account or
+  // to a request that has been superseded by a newer one.
+  const requestIdRef = useRef(0);
+  const userIdRef = useRef<string | null>(null);
+  userIdRef.current = user?.id ?? null;
+
+  const checkStatus = useCallback(async () => {
+    const userId = user?.id ?? null;
+    if (!userId) {
+      setStatus({ ...EMPTY });
       return;
     }
 
+    const requestId = ++requestIdRef.current;
+    const isCurrent = () => requestId === requestIdRef.current && userIdRef.current === userId;
+
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription-status', {
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-      });
+      const { data, error } = await supabase.functions.invoke('check-subscription-status');
+
+      if (!isCurrent()) return;
 
       if (error) {
         console.error('Error checking subscription:', error);
-        // Fallback to local data
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('subscription_active, completed_trips_count, connected_trips_count')
-          .eq('id', user.id)
-          .single();
 
-        const connectedTrips = profile?.connected_trips_count || 0;
+        // Fall back to the last known DB state. A FAILED fetch must never be
+        // read as "zero connections used".
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('subscription_active, subscription_status, completed_trips_count, connected_trips_count, stripe_customer_id')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!isCurrent()) return;
+
+        if (profileError || !profile) {
+          console.error('Subscription fallback lookup failed:', profileError);
+          setStatus((prev) => ({ ...prev, loading: false, unknown: true }));
+          return;
+        }
+
+        const connectedTrips = profile.connected_trips_count || 0;
+        const active = !!profile.subscription_active;
         setStatus({
-          subscribed: profile?.subscription_active || false,
-          completed_trips: profile?.completed_trips_count || 0,
+          subscribed: active,
+          subscription_status: profile.subscription_status ?? null,
+          subscription_end: undefined,
+          cancel_at_period_end: false,
+          has_billing_account: !!profile.stripe_customer_id,
+          completed_trips: profile.completed_trips_count || 0,
           connected_trips: connectedTrips,
-          trips_remaining: profile?.subscription_active 
-            ? 'unlimited' 
-            : Math.max(0, 3 - connectedTrips),
+          trips_remaining: active ? 'unlimited' : Math.max(0, FREE_CONNECTIONS - connectedTrips),
           loading: false,
+          unknown: false,
         });
-      } else {
-        setStatus({
-          ...data,
-          connected_trips: data.connected_trips || 0,
-          loading: false,
-        });
+        return;
       }
+
+      const connectedTrips = data?.connected_trips || 0;
+      setStatus({
+        subscribed: !!data?.subscribed,
+        subscription_status: data?.subscription_status ?? null,
+        subscription_end: data?.subscription_end ?? undefined,
+        cancel_at_period_end: !!data?.cancel_at_period_end,
+        has_billing_account: !!data?.has_billing_account,
+        completed_trips: data?.completed_trips || 0,
+        connected_trips: connectedTrips,
+        trips_remaining: data?.trips_remaining ?? Math.max(0, FREE_CONNECTIONS - connectedTrips),
+        loading: false,
+        unknown: false,
+      });
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setStatus(prev => ({ ...prev, loading: false }));
+      if (!isCurrent()) return;
+      setStatus((prev) => ({ ...prev, loading: false, unknown: true }));
     }
-  };
+  }, [user?.id]);
 
   const startCheckout = async (returnUrl?: string) => {
-    try {
-      const currentUrl = returnUrl || window.location.href;
-      
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { return_url: currentUrl },
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-      });
+    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      body: { cancel_url: returnUrl || window.location.href },
+    });
 
-      if (error) throw error;
-      
-      if (data?.url) {
-        // Navigate to checkout in same window
-        window.location.href = data.url;
-      }
-    } catch (error) {
+    if (error) {
       console.error('Error creating checkout:', error);
       throw error;
+    }
+
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data?.error || 'Checkout session could not be created');
     }
   };
 
   const manageSubscription = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('create-customer-portal-session', {
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-      });
+    const { data, error } = await supabase.functions.invoke('create-customer-portal-session', {
+      body: { return_url: window.location.href },
+    });
 
-      if (error) throw error;
-      
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error) {
+    if (error) {
       console.error('Error opening portal:', error);
       throw error;
+    }
+
+    if (data?.url) {
+      // Same-tab navigation: popup blockers reject window.open after an await.
+      window.location.href = data.url;
+    } else {
+      throw new Error(data?.error || 'Billing portal could not be opened');
     }
   };
 
   useEffect(() => {
-    // Defer initial check to requestIdleCallback for non-blocking after paint
-    if ('requestIdleCallback' in window) {
-      const idleId = requestIdleCallback(() => {
-        checkStatus();
-      }, { timeout: 2000 });
-      
-      // Auto-refresh every minute
-      const interval = setInterval(checkStatus, 60000);
-      
-      return () => {
-        cancelIdleCallback(idleId);
-        clearInterval(interval);
-      };
-    } else {
-      // Fallback for browsers without requestIdleCallback
-      const timeout = setTimeout(checkStatus, 100);
-      const interval = setInterval(checkStatus, 60000);
-      
-      return () => {
-        clearTimeout(timeout);
-        clearInterval(interval);
-      };
-    }
-  }, [user]);
+    // Reset immediately on account change so stale values are never shown.
+    requestIdRef.current++;
+    setStatus({ ...EMPTY, loading: !!user });
+
+    if (!user) return;
+
+    let cancelled = false;
+    const run = () => {
+      if (!cancelled) checkStatus();
+    };
+
+    const timeout = setTimeout(run, 100);
+    const interval = setInterval(run, 60000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, [user, checkStatus]);
 
   return {
     ...status,
     checkStatus,
     startCheckout,
     manageSubscription,
-    canUseFeatures: status.subscribed || status.connected_trips < 3,
-    hasPremiumAccess: status.subscribed, // Helper for unlimited features
-    isPremium: status.subscribed, // Alias for consistency
+    // While loading or unknown, do not lock users out (fail open on gating),
+    // but the limit is still enforced server-side on acceptance.
+    canUseFeatures:
+      status.subscribed || status.loading || status.unknown || status.connected_trips < FREE_CONNECTIONS,
+    hasPremiumAccess: status.subscribed,
+    isPremium: status.subscribed,
   };
 };
