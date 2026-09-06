@@ -7,14 +7,31 @@ import {
   canUseFeatures as canUseFeaturesFor,
   connectedTrips as connectedTripsOf,
   FREE_CONNECTIONS,
+  isConfirmed,
   isEntitled,
   loadingStateFor,
   signedOutState,
+  stateForOwner,
   tripsRemaining as tripsRemainingOf,
   type SubscriptionState,
 } from '@/lib/subscriptionState';
 
 export { FREE_CONNECTIONS };
+
+/** Extract a usable redirect URL from an edge-function response, or throw. */
+const requireRedirectUrl = (data: any, fallbackError: string): string => {
+  if (data && typeof data === 'object' && typeof data.url === 'string') {
+    const url = data.url.trim();
+    // Only ever navigate to an absolute https Stripe-hosted URL.
+    if (/^https:\/\//i.test(url)) return url;
+  }
+  const message =
+    data && typeof data === 'object' && typeof data.error === 'string' && data.error
+      ? data.error
+      : fallbackError;
+  throw new Error(message);
+};
+
 
 export const useSubscription = () => {
   const { user } = useAuth();
