@@ -18,7 +18,7 @@ export interface MembershipView {
   unknown: boolean;
   confirmed: boolean;
   isPremium: boolean;
-  connected_trips: number;
+  connected_trips: number | null;
   connected_trips_known: boolean;
 }
 
@@ -32,6 +32,7 @@ export const evaluateTripCreationGate = (m: MembershipView): TripCreationGate =>
   if (m.loading || m.unknown || !m.confirmed || !m.connected_trips_known) {
     return { status: 'checking' };
   }
+  if (m.connected_trips === null) return { status: 'checking' };
   return m.connected_trips < FREE_CONNECTIONS
     ? { status: 'allowed' }
     : { status: 'limit_reached' };

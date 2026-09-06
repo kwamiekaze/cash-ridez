@@ -92,6 +92,10 @@ END:VCARD`;
         .eq("id", user.id)
         .maybeSingle();
 
+      // Ignore a response that arrives after unmount or an account change.
+      if (cancelled || !user || profileData?.id !== user.id) {
+        if (cancelled) return;
+      }
       if (cancelled) return;
 
       // An errored or missing profile must never be read as "everything is fine".
@@ -251,18 +255,15 @@ END:VCARD`;
         return;
       }
 
-      // 4) Check account status using already-fetched profile where possible
-      let currentProfile = profile as any;
-      if (!currentProfile) {
-        const { data: profData, error: profErr } = await supabase
-          .from("profiles")
-          .select("paused")
-          .eq("id", userId)
-          .maybeSingle();
-        if (profErr) throw profErr;
-        if (!profData) throw new Error("Could not load your account. Please try again.");
-        currentProfile = profData;
-      }
+      // 4) Re-read the server-owned account status; never trust a cached copy.
+      const { data: profData, error: profErr } = await supabase
+        .from("profiles")
+        .select("paused")
+        .eq("id", userId)
+        .maybeSingle();
+      if (profErr) throw profErr;
+      if (!profData) throw new Error("Could not load your account. Please try again.");
+      const currentProfile = profData as any;
 
       if (currentProfile?.paused) {
         toast.error("Your account is currently paused. Please contact support to reactivate it.");
@@ -330,6 +331,25 @@ END:VCARD`;
         tripInsert.estimated_competitor_driver_earnings = fareEstimates.driverEarnings;
       }
       
+      // Server-side authority, immediately before the insert. Any error or a
+      // non-boolean answer fails CLOSED and stays retryable.
+      const { data: canUse, error: gateErr } = await supabase.rpc('can_use_trip_features', {
+        p_user_id: userId,
+      });
+      if (gateErr || typeof canUse !== 'boolean') {
+        console.error('can_use_trip_features check failed', gateErr);
+        toast.message("Checking your membership…", { description: "One moment, then tap again." });
+        setIsSubmitting(false);
+        membership.checkStatus();
+        return;
+      }
+      if (canUse === false) {
+        toast.error("You have reached your free connected trip limit. Please subscribe to continue creating trip requests.");
+        setIsSubmitting(false);
+        navigate("/subscription");
+        return;
+      }
+
       const { data: newTrip, error } = await supabase
         .from("ride_requests")
         .insert(tripInsert)
@@ -365,7 +385,7 @@ END:VCARD`;
       setIsSubmitting(false);
     }
   };
-  if (loading) {
+  if (loading || (!profileError && gate.status === 'checking')) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -383,20 +403,6 @@ END:VCARD`;
           </p>
           <Button onClick={() => { setProfileError(false); setLoading(true); setReloadKey((k) => k + 1); }}>
             Try again
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  if (gate.status === 'checking') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <Card className="max-w-md w-full p-8 text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="text-sm text-muted-foreground">Checking your membership…</p>
-          <Button variant="outline" onClick={() => membership.checkStatus()}>
-            Retry
           </Button>
         </Card>
       </div>
