@@ -32,6 +32,18 @@ describe("US E.164 normalization", () => {
     expect(normalizeUsE164(null)).toBeNull();
   });
 
+  it("rejects the exact malformed shapes reported in review", () => {
+    expect(normalizeUsE164("++16789288816")).toBeNull();
+    expect(normalizeUsE164("+6789288816")).toBeNull(); // + requires 11 digits starting with 1
+    expect(normalizeUsE164("678/928/8816")).toBeNull();
+    expect(normalizeUsE164("678<928>8816")).toBeNull();
+    // ...while the normal formats people actually type still work
+    expect(normalizeUsE164("(678) 928-8816")).toBe("+16789288816");
+    expect(normalizeUsE164("678 928 8816")).toBe("+16789288816");
+    expect(normalizeUsE164("+1 (678) 928-8816")).toBe("+16789288816");
+    expect(normalizeUsE164("1-678-928-8816")).toBe("+16789288816");
+  });
+
   it("validates strict E.164", () => {
     expect(isValidUsE164("+16789288816")).toBe(true);
     expect(isValidUsE164("6789288816")).toBe(false);
