@@ -75,7 +75,9 @@ ON CONFLICT DO NOTHING;
 -- ---------------------------------------------------------------------------
 -- Fails (raises) when the profile is missing — a missing profile must never be
 -- read as "0 connections used, go ahead".
-CREATE OR REPLACE FUNCTION public.connection_entitlement(p_user_id uuid)
+-- Private, unchecked implementation. EXECUTE is granted to service_role only;
+-- SECURITY DEFINER callers (accept_ride_atomic) reach it as the function owner.
+CREATE OR REPLACE FUNCTION public._connection_entitlement_unchecked(p_user_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
 STABLE
@@ -86,6 +88,7 @@ DECLARE
   v_active   boolean;
   v_status   text;
   v_used     integer;
+  v_sub_id   text;
 BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'connection_entitlement: user id is required';
@@ -95,8 +98,9 @@ BEGIN
     RETURN jsonb_build_object('allowed', true, 'reason', 'admin', 'used', NULL);
   END IF;
 
-  SELECT subscription_active, subscription_status, connected_trips_count
-    INTO v_active, v_status, v_used
+  SELECT subscription_active, subscription_status, connected_trips_count,
+         stripe_subscription_id
+    INTO v_active, v_status, v_used, v_sub_id
   FROM public.profiles
   WHERE id = p_user_id;
 
@@ -108,6 +112,13 @@ BEGIN
   -- is not enough.
   IF v_active IS TRUE AND v_status IN ('active', 'trialing') THEN
     RETURN jsonb_build_object('allowed', true, 'reason', 'subscribed', 'used', v_used);
+  END IF;
+
+  -- Trusted ADMIN GRANT: 'premium' with the flag set and NO Stripe
+  -- subscription. A 'premium' row that DOES carry a Stripe subscription id is
+  -- not a grant and gets no unlimited access from this branch.
+  IF v_active IS TRUE AND v_status = 'premium' AND v_sub_id IS NULL THEN
+    RETURN jsonb_build_object('allowed', true, 'reason', 'admin_grant', 'used', v_used);
   END IF;
 
   IF v_used IS NULL THEN
@@ -122,19 +133,81 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.connection_entitlement(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.connection_entitlement(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public._connection_entitlement_unchecked(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._connection_entitlement_unchecked(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public._connection_entitlement_unchecked(uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public._connection_entitlement_unchecked(uuid) TO service_role;
 
--- Existing gate keeps its name and signature, but now uses the same rule.
-CREATE OR REPLACE FUNCTION public.can_use_trip_features(p_user_id uuid)
-RETURNS boolean
-LANGUAGE sql
+-- Caller check shared by the public entrypoints below. A user may read their
+-- OWN entitlement; admins may read anyone's; trusted server code (service_role
+-- JWT) may read anyone's. Everyone else — including anon — is refused, so the
+-- RPC cannot be used to enumerate other people's counts or membership.
+CREATE OR REPLACE FUNCTION public._assert_entitlement_readable(p_user_id uuid)
+RETURNS void
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
-  SELECT (public.connection_entitlement(p_user_id) ->> 'allowed')::boolean
+DECLARE
+  v_caller uuid := auth.uid();
+  v_role   text := auth.role();
+BEGIN
+  IF v_role = 'service_role' THEN
+    RETURN;
+  END IF;
+  IF v_caller IS NOT NULL
+     AND (v_caller = p_user_id OR public.has_role(v_caller, 'admin'::app_role)) THEN
+    RETURN;
+  END IF;
+  RAISE EXCEPTION 'not authorized to read entitlement for %', p_user_id
+    USING ERRCODE = '42501';
+END;
 $$;
+
+REVOKE ALL ON FUNCTION public._assert_entitlement_readable(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._assert_entitlement_readable(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public._assert_entitlement_readable(uuid) TO authenticated, service_role;
+
+-- Public entrypoint: same rule, but only for a caller allowed to see it.
+CREATE OR REPLACE FUNCTION public.connection_entitlement(p_user_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  PERFORM public._assert_entitlement_readable(p_user_id);
+  RETURN public._connection_entitlement_unchecked(p_user_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.connection_entitlement(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.connection_entitlement(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.connection_entitlement(uuid) TO authenticated, service_role;
+
+-- Existing gate keeps its name and signature, but now uses the same rule and
+-- the same caller check.
+CREATE OR REPLACE FUNCTION public.can_use_trip_features(p_user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  PERFORM public._assert_entitlement_readable(p_user_id);
+  RETURN (public._connection_entitlement_unchecked(p_user_id) ->> 'allowed')::boolean;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.can_use_trip_features(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.can_use_trip_features(uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.can_use_trip_features(uuid) TO authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.free_connection_limit() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.free_connection_limit() TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- 3. Idempotent connection counting
@@ -384,7 +457,7 @@ BEGIN
   END IF;
 
   -- Quota: BOTH participants must be entitled. Errors propagate (fail closed).
-  v_entitlement := public.connection_entitlement(v_rider_id);
+  v_entitlement := public._connection_entitlement_unchecked(v_rider_id);
   IF (v_entitlement ->> 'allowed')::boolean IS NOT TRUE THEN
     RETURN jsonb_build_object(
       'success', false,
@@ -392,7 +465,7 @@ BEGIN
       'message', 'The rider has used all 3 free connected trips. A membership is required to connect again.');
   END IF;
 
-  v_entitlement := public.connection_entitlement(p_driver_id);
+  v_entitlement := public._connection_entitlement_unchecked(p_driver_id);
   IF (v_entitlement ->> 'allowed')::boolean IS NOT TRUE THEN
     RETURN jsonb_build_object(
       'success', false,
@@ -508,6 +581,11 @@ BEGIN
   OR NEW.paused                         IS DISTINCT FROM OLD.paused
   OR NEW.admin_locked_fields            IS DISTINCT FROM OLD.admin_locked_fields
   OR NEW.active_assigned_ride_id        IS DISTINCT FROM OLD.active_assigned_ride_id
+  OR to_jsonb(NEW) -> 'is_member'                IS DISTINCT FROM to_jsonb(OLD) -> 'is_member'
+  -- Added by billing.sql (applied first). Compared through jsonb so this guard
+  -- also works if the billing columns are not present yet.
+  OR to_jsonb(NEW) -> 'billing_sync_generation'  IS DISTINCT FROM to_jsonb(OLD) -> 'billing_sync_generation'
+  OR to_jsonb(NEW) -> 'billing_sync_applied'     IS DISTINCT FROM to_jsonb(OLD) -> 'billing_sync_applied'
   THEN
     RAISE EXCEPTION 'This field is managed by CashRidez and cannot be changed here';
   END IF;
