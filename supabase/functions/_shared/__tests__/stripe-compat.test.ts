@@ -181,3 +181,31 @@ describe("cancellation scheduled", () => {
     expect(isCancelScheduled(null)).toBe(false);
   });
 });
+
+describe("period end hardening", () => {
+  it("rejects out-of-range finite timestamps instead of throwing", () => {
+    expect(periodEndToIso(1e18)).toBeNull();
+    expect(periodEndToIso(-1e18)).toBeNull();
+    expect(periodEndToIso(Number.MAX_SAFE_INTEGER)).toBeNull();
+    expect(periodEndToIso(1800000000)).toBe(new Date(1800000000000).toISOString());
+  });
+
+  it("uses the membership item's period on a multi-product subscription", () => {
+    const multi = {
+      id: "sub_multi",
+      status: "active",
+      items: {
+        data: [
+          { current_period_end: 1500000000, price: { id: "price_other", product: "prod_other" } },
+          { current_period_end: 1900000000, price: { id: CURRENT_PRICE, product: MEMBERSHIP_PRODUCT } },
+        ],
+      },
+    };
+    expect(getSubscriptionPeriodEnd(multi, MEMBERSHIP_PRODUCT)).toBe(1900000000);
+    expect(getSubscriptionPeriodEnd(multi, "prod_other")).toBe(1500000000);
+  });
+
+  it("treats a subscription without a status as an error, never a revocation", () => {
+    expect(() => buildEntitlementUpdate({ id: "sub_x" } as any)).toThrow(/Malformed/);
+  });
+});
