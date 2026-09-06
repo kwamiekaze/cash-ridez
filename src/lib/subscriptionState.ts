@@ -152,7 +152,10 @@ export const applySuccess = (
   if (serverStale) {
     // The server could not confirm against Stripe. Keep the previous confirmed
     // snapshot when we have one; otherwise adopt the DB state but mark it stale.
-    const retained = prev.ownerId === ownerId && prev.snapshot ? prev.snapshot : snapshot;
+    const priorConfirmed = prev.ownerId === ownerId && prev.snapshot && !prev.unknown
+      ? prev.snapshot
+      : null;
+    const retained = priorConfirmed ?? snapshot;
     return {
       ownerId,
       snapshot: retained,
@@ -175,7 +178,10 @@ export const applyFailure = (
   ownerId: string,
   error: string,
 ): SubscriptionState => {
-  const retained = prev.ownerId === ownerId ? prev.snapshot : null;
+  // Only a CONFIRMED snapshot for the same account may be retained; an
+  // unconfirmed (stale) snapshot must not become confirmed via a later failure.
+  const sameOwnerConfirmed = prev.ownerId === ownerId && !!prev.snapshot && !prev.unknown;
+  const retained = sameOwnerConfirmed ? prev.snapshot : null;
   return {
     ownerId,
     snapshot: retained,

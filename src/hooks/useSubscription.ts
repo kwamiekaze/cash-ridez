@@ -140,7 +140,7 @@ export const useSubscription = () => {
 
   return useMemo(
     () => ({
-      subscribed: isEntitled(snapshot),
+      subscribed: isEntitled(effective),
       subscription_status: snapshot?.subscription_status ?? null,
       subscription_end: snapshot?.subscription_end,
       cancel_at_period_end: !!snapshot?.cancel_at_period_end,
@@ -163,8 +163,8 @@ export const useSubscription = () => {
       manageSubscription,
       // Fails CLOSED: unknown/stale-without-confirmation does not unlock actions.
       canUseFeatures: canUseFeaturesFor(effective),
-      hasPremiumAccess: isEntitled(snapshot),
-      isPremium: isEntitled(snapshot),
+      hasPremiumAccess: isEntitled(effective),
+      isPremium: isEntitled(effective),
     }),
     [effective, snapshot, confirmed, checkStatus],
   );
