@@ -27,15 +27,25 @@ export function isActiveStatus(status?: string | null): boolean {
 
 /**
  * Read the current period end (unix seconds) from a subscription object.
- * Prefers the new per-item field; falls back to the legacy top-level field.
- * Returns null when neither is present (never guesses a date).
+ *
+ * When `membershipProductId` is given, ONLY items belonging to that product are
+ * considered — a multi-product subscription must not report another product's
+ * period. Falls back to the legacy top-level field when no item carries a date.
+ * Returns null when nothing usable is present (never guesses a date).
  */
-export function getSubscriptionPeriodEnd(subscription: UnknownRecord | null | undefined): number | null {
+export function getSubscriptionPeriodEnd(
+  subscription: UnknownRecord | null | undefined,
+  membershipProductId?: string | null,
+): number | null {
   if (!subscription) return null;
 
   const items: UnknownRecord[] = subscription?.items?.data ?? [];
+  const scoped = membershipProductId
+    ? items.filter((item) => itemProductId(item) === membershipProductId)
+    : items;
+
   let maxEnd: number | null = null;
-  for (const item of items) {
+  for (const item of scoped) {
     const end = item?.current_period_end;
     if (typeof end === "number" && Number.isFinite(end)) {
       maxEnd = maxEnd === null ? end : Math.max(maxEnd, end);
@@ -43,18 +53,45 @@ export function getSubscriptionPeriodEnd(subscription: UnknownRecord | null | un
   }
   if (maxEnd !== null) return maxEnd;
 
+  // Only fall back to the subscription-level field when the membership item
+  // itself carries no date (legacy API payloads).
+  if (membershipProductId && scoped.length === 0) return null;
+
   const legacy = subscription?.current_period_end;
   if (typeof legacy === "number" && Number.isFinite(legacy)) return legacy;
 
   return null;
 }
 
-/** Convert a unix-seconds period end to an ISO string, or null. */
-export function periodEndToIso(periodEnd: number | null): string | null {
-  if (periodEnd === null) return null;
+function itemProductId(item: UnknownRecord | null | undefined): string | null {
+  const product = item?.price?.product ?? item?.plan?.product;
+  if (typeof product === "string") return product;
+  if (product && typeof product === "object" && typeof (product as UnknownRecord).id === "string") {
+    return (product as UnknownRecord).id as string;
+  }
+  return null;
+}
+
+/** Largest/smallest unix-second values that JS Date can represent. */
+const MAX_UNIX_SECONDS = 8.64e15 / 1000; // Date range is +/- 8.64e15 ms
+const MIN_UNIX_SECONDS = -MAX_UNIX_SECONDS;
+
+/**
+ * Convert a unix-seconds period end to an ISO string, or null.
+ * Out-of-range finite numbers are rejected BEFORE toISOString, which would
+ * otherwise throw a RangeError and fail the whole request.
+ */
+export function periodEndToIso(periodEnd: number | null | undefined): string | null {
+  if (periodEnd === null || periodEnd === undefined) return null;
+  if (typeof periodEnd !== "number" || !Number.isFinite(periodEnd)) return null;
+  if (periodEnd < MIN_UNIX_SECONDS || periodEnd > MAX_UNIX_SECONDS) return null;
   const ms = periodEnd * 1000;
-  if (!Number.isFinite(ms)) return null;
-  return new Date(ms).toISOString();
+  if (!Number.isFinite(ms) || Math.abs(ms) > 8.64e15) return null;
+  try {
+    return new Date(ms).toISOString();
+  } catch {
+    return null;
+  }
 }
 
 /**
