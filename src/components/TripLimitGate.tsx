@@ -24,7 +24,6 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
   const {
     canUseFeatures,
     isPremium,
-    connected_trips,
     connected_trips_known,
     loading,
     unknown,

@@ -154,9 +154,9 @@ const Subscription = () => {
                     </ul>
                   </div>
 
-                  <Button 
-                    onClick={handleManageSubscription} 
-                    variant="outline" 
+                  <Button
+                    onClick={handleManageSubscription}
+                    variant="outline"
                     className="w-full"
                   >
                     <CreditCard className="w-4 h-4 mr-2" />
@@ -168,7 +168,7 @@ const Subscription = () => {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      You've used {connected_trips} of 3 free connected trips. 
+                      You've used {connected_trips} of 3 free connected trips.
                       Subscribe to unlock unlimited access.
                     </AlertDescription>
                   </Alert>
