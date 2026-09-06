@@ -93,10 +93,8 @@ END:VCARD`;
         .maybeSingle();
 
       // Ignore a response that arrives after unmount or an account change.
-      if (cancelled || !user || profileData?.id !== user.id) {
-        if (cancelled) return;
-      }
       if (cancelled) return;
+      if (profileData && (profileData as any).id !== user.id) return;
 
       // An errored or missing profile must never be read as "everything is fine".
       if (error || !profileData) {
