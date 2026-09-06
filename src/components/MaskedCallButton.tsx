@@ -274,7 +274,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
       variant="outline"
       size="sm"
       className={className || "flex-1 h-9 px-2 text-xs"}
-      title={statusMessage || (userHasPhone === false ? "Add phone number to your profile to use calling" : undefined)}
+      title={statusMessage || undefined}
     >
       <Phone className="h-3.5 w-3.5 mr-1.5" />
       {isInitiating ? "Connecting..." : buttonText}
