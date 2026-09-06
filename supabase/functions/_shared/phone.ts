@@ -15,6 +15,13 @@ export function escapeXml(text: string): string {
 }
 
 /**
+ * Characters a phone value may contain BEFORE stripping: digits, spaces and
+ * the usual separators, with at most one leading "+". Anything else
+ * ("678/928/8816", "678<928>8816", "++1...") is malformed and rejected.
+ */
+const ALLOWED_PHONE_CHARS = /^\+?[0-9 ().-]+$/;
+
+/**
  * Normalize a raw phone string to strict US E.164 (+1XXXXXXXXXX).
  * Returns null for anything that is not unambiguously a valid US number —
  * malformed values are rejected rather than coerced.
@@ -24,10 +31,20 @@ export function normalizeUsE164(raw: string | null | undefined): string | null {
   const trimmed = String(raw).trim();
   if (!trimmed) return null;
 
-  // Only digits, spaces and common separators are acceptable input.
-  if (/[a-zA-Z]/.test(trimmed)) return null;
+  // Reject any character outside the permitted set (also rejects letters and a
+  // second "+", because "+" is only allowed as the very first character).
+  if (!ALLOWED_PHONE_CHARS.test(trimmed)) return null;
 
   const digits = trimmed.replace(/\D/g, "");
+
+  if (trimmed.startsWith("+")) {
+    // An explicit country code must be complete: 11 digits beginning with 1.
+    if (digits.length !== 11 || !digits.startsWith("1")) return null;
+    const nsn = digits.slice(1);
+    if (!isValidUsNsn(nsn)) return null;
+    return `+1${nsn}`;
+  }
+
   if (digits.length === 10) {
     if (!isValidUsNsn(digits)) return null;
     return `+1${digits}`;

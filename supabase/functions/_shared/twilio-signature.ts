@@ -20,9 +20,26 @@ export function buildSignaturePayload(url: string, params: Record<string, string
 }
 
 /**
- * Reconstruct the externally visible URL for a request behind a proxy.
- * Supabase Edge Functions sit behind a proxy that sets x-forwarded-* headers;
- * `req.url` may carry an internal host, which would break verification.
+ * Build the EXACT external URL Twilio signed, from TRUSTED values only:
+ * the project's own SUPABASE_URL plus the known function path, plus the
+ * original query string of the incoming request. Proxy headers are never
+ * trusted — a forged x-forwarded-host would otherwise let an attacker choose
+ * the string that gets signed.
+ */
+export function canonicalFunctionUrl(
+  supabaseUrl: string,
+  functionPath: string,
+  rawRequestUrl: string,
+): string {
+  const base = new URL(supabaseUrl);
+  const incoming = new URL(rawRequestUrl);
+  const path = functionPath.startsWith("/") ? functionPath : `/${functionPath}`;
+  return `${base.protocol}//${base.host}${path}${incoming.search}`;
+}
+
+/**
+ * @deprecated Proxy headers are attacker-controllable. Kept only so existing
+ * callers keep compiling; use {@link canonicalFunctionUrl} for verification.
  */
 export function externalRequestUrl(rawUrl: string, headers: Headers): string {
   const url = new URL(rawUrl);
