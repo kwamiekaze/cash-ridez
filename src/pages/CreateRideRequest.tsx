@@ -373,6 +373,37 @@ END:VCARD`;
     );
   }
 
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <h1 className="text-xl font-bold">We couldn't load your account</h1>
+          <p className="text-sm text-muted-foreground">
+            Please check your connection and try again.
+          </p>
+          <Button onClick={() => { setProfileError(false); setLoading(true); setReloadKey((k) => k + 1); }}>
+            Try again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (gate.status === 'checking') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground">Checking your membership…</p>
+          <Button variant="outline" onClick={() => membership.checkStatus()}>
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-screen bg-background relative">
       {/* Animated Map Background */}
