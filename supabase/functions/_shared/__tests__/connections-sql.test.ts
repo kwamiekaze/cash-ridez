@@ -27,10 +27,12 @@ const sql = (q: string, p: any[] = []) => db.query(q, p) as Promise<any>;
 const asRole = async (role: "anon" | "authenticated" | "service_role", uid: string | null) => {
   await sql(`RESET ROLE`);
   await sql(`SELECT set_config('request.jwt.sub', $1, false)`, [uid ?? ""]);
+  await sql(`SELECT set_config('request.jwt.role', $1, false)`, [role]);
   await sql(`SET ROLE ${role}`);
 };
 const asOwner = async () => {
   await sql(`RESET ROLE`);
+  await sql(`SELECT set_config('request.jwt.role', 'service_role', false)`);
 };
 
 const accept = async (rideId: string, driverId: string, offerId: string | null = null, skipActive = true) => {
