@@ -121,7 +121,7 @@ beforeAll(async () => {
       admin_locked_fields text[],
       is_member boolean DEFAULT false,
       billing_sync_generation bigint DEFAULT 0,
-      billing_sync_applied boolean DEFAULT false,
+      billing_sync_applied bigint DEFAULT 0,
       active_assigned_ride_id uuid
     );
 
@@ -553,7 +553,7 @@ describe("direct writes", () => {
       sql(`UPDATE public.profiles SET billing_sync_generation=99 WHERE id=$1`, [RIDER]),
     ).rejects.toThrow();
     await expect(
-      sql(`UPDATE public.profiles SET billing_sync_applied=true WHERE id=$1`, [RIDER]),
+      sql(`UPDATE public.profiles SET billing_sync_applied=1 WHERE id=$1`, [RIDER]),
     ).rejects.toThrow();
     await asOwner();
   });

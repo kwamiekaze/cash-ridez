@@ -4,6 +4,7 @@ import { evaluateTripCreationGate, type MembershipView } from "../tripCreationGa
 const view = (over: Partial<MembershipView> = {}): MembershipView => ({
   loading: false,
   unknown: false,
+  stale: false,
   confirmed: true,
   isPremium: false,
   connected_trips: 0,
@@ -36,6 +37,13 @@ describe("trip creation gate", () => {
     expect(evaluateTripCreationGate(view({ connected_trips: 9 }))).toEqual({
       status: "limit_reached",
     });
+  });
+
+  it("blocks while membership is stale", () => {
+    expect(evaluateTripCreationGate(view({ stale: true }))).toEqual({ status: "checking" });
+    expect(
+      evaluateTripCreationGate(view({ stale: true, isPremium: true })),
+    ).toEqual({ status: "checking" });
   });
 
   it("allows an entitled member regardless of count", () => {
