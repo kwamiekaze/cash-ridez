@@ -80,7 +80,14 @@ export async function handleAcceptRide(req: Request, deps: AcceptDeps): Promise<
     return json({ success: false, error: "Invalid acceptedOfferId" }, 400);
   }
 
-  const driverId = typeof body.driverId === "string" && UUID.test(body.driverId) ? body.driverId : user.id;
+  // An explicitly supplied driverId must be a valid UUID; never silently
+  // substitute the caller for a malformed value.
+  if (body.driverId !== undefined && body.driverId !== null) {
+    if (typeof body.driverId !== "string" || !UUID.test(body.driverId)) {
+      return json({ success: false, error: "Invalid driverId" }, 400);
+    }
+  }
+  const driverId = typeof body.driverId === "string" ? body.driverId : user.id;
 
   const skipEtaCheck = body.skipEtaCheck === true;
   const etaRaw = typeof body.etaMinutes === "number" ? body.etaMinutes : Number(body.etaMinutes);
