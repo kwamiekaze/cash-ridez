@@ -1,26 +1,34 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Car, MessageSquare, Loader2 } from "lucide-react";
+import { CheckCircle, Car, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PremiumCrown } from "@/components/PremiumCrown";
+
+const MAX_ATTEMPTS = 6;
 
 const BillingSuccess = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
-  const { checkStatus, subscribed, loading } = useSubscription();
+  const { checkStatus, subscribed } = useSubscription();
   const attemptsRef = useRef(0);
+  const [timedOut, setTimedOut] = useState(false);
 
   // Poll until the membership is CONFIRMED by the server; never assume success
-  // just because Stripe redirected here.
+  // just because Stripe redirected here. Polling is bounded: when it runs out
+  // without confirmation the page says so instead of spinning forever.
   useEffect(() => {
     if (!sessionId || subscribed) return;
 
     let cancelled = false;
     const poll = () => {
-      if (cancelled || attemptsRef.current >= 6) return;
+      if (cancelled) return;
+      if (attemptsRef.current >= MAX_ATTEMPTS) {
+        setTimedOut(true);
+        return;
+      }
       attemptsRef.current += 1;
       checkStatus();
     };
@@ -35,7 +43,14 @@ const BillingSuccess = () => {
     };
   }, [sessionId, subscribed, checkStatus]);
 
-  const confirming = !subscribed;
+  const confirming = !subscribed && !timedOut;
+  const unconfirmed = !subscribed && timedOut;
+
+  const retry = () => {
+    attemptsRef.current = 0;
+    setTimedOut(false);
+    checkStatus();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -45,6 +60,8 @@ const BillingSuccess = () => {
             <div className="w-20 h-20 rounded-full bg-[hsl(var(--premium-gold))]/20 flex items-center justify-center">
               {confirming ? (
                 <Loader2 className="w-12 h-12 text-[hsl(var(--premium-gold))] animate-spin" />
+              ) : unconfirmed ? (
+                <AlertCircle className="w-12 h-12 text-muted-foreground" />
               ) : (
                 <CheckCircle className="w-12 h-12 text-[hsl(var(--premium-gold))]" />
               )}
@@ -52,14 +69,23 @@ const BillingSuccess = () => {
           </div>
           <CardTitle className="text-3xl flex items-center justify-center gap-2">
             <PremiumCrown size={28} />
-            <span>{confirming ? "Confirming Your Payment" : "You're Now Unlimited!"}</span>
+            <span>
+              {confirming
+                ? "Confirming Your Membership"
+                : unconfirmed
+                ? "Still Confirming"
+                : "You're Now Unlimited!"}
+            </span>
           </CardTitle>
           <CardDescription className="text-lg mt-2">
             {confirming
-              ? "Payment received — we're confirming your membership. This can take a moment."
+              ? "We're checking with our payment provider. This can take a moment."
+              : unconfirmed
+              ? "We couldn't confirm your membership yet. If you were charged it will activate shortly — check again in a minute."
               : "Your CashRidez Unlimited membership is active"}
           </CardDescription>
         </CardHeader>
+
 
         <CardContent className="space-y-6">
           <div className="p-4 bg-gradient-to-br from-[hsl(var(--premium-gold))]/10 to-primary/10 rounded-lg border border-[hsl(var(--premium-gold))]/20 space-y-3">
