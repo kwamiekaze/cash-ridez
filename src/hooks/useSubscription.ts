@@ -132,7 +132,11 @@ export const useSubscription = () => {
     };
   }, [userId, checkStatus]);
 
-  const snapshot = state.snapshot;
+  // Derive on EVERY render against the account signed in right now: a state
+  // left over from a previous account can never be rendered as this one's.
+  const effective = stateForOwner(state, userId);
+  const snapshot = effective.snapshot;
+  const confirmed = isConfirmed(effective);
 
   return useMemo(
     () => ({
@@ -143,23 +147,25 @@ export const useSubscription = () => {
       has_billing_account: !!snapshot?.has_billing_account,
       completed_trips: snapshot?.completed_trips ?? 0,
       /** Null when unknown — callers must not render it as 0. */
-      connected_trips: connectedTripsOf(state) ?? 0,
-      connected_trips_known: connectedTripsOf(state) !== null,
-      trips_remaining: tripsRemainingOf(state) ?? 0,
-      loading: state.loading,
+      connected_trips: connectedTripsOf(effective) ?? 0,
+      connected_trips_known: connectedTripsOf(effective) !== null,
+      trips_remaining: tripsRemainingOf(effective) ?? 0,
+      loading: effective.loading,
       /** No confirmed data for this account. */
-      unknown: state.unknown,
+      unknown: effective.unknown,
+      /** A server-confirmed snapshot exists for this account. */
+      confirmed,
       /** Newest attempt failed or the server could not confirm with Stripe. */
-      stale: state.stale,
-      error: state.error,
+      stale: effective.stale,
+      error: effective.error,
       checkStatus,
       startCheckout,
       manageSubscription,
       // Fails CLOSED: unknown/stale-without-confirmation does not unlock actions.
-      canUseFeatures: canUseFeaturesFor(state),
+      canUseFeatures: canUseFeaturesFor(effective),
       hasPremiumAccess: isEntitled(snapshot),
       isPremium: isEntitled(snapshot),
     }),
-    [state, snapshot, checkStatus],
+    [effective, snapshot, confirmed, checkStatus],
   );
 };
