@@ -1,130 +1,92 @@
 // ============================================================================
 // TWILIO STATUS WEBHOOK FOR CASHRIDEZ
 // ============================================================================
-//
-// This Supabase Edge Function handles Twilio call status updates.
-// Twilio posts status changes here throughout the call lifecycle.
-//
-// WEBHOOK URL (configured automatically by call-start):
-//   https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/call-status
-//
-// PARAMETERS:
-//   - callId: The call record ID from our database
-//   - CallStatus: Current Twilio call status (from POST body)
-//   - CallDuration: Duration in seconds (when completed)
-//
-// STATUS MAPPING:
-//   - queued/ringing → ringing
-//   - in-progress → in_progress
-//   - completed → completed
-//   - busy/failed/no-answer/canceled → respective statuses
-//
-// AUTHENTICATION: No JWT required (verify_jwt = false) - Twilio webhook
-//
-// IMPORTANT:
-//   - Updates call records in real-time
-//   - Records start time, end time, and duration
-//   - Always returns HTTP 200 to acknowledge receipt
-//
+// Receives parent-leg status callbacks, <Number> child-leg status callbacks and
+// the <Dial> action outcome. Every request is signature-verified against the
+// canonical URL before any database use. Which leg a callback belongs to is
+// decided by SID ownership, never by the `leg` query parameter.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
+import twilio from "npm:twilio@5.3.5";
+import { handleStatusCallback, RetryableCallError, type TwilioPort } from "../_shared/calling-core.ts";
+import {
+  canonicalFunctionUrl,
+  formDataToParams,
+  verifyTwilioSignature,
+} from "../_shared/twilio-signature.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Map Twilio statuses to our system statuses
-const statusMap: Record<string, string> = {
-  'queued': 'ringing',
-  'ringing': 'ringing',
-  'in-progress': 'in_progress',
-  'completed': 'completed',
-  'busy': 'busy',
-  'failed': 'failed',
-  'no-answer': 'no_answer',
-  'canceled': 'canceled'
-};
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const url = new URL(req.url);
-    const callId = url.searchParams.get('callId');
-    const leg = url.searchParams.get('leg');
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+    const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+    const contentType = req.headers.get("content-type") ?? "";
 
-    if (!callId) {
-      throw new Error('Missing callId');
+    if (req.method !== "POST" || !contentType.includes("application/x-www-form-urlencoded")) {
+      return json({ error: "method_not_allowed" }, 405);
     }
 
-    // Parse form data from Twilio
-    const formData = await req.formData();
-    const callStatus = formData.get('CallStatus')?.toString();
-    const callSid = formData.get('CallSid')?.toString();
-    const callDuration = formData.get('CallDuration')?.toString();
-    const timestamp = formData.get('Timestamp')?.toString();
+    const params = formDataToParams(await req.formData());
+    const signedUrl = canonicalFunctionUrl(supabaseUrl, "/functions/v1/call-status", req.url);
+    const signatureValid = await verifyTwilioSignature({
+      authToken,
+      signature: req.headers.get("x-twilio-signature"),
+      url: signedUrl,
+      params,
+    });
 
-    if (!callStatus) {
-      throw new Error('Missing CallStatus');
-    }
-
-    console.log(`[call-status] Call status update received - callId: ${callId}, status: ${callStatus}, leg: ${leg || 'main'}`);
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Map Twilio status to our system status
-    const mappedStatus = statusMap[callStatus] || 'failed';
-
-    // Prepare update object
-    const updateData: any = {
-      status: mappedStatus,
-      updated_at: new Date().toISOString()
+    const client = accountSid && authToken ? twilio(accountSid, authToken) : null;
+    const twilioPort: TwilioPort = {
+      createCall: async () => {
+        throw new Error("not supported in call-status");
+      },
+      fetchCall: async (sid) => {
+        const call = await client!.calls(sid).fetch();
+        return {
+          sid: call.sid,
+          accountSid: (call as any).accountSid,
+          parentCallSid: (call as any).parentCallSid,
+          status: (call as any).status,
+        };
+      },
     };
 
-    // Update timestamps based on status
-    if (mappedStatus === 'in_progress' && !updateData.started_at) {
-      updateData.started_at = timestamp || new Date().toISOString();
-    }
-
-    if (['completed', 'failed', 'no_answer', 'canceled'].includes(mappedStatus)) {
-      updateData.ended_at = timestamp || new Date().toISOString();
-      
-      if (callDuration) {
-        updateData.duration_seconds = parseInt(callDuration, 10);
-      }
-    }
-
-    // Update call record
-    const { error: updateError } = await supabase
-      .from('calls')
-      .update(updateData)
-      .eq('id', callId);
-
-    if (updateError) {
-      console.error('Failed to update call record:', updateError);
-      throw updateError;
-    }
-
-    console.log(`[call-status] ✓ Call ${callId} updated to status: ${mappedStatus}`);
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const result = await handleStatusCallback(
+      {
+        supabase: createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
+          auth: { persistSession: false },
+        }),
+        twilio: twilioPort,
+        env: {
+          supabaseUrl,
+          twilioAccountSid: accountSid,
+          twilioAuthToken: authToken,
+          twilioPhoneNumber: Deno.env.get("TWILIO_PHONE_NUMBER"),
+        },
+      },
+      { method: req.method, contentType, params, query: new URL(req.url).searchParams, signatureValid },
     );
 
+    return json(result.body, result.status);
   } catch (error) {
-    console.error('[call-status] ✗ Error processing status update:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[call-status] Failed:", message);
+    // Retryable problems must NOT be acknowledged as processed.
+    if (error instanceof RetryableCallError) return json({ error: "retryable", retry: true }, 503);
+    return json({ error: "processing_failed" }, 500);
   }
 });
