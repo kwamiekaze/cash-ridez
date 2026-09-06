@@ -67,11 +67,18 @@ export function makeStripe(config: {
   subscriptionPages?: any[][];
   prices?: Record<string, any>;
   openSessions?: any[];
+  /** session id -> line items returned by listLineItems */
+  sessionLineItems?: Record<string, any[]>;
   createdSessions?: any[];
 }) {
   const created = { customers: [] as any[], sessions: [] as any[] };
   let customerPage = 0;
   let subPage = 0;
+
+  const findSession = (id: string) =>
+    (config.openSessions ?? []).find((s: any) => s.id === id) ??
+    created.sessions.find((s: any) => s.id === id) ??
+    null;
 
   const stripe: any = {
     customers: {
@@ -130,10 +137,24 @@ export function makeStripe(config: {
     checkout: {
       sessions: {
         list: vi.fn(async () => ({ data: config.openSessions ?? [], has_more: false })),
+        listLineItems: vi.fn(async (id: string) => ({
+          data: config.sessionLineItems?.[id] ?? [],
+          has_more: false,
+        })),
+        retrieve: vi.fn(async (id: string) => {
+          const found = findSession(id);
+          if (!found) {
+            const err: any = new Error("No such session");
+            err.code = "resource_missing";
+            throw err;
+          }
+          return found;
+        }),
         create: vi.fn(async (params: any) => {
           const session = {
             id: `cs_${created.sessions.length}`,
             url: `https://checkout.stripe.com/cs_${created.sessions.length}`,
+            status: "open",
             ...params,
           };
           created.sessions.push(session);
@@ -163,3 +184,110 @@ export const sub = (over: Partial<any> = {}): any => ({
   },
   ...over,
 });
+
+/**
+ * Default in-memory implementations of the atomic billing RPCs shipped in
+ * docs/pending-migrations/billing.sql. Tests override individual entries to
+ * exercise failure paths.
+ */
+export function billingRpc(over: Record<string, (args: any) => { data: any; error: any }> = {}) {
+  const events = new Map<string, { status: string; token: string }>();
+  const generations = new Map<string, number>();
+  const applied = new Map<string, number>();
+  const attempts = new Map<string, { key: string; sessionId: string | null }>();
+  const locks = new Map<string, string>();
+  let tokenSeq = 0;
+
+  const base: Record<string, (args: any) => { data: any; error: any }> = {
+    claim_billing_event: ({ p_event_id }: any) => {
+      const existing = events.get(p_event_id);
+      if (!existing) {
+        const token = `tok_${++tokenSeq}`;
+        events.set(p_event_id, { status: "processing", token });
+        return { data: { outcome: "claimed", token }, error: null };
+      }
+      if (existing.status === "succeeded") {
+        return { data: { outcome: "succeeded", token: null }, error: null };
+      }
+      if (existing.status === "failed") {
+        const token = `tok_${++tokenSeq}`;
+        events.set(p_event_id, { status: "processing", token });
+        return { data: { outcome: "reclaimed", token }, error: null };
+      }
+      return { data: { outcome: "processing", token: null }, error: null };
+    },
+    release_billing_event: ({ p_event_id }: any) => {
+      const existing = events.get(p_event_id);
+      if (existing) existing.status = "failed";
+      return { data: true, error: null };
+    },
+    complete_billing_event: ({ p_event_id, p_claim_token }: any) => {
+      const existing = events.get(p_event_id);
+      if (!existing || existing.token !== p_claim_token || existing.status !== "processing") {
+        return { data: { completed: false, reason: "claim_lost" }, error: null };
+      }
+      existing.status = "succeeded";
+      return { data: { completed: true }, error: null };
+    },
+    reserve_billing_sync_generation: ({ p_user_id }: any) => {
+      const next = (generations.get(p_user_id) ?? 0) + 1;
+      generations.set(p_user_id, next);
+      return { data: next, error: null };
+    },
+    apply_billing_sync: ({ p_user_id, p_generation }: any) => {
+      const last = applied.get(p_user_id) ?? 0;
+      if (p_generation <= last) {
+        return { data: { applied: false, stale: true, granted: false }, error: null };
+      }
+      applied.set(p_user_id, p_generation);
+      return { data: { applied: true, stale: false, granted: false }, error: null };
+    },
+    apply_billing_entitlement: ({ p_event_id, p_claim_token, p_user_id, p_generation }: any) => {
+      const existing = events.get(p_event_id);
+      if (!existing || existing.token !== p_claim_token || existing.status !== "processing") {
+        return { data: null, error: { message: "claim lost", code: "P0001" } };
+      }
+      existing.status = "succeeded";
+      const last = applied.get(p_user_id) ?? 0;
+      if (p_generation <= last) {
+        return { data: { applied: false, stale: true, granted: false }, error: null };
+      }
+      applied.set(p_user_id, p_generation);
+      return { data: { applied: true, stale: false, granted: false }, error: null };
+    },
+    claim_checkout_slot: ({ p_user_id, p_owner_token }: any) => {
+      if (locks.has(p_user_id)) return { data: { granted: false }, error: null };
+      locks.set(p_user_id, p_owner_token);
+      return { data: { granted: true }, error: null };
+    },
+    release_checkout_slot: ({ p_user_id, p_owner_token }: any) => {
+      if (locks.get(p_user_id) === p_owner_token) locks.delete(p_user_id);
+      return { data: true, error: null };
+    },
+    begin_checkout_attempt: ({ p_user_id, p_price_id }: any) => {
+      const mapKey = `${p_user_id}:${p_price_id}`;
+      const existing = attempts.get(mapKey);
+      if (existing) {
+        return { data: { key: existing.key, session_id: existing.sessionId }, error: null };
+      }
+      const key = `checkout:${p_user_id}:${++tokenSeq}`;
+      attempts.set(mapKey, { key, sessionId: null });
+      return { data: { key, session_id: null }, error: null };
+    },
+    record_checkout_attempt: ({ p_user_id, p_key, p_session_id }: any) => {
+      for (const [mapKey, value] of attempts) {
+        if (mapKey.startsWith(`${p_user_id}:`) && value.key === p_key) value.sessionId = p_session_id;
+      }
+      return { data: true, error: null };
+    },
+    retire_checkout_attempt: ({ p_user_id, p_key }: any) => {
+      for (const [mapKey, value] of [...attempts]) {
+        if (mapKey.startsWith(`${p_user_id}:`) && value.key === p_key) attempts.delete(mapKey);
+      }
+      return { data: true, error: null };
+    },
+  };
+
+  return { ...base, ...over };
+}
+
