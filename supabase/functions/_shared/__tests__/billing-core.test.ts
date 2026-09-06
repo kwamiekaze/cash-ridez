@@ -93,7 +93,7 @@ describe("customer binding (security)", () => {
     });
     await expect(
       resolveCustomerForUser(stripe, supabase, USER, {}, { createIfMissing: true }),
-    ).rejects.toThrow(/Profile update failed/);
+    ).rejects.toThrow(/Customer link failed/);
   });
 
   it("rejects a stored customer owned by a different user", async () => {
