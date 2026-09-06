@@ -80,3 +80,20 @@ export async function acceptInitialRiderOffer(
 
   if (error || data?.success !== true) throw acceptError(data, error);
 }
+
+/** Gateway backed by the app's Supabase client. */
+export const supabaseOfferGateway = (supabase: any): OfferGateway => ({
+  invoke: (fn, body) => supabase.functions.invoke(fn, { body }),
+  async insertOffer(row) {
+    const { data, error } = await supabase
+      .from('counter_offers')
+      .insert(row)
+      .select('id')
+      .single();
+    return { id: data?.id ?? null, error };
+  },
+  async setOfferStatus(offerId, status) {
+    const { error } = await supabase.from('counter_offers').update({ status }).eq('id', offerId);
+    return { error };
+  },
+});
