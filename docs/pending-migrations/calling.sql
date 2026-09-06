@@ -361,6 +361,14 @@ BEGIN
   v_child := v_call.child_status;
   v_bridged := coalesce(v_call.bridged, false);
 
+  -- Sticky child failure: the <Dial> action result may never upgrade a child
+  -- leg that its own status callback already reported as failed.
+  IF p_leg = 'child' AND p_source = 'dial_action'
+     AND v_child IN ('busy', 'no_answer', 'failed', 'canceled') THEN
+    RETURN QUERY SELECT 'ignored_source'::text, v_call.status, v_parent, v_child, v_bridged;
+    RETURN;
+  END IF;
+
   -- Monotonic transition graph. Equal or lower rank never overwrites, so a
   -- late-arriving different terminal status cannot rewrite the first truth.
   IF v_leg.status IS NOT NULL
@@ -368,13 +376,6 @@ BEGIN
     RETURN QUERY SELECT
       CASE WHEN v_leg.status = p_status THEN 'duplicate' ELSE 'out_of_order' END,
       v_call.status, v_parent, v_child, v_bridged;
-    RETURN;
-  END IF;
-
-  -- Sticky child failure: a dial action may not upgrade a failed child.
-  IF p_leg = 'child' AND p_source = 'dial_action'
-     AND v_child IN ('busy', 'no_answer', 'failed', 'canceled') THEN
-    RETURN QUERY SELECT 'ignored_source'::text, v_call.status, v_parent, v_child, v_bridged;
     RETURN;
   END IF;
 
