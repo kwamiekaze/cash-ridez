@@ -110,6 +110,12 @@ const BillingSuccess = () => {
             </div>
           </div>
 
+          {unconfirmed && (
+            <Button onClick={retry} variant="outline" className="w-full" size="lg">
+              Check Again
+            </Button>
+          )}
+
           <Button onClick={() => navigate("/dashboard")} className="w-full" size="lg">
             Go to Dashboard
           </Button>
