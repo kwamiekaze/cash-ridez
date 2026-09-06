@@ -245,10 +245,14 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
 
   const getCallStatusMessage = () => {
     if (!lastCallStatus) return null;
-    
+
     switch (lastCallStatus) {
+      // Only a bridged child leg proves the two lines were actually joined —
+      // and even then the carrier, not a person, is what answered.
       case 'completed':
-        return "Last call: connected successfully.";
+        return "Last call: the two lines were connected.";
+      case 'carrier_answered':
+        return "Last call: the line answered — we can't confirm who picked up.";
       case 'busy':
         return "Last call: the other line was busy or declined.";
       case 'no_answer':
@@ -260,10 +264,13 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
       case 'ringing':
       case 'in_progress':
         return "Last call: currently in progress.";
+      case 'unknown':
+        return "Last call: outcome unknown.";
       default:
         return null;
     }
   };
+
 
   const statusMessage = getCallStatusMessage();
 
