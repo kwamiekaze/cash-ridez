@@ -254,12 +254,13 @@ END:VCARD`;
       // 4) Check account status using already-fetched profile where possible
       let currentProfile = profile as any;
       if (!currentProfile) {
-        const { data: profData, error: profileError } = await supabase
+        const { data: profData, error: profErr } = await supabase
           .from("profiles")
-          .select("paused, subscription_active, completed_trips_count")
+          .select("paused")
           .eq("id", userId)
           .maybeSingle();
-        if (profileError) throw profileError;
+        if (profErr) throw profErr;
+        if (!profData) throw new Error("Could not load your account. Please try again.");
         currentProfile = profData;
       }
 
@@ -268,12 +269,22 @@ END:VCARD`;
         setIsSubmitting(false);
         return;
       }
-      if (!currentProfile?.subscription_active && (currentProfile?.connected_trips_count ?? 0) >= 3) {
+
+      // Free connection limit: canonical membership state only, fails closed.
+      const submitGate = evaluateTripCreationGate(membership);
+      if (submitGate.status === 'checking') {
+        toast.message("Checking your membership…", { description: "One moment, then tap again." });
+        setIsSubmitting(false);
+        membership.checkStatus();
+        return;
+      }
+      if (submitGate.status === 'limit_reached') {
         toast.error("You have reached your free connected trip limit. Please subscribe to continue creating trip requests.");
         setIsSubmitting(false);
         navigate("/subscription");
         return;
       }
+
 
       // 5) Geocode addresses (stubbed) and build keywords
       const pickupGeo = await geocodeAddress(formData.pickupAddress.trim());
