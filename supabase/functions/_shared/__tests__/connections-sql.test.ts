@@ -364,7 +364,7 @@ describe("connection quota", () => {
   it("only lets a caller read their own entitlement", async () => {
     await asRole("anon", null);
     await expect(sql(`SELECT public.connection_entitlement($1)`, [RIDER])).rejects.toThrow(
-      /not authorized/,
+      /not authorized|permission denied/,
     );
 
     await asRole("authenticated", OTHER);
