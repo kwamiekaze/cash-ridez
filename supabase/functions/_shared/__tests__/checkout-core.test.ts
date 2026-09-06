@@ -199,4 +199,21 @@ describe("status resolution", () => {
     expect(result.body.retryable_error).toBe("membership_config_unavailable");
     expect(result.body.subscribed).toBe(true);
   });
+
+  it("never reports a malformed connection counter as zero", async () => {
+    for (const bad of [null, undefined, "", NaN, -3, "abc"]) {
+      const supabase = makeSupabase({
+        tables: {
+          profiles: {
+            select: () => ({ data: profileRow({ connected_trips_count: bad }), error: null }),
+          },
+        },
+        rpc: billingRpc(),
+      });
+      const stripe: any = { subscriptions: { list: async () => { throw new Error("timeout"); } } };
+      await expect(getSubscriptionStatus(statusDeps(supabase, stripe), USER.id)).rejects.toThrow(
+        /connection counter unavailable/,
+      );
+    }
+  });
 });
