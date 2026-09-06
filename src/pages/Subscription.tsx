@@ -66,7 +66,8 @@ const Subscription = () => {
     }
   };
 
-  if (loading) {
+  // An unknown count must reuse the loading state, never render as 0.
+  if (loading || connected_trips === null || trips_remaining === null) {
     return (
       <div className="min-h-screen bg-background">
         <AppHeader />
