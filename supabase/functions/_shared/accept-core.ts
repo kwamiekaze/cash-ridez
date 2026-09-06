@@ -82,7 +82,7 @@ export async function handleAcceptRide(req: Request, deps: AcceptDeps): Promise<
 
   // An explicitly supplied driverId must be a valid UUID; never silently
   // substitute the caller for a malformed value.
-  if (body.driverId !== undefined && body.driverId !== null) {
+  if ("driverId" in (body as object) && body.driverId !== undefined) {
     if (typeof body.driverId !== "string" || !UUID.test(body.driverId)) {
       return json({ success: false, error: "Invalid driverId" }, 400);
     }
