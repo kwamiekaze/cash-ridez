@@ -201,6 +201,23 @@ GRANT ALL ON public.ride_assignment_grants TO service_role;
 ALTER TABLE public.ride_assignment_grants ENABLE ROW LEVEL SECURITY;
 -- No policies on purpose: nothing but SECURITY DEFINER code touches it.
 
+CREATE OR REPLACE FUNCTION public.has_ride_assignment_grant(p_ride_id uuid, p_driver_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.ride_assignment_grants g
+    WHERE g.xid = pg_current_xact_id()::text::bigint
+      AND g.ride_request_id = p_ride_id
+      AND g.driver_id IS NOT DISTINCT FROM p_driver_id
+  )
+$$;
+REVOKE ALL ON FUNCTION public.has_ride_assignment_grant(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.has_ride_assignment_grant(uuid, uuid) TO authenticated, service_role;
+
 CREATE OR REPLACE FUNCTION public.guard_ride_assignment()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -225,12 +242,7 @@ BEGIN
       RETURN NEW;
     END IF;
 
-    IF EXISTS (
-      SELECT 1 FROM public.ride_assignment_grants g
-      WHERE g.xid = pg_current_xact_id()::text::bigint
-        AND g.ride_request_id = NEW.id
-        AND g.driver_id IS NOT DISTINCT FROM NEW.assigned_driver_id
-    ) THEN
+    IF public.has_ride_assignment_grant(NEW.id, NEW.assigned_driver_id) THEN
       RETURN NEW;
     END IF;
 

@@ -436,8 +436,9 @@ describe("direct writes", () => {
     await expect(
       sql(`UPDATE public.profiles SET subscription_active=true, subscription_status='active' WHERE id=$1`, [RIDER]),
     ).rejects.toThrow(/managed by CashRidez/);
-    await expect(sql(`UPDATE public.profiles SET connected_trips_count=0 WHERE id=$1`, [RIDER])).rejects.toThrow();
-    await expect(sql(`UPDATE public.profiles SET is_verified=true, blocked=false WHERE id=$1`, [OTHER])).rejects.toThrow();
+    await expect(sql(`UPDATE public.profiles SET connected_trips_count=99 WHERE id=$1`, [RIDER])).rejects.toThrow();
+    await expect(sql(`UPDATE public.profiles SET stripe_customer_id='cus_hack' WHERE id=$1`, [RIDER])).rejects.toThrow();
+    await expect(sql(`UPDATE public.profiles SET blocked=true WHERE id=$1`, [OTHER])).rejects.toThrow();
   });
 
   it("still allows ordinary profile edits, verification submission and preferences", async () => {
