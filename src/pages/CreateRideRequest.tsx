@@ -19,6 +19,8 @@ import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
+import { useSubscription } from "@/hooks/useSubscription";
+import { evaluateTripCreationGate } from "@/lib/tripCreationGate";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -55,7 +57,10 @@ const CreateRideRequest = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [canCreateTrip, setCanCreateTrip] = useState(false);
+  const [profileError, setProfileError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const membership = useSubscription();
+  const gate = evaluateTripCreationGate(membership);
 
   const handleSaveContact = () => {
     const vCard = `BEGIN:VCARD
@@ -77,47 +82,62 @@ END:VCARD`;
   };
 
   useEffect(() => {
+    let cancelled = false;
     const checkVerification = async () => {
       if (!user) return;
-      
-      const { data: profileData } = await supabase
+
+      const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
-      
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      // An errored or missing profile must never be read as "everything is fine".
+      if (error || !profileData) {
+        console.error("Failed to load profile for trip creation", error);
+        setProfile(null);
+        setProfileError(true);
+        setLoading(false);
+        return;
+      }
+
+      setProfileError(false);
       setProfile(profileData);
-      
+
       // Check if user is set as driver - redirect them
-      if (profileData?.active_role === 'driver') {
+      if (profileData.active_role === 'driver') {
         toast.error("You're currently set as a driver. Access this feature from your profile settings.");
         navigate("/trips");
         return;
       }
-      
-      if (!profileData?.is_verified && profileData?.verification_status !== 'approved') {
+
+      if (!profileData.is_verified && profileData.verification_status !== 'approved') {
         toast.error("You must be verified to post trip requests");
         navigate("/dashboard");
         return;
       }
 
-      // Check subscription and trip limit
-      const subscriptionActive = profileData?.subscription_active || false;
-      const connectedTrips = profileData?.connected_trips_count || 0;
-      const canCreate = subscriptionActive || connectedTrips < 3;
-      setCanCreateTrip(canCreate);
-
-      if (!canCreate) {
-        toast.error("You've reached your free connected trip limit. Please subscribe to continue.");
-        navigate("/subscription");
-        return;
-      }
-      
       setLoading(false);
     };
-    
+
     checkVerification();
-  }, [user, navigate]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, navigate, reloadKey]);
+
+  // Free connection limit is enforced from the canonical membership state only,
+  // and only once that state is CONFIRMED for this account.
+  useEffect(() => {
+    if (loading || profileError) return;
+    if (gate.status === 'limit_reached') {
+      toast.error("You've reached your free connected trip limit. Please subscribe to continue.");
+      navigate("/subscription");
+    }
+  }, [gate.status, loading, profileError, navigate]);
+
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [formData, setFormData] = useState({
     pickupAddress: "",
@@ -234,12 +254,13 @@ END:VCARD`;
       // 4) Check account status using already-fetched profile where possible
       let currentProfile = profile as any;
       if (!currentProfile) {
-        const { data: profData, error: profileError } = await supabase
+        const { data: profData, error: profErr } = await supabase
           .from("profiles")
-          .select("paused, subscription_active, completed_trips_count")
+          .select("paused")
           .eq("id", userId)
           .maybeSingle();
-        if (profileError) throw profileError;
+        if (profErr) throw profErr;
+        if (!profData) throw new Error("Could not load your account. Please try again.");
         currentProfile = profData;
       }
 
@@ -248,12 +269,22 @@ END:VCARD`;
         setIsSubmitting(false);
         return;
       }
-      if (!currentProfile?.subscription_active && (currentProfile?.connected_trips_count ?? 0) >= 3) {
+
+      // Free connection limit: canonical membership state only, fails closed.
+      const submitGate = evaluateTripCreationGate(membership);
+      if (submitGate.status === 'checking') {
+        toast.message("Checking your membership…", { description: "One moment, then tap again." });
+        setIsSubmitting(false);
+        membership.checkStatus();
+        return;
+      }
+      if (submitGate.status === 'limit_reached') {
         toast.error("You have reached your free connected trip limit. Please subscribe to continue creating trip requests.");
         setIsSubmitting(false);
         navigate("/subscription");
         return;
       }
+
 
       // 5) Geocode addresses (stubbed) and build keywords
       const pickupGeo = await geocodeAddress(formData.pickupAddress.trim());
@@ -341,6 +372,37 @@ END:VCARD`;
       </div>
     );
   }
+
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <h1 className="text-xl font-bold">We couldn't load your account</h1>
+          <p className="text-sm text-muted-foreground">
+            Please check your connection and try again.
+          </p>
+          <Button onClick={() => { setProfileError(false); setLoading(true); setReloadKey((k) => k + 1); }}>
+            Try again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (gate.status === 'checking') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <Card className="max-w-md w-full p-8 text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-sm text-muted-foreground">Checking your membership…</p>
+          <Button variant="outline" onClick={() => membership.checkStatus()}>
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-background relative">

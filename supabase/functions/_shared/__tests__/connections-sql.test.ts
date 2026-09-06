@@ -27,10 +27,12 @@ const sql = (q: string, p: any[] = []) => db.query(q, p) as Promise<any>;
 const asRole = async (role: "anon" | "authenticated" | "service_role", uid: string | null) => {
   await sql(`RESET ROLE`);
   await sql(`SELECT set_config('request.jwt.sub', $1, false)`, [uid ?? ""]);
+  await sql(`SELECT set_config('request.jwt.role', $1, false)`, [role]);
   await sql(`SET ROLE ${role}`);
 };
 const asOwner = async () => {
   await sql(`RESET ROLE`);
+  await sql(`SELECT set_config('request.jwt.role', 'service_role', false)`);
 };
 
 const accept = async (rideId: string, driverId: string, offerId: string | null = null, skipActive = true) => {
@@ -70,6 +72,10 @@ beforeAll(async () => {
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
       LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.sub', true), '')::uuid $$;
+    CREATE OR REPLACE FUNCTION auth.role() RETURNS text
+      LANGUAGE sql STABLE AS $$
+        SELECT coalesce(nullif(current_setting('request.jwt.role', true), ''), current_user::text)
+      $$;
 
     CREATE TYPE public.app_role AS ENUM ('admin','driver','rider');
     CREATE TYPE public.ride_status AS ENUM ('open','assigned','completed','cancelled');
@@ -350,11 +356,38 @@ describe("connection quota", () => {
   });
 
   it("fails closed for a missing profile instead of reading zero", async () => {
-    await asOwner();
+    await asRole("service_role", null);
     await expect(
       sql(`SELECT public.connection_entitlement('99999999-9999-4999-8999-999999999999')`),
     ).rejects.toThrow(/not found/);
+    await asOwner();
   });
+
+  it("only lets a caller read their own entitlement", async () => {
+    await asRole("anon", null);
+    await expect(sql(`SELECT public.connection_entitlement($1)`, [RIDER])).rejects.toThrow(
+      /not authorized|permission denied/,
+    );
+
+    await asRole("authenticated", OTHER);
+    await expect(sql(`SELECT public.connection_entitlement($1)`, [RIDER])).rejects.toThrow(
+      /not authorized/,
+    );
+
+    await asRole("authenticated", RIDER);
+    expect((await sql(`SELECT public.connection_entitlement($1) AS out`, [RIDER])).rows[0].out)
+      .toBeTruthy();
+
+    await asRole("authenticated", ADMIN);
+    expect((await sql(`SELECT public.connection_entitlement($1) AS out`, [RIDER])).rows[0].out)
+      .toBeTruthy();
+
+    await asRole("service_role", null);
+    expect((await sql(`SELECT public.connection_entitlement($1) AS out`, [RIDER])).rows[0].out)
+      .toBeTruthy();
+    await asOwner();
+  });
+
 
   it("exempts admins", async () => {
     await setCount(ADMIN, 50);
