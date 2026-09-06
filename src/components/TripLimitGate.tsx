@@ -27,6 +27,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
     connected_trips_known,
     loading,
     unknown,
+    stale,
     startCheckout,
   } = useSubscription();
   const [showDialog, setShowDialog] = useState(false);
@@ -40,7 +41,7 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
 
     // Membership state not confirmed yet: never guess. Ask the user to retry
     // rather than showing a wrong limit message or letting the action through.
-    if (loading || unknown || !connected_trips_known) {
+    if (loading || unknown || stale || !connected_trips_known) {
       toast.message("Checking your membership…", {
         description: "One moment, then tap again.",
       });

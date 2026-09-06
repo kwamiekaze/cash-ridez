@@ -55,7 +55,6 @@ const CreateRideRequest = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -88,25 +87,22 @@ END:VCARD`;
 
       const { data: profileData, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("active_role,is_verified,verification_status")
         .eq("id", user.id)
         .maybeSingle();
 
       // Ignore a response that arrives after unmount or an account change.
       if (cancelled) return;
-      if (profileData && (profileData as any).id !== user.id) return;
 
       // An errored or missing profile must never be read as "everything is fine".
       if (error || !profileData) {
         console.error("Failed to load profile for trip creation", error);
-        setProfile(null);
         setProfileError(true);
         setLoading(false);
         return;
       }
 
       setProfileError(false);
-      setProfile(profileData);
 
       // Check if user is set as driver - redirect them
       if (profileData.active_role === 'driver') {
@@ -261,9 +257,7 @@ END:VCARD`;
         .maybeSingle();
       if (profErr) throw profErr;
       if (!profData) throw new Error("Could not load your account. Please try again.");
-      const currentProfile = profData as any;
-
-      if (currentProfile?.paused) {
+      if (profData.paused) {
         toast.error("Your account is currently paused. Please contact support to reactivate it.");
         setIsSubmitting(false);
         return;
@@ -331,7 +325,7 @@ END:VCARD`;
       
       // Server-side authority, immediately before the insert. Any error or a
       // non-boolean answer fails CLOSED and stays retryable.
-      const { data: canUse, error: gateErr } = await (supabase.rpc as any)('can_use_trip_features', {
+      const { data: canUse, error: gateErr } = await supabase.rpc('can_use_trip_features', {
         p_user_id: userId,
       });
       if (gateErr || typeof canUse !== 'boolean') {
