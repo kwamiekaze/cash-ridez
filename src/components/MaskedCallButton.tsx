@@ -217,17 +217,22 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
         });
         
         // Refresh call status after a few seconds
-        setTimeout(() => fetchLastCall(), 3000);
+        setTimeout(() => {
+          if (mountedRef.current && activeTripRef.current === callTripId) fetchLastCall(callTripId);
+        }, 3000);
       }
     } catch (error) {
       console.error('[MaskedCallButton] Unexpected call error:', error);
-      toast({
-        title: "Call Failed",
-        description: CALL_ERROR_MESSAGES.UNKNOWN,
-        variant: "destructive",
-      });
+      if (mountedRef.current && activeTripRef.current === callTripId) {
+        toast({
+          title: "Call Failed",
+          description: CALL_ERROR_MESSAGES.UNKNOWN,
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsInitiating(false);
+      inFlightRef.current = false;
+      if (mountedRef.current) setIsInitiating(false);
     }
   };
 
