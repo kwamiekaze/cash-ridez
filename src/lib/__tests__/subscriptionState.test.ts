@@ -4,6 +4,7 @@ import {
   applySuccess,
   canUseFeatures,
   connectedTrips,
+  isConfirmed,
   isEntitled,
   loadingStateFor,
   signedOutState,
@@ -102,5 +103,74 @@ describe('free quota gating', () => {
     const state = applySuccess(loadingStateFor('u'), 'u', success({ connected_trips: 50 }));
     expect(canUseFeatures(state)).toBe(true);
     expect(tripsRemaining(state)).toBe('unlimited');
+  });
+});
+
+describe('first stale response is displayable but never unlocking', () => {
+  const U = '11111111-1111-1111-1111-111111111111';
+
+  it('first stale free/0 response stays unknown and does not unlock features', () => {
+    const next = applySuccess(loadingStateFor(U), U, {
+      stale: true,
+      subscribed: false,
+      subscription_status: null,
+      connected_trips: 0,
+      completed_trips: 0,
+    });
+    expect(next.snapshot?.connected_trips).toBe(0);
+    expect(next.stale).toBe(true);
+    expect(next.unknown).toBe(true);
+    expect(isConfirmed(next)).toBe(false);
+    expect(canUseFeatures(next)).toBe(false);
+  });
+
+  it('first stale premium-like response does not grant entitlement', () => {
+    const next = applySuccess(loadingStateFor(U), U, {
+      stale: true,
+      subscribed: true,
+      subscription_status: 'active',
+      connected_trips: 9,
+      completed_trips: 9,
+    });
+    expect(next.unknown).toBe(true);
+    expect(isEntitled(next)).toBe(false);
+    expect(isEntitled(next.snapshot)).toBe(true);
+    expect(canUseFeatures(next)).toBe(false);
+  });
+
+  it('confirmed same-owner snapshot is retained across a stale refresh and keeps access', () => {
+    const confirmedState = applySuccess(loadingStateFor(U), U, {
+      subscribed: true,
+      subscription_status: 'active',
+      connected_trips: 7,
+      completed_trips: 7,
+    });
+    expect(isConfirmed(confirmedState)).toBe(true);
+
+    const stale = applySuccess(confirmedState, U, {
+      stale: true,
+      subscribed: false,
+      subscription_status: null,
+      connected_trips: 0,
+      completed_trips: 0,
+    });
+    expect(stale.snapshot).toEqual(confirmedState.snapshot);
+    expect(stale.stale).toBe(true);
+    expect(stale.unknown).toBe(false);
+    expect(isEntitled(stale)).toBe(true);
+    expect(canUseFeatures(stale)).toBe(true);
+  });
+
+  it('a failure after an unconfirmed stale response does not become confirmed', () => {
+    const firstStale = applySuccess(loadingStateFor(U), U, {
+      stale: true,
+      subscribed: false,
+      subscription_status: null,
+      connected_trips: 0,
+    });
+    const failed = applyFailure(firstStale, U, 'network');
+    expect(failed.snapshot).toBeNull();
+    expect(failed.unknown).toBe(true);
+    expect(canUseFeatures(failed)).toBe(false);
   });
 });
