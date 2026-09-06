@@ -21,7 +21,15 @@ interface TripLimitGateProps {
 }
 
 export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProps) => {
-  const { canUseFeatures, isPremium, connected_trips, startCheckout } = useSubscription();
+  const {
+    canUseFeatures,
+    isPremium,
+    connected_trips,
+    connected_trips_known,
+    loading,
+    unknown,
+    startCheckout,
+  } = useSubscription();
   const [showDialog, setShowDialog] = useState(false);
 
   const handleClick = () => {
@@ -30,7 +38,16 @@ export const TripLimitGate = ({ children, action, onProceed }: TripLimitGateProp
       onProceed();
       return;
     }
-    
+
+    // Membership state not confirmed yet: never guess. Ask the user to retry
+    // rather than showing a wrong limit message or letting the action through.
+    if (loading || unknown || !connected_trips_known) {
+      toast.message("Checking your membership…", {
+        description: "One moment, then tap again.",
+      });
+      return;
+    }
+
     // Non-premium users hit the limit check
     if (!canUseFeatures) {
       setShowDialog(true);

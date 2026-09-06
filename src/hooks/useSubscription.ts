@@ -1,116 +1,62 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  applyFailure,
+  applySuccess,
+  canUseFeatures as canUseFeaturesFor,
+  connectedTrips as connectedTripsOf,
+  FREE_CONNECTIONS,
+  isEntitled,
+  loadingStateFor,
+  signedOutState,
+  tripsRemaining as tripsRemainingOf,
+  type SubscriptionState,
+} from '@/lib/subscriptionState';
 
-interface SubscriptionStatus {
-  subscribed: boolean;
-  subscription_status?: string | null;
-  subscription_end?: string;
-  cancel_at_period_end: boolean;
-  has_billing_account: boolean;
-  completed_trips: number;
-  connected_trips: number;
-  trips_remaining: number | 'unlimited';
-  loading: boolean;
-  /** True when the status could not be confirmed (network/server problem). */
-  unknown: boolean;
-}
-
-const FREE_CONNECTIONS = 3;
-
-const EMPTY: SubscriptionStatus = {
-  subscribed: false,
-  subscription_status: null,
-  subscription_end: undefined,
-  cancel_at_period_end: false,
-  has_billing_account: false,
-  completed_trips: 0,
-  connected_trips: 0,
-  trips_remaining: FREE_CONNECTIONS,
-  loading: false,
-  unknown: false,
-};
+export { FREE_CONNECTIONS };
 
 export const useSubscription = () => {
   const { user } = useAuth();
-  const [status, setStatus] = useState<SubscriptionStatus>({ ...EMPTY, loading: true });
+  const userId = user?.id ?? null;
 
-  // Guards against applying a response that belongs to a previous account or
-  // to a request that has been superseded by a newer one.
+  const [state, setState] = useState<SubscriptionState>(() =>
+    userId ? loadingStateFor(userId) : signedOutState,
+  );
+
+  // Guards: a response is only applied when it is the newest request AND still
+  // belongs to the account that is signed in right now.
   const requestIdRef = useRef(0);
-  const userIdRef = useRef<string | null>(null);
-  userIdRef.current = user?.id ?? null;
+  const ownerRef = useRef<string | null>(userId);
+  ownerRef.current = userId;
 
   const checkStatus = useCallback(async () => {
-    const userId = user?.id ?? null;
-    if (!userId) {
-      setStatus({ ...EMPTY });
+    const owner = ownerRef.current;
+    if (!owner) {
+      setState(signedOutState);
       return;
     }
 
     const requestId = ++requestIdRef.current;
-    const isCurrent = () => requestId === requestIdRef.current && userIdRef.current === userId;
+    const isCurrent = () => requestId === requestIdRef.current && ownerRef.current === owner;
 
     try {
       const { data, error } = await supabase.functions.invoke('check-subscription-status');
-
       if (!isCurrent()) return;
 
       if (error) {
         console.error('Error checking subscription:', error);
-
-        // Fall back to the last known DB state. A FAILED fetch must never be
-        // read as "zero connections used".
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('subscription_active, subscription_status, completed_trips_count, connected_trips_count, stripe_customer_id')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (!isCurrent()) return;
-
-        if (profileError || !profile) {
-          console.error('Subscription fallback lookup failed:', profileError);
-          setStatus((prev) => ({ ...prev, loading: false, unknown: true }));
-          return;
-        }
-
-        const connectedTrips = profile.connected_trips_count || 0;
-        const active = !!profile.subscription_active;
-        setStatus({
-          subscribed: active,
-          subscription_status: profile.subscription_status ?? null,
-          subscription_end: undefined,
-          cancel_at_period_end: false,
-          has_billing_account: !!profile.stripe_customer_id,
-          completed_trips: profile.completed_trips_count || 0,
-          connected_trips: connectedTrips,
-          trips_remaining: active ? 'unlimited' : Math.max(0, FREE_CONNECTIONS - connectedTrips),
-          loading: false,
-          unknown: false,
-        });
+        setState((prev) => applyFailure(prev, owner, 'request_failed'));
         return;
       }
 
-      const connectedTrips = data?.connected_trips || 0;
-      setStatus({
-        subscribed: !!data?.subscribed,
-        subscription_status: data?.subscription_status ?? null,
-        subscription_end: data?.subscription_end ?? undefined,
-        cancel_at_period_end: !!data?.cancel_at_period_end,
-        has_billing_account: !!data?.has_billing_account,
-        completed_trips: data?.completed_trips || 0,
-        connected_trips: connectedTrips,
-        trips_remaining: data?.trips_remaining ?? Math.max(0, FREE_CONNECTIONS - connectedTrips),
-        loading: false,
-        unknown: false,
-      });
-    } catch (error) {
-      console.error('Error checking subscription:', error);
+      setState((prev) => applySuccess(prev, owner, data));
+    } catch (err) {
+      console.error('Error checking subscription:', err);
       if (!isCurrent()) return;
-      setStatus((prev) => ({ ...prev, loading: false, unknown: true }));
+      setState((prev) => applyFailure(prev, owner, 'request_failed'));
     }
-  }, [user?.id]);
+  }, []);
 
   const startCheckout = async (returnUrl?: string) => {
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
@@ -148,11 +94,16 @@ export const useSubscription = () => {
   };
 
   useEffect(() => {
-    // Reset immediately on account change so stale values are never shown.
+    // Invalidate anything in flight so a previous account's response can never
+    // be rendered against the new one.
     requestIdRef.current++;
-    setStatus({ ...EMPTY, loading: !!user });
 
-    if (!user) return;
+    if (!userId) {
+      setState(signedOutState);
+      return;
+    }
+
+    setState((prev) => (prev.ownerId === userId ? { ...prev, loading: true } : loadingStateFor(userId)));
 
     let cancelled = false;
     const run = () => {
@@ -164,21 +115,40 @@ export const useSubscription = () => {
 
     return () => {
       cancelled = true;
+      requestIdRef.current++;
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [user, checkStatus]);
+  }, [userId, checkStatus]);
 
-  return {
-    ...status,
-    checkStatus,
-    startCheckout,
-    manageSubscription,
-    // While loading or unknown, do not lock users out (fail open on gating),
-    // but the limit is still enforced server-side on acceptance.
-    canUseFeatures:
-      status.subscribed || status.loading || status.unknown || status.connected_trips < FREE_CONNECTIONS,
-    hasPremiumAccess: status.subscribed,
-    isPremium: status.subscribed,
-  };
+  const snapshot = state.snapshot;
+
+  return useMemo(
+    () => ({
+      subscribed: isEntitled(snapshot),
+      subscription_status: snapshot?.subscription_status ?? null,
+      subscription_end: snapshot?.subscription_end,
+      cancel_at_period_end: !!snapshot?.cancel_at_period_end,
+      has_billing_account: !!snapshot?.has_billing_account,
+      completed_trips: snapshot?.completed_trips ?? 0,
+      /** Null when unknown — callers must not render it as 0. */
+      connected_trips: connectedTripsOf(state) ?? 0,
+      connected_trips_known: connectedTripsOf(state) !== null,
+      trips_remaining: tripsRemainingOf(state) ?? 0,
+      loading: state.loading,
+      /** No confirmed data for this account. */
+      unknown: state.unknown,
+      /** Newest attempt failed or the server could not confirm with Stripe. */
+      stale: state.stale,
+      error: state.error,
+      checkStatus,
+      startCheckout,
+      manageSubscription,
+      // Fails CLOSED: unknown/stale-without-confirmation does not unlock actions.
+      canUseFeatures: canUseFeaturesFor(state),
+      hasPremiumAccess: isEntitled(snapshot),
+      isPremium: isEntitled(snapshot),
+    }),
+    [state, snapshot, checkStatus],
+  );
 };
