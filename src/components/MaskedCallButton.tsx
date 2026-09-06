@@ -100,44 +100,32 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
   const { toast } = useToast();
   const [isInitiating, setIsInitiating] = useState(false);
   const [lastCallStatus, setLastCallStatus] = useState<string | null>(null);
-  const [userHasPhone, setUserHasPhone] = useState<boolean | null>(null);
+  // Synchronous guard: state updates are async, so two fast clicks would both
+  // pass a `isInitiating` check before React re-renders.
+  const inFlightRef = useRef(false);
+  // Ignores late async results after the trip changes or the button unmounts.
+  const activeTripRef = useRef(tripId);
+  const mountedRef = useRef(true);
 
-  const fetchLastCall = async () => {
+  const fetchLastCall = async (forTripId: string) => {
     const { data } = await supabase
       .from('calls')
       .select('status')
-      .eq('trip_id', tripId)
+      .eq('trip_id', forTripId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
-    
-    if (data) {
-      setLastCallStatus(data.status);
-    }
-  };
+      .maybeSingle();
 
-  // Check if current user has a phone number on mount
-  const checkUserPhone = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setUserHasPhone(false);
-      return;
-    }
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('phone_number')
-      .eq('id', user.id)
-      .single();
-    
-    const hasPhone = !!(profile?.phone_number && profile.phone_number.trim().length > 0);
-    setUserHasPhone(hasPhone);
+    if (!mountedRef.current || activeTripRef.current !== forTripId) return;
+    setLastCallStatus(data?.status ?? null);
   };
 
   useEffect(() => {
-    fetchLastCall();
-    checkUserPhone();
-    
+    mountedRef.current = true;
+    activeTripRef.current = tripId;
+    setLastCallStatus(null);
+    fetchLastCall(tripId);
+
     // Subscribe to changes in calls table for this trip
     const channel = supabase
       .channel(`calls-${tripId}-${Math.random().toString(36).slice(2, 10)}`)
@@ -149,7 +137,7 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
           filter: `trip_id=eq.${tripId}`
         }, 
         () => {
-          fetchLastCall();
+          fetchLastCall(tripId);
         }
       )
       .subscribe((status, err) => {
@@ -157,52 +145,68 @@ export function MaskedCallButton({ tripId, userRole, tripStatus, disabled, class
       });
 
     return () => {
+      mountedRef.current = false;
       supabase.removeChannel(channel);
     };
   }, [tripId]);
 
-  const handleCall = async () => {
-    // Pre-call validation: Check if user has phone number
-    if (userHasPhone === false) {
-      toast({
-        title: "Phone Number Required",
-        description: CALL_ERROR_MESSAGES.NO_USER_PHONE,
-        variant: "destructive",
-      });
-      console.warn('[MaskedCallButton] User attempted call without phone number');
-      return;
-    }
+  const showError = (code?: string, message?: string) => {
+    toast({
+      title: "Call Failed",
+      description: getUserFriendlyErrorMessage(message, code),
+      variant: "destructive",
+    });
+  };
 
+  const handleCall = async () => {
+    // Double-click guard (synchronous, before any await).
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+
+    const callTripId = tripId;
     setIsInitiating(true);
     try {
       const { data, error } = await supabase.functions.invoke('call-start', {
-        body: { trip_id: tripId }
+        body: { trip_id: callTripId }
       });
 
-      // If there's a network/invocation error
+      if (!mountedRef.current || activeTripRef.current !== callTripId) return;
+
+      // A non-2xx response arrives here as a generic error — read the real
+      // payload so the server's error_code reaches the right message.
       if (error) {
-        console.error('[MaskedCallButton] Function invocation error:', error);
-        toast({
-          title: "Call Failed",
-          description: "Could not connect to calling service. Please check your internet connection and try again.",
-          variant: "destructive",
-        });
+        let code: string | undefined;
+        let serverMessage: string | undefined;
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const body = JSON.parse(await error.context.text());
+            code = body?.code;
+            serverMessage = body?.error;
+          } catch {
+            /* not JSON — fall through to the generic mapping */
+          }
+        }
+        console.error('[MaskedCallButton] Call failed:', { code, serverMessage });
+        if (!mountedRef.current || activeTripRef.current !== callTripId) return;
+        if (code || serverMessage) {
+          showError(code, serverMessage);
+        } else {
+          toast({
+            title: "Call Failed",
+            description: "Could not connect to calling service. Please check your internet connection and try again.",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
-      // If the function returned an error in the response
+      // If the function returned an error inside a 200 response
       if (data && !data.success) {
-        console.error('[MaskedCallButton] Call failed:', { error: data.error, code: data.code });
-        
-        const userMessage = getUserFriendlyErrorMessage(data.error, data.code);
-        
-        toast({
-          title: "Call Failed",
-          description: userMessage,
-          variant: "destructive",
-        });
+        console.error('[MaskedCallButton] Call failed:', { code: data.code });
+        showError(data.code, data.error);
         return;
       }
+
 
       // Success case
       if (data?.success) {
