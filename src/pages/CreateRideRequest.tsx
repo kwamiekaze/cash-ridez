@@ -19,6 +19,8 @@ import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
+import { useSubscription } from "@/hooks/useSubscription";
+import { evaluateTripCreationGate } from "@/lib/tripCreationGate";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
