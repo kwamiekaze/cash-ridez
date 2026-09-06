@@ -68,6 +68,18 @@ CREATE INDEX IF NOT EXISTS billing_events_status_idx
   ON public.billing_events (status, lease_expires_at);
 
 -- ---------------------------------------------------------------------------
+-- 1b. Billing log dedupe guard
+-- ---------------------------------------------------------------------------
+-- Partial (historical rows may have a NULL stripe_event_id and must be kept).
+-- Every ON CONFLICT below therefore repeats the WHERE predicate so Postgres can
+-- infer THIS index; without the predicate the inference fails at runtime with
+-- "there is no unique or exclusion constraint matching the ON CONFLICT
+-- specification".
+CREATE UNIQUE INDEX IF NOT EXISTS billing_logs_event_type_unique
+  ON public.billing_logs (stripe_event_id, event_type)
+  WHERE stripe_event_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------------
 -- 2. Ordering columns on profiles
 -- ---------------------------------------------------------------------------
 ALTER TABLE public.profiles
@@ -275,7 +287,8 @@ BEGIN
 
   INSERT INTO public.billing_logs (user_id, event_type, stripe_event_id, request_body)
   VALUES (p_user_id, p_event_type, p_event_id, p_log)
-  ON CONFLICT (stripe_event_id, event_type) DO NOTHING;
+  ON CONFLICT (stripe_event_id, event_type) WHERE stripe_event_id IS NOT NULL
+  DO NOTHING;
 
   RETURN jsonb_build_object('completed', true);
 END;
@@ -426,7 +439,8 @@ BEGIN
   -- notification below fire at most once even under concurrent redelivery.
   INSERT INTO public.billing_logs (user_id, event_type, stripe_event_id, request_body)
   VALUES (p_user_id, p_event_type, p_event_id, p_log)
-  ON CONFLICT (stripe_event_id, event_type) DO NOTHING;
+  ON CONFLICT (stripe_event_id, event_type) WHERE stripe_event_id IS NOT NULL
+  DO NOTHING;
 
   GET DIAGNOSTICS v_notified = ROW_COUNT;
 
@@ -453,11 +467,6 @@ $$;
 
 REVOKE ALL ON FUNCTION public.apply_billing_entitlement(text, text, text, uuid, jsonb, bigint, text, jsonb, jsonb) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.apply_billing_entitlement(text, text, text, uuid, jsonb, bigint, text, jsonb, jsonb) TO service_role;
-
--- Dedupe guard used by the inserts above.
-CREATE UNIQUE INDEX IF NOT EXISTS billing_logs_event_type_unique
-  ON public.billing_logs (stripe_event_id, event_type)
-  WHERE stripe_event_id IS NOT NULL;
 
 -- Drop the old signatures so no caller can reach a version without fencing.
 DROP FUNCTION IF EXISTS public.claim_billing_event(text, text);
