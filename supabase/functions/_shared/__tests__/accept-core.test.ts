@@ -119,3 +119,13 @@ describe("accept-ride driverId validation", () => {
     expect(d.acceptRide).toHaveBeenCalledWith("token-abc", expect.objectContaining({ p_driver_id: USER }));
   });
 });
+
+describe("accept-ride explicit null driverId", () => {
+  it("rejects an explicit null driverId instead of defaulting to the caller", async () => {
+    const d = deps();
+    const res = await handleAcceptRide(req({ rideId: RIDE, etaMinutes: 10, driverId: null }), d);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "Invalid driverId" });
+    expect(d.acceptRide).not.toHaveBeenCalled();
+  });
+});

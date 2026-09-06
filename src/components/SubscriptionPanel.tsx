@@ -6,15 +6,15 @@ import { toast } from "sonner";
 import { MEMBERSHIP_PRICE_LABEL } from "@/lib/config";
 
 export const SubscriptionPanel = () => {
-  const { 
-    subscribed, 
-    subscription_end, 
-    cancel_at_period_end, 
-    connected_trips, 
+  const {
+    subscribed,
+    subscription_end,
+    cancel_at_period_end,
+    connected_trips,
     trips_remaining,
     loading,
     startCheckout,
-    manageSubscription 
+    manageSubscription
   } = useSubscription();
 
   const handleSubscribe = async () => {
@@ -33,7 +33,9 @@ export const SubscriptionPanel = () => {
     }
   };
 
-  if (loading) {
+  const countUnknown = connected_trips === null || trips_remaining === null;
+
+  if (loading || countUnknown) {
     return (
       <Card>
         <CardHeader>
@@ -59,8 +61,8 @@ export const SubscriptionPanel = () => {
           Membership
         </CardTitle>
         <CardDescription>
-          {subscribed 
-            ? "You have unlimited access to all features" 
+          {subscribed
+            ? "You have unlimited access to all features"
             : "Get unlimited trips after your 3 free connected trips"}
         </CardDescription>
       </CardHeader>
@@ -78,9 +80,9 @@ export const SubscriptionPanel = () => {
                 </p>
               )}
             </div>
-            <Button 
-              onClick={handleManage} 
-              variant="outline" 
+            <Button
+              onClick={handleManage}
+              variant="outline"
               className="w-full"
             >
               Manage Subscription
@@ -92,13 +94,13 @@ export const SubscriptionPanel = () => {
               <div className="text-sm space-y-2">
                 <p>Connected trips: {connected_trips} / 3 free</p>
                 <p className="font-semibold">
-                  {trips_remaining === 'unlimited' 
-                    ? 'Unlimited trips remaining' 
+                  {trips_remaining === 'unlimited'
+                    ? 'Unlimited trips remaining'
                     : `${trips_remaining} free ${trips_remaining === 1 ? 'trip' : 'trips'} remaining`}
                 </p>
               </div>
             </div>
-            
+
             <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border border-blue-200 dark:border-blue-800">
               <div className="flex items-start gap-3">
                 <Crown className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-1" />
@@ -111,8 +113,8 @@ export const SubscriptionPanel = () => {
               </div>
             </div>
 
-            <Button 
-              onClick={handleSubscribe} 
+            <Button
+              onClick={handleSubscribe}
               className="w-full"
               size="lg"
             >

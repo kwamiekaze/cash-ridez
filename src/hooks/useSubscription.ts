@@ -147,9 +147,9 @@ export const useSubscription = () => {
       has_billing_account: !!snapshot?.has_billing_account,
       completed_trips: snapshot?.completed_trips ?? 0,
       /** Null when unknown — callers must not render it as 0. */
-      connected_trips: connectedTripsOf(effective) ?? 0,
+      connected_trips: connectedTripsOf(effective),
       connected_trips_known: connectedTripsOf(effective) !== null,
-      trips_remaining: tripsRemainingOf(effective) ?? 0,
+      trips_remaining: tripsRemainingOf(effective),
       loading: effective.loading,
       /** No confirmed data for this account. */
       unknown: effective.unknown,

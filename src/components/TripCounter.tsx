@@ -16,6 +16,11 @@ export const TripCounter = ({ onSubscribe }: TripCounterProps) => {
     return null;
   }
 
+  // Unknown count: never render it as zero.
+  if (connected_trips === null) {
+    return null;
+  }
+
   const tripsRemaining = Math.max(0, 3 - connected_trips);
   const isAtLimit = connected_trips >= 3;
 

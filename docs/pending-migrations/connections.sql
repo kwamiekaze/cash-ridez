@@ -207,6 +207,7 @@ REVOKE ALL ON FUNCTION public.can_use_trip_features(uuid) FROM anon;
 GRANT EXECUTE ON FUNCTION public.can_use_trip_features(uuid) TO authenticated, service_role;
 
 REVOKE ALL ON FUNCTION public.free_connection_limit() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.free_connection_limit() FROM anon;
 GRANT EXECUTE ON FUNCTION public.free_connection_limit() TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------

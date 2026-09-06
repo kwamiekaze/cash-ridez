@@ -47,8 +47,23 @@ const counter = (value: unknown): number => {
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
 };
 
+/**
+ * The connection counter can never be guessed: a missing / malformed value is
+ * NOT zero ("no connections used"). Fail so the caller reports unknown.
+ */
+const strictCounter = (value: unknown): number => {
+  if (value === null || value === undefined || value === "") {
+    throw new RetryableBillingError("connection counter unavailable");
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new RetryableBillingError("connection counter unavailable");
+  }
+  return Math.floor(n);
+};
+
 const fromProfile = (profile: UnknownRecord, extra: UnknownRecord = {}): StatusResult => {
-  const connected = counter(profile?.connected_trips_count);
+  const connected = strictCounter(profile?.connected_trips_count);
   const active = profile?.subscription_active === true &&
     (profile?.subscription_status === "active" || profile?.subscription_status === "trialing" ||
       profile?.subscription_status === "premium");
@@ -187,7 +202,7 @@ export async function getSubscriptionStatus(deps: StatusDeps, userId: string): P
     return fromProfile(profile, { stale: true, retryable_error: "superseded" });
   }
 
-  const connected = counter(profile.connected_trips_count);
+  const connected = strictCounter(profile.connected_trips_count);
   return {
     status: 200,
     body: {
