@@ -68,20 +68,55 @@ export const isEntitled = (snapshot: SubscriptionSnapshot | null | undefined): b
   return ENTITLED_STATUSES.has(status);
 };
 
+/** Strict non-negative integer, or null. NaN/Infinity/negatives are rejected. */
+const asCount = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value < 0) return null;
+    return Math.floor(value);
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return null;
+    return Math.floor(parsed);
+  }
+  return null;
+};
+
+/**
+ * Parse a server payload into a snapshot.
+ * Returns null when the payload cannot be trusted — a malformed counter must
+ * never be coerced to 0, because 0 reads as "no connections used yet".
+ */
 export const parseSnapshot = (data: any): SubscriptionSnapshot | null => {
   if (!data || typeof data !== 'object') return null;
-  if (typeof data.connected_trips !== 'number') return null;
-  return {
-    subscribed: !!data.subscribed,
-    subscription_status: data.subscription_status ?? null,
-    subscription_end: data.subscription_end ?? undefined,
-    cancel_at_period_end: !!data.cancel_at_period_end,
-    has_billing_account: !!data.has_billing_account,
-    completed_trips: Number(data.completed_trips ?? 0) || 0,
-    connected_trips: Number(data.connected_trips) || 0,
-    trips_remaining: data.trips_remaining === 'unlimited'
+
+  const connected = asCount(data.connected_trips);
+  if (connected === null) return null;
+
+  const completed = asCount(data.completed_trips) ?? 0;
+
+  const status = typeof data.subscription_status === 'string' && data.subscription_status !== ''
+    ? data.subscription_status
+    : null;
+
+  const end = typeof data.subscription_end === 'string' && data.subscription_end !== ''
+    ? data.subscription_end
+    : undefined;
+
+  const remaining: number | 'unlimited' =
+    data.trips_remaining === 'unlimited'
       ? 'unlimited'
-      : Math.max(0, FREE_CONNECTIONS - (Number(data.connected_trips) || 0)),
+      : Math.max(0, FREE_CONNECTIONS - connected);
+
+  return {
+    subscribed: data.subscribed === true,
+    subscription_status: status,
+    subscription_end: end,
+    cancel_at_period_end: data.cancel_at_period_end === true,
+    has_billing_account: data.has_billing_account === true,
+    completed_trips: completed,
+    connected_trips: connected,
+    trips_remaining: remaining,
   };
 };
 
@@ -132,6 +167,26 @@ export const applyFailure = (
     error,
   };
 };
+
+/**
+ * Narrow a stored state to the account currently signed in.
+ *
+ * Rendering is always done through this: if the state belongs to a different
+ * account (or to nobody), the caller sees an unknown state instead of the
+ * previous user's membership.
+ */
+export const stateForOwner = (
+  state: SubscriptionState,
+  ownerId: string | null,
+): SubscriptionState => {
+  if (!ownerId) return signedOutState;
+  if (state.ownerId !== ownerId) return loadingStateFor(ownerId);
+  return state;
+};
+
+/** True only when a snapshot for THIS account was confirmed by the server. */
+export const isConfirmed = (state: SubscriptionState): boolean =>
+  !!state.snapshot && !state.unknown;
 
 /**
  * Feature gate. Fails CLOSED: without a confirmed snapshot for this account,

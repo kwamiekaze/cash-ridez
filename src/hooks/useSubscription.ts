@@ -7,14 +7,31 @@ import {
   canUseFeatures as canUseFeaturesFor,
   connectedTrips as connectedTripsOf,
   FREE_CONNECTIONS,
+  isConfirmed,
   isEntitled,
   loadingStateFor,
   signedOutState,
+  stateForOwner,
   tripsRemaining as tripsRemainingOf,
   type SubscriptionState,
 } from '@/lib/subscriptionState';
 
 export { FREE_CONNECTIONS };
+
+/** Extract a usable redirect URL from an edge-function response, or throw. */
+const requireRedirectUrl = (data: any, fallbackError: string): string => {
+  if (data && typeof data === 'object' && typeof data.url === 'string') {
+    const url = data.url.trim();
+    // Only ever navigate to an absolute https Stripe-hosted URL.
+    if (/^https:\/\//i.test(url)) return url;
+  }
+  const message =
+    data && typeof data === 'object' && typeof data.error === 'string' && data.error
+      ? data.error
+      : fallbackError;
+  throw new Error(message);
+};
+
 
 export const useSubscription = () => {
   const { user } = useAuth();
@@ -68,11 +85,8 @@ export const useSubscription = () => {
       throw error;
     }
 
-    if (data?.url) {
-      window.location.href = data.url;
-    } else {
-      throw new Error(data?.error || 'Checkout session could not be created');
-    }
+    // A malformed or non-https response is a failure, never a navigation.
+    window.location.href = requireRedirectUrl(data, 'Checkout session could not be created');
   };
 
   const manageSubscription = async () => {
@@ -85,13 +99,10 @@ export const useSubscription = () => {
       throw error;
     }
 
-    if (data?.url) {
-      // Same-tab navigation: popup blockers reject window.open after an await.
-      window.location.href = data.url;
-    } else {
-      throw new Error(data?.error || 'Billing portal could not be opened');
-    }
+    // Same-tab navigation: popup blockers reject window.open after an await.
+    window.location.href = requireRedirectUrl(data, 'Billing portal could not be opened');
   };
+
 
   useEffect(() => {
     // Invalidate anything in flight so a previous account's response can never
@@ -121,7 +132,11 @@ export const useSubscription = () => {
     };
   }, [userId, checkStatus]);
 
-  const snapshot = state.snapshot;
+  // Derive on EVERY render against the account signed in right now: a state
+  // left over from a previous account can never be rendered as this one's.
+  const effective = stateForOwner(state, userId);
+  const snapshot = effective.snapshot;
+  const confirmed = isConfirmed(effective);
 
   return useMemo(
     () => ({
@@ -132,23 +147,25 @@ export const useSubscription = () => {
       has_billing_account: !!snapshot?.has_billing_account,
       completed_trips: snapshot?.completed_trips ?? 0,
       /** Null when unknown — callers must not render it as 0. */
-      connected_trips: connectedTripsOf(state) ?? 0,
-      connected_trips_known: connectedTripsOf(state) !== null,
-      trips_remaining: tripsRemainingOf(state) ?? 0,
-      loading: state.loading,
+      connected_trips: connectedTripsOf(effective) ?? 0,
+      connected_trips_known: connectedTripsOf(effective) !== null,
+      trips_remaining: tripsRemainingOf(effective) ?? 0,
+      loading: effective.loading,
       /** No confirmed data for this account. */
-      unknown: state.unknown,
+      unknown: effective.unknown,
+      /** A server-confirmed snapshot exists for this account. */
+      confirmed,
       /** Newest attempt failed or the server could not confirm with Stripe. */
-      stale: state.stale,
-      error: state.error,
+      stale: effective.stale,
+      error: effective.error,
       checkStatus,
       startCheckout,
       manageSubscription,
       // Fails CLOSED: unknown/stale-without-confirmation does not unlock actions.
-      canUseFeatures: canUseFeaturesFor(state),
+      canUseFeatures: canUseFeaturesFor(effective),
       hasPremiumAccess: isEntitled(snapshot),
       isPremium: isEntitled(snapshot),
     }),
-    [state, snapshot, checkStatus],
+    [effective, snapshot, confirmed, checkStatus],
   );
 };

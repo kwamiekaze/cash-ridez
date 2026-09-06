@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { handleStripeEvent } from "../webhook-core";
-import { makeStripe, makeSupabase, MEMBERSHIP_PRODUCT, OTHER_PRODUCT, sub } from "./mocks";
+import { billingRpc, makeStripe, makeSupabase, MEMBERSHIP_PRODUCT, OTHER_PRODUCT, sub } from "./mocks";
 
 const PROFILE = {
   id: "user-1",
@@ -10,21 +10,7 @@ const PROFILE = {
   subscription_status: "active",
 };
 
-const claimStore = () => {
-  const seen = new Set<string>();
-  return {
-    seen,
-    rpc: {
-      claim_billing_event: ({ p_event_id }: any) => {
-        if (seen.has(p_event_id)) return { data: false, error: null };
-        seen.add(p_event_id);
-        return { data: true, error: null };
-      },
-      release_billing_event: () => ({ data: null, error: null }),
-      apply_billing_entitlement: () => ({ data: { applied: true }, error: null }),
-    },
-  };
-};
+const claimStore = () => ({ rpc: billingRpc() });
 
 const deps = (supabase: any, stripe: any) => ({
   supabase,
@@ -226,7 +212,7 @@ describe("failure handling", () => {
     expect(supabase.calls.some((c) => c.name === "release_billing_event")).toBe(true);
   });
 
-  it("passes the event timestamp as the sync version guard", async () => {
+  it("passes a DB-reserved monotonic generation as the ordering guard", async () => {
     const claims = claimStore();
     const supabase = makeSupabase({
       tables: { profiles: { select: () => ({ data: PROFILE, error: null }) } },
@@ -240,6 +226,8 @@ describe("failure handling", () => {
     }));
 
     const call = supabase.calls.find((c) => c.name === "apply_billing_entitlement");
-    expect(call?.payload.p_sync_version).toBe(2000);
+    expect(typeof call?.payload.p_generation).toBe("number");
+    expect(call?.payload.p_generation).toBeGreaterThan(0);
+    expect(call?.payload.p_claim_token).toEqual(expect.any(String));
   });
 });
