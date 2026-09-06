@@ -96,3 +96,26 @@ describe("accept-ride handler", () => {
     expect(await res.json()).toMatchObject({ error: "permission denied" });
   });
 });
+
+describe("accept-ride driverId validation", () => {
+  it("rejects an explicitly supplied invalid driverId instead of substituting the caller", async () => {
+    const d = deps();
+    const res = await handleAcceptRide(req({ rideId: RIDE, etaMinutes: 10, driverId: "not-a-uuid" }), d);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "Invalid driverId" });
+    expect(d.acceptRide).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-string driverId", async () => {
+    const d = deps();
+    const res = await handleAcceptRide(req({ rideId: RIDE, etaMinutes: 10, driverId: 123 }), d);
+    expect(res.status).toBe(400);
+    expect(d.acceptRide).not.toHaveBeenCalled();
+  });
+
+  it("defaults to the caller when driverId is omitted", async () => {
+    const d = deps();
+    await handleAcceptRide(req({ rideId: RIDE, etaMinutes: 10 }), d);
+    expect(d.acceptRide).toHaveBeenCalledWith("token-abc", expect.objectContaining({ p_driver_id: USER }));
+  });
+});
