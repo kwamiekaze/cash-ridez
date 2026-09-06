@@ -381,14 +381,10 @@ describe("call-status leg handling", () => {
     expect(db.rpcCalls.some((c: any) => c.name === "apply_call_leg_status")).toBe(true);
   });
 
-  it("returns retryable when the status RPC is missing", async () => {
-    const db = makeDb(baseTables(), { ...okRpcs, apply_call_leg_status: undefined as any });
-    delete (db as any).__x;
+  it("fails closed when the status RPC is missing", async () => {
+    const db = makeDb(baseTables(), { reserve_call_slot: okRpcs.reserve_call_slot });
     await expect(
-      handleStatusCallback(
-        deps(makeDb(baseTables(), { reserve_call_slot: okRpcs.reserve_call_slot })),
-        form({ CallSid: PARENT_SID, CallStatus: "completed" }, `callId=${CALL}&cb=parent`),
-      ),
+      handleStatusCallback(deps(db), form({ CallSid: PARENT_SID, CallStatus: "completed" }, `callId=${CALL}&cb=parent`)),
     ).rejects.toBeInstanceOf(MissingDependencyError);
   });
 });
