@@ -331,7 +331,7 @@ END:VCARD`;
       
       // Server-side authority, immediately before the insert. Any error or a
       // non-boolean answer fails CLOSED and stays retryable.
-      const { data: canUse, error: gateErr } = await supabase.rpc('can_use_trip_features', {
+      const { data: canUse, error: gateErr } = await (supabase.rpc as any)('can_use_trip_features', {
         p_user_id: userId,
       });
       if (gateErr || typeof canUse !== 'boolean') {
