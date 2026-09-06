@@ -169,6 +169,26 @@ export const applyFailure = (
 };
 
 /**
+ * Narrow a stored state to the account currently signed in.
+ *
+ * Rendering is always done through this: if the state belongs to a different
+ * account (or to nobody), the caller sees an unknown state instead of the
+ * previous user's membership.
+ */
+export const stateForOwner = (
+  state: SubscriptionState,
+  ownerId: string | null,
+): SubscriptionState => {
+  if (!ownerId) return signedOutState;
+  if (state.ownerId !== ownerId) return loadingStateFor(ownerId);
+  return state;
+};
+
+/** True only when a snapshot for THIS account was confirmed by the server. */
+export const isConfirmed = (state: SubscriptionState): boolean =>
+  !!state.snapshot && !state.unknown;
+
+/**
  * Feature gate. Fails CLOSED: without a confirmed snapshot for this account,
  * limited actions are not allowed.
  */
