@@ -85,11 +85,8 @@ export const useSubscription = () => {
       throw error;
     }
 
-    if (data?.url) {
-      window.location.href = data.url;
-    } else {
-      throw new Error(data?.error || 'Checkout session could not be created');
-    }
+    // A malformed or non-https response is a failure, never a navigation.
+    window.location.href = requireRedirectUrl(data, 'Checkout session could not be created');
   };
 
   const manageSubscription = async () => {
@@ -102,13 +99,10 @@ export const useSubscription = () => {
       throw error;
     }
 
-    if (data?.url) {
-      // Same-tab navigation: popup blockers reject window.open after an await.
-      window.location.href = data.url;
-    } else {
-      throw new Error(data?.error || 'Billing portal could not be opened');
-    }
+    // Same-tab navigation: popup blockers reject window.open after an await.
+    window.location.href = requireRedirectUrl(data, 'Billing portal could not be opened');
   };
+
 
   useEffect(() => {
     // Invalidate anything in flight so a previous account's response can never
