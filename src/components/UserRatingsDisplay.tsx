@@ -60,31 +60,43 @@ export function UserRatingsDisplay({ userId, ratingType }: UserRatingsDisplayPro
 
       if (error) throw error;
 
+      // The dynamic column names above make the inferred row type a union, so
+      // narrow to a permissive record shape at the query boundary.
+      const rows: Array<Record<string, any>> = Array.isArray(data)
+        ? (data as unknown as Array<Record<string, any>>)
+        : [];
+
       // Fetch rater profiles
       const ratingsWithProfiles = await Promise.all(
-        (data || []).map(async (rating) => {
-          const raterId = rating[raterField];
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("display_name, full_name, photo_url")
-            .eq("id", raterId)
-            .single();
+        rows.map(async (row) => {
+          const raterId = typeof row[raterField] === "string" ? (row[raterField] as string) : null;
+          const ratingValue = Number(row[ratingField]);
+
+          const { data: profileData } = raterId
+            ? await supabase
+                .from("profiles")
+                .select("display_name, full_name, photo_url")
+                .eq("id", raterId)
+                .single()
+            : { data: null };
 
           return {
-            id: rating.id,
-            rating: rating[ratingField],
-            created_at: rating.created_at,
-            rater_name: profileData?.full_name || `User ${raterId.slice(0, 8)}`,
+            id: String(row.id),
+            rating: Number.isFinite(ratingValue) ? ratingValue : 0,
+            created_at: row.created_at as string,
+            rater_name:
+              profileData?.full_name || (raterId ? `User ${raterId.slice(0, 8)}` : "User"),
             rater_photo: profileData?.photo_url || "",
-            pickup_address: rating.pickup_address,
-            dropoff_address: rating.dropoff_address,
-            pickup_lat: rating.pickup_lat,
-            pickup_lng: rating.pickup_lng,
-            dropoff_lat: rating.dropoff_lat,
-            dropoff_lng: rating.dropoff_lng,
-          };
+            pickup_address: row.pickup_address as string,
+            dropoff_address: row.dropoff_address as string,
+            pickup_lat: row.pickup_lat as number | undefined,
+            pickup_lng: row.pickup_lng as number | undefined,
+            dropoff_lat: row.dropoff_lat as number | undefined,
+            dropoff_lng: row.dropoff_lng as number | undefined,
+          } satisfies Rating;
         })
       );
+
 
       setRatings(ratingsWithProfiles);
     } catch (error) {
