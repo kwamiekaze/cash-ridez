@@ -4,6 +4,7 @@ import {
   applySuccess,
   canUseFeatures,
   connectedTrips,
+  isConfirmed,
   isEntitled,
   loadingStateFor,
   signedOutState,
