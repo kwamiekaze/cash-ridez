@@ -57,8 +57,23 @@ export const loadingStateFor = (ownerId: string): SubscriptionState => ({
 
 const ENTITLED_STATUSES = new Set(['active', 'trialing']);
 
-/** Canonical entitlement predicate. */
-export const isEntitled = (snapshot: SubscriptionSnapshot | null | undefined): boolean => {
+const isState = (value: any): value is SubscriptionState =>
+  !!value && typeof value === 'object' && 'ownerId' in value && 'unknown' in value;
+
+/**
+ * Canonical entitlement predicate.
+ *
+ * Accepts a snapshot or a full state. When given a state, entitlement requires
+ * a CONFIRMED snapshot for that account: an unconfirmed (first, stale)
+ * premium-looking response is displayable but never unlocking.
+ */
+export function isEntitled(
+  input: SubscriptionSnapshot | SubscriptionState | null | undefined,
+): boolean {
+  if (isState(input)) {
+    return isConfirmed(input) && isEntitled(input.snapshot);
+  }
+  const snapshot = input;
   if (!snapshot) return false;
   if (!snapshot.subscribed) return false;
   const status = snapshot.subscription_status;
@@ -66,7 +81,7 @@ export const isEntitled = (snapshot: SubscriptionSnapshot | null | undefined): b
   // Admin-granted access is stored as the 'premium' status.
   if (status === 'premium') return true;
   return ENTITLED_STATUSES.has(status);
-};
+}
 
 /** Strict non-negative integer, or null. NaN/Infinity/negatives are rejected. */
 const asCount = (value: unknown): number | null => {
@@ -143,7 +158,10 @@ export const applySuccess = (
       snapshot: retained,
       loading: false,
       stale: true,
-      unknown: prev.ownerId === ownerId ? prev.unknown && !prev.snapshot : false,
+      // Confirmed only when a previously CONFIRMED snapshot for this same
+      // account is being retained. A first stale response is displayable but
+      // remains unknown, so it can never unlock limited actions.
+      unknown: !(prev.ownerId === ownerId && !!prev.snapshot && !prev.unknown),
       error: String(data?.retryable_error ?? 'stale'),
     };
   }
@@ -193,6 +211,7 @@ export const isConfirmed = (state: SubscriptionState): boolean =>
  * limited actions are not allowed.
  */
 export const canUseFeatures = (state: SubscriptionState): boolean => {
+  if (!isConfirmed(state)) return false;
   if (!state.snapshot) return false;
   if (isEntitled(state.snapshot)) return true;
   return state.snapshot.connected_trips < FREE_CONNECTIONS;
