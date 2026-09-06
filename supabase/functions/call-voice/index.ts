@@ -14,6 +14,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import twilio from "npm:twilio@5.3.5";
 import {
   handleVoiceWebhook,
+  MissingDependencyError,
+  RetryableCallError,
   hangupTwiml,
   TWIML_CONTENT_TYPE,
   type TwilioPort,
@@ -70,6 +72,8 @@ Deno.serve(async (req) => {
           accountSid: (call as any).accountSid,
           parentCallSid: (call as any).parentCallSid,
           status: (call as any).status,
+          to: (call as any).to,
+          from: (call as any).from,
         };
       },
     };
@@ -100,6 +104,11 @@ Deno.serve(async (req) => {
   } catch (error) {
     // Never log TwiML or raw phone numbers.
     console.error("[call-voice] Failed:", error instanceof Error ? error.message : String(error));
-    return xml(hangupTwiml(), 200);
+    // Retryable/dependency problems must NOT be acknowledged with a 200: a
+    // 503 lets Twilio retry instead of silently dropping the call.
+    if (error instanceof RetryableCallError || error instanceof MissingDependencyError) {
+      return xml(hangupTwiml(), 503);
+    }
+    return xml(hangupTwiml(), 500);
   }
 });

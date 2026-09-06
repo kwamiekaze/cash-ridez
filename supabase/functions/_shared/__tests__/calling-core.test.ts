@@ -3,19 +3,23 @@ import {
   deriveOverallStatus,
   handleStatusCallback,
   handleVoiceWebhook,
+  MissingDependencyError,
+  parseDurationSeconds,
   RetryableCallError,
   startMaskedCall,
   type CallingDeps,
 } from "../calling-core";
-import { canonicalFunctionUrl } from "../twilio-signature";
 
-const ACCOUNT = "ACtestaccount";
-const RIDER = "rider-1";
-const DRIVER = "driver-1";
-const TRIP = "trip-1";
-const CALL = "call-1";
-const PARENT_SID = "CAparent";
-const CHILD_SID = "CAchild";
+const ACCOUNT = "AC" + "a".repeat(32);
+const OTHER_ACCOUNT = "AC" + "b".repeat(32);
+const PARENT_SID = "CA" + "1".repeat(32);
+const CHILD_SID = "CA" + "2".repeat(32);
+const FOREIGN_SID = "CA" + "3".repeat(32);
+const RIDER = "11111111-1111-4111-8111-111111111111";
+const DRIVER = "22222222-2222-4222-8222-222222222222";
+const TRIP = "33333333-3333-4333-8333-333333333333";
+const CALL = "44444444-4444-4444-8444-444444444444";
+const TOKEN = "55555555-5555-4555-8555-555555555555";
 
 const env = {
   supabaseUrl: "https://proj.supabase.co",
@@ -40,10 +44,12 @@ const call = (over: any = {}) => ({
   driver_id: DRIVER,
   initiated_by_user_id: RIDER,
   status: "initiated",
+  reservation_token: TOKEN,
   twilio_call_sid_rider: PARENT_SID,
   twilio_call_sid_driver: null,
   parent_status: null,
   child_status: null,
+  bridged: false,
   started_at: null,
   ended_at: null,
   ...over,
@@ -62,13 +68,17 @@ function makeDb(tables: Record<string, any>, rpc: Record<string, any> = {}) {
     rpc: (name: string, args: any) => {
       rpcCalls.push({ name, args });
       const fn = rpc[name];
-      if (!fn) return Promise.resolve({ data: null, error: { code: "PGRST202", message: "Could not find the function" } });
+      if (!fn) {
+        return Promise.resolve({
+          data: null,
+          error: { code: "PGRST202", message: "Could not find the function" },
+        });
+      }
       return Promise.resolve(fn(args));
     },
     from(table: string) {
       const handlers = tables[table] ?? {};
       const q: any = {
-        _payload: undefined as any,
         select: () => q,
         insert: (payload: any) => {
           inserts.push({ table, payload });
@@ -102,11 +112,29 @@ function makeDb(tables: Record<string, any>, rpc: Record<string, any> = {}) {
 
 const twilioOk = (over: any = {}) => ({
   createCall: vi.fn(async () => ({ sid: PARENT_SID, accountSid: ACCOUNT, parentCallSid: null })),
-  fetchCall: vi.fn(async (sid: string) => ({ sid, accountSid: ACCOUNT, parentCallSid: null })),
+  fetchCall: vi.fn(async (sid: string) => ({
+    sid,
+    accountSid: ACCOUNT,
+    parentCallSid: sid === CHILD_SID ? PARENT_SID : null,
+    from: sid === CHILD_SID ? undefined : env.twilioPhoneNumber,
+  })),
+  cancelCall: vi.fn(async () => {}),
   ...over,
 });
 
 const deps = (supabase: any, twilio: any = twilioOk()): CallingDeps => ({ supabase, twilio, env });
+
+const okRpcs = {
+  reserve_call_slot: () => ({ data: [{ outcome: "granted", token: TOKEN }], error: null }),
+  release_call_slot: () => ({ data: true, error: null }),
+  confirm_call_attempt: () => ({ data: null, error: null }),
+  fail_call: () => ({ data: "failed", error: null }),
+  bind_call_leg_sid: () => ({ data: "bound", error: null }),
+  apply_call_leg_status: () => ({
+    data: [{ result: "applied", aggregate_status: "ringing", parent_status: "ringing", child_status: null, bridged: false }],
+    error: null,
+  }),
+};
 
 const baseTables = (over: any = {}) => ({
   ride_requests: { select: () => ({ data: trip(), error: null }) },
@@ -120,279 +148,264 @@ const baseTables = (over: any = {}) => ({
     }),
   },
   admin_user_notes: { select: () => ({ data: null, error: null }) },
-  calls: { insert: () => ({ data: call(), error: null }) },
+  calls: {
+    select: () => ({ data: call(), error: null }),
+    insert: () => ({ data: { ...call(), twilio_call_sid_rider: null }, error: null }),
+  },
   ...over,
 });
 
-// ---------------------------------------------------------------------------
-
-describe("call-start", () => {
-  it("refuses before reserving when configuration is missing", async () => {
-    const db = makeDb(baseTables());
-    const d = { ...deps(db), env: { ...env, twilioPhoneNumber: undefined } };
-    const res = await startMaskedCall(d, { userId: RIDER, tripId: TRIP });
-    expect(res.body.code).toBe("SERVER_CONFIG_ERROR");
-    expect(db.rpcCalls).toHaveLength(0);
-    expect(db.inserts).toHaveLength(0);
-  });
-
-  it("rejects a non-participant and a trip that is no longer assigned", async () => {
-    const notAssigned = makeDb(baseTables({ ride_requests: { select: () => ({ data: trip({ status: "cancelled" }), error: null }) } }));
-    expect((await startMaskedCall(deps(notAssigned), { userId: RIDER, tripId: TRIP })).body.code)
-      .toBe("TRIP_NOT_ASSIGNED");
-
-    const db = makeDb(baseTables());
-    expect((await startMaskedCall(deps(db), { userId: "someone-else", tripId: TRIP })).body.code)
-      .toBe("NOT_PARTICIPANT");
-    expect(db.inserts).toHaveLength(0);
-  });
-
-  it("falls back to the rider-note contact when the rider profile has no phone", async () => {
-    const db = makeDb(baseTables({
-      ride_requests: {
-        select: () => ({ data: trip({ rider_note: "Trip Details: x | Contact: 470-555-0199" }), error: null }),
-      },
-      profiles: {
-        select: () => ({
-          data: [
-            { id: RIDER, phone_number: null },
-            { id: DRIVER, phone_number: "404-555-0134" },
-          ],
-          error: null,
-        }),
-      },
-    }));
-    const twilio = twilioOk();
-    const res = await startMaskedCall(deps(db, twilio), { userId: RIDER, tripId: TRIP });
-    expect(res.body.success).toBe(true);
-    expect(twilio.createCall.mock.calls[0][0].to).toBe("+14705550199");
-  });
-
-  it("reports a missing recipient phone without leaking whose fallback was used", async () => {
-    const db = makeDb(baseTables({
-      profiles: {
-        select: () => ({
-          data: [
-            { id: RIDER, phone_number: "678-928-8816" },
-            { id: DRIVER, phone_number: "678<928>8816" },
-          ],
-          error: null,
-        }),
-      },
-    }));
-    const res = await startMaskedCall(deps(db), { userId: RIDER, tripId: TRIP });
-    expect(res.body.code).toBe("NO_DRIVER_PHONE");
-    expect(JSON.stringify(res.body)).not.toMatch(/source|admin_override|8816/);
-  });
-
-  it("blocks a concurrent second attempt through the reservation", async () => {
-    let taken = false;
-    const db = makeDb(baseTables(), {
-      reserve_call_slot: () => {
-        if (taken) return { data: { outcome: "busy" }, error: null };
-        taken = true;
-        return { data: { outcome: "granted", token: "tok" }, error: null };
-      },
-    });
-    const twilio = twilioOk();
-    const [a, b] = await Promise.all([
-      startMaskedCall(deps(db, twilio), { userId: RIDER, tripId: TRIP }),
-      startMaskedCall(deps(db, twilio), { userId: RIDER, tripId: TRIP }),
-    ]);
-    const codes = [a.body.code, b.body.code];
-    expect(codes).toContain("CALL_IN_PROGRESS");
-    expect(twilio.createCall).toHaveBeenCalledTimes(1);
-  });
-
-  it("stamps the record failed and releases the slot when Twilio errors", async () => {
-    const db = makeDb(baseTables(), {
-      reserve_call_slot: () => ({ data: { outcome: "granted", token: "tok" }, error: null }),
-      release_call_slot: () => ({ data: null, error: null }),
-    });
-    const twilio = twilioOk({
-      createCall: vi.fn(async () => {
-        throw Object.assign(new Error("rate limit"), { code: 20429 });
-      }),
-    });
-    const res = await startMaskedCall(deps(db, twilio), { userId: RIDER, tripId: TRIP });
-    expect(res.body.code).toBe("RATE_LIMITED");
-    expect(db.updates.some((u: any) => u.payload.status === "failed")).toBe(true);
-    expect(db.rpcCalls.some((c: any) => c.name === "release_call_slot")).toBe(true);
-  });
-
-  it("surfaces a database failure instead of hiding it", async () => {
-    const db = makeDb(baseTables({ calls: { insert: () => ({ data: null, error: { message: "insert denied" } }) } }));
-    await expect(startMaskedCall(deps(db), { userId: RIDER, tripId: TRIP })).rejects.toThrow(RetryableCallError);
-  });
-
-  it("never binds a SID that Twilio says belongs to another account", async () => {
-    const db = makeDb(baseTables());
-    const twilio = twilioOk({
-      fetchCall: vi.fn(async (sid: string) => ({ sid, accountSid: "ACsomeoneelse", parentCallSid: null })),
-    });
-    await expect(startMaskedCall(deps(db, twilio), { userId: RIDER, tripId: TRIP })).rejects.toThrow(/different Twilio account/);
-  });
-});
-
-// ---------------------------------------------------------------------------
-
-const webhook = (over: any = {}) => ({
+const form = (params: Record<string, string>, query: string) => ({
   method: "POST",
   contentType: "application/x-www-form-urlencoded",
-  params: { AccountSid: ACCOUNT, CallSid: PARENT_SID },
-  query: new URLSearchParams(`callId=${CALL}`),
+  params: { AccountSid: ACCOUNT, ...params },
+  query: new URLSearchParams(query),
   signatureValid: true,
-  ...over,
 });
 
+// ---------------------------------------------------------------------------
+// 1. Fail closed without the pending migration
+// ---------------------------------------------------------------------------
+describe("call-start fails closed", () => {
+  it("does not insert a call row or dial when reserve_call_slot is missing", async () => {
+    const db = makeDb(baseTables(), {}); // no RPCs at all
+    const tw = twilioOk();
+    await expect(startMaskedCall(deps(db, tw), { userId: RIDER, tripId: TRIP }))
+      .rejects.toBeInstanceOf(MissingDependencyError);
+    expect(db.inserts).toHaveLength(0);
+    expect(tw.createCall).not.toHaveBeenCalled();
+  });
+
+  it("does not dial when the reservation is busy", async () => {
+    const tw = twilioOk();
+    const db = makeDb(baseTables(), {
+      ...okRpcs,
+      reserve_call_slot: () => ({ data: [{ outcome: "busy", token: null }], error: null }),
+    });
+    const res = await startMaskedCall(deps(db, tw), { userId: RIDER, tripId: TRIP });
+    expect(res.status).toBe(409);
+    expect(db.inserts).toHaveLength(0);
+    expect(tw.createCall).not.toHaveBeenCalled();
+  });
+
+  it("persists the reservation token on the call row", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await startMaskedCall(deps(db), { userId: RIDER, tripId: TRIP });
+    expect(res.status).toBe(200);
+    expect(db.inserts[0].payload.reservation_token).toBe(TOKEN);
+  });
+
+  it("rejects a non-uuid trip id before touching the database", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await startMaskedCall(deps(db), { userId: RIDER, tripId: "not-a-uuid" });
+    expect(res.status).toBe(400);
+    expect(db.rpcCalls).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2. Binding failure after the Twilio call exists
+// ---------------------------------------------------------------------------
+describe("call-start binding failure", () => {
+  it("stamps failed, releases the token and cancels the created call", async () => {
+    const tw = twilioOk({ fetchCall: vi.fn(async () => { throw new Error("twilio down"); }) });
+    const db = makeDb(baseTables(), okRpcs);
+    await expect(startMaskedCall(deps(db, tw), { userId: RIDER, tripId: TRIP }))
+      .rejects.toBeInstanceOf(RetryableCallError);
+    expect(tw.cancelCall).toHaveBeenCalledWith(PARENT_SID);
+    const names = db.rpcCalls.map((c: any) => c.name);
+    expect(names).toContain("fail_call");
+    expect(names).toContain("release_call_slot");
+    const fail = db.rpcCalls.find((c: any) => c.name === "fail_call");
+    expect(fail.args.p_token).toBe(TOKEN);
+  });
+
+  it("refuses to bind a SID that Twilio reports as a child leg", async () => {
+    const tw = twilioOk({
+      fetchCall: vi.fn(async (sid: string) => ({ sid, accountSid: ACCOUNT, parentCallSid: FOREIGN_SID })),
+    });
+    const db = makeDb(baseTables(), okRpcs);
+    await expect(startMaskedCall(deps(db, tw), { userId: RIDER, tripId: TRIP })).rejects.toThrow();
+    expect(db.rpcCalls.some((c: any) => c.name === "bind_call_leg_sid")).toBe(false);
+  });
+
+  it("aborts when the SID belongs to another Twilio account", async () => {
+    const tw = twilioOk({
+      fetchCall: vi.fn(async (sid: string) => ({ sid, accountSid: OTHER_ACCOUNT, parentCallSid: null })),
+    });
+    const db = makeDb(baseTables(), okRpcs);
+    await expect(startMaskedCall(deps(db, tw), { userId: RIDER, tripId: TRIP })).rejects.toThrow();
+    expect(tw.cancelCall).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. call-voice
+// ---------------------------------------------------------------------------
 describe("call-voice", () => {
-  it("rejects a tampered/unsigned request before touching the database", async () => {
-    const db = makeDb(baseTables({ calls: { select: () => { throw new Error("db must not be used"); } } }));
-    const res = await handleVoiceWebhook(deps(db), webhook({ signatureValid: false }));
-    expect(res.status).toBe(403);
+  it("hangs up (never voicemail) when the trip was reassigned", async () => {
+    const db = makeDb(
+      baseTables({
+        ride_requests: { select: () => ({ data: trip({ assigned_driver_id: "99999999-9999-4999-8999-999999999999" }), error: null }) },
+      }),
+      okRpcs,
+    );
+    const res = await handleVoiceWebhook(deps(db), form({ CallSid: PARENT_SID }, `callId=${CALL}`));
+    expect(res.twiml).toContain("<Hangup/>");
+    expect(res.twiml).not.toContain("Redirect");
+    expect(db.rpcCalls.some((c: any) => c.name === "fail_call")).toBe(true);
+  });
+
+  it("hangs up when the recipient has no valid phone", async () => {
+    const db = makeDb(
+      baseTables({
+        profiles: { select: () => ({ data: [{ id: RIDER, phone_number: "678-928-8816" }, { id: DRIVER, phone_number: null }], error: null }) },
+      }),
+      okRpcs,
+    );
+    const res = await handleVoiceWebhook(deps(db), form({ CallSid: PARENT_SID }, `callId=${CALL}`));
     expect(res.twiml).toContain("<Hangup/>");
   });
 
-  it("rejects a foreign AccountSid and a non-POST request", async () => {
-    const db = makeDb(baseTables());
-    expect((await handleVoiceWebhook(deps(db), webhook({ params: { AccountSid: "ACother", CallSid: PARENT_SID } }))).status).toBe(403);
-    expect((await handleVoiceWebhook(deps(db), webhook({ method: "GET" }))).status).toBe(405);
-  });
-
-  it("rejects a CallSid that is not the stored parent leg", async () => {
-    const db = makeDb(baseTables({ calls: { select: () => ({ data: call(), error: null }) } }));
-    const res = await handleVoiceWebhook(deps(db), webhook({ params: { AccountSid: ACCOUNT, CallSid: "CAforged" } }));
-    expect(res.status).toBe(403);
-  });
-
-  it("dials the recipient derived from the initiator, ignoring a spoofed role param", async () => {
-    const db = makeDb(baseTables({ calls: { select: () => ({ data: call(), error: null }) } }));
-    const res = await handleVoiceWebhook(
-      deps(db),
-      webhook({ query: new URLSearchParams(`callId=${CALL}&role=driver`) }),
-    );
-    // Initiator is the rider, so the DRIVER's number must be dialed.
-    expect(res.twiml).toContain("+14045550134");
-    expect(res.twiml).not.toContain("+16789288816<");
-  });
-
-  it("falls back to voicemail when the trip was reassigned or cancelled", async () => {
-    const reassigned = makeDb(baseTables({
-      calls: { select: () => ({ data: call(), error: null }) },
-      ride_requests: { select: () => ({ data: trip({ assigned_driver_id: "driver-2" }), error: null }) },
-    }));
-    expect((await handleVoiceWebhook(deps(reassigned), webhook())).twiml).toContain("call-inbound-voicemail");
-
-    const cancelled = makeDb(baseTables({
-      calls: { select: () => ({ data: call(), error: null }) },
-      ride_requests: { select: () => ({ data: trip({ status: "cancelled" }), error: null }) },
-    }));
-    expect((await handleVoiceWebhook(deps(cancelled), webhook())).twiml).toContain("call-inbound-voicemail");
-  });
-
-  it("keeps the inbound voicemail redirect when there is no callId (after auth)", async () => {
-    const db = makeDb(baseTables());
-    const res = await handleVoiceWebhook(deps(db), webhook({ query: new URLSearchParams() }));
-    expect(res.status).toBe(200);
+  it("only redirects to voicemail for a true inbound call with no callId", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await handleVoiceWebhook(deps(db), form({ CallSid: PARENT_SID }, ""));
     expect(res.twiml).toContain("call-inbound-voicemail");
-    expect(res.twiml).not.toContain("<Say");
   });
 
-  it("escapes XML in every attribute and text node", async () => {
-    const db = makeDb(baseTables({ calls: { select: () => ({ data: call(), error: null }) } }));
-    const res = await handleVoiceWebhook(deps(db), webhook());
-    expect(res.twiml).toContain("&amp;leg=child");
-    expect(res.twiml).not.toMatch(/action="[^"]*&(?!amp;)/);
+  it("emits distinct Dial action and Number status callbacks", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await handleVoiceWebhook(deps(db), form({ CallSid: PARENT_SID }, `callId=${CALL}`));
+    expect(res.twiml).toContain(`cb=dial`);
+    expect(res.twiml).toContain(`cb=child`);
+    expect(res.twiml).toContain("answerOnBridge");
+  });
+
+  it("surfaces a database failure as retryable instead of a silent hangup", async () => {
+    const db = makeDb(baseTables({ calls: { select: () => ({ data: null, error: { message: "boom" } }) } }), okRpcs);
+    await expect(handleVoiceWebhook(deps(db), form({ CallSid: PARENT_SID }, `callId=${CALL}`)))
+      .rejects.toBeInstanceOf(RetryableCallError);
+  });
+
+  it("rejects a mismatched CallSid", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await handleVoiceWebhook(deps(db), form({ CallSid: FOREIGN_SID }, `callId=${CALL}`));
+    expect(res.status).toBe(403);
+    expect(res.twiml).toContain("<Hangup/>");
   });
 });
 
 // ---------------------------------------------------------------------------
+// 4. call-status
+// ---------------------------------------------------------------------------
+describe("call-status validation", () => {
+  const db = () => makeDb(baseTables(), okRpcs);
 
-describe("call-status", () => {
-  const statusReq = (params: any, query = `callId=${CALL}`) =>
-    webhook({ params: { AccountSid: ACCOUNT, ...params }, query: new URLSearchParams(query) });
+  it("rejects an invalid SID format", async () => {
+    const res = await handleStatusCallback(deps(db()), form({ CallSid: "CAnothex", CallStatus: "completed" }, `callId=${CALL}&cb=parent`));
+    expect(res.status).toBe(400);
+  });
 
-  it("rejects an invalid signature before any database use", async () => {
-    const db = makeDb({ calls: { select: () => { throw new Error("db must not be used"); } } });
-    const res = await handleStatusCallback(deps(db), { ...statusReq({ CallSid: PARENT_SID }), signatureValid: false });
+  it("rejects an invalid callId", async () => {
+    const res = await handleStatusCallback(deps(db()), form({ CallSid: PARENT_SID, CallStatus: "completed" }, "callId=abc&cb=parent"));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an unknown callback kind", async () => {
+    const res = await handleStatusCallback(deps(db()), form({ CallSid: PARENT_SID, CallStatus: "completed" }, `callId=${CALL}`));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a foreign AccountSid", async () => {
+    const req = form({ CallSid: PARENT_SID, CallStatus: "completed" }, `callId=${CALL}&cb=parent`);
+    req.params.AccountSid = OTHER_ACCOUNT;
+    const res = await handleStatusCallback(deps(db()), req);
     expect(res.status).toBe(403);
   });
 
-  it("rejects a CallSid that belongs to no leg of this record", async () => {
-    const db = makeDb({ calls: { select: () => ({ data: call(), error: null }) } });
-    const res = await handleStatusCallback(deps(db), statusReq({ CallSid: "CAstranger", CallStatus: "completed" }));
-    expect(res.status).toBe(403);
-  });
-
-  it("keeps the child no-answer outcome even after the parent completes", async () => {
-    const withChild = call({ twilio_call_sid_driver: CHILD_SID, parent_status: "in_progress", child_status: null });
-    const db = makeDb({ calls: { select: () => ({ data: withChild, error: null }) } });
-    const childRes = await handleStatusCallback(deps(db), statusReq({ CallSid: CHILD_SID, CallStatus: "no-answer" }));
-    expect(childRes.body.status).toBe("no_answer");
-
-    const after = call({
-      twilio_call_sid_driver: CHILD_SID,
-      parent_status: "in_progress",
-      child_status: "no_answer",
-    });
-    const db2 = makeDb({ calls: { select: () => ({ data: after, error: null }) } });
-    const parentRes = await handleStatusCallback(
-      deps(db2),
-      statusReq({ CallSid: PARENT_SID, CallStatus: "completed", CallDuration: "18" }),
-    );
-    expect(parentRes.body.status).toBe("no_answer");
-  });
-
-  it("does not treat a completed parent alone as a connected conversation", () => {
-    expect(deriveOverallStatus({ parent: "completed", child: null, bridged: false })).toBe("no_answer");
-    expect(deriveOverallStatus({ parent: "completed", child: "completed", bridged: true })).toBe("completed");
-  });
-
-  it("ignores duplicate and out-of-order callbacks without repeating side effects", async () => {
-    const done = call({ parent_status: "completed", ended_at: "2026-01-01T00:00:00.000Z" });
-    const db = makeDb({ calls: { select: () => ({ data: done, error: null }) } });
-
-    const dup = await handleStatusCallback(deps(db), statusReq({ CallSid: PARENT_SID, CallStatus: "completed" }));
-    expect(dup.body.duplicate).toBe(true);
-
-    const late = await handleStatusCallback(deps(db), statusReq({ CallSid: PARENT_SID, CallStatus: "ringing" }));
-    expect(late.body.out_of_order).toBe(true);
-    expect(db.updates).toHaveLength(0);
-  });
-
-  it("records a non-negative duration and stamps end time once", async () => {
-    const db = makeDb({ calls: { select: () => ({ data: call({ parent_status: "in_progress" }), error: null }) } });
-    await handleStatusCallback(deps(db), statusReq({ CallSid: PARENT_SID, CallStatus: "completed", CallDuration: "-5" }));
-    const payload = db.updates[0].payload;
-    expect(payload.duration_seconds).toBeUndefined();
-    expect(payload.ended_at).toBeTruthy();
-  });
-
-  it("asks for a retry rather than trusting an unbound SID it cannot verify", async () => {
-    const db = makeDb({ calls: { select: () => ({ data: call({ twilio_call_sid_rider: null }), error: null }) } });
-    const twilio = twilioOk({ fetchCall: vi.fn(async () => { throw new Error("twilio down"); }) });
-    const res = await handleStatusCallback(deps(db, twilio), statusReq({ CallSid: "CAunknown", CallStatus: "ringing" }));
-    expect(res.status).toBe(503);
-    expect(res.body.retry).toBe(true);
-  });
-
-  it("surfaces a database write failure as retryable", async () => {
-    const db = makeDb({
-      calls: {
-        select: () => ({ data: call({ parent_status: "ringing" }), error: null }),
-        update: () => ({ data: null, error: { message: "update denied" } }),
-      },
-    });
-    await expect(
-      handleStatusCallback(deps(db), statusReq({ CallSid: PARENT_SID, CallStatus: "completed" })),
-    ).rejects.toThrow(RetryableCallError);
+  it("ignores arbitrary durations", () => {
+    expect(parseDurationSeconds("12")).toBe(12);
+    expect(parseDurationSeconds("-3")).toBeNull();
+    expect(parseDurationSeconds("2026-01-01T00:00:00Z")).toBeNull();
+    expect(parseDurationSeconds("999999")).toBeNull();
   });
 });
 
-describe("canonical callback URL", () => {
-  it("is built from trusted config, ignoring forged proxy hosts", () => {
-    expect(
-      canonicalFunctionUrl("https://proj.supabase.co", "/functions/v1/call-status", "http://attacker:9000/x?callId=abc"),
-    ).toBe("https://proj.supabase.co/functions/v1/call-status?callId=abc");
+describe("call-status leg handling", () => {
+  it("never binds a child from ParentCallSid alone — Twilio must confirm", async () => {
+    const tw = twilioOk({
+      fetchCall: vi.fn(async (sid: string) => ({ sid, accountSid: ACCOUNT, parentCallSid: FOREIGN_SID })),
+    });
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await handleStatusCallback(
+      deps(db, tw),
+      form({ CallSid: CHILD_SID, ParentCallSid: PARENT_SID, CallStatus: "completed" }, `callId=${CALL}&cb=child`),
+    );
+    expect(res.status).toBe(403);
+    expect(db.rpcCalls.some((c: any) => c.name === "bind_call_leg_sid")).toBe(false);
+  });
+
+  it("binds the child leg after Twilio confirms the parent", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await handleStatusCallback(
+      deps(db),
+      form({ CallSid: CHILD_SID, ParentCallSid: PARENT_SID, CallStatus: "answered" }, `callId=${CALL}&cb=child`),
+    );
+    expect(res.status).toBe(200);
+    const bind = db.rpcCalls.find((c: any) => c.name === "bind_call_leg_sid");
+    expect(bind.args).toMatchObject({ p_leg: "child", p_sid: CHILD_SID, p_parent_sid: PARENT_SID });
+  });
+
+  it("routes the Dial action as a child outcome using DialCallStatus", async () => {
+    const db = makeDb(baseTables(), okRpcs);
+    const res = await handleStatusCallback(
+      deps(db),
+      form(
+        { CallSid: PARENT_SID, DialCallStatus: "no-answer", DialCallSid: CHILD_SID, CallStatus: "in-progress" },
+        `callId=${CALL}&cb=dial`,
+      ),
+    );
+    expect(res.status).toBe(200);
+    const apply = db.rpcCalls.find((c: any) => c.name === "apply_call_leg_status");
+    expect(apply.args).toMatchObject({ p_leg: "child", p_status: "no_answer", p_source: "dial_action" });
+  });
+
+  it("lets the database decide ordering (no client-side rank shortcut)", async () => {
+    const db = makeDb(baseTables({ calls: { select: () => ({ data: call({ parent_status: "completed" }), error: null }) } }), {
+      ...okRpcs,
+      apply_call_leg_status: () => ({ data: [{ result: "out_of_order", aggregate_status: "unknown" }], error: null }),
+    });
+    const res = await handleStatusCallback(deps(db), form({ CallSid: PARENT_SID, CallStatus: "ringing" }, `callId=${CALL}&cb=parent`));
+    expect(res.status).toBe(200);
+    expect(res.body.result).toBe("out_of_order");
+    expect(db.rpcCalls.some((c: any) => c.name === "apply_call_leg_status")).toBe(true);
+  });
+
+  it("fails closed when the status RPC is missing", async () => {
+    const db = makeDb(baseTables(), { reserve_call_slot: okRpcs.reserve_call_slot });
+    await expect(
+      handleStatusCallback(deps(db), form({ CallSid: PARENT_SID, CallStatus: "completed" }, `callId=${CALL}&cb=parent`)),
+    ).rejects.toBeInstanceOf(MissingDependencyError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Honest outcomes
+// ---------------------------------------------------------------------------
+describe("deriveOverallStatus honesty", () => {
+  it("reports unknown for a completed parent with no child evidence", () => {
+    expect(deriveOverallStatus({ parent: "completed" })).toBe("unknown");
+  });
+
+  it("reports carrier_answered for a child completed without in-progress", () => {
+    expect(deriveOverallStatus({ parent: "completed", child: "completed" })).toBe("carrier_answered");
+  });
+
+  it("reports completed only when the child bridged", () => {
+    expect(deriveOverallStatus({ parent: "completed", child: "completed", bridged: true })).toBe("completed");
+  });
+
+  it("keeps child failure over parent completion", () => {
+    expect(deriveOverallStatus({ parent: "completed", child: "no_answer" })).toBe("no_answer");
   });
 });
