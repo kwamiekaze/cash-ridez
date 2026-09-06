@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { createMembershipCheckout } from "../checkout-core";
 import { getSubscriptionStatus } from "../status-core";
-import { makeStripe, makeSupabase, MEMBERSHIP_PRODUCT, PRICE_ID, sub } from "./mocks";
+import { billingRpc, makeStripe, makeSupabase, MEMBERSHIP_PRODUCT, PRICE_ID, sub } from "./mocks";
 
 const USER = { id: "user-1", email: "rider@example.com" };
 const PRICES = {
@@ -29,6 +29,7 @@ describe("checkout", () => {
   it("aborts when the profile lookup errors (no customer is created)", async () => {
     const supabase = makeSupabase({
       tables: { profiles: { select: () => ({ data: null, error: { message: "db down" } }) } },
+      rpc: billingRpc(),
     });
     const { stripe, created } = makeStripe({ prices: PRICES });
     await expect(
@@ -38,7 +39,10 @@ describe("checkout", () => {
   });
 
   it("refuses to sell a second membership to a past_due member and points at billing", async () => {
-    const supabase = makeSupabase({ tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } } });
+    const supabase = makeSupabase({
+      tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } },
+      rpc: billingRpc(),
+    });
     const { stripe } = makeStripe({
       prices: PRICES,
       customers: [{ id: "cus_1", metadata: { supabase_user_id: USER.id } }],
@@ -53,12 +57,23 @@ describe("checkout", () => {
   });
 
   it("reuses an already-open checkout session instead of opening another", async () => {
-    const supabase = makeSupabase({ tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } } });
+    const supabase = makeSupabase({
+      tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } },
+      rpc: billingRpc(),
+    });
     const { stripe, created } = makeStripe({
       prices: PRICES,
       customers: [{ id: "cus_1", metadata: { supabase_user_id: USER.id } }],
       subscriptions: [],
-      openSessions: [{ id: "cs_open", mode: "subscription", url: "https://checkout/open", expires_at: 9e9 }],
+      openSessions: [{
+        id: "cs_open",
+        mode: "subscription",
+        status: "open",
+        url: "https://checkout/open",
+        expires_at: 9e9,
+        metadata: { supabase_user_id: USER.id },
+      }],
+      sessionLineItems: { cs_open: [{ price: { id: PRICE_ID } }] },
     });
     const result = await createMembershipCheckout(checkoutDeps(supabase, stripe), {
       user: USER,
@@ -72,17 +87,17 @@ describe("checkout", () => {
     let held = false;
     const supabase = makeSupabase({
       tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } },
-      rpc: {
+      rpc: billingRpc({
         claim_checkout_slot: () => {
-          if (held) return { data: false, error: null };
+          if (held) return { data: { granted: false }, error: null };
           held = true;
-          return { data: true, error: null };
+          return { data: { granted: true }, error: null };
         },
         release_checkout_slot: () => {
           held = false;
-          return { data: null, error: null };
+          return { data: true, error: null };
         },
-      },
+      }),
     });
     const { stripe } = makeStripe({
       prices: PRICES,
@@ -99,7 +114,10 @@ describe("checkout", () => {
   });
 
   it("rejects a non-recurring or inactive price", async () => {
-    const supabase = makeSupabase({ tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } } });
+    const supabase = makeSupabase({
+      tables: { profiles: { select: () => ({ data: profileRow(), error: null }) } },
+      rpc: billingRpc(),
+    });
     const { stripe } = makeStripe({
       prices: { [PRICE_ID]: { id: PRICE_ID, active: true, product: MEMBERSHIP_PRODUCT } },
     });
@@ -117,7 +135,10 @@ describe("status resolution", () => {
   });
 
   it("aborts instead of reporting a free account when the profile is missing", async () => {
-    const supabase = makeSupabase({ tables: { profiles: { select: () => ({ data: null, error: null }) } } });
+    const supabase = makeSupabase({
+      tables: { profiles: { select: () => ({ data: null, error: null }) } },
+      rpc: billingRpc(),
+    });
     const { stripe } = makeStripe({});
     await expect(getSubscriptionStatus(statusDeps(supabase, stripe), USER.id)).rejects.toThrow(/not found/);
   });
@@ -132,6 +153,7 @@ describe("status resolution", () => {
           }),
         },
       },
+      rpc: billingRpc(),
     });
     const stripe: any = { subscriptions: { list: async () => { throw new Error("timeout"); } } };
     const result = await getSubscriptionStatus(statusDeps(supabase, stripe), USER.id);
@@ -145,9 +167,11 @@ describe("status resolution", () => {
       tables: {
         profiles: {
           select: () => ({ data: profileRow(), error: null }),
-          update: () => ({ error: { message: "write failed" } }),
         },
       },
+      rpc: billingRpc({
+        apply_billing_sync: () => ({ data: null, error: { message: "write failed", code: "P0001" } }),
+      }),
     });
     const { stripe } = makeStripe({ subscriptions: [sub({ status: "active" })] });
     const result = await getSubscriptionStatus(statusDeps(supabase, stripe), USER.id);
@@ -162,6 +186,7 @@ describe("status resolution", () => {
           select: () => ({ data: profileRow({ subscription_active: true, subscription_status: "active" }), error: null }),
         },
       },
+      rpc: billingRpc(),
     });
     const { stripe } = makeStripe({});
     const result = await getSubscriptionStatus(
