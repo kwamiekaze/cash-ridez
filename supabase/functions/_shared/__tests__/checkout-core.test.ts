@@ -173,7 +173,10 @@ describe("status resolution", () => {
         apply_billing_sync: () => ({ data: null, error: { message: "write failed", code: "P0001" } }),
       }),
     });
-    const { stripe } = makeStripe({ subscriptions: [sub({ status: "active" })] });
+    const { stripe } = makeStripe({
+      subscriptions: [sub({ status: "active" })],
+      customers: [{ id: "cus_1", metadata: { supabase_user_id: USER.id } }],
+    });
     const result = await getSubscriptionStatus(statusDeps(supabase, stripe), USER.id);
     expect(result.body.retryable_error).toBe("db_write_failed");
     expect(result.body.stale).toBe(true);

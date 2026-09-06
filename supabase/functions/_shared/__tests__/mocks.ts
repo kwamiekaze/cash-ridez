@@ -35,7 +35,20 @@ export function makeSupabase(config: {
       },
       update: (patch: any) => {
         calls.push({ table, op: "update", payload: patch });
-        return { eq: () => Promise.resolve(behaviour.update?.(patch) ?? { error: null }) };
+        const result = () => behaviour.update?.(patch) ?? { error: null };
+        // Chainable and awaitable: .eq().is().select() as well as bare await.
+        const chain: any = {
+          eq: () => chain,
+          is: () => chain,
+          select: () => {
+            const r: any = result();
+            return Promise.resolve(
+              r.error ? r : { data: r.data ?? [{ id: "user-1" }], error: null },
+            );
+          },
+          then: (resolve: any, reject: any) => Promise.resolve(result()).then(resolve, reject),
+        };
+        return chain;
       },
       insert: (row: any) => {
         calls.push({ table, op: "insert", payload: row });
