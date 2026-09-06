@@ -18,6 +18,7 @@ import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 import { MaskedCallButton } from "@/components/MaskedCallButton";
 import { useSubscription } from "@/hooks/useSubscription";
+import { acceptExistingOffer, acceptInitialRiderOffer, rejectOffer, supabaseOfferGateway } from "@/lib/offerAcceptance";
 import { calculateTripFares, formatCurrency, formatCurrencyRange } from "@/utils/fareEstimator";
 import { AddressLink } from "@/components/AddressLink";
 import { AdminTripMessages } from "@/components/AdminTripMessages";
@@ -262,12 +263,7 @@ export default function TripDetails() {
 
   const handleOfferAction = async (offerId: string, action: 'accepted' | 'rejected', offer: any) => {
     try {
-      const { error } = await supabase
-        .from('counter_offers')
-        .update({ status: action })
-        .eq('id', offerId);
-
-      if (error) throw error;
+      const gateway = supabaseOfferGateway(supabase);
 
       // Get current user profile for notifications
       const { data: senderProfile } = await supabase
@@ -276,23 +272,14 @@ export default function TripDetails() {
         .eq('id', currentUserId)
         .single();
 
-      // If accepted, update ride request with assigned driver and send notification
       if (action === 'accepted') {
-      // Use atomic accept-ride function to prevent race conditions
-        const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-ride', {
-          body: {
-            rideId: id,
-            driverId: offer.by_user_id,
-            etaMinutes: 0, // Driver will provide ETA later
-            skipEtaCheck: true,
-            skipActiveRideCheck: true, // Allow accepting even if driver has another active ride
-            acceptedOfferId: offerId // Pass the accepted offer ID to exclude from rejection
-          },
+        // The offer is marked accepted by the server, and only if the atomic
+        // accept succeeds.
+        await acceptExistingOffer(gateway, {
+          tripId: id!,
+          offerId,
+          driverId: offer.by_user_id,
         });
-
-        if (acceptError || !acceptData?.success) {
-          throw new Error(acceptData?.error || acceptData?.message || acceptError?.message || 'Failed to accept offer');
-        }
 
         // Send email notification to the person whose offer was accepted
         await supabase.functions.invoke('send-offer-notification', {
@@ -310,6 +297,8 @@ export default function TripDetails() {
           description: "Price agreed! Contact information is now visible.",
         });
       } else {
+        await rejectOffer(gateway, offerId);
+
         // Send rejection notification
         await supabase.functions.invoke('send-offer-notification', {
           body: {
@@ -1150,31 +1139,14 @@ export default function TripDetails() {
                     onClick={async () => {
                       setSubmitting(true);
                       try {
-                        // Record acceptance as a driver offer (for history/visibility)
-                        await supabase
-                          .from('counter_offers')
-                          .insert({
-                            ride_request_id: id,
-                            by_user_id: currentUserId,
-                            amount: request.price_offer,
-                            message: 'Accepting initial offer',
-                            role: 'driver'
-                          });
-
-                        // Atomically assign the ride so others can no longer see/offer
-                        const { data: acceptData, error: acceptError } = await supabase.functions.invoke('accept-ride', {
-                          body: {
-                            rideId: id,
-                            driverId: currentUserId,
-                            etaMinutes: 0,
-                            skipEtaCheck: true,
-                            skipActiveRideCheck: true,
-                          },
+                        // Record acceptance as a driver offer, then accept it
+                        // atomically. The offer id is checked and passed
+                        // through so the server keeps it accepted.
+                        await acceptInitialRiderOffer(supabaseOfferGateway(supabase), {
+                          tripId: id!,
+                          driverId: currentUserId,
+                          amount: request.price_offer,
                         });
-
-                        if (acceptError || !acceptData?.success) {
-                          throw new Error(acceptData?.error || acceptData?.message || 'Failed to accept offer');
-                        }
 
                         toast({
                           title: 'Offer Accepted',
