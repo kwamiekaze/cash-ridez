@@ -13,7 +13,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import twilio from "npm:twilio@5.3.5";
-import { RetryableCallError, startMaskedCall, type TwilioPort } from "../_shared/calling-core.ts";
+import {
+  MissingDependencyError,
+  RetryableCallError,
+  startMaskedCall,
+  type TwilioPort,
+} from "../_shared/calling-core.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,7 +72,12 @@ Deno.serve(async (req) => {
           accountSid: (call as any).accountSid,
           parentCallSid: (call as any).parentCallSid,
           status: (call as any).status,
+          to: (call as any).to,
+          from: (call as any).from,
         };
+      },
+      cancelCall: async (sid) => {
+        await client!.calls(sid).update({ status: "completed" } as any);
       },
     };
 
@@ -92,6 +102,14 @@ Deno.serve(async (req) => {
     // Never log raw numbers or TwiML; the message alone is enough.
     const message = error instanceof Error ? error.message : String(error);
     console.error("[call-start] Failed:", message);
+    if (error instanceof MissingDependencyError) {
+      // Calling is intentionally OFF until docs/pending-migrations/calling.sql
+      // is applied. Never degrade into inserting a row or dialing.
+      return json(
+        { success: false, code: "CALLING_UNAVAILABLE", error: "Calling is temporarily unavailable." },
+        503,
+      );
+    }
     if (error instanceof RetryableCallError) {
       return json({ success: false, code: "TWILIO_UNAVAILABLE", error: "Please try again in a moment." }, 503);
     }

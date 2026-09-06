@@ -9,7 +9,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import twilio from "npm:twilio@5.3.5";
-import { handleStatusCallback, RetryableCallError, type TwilioPort } from "../_shared/calling-core.ts";
+import {
+  handleStatusCallback,
+  MissingDependencyError,
+  RetryableCallError,
+  type TwilioPort,
+} from "../_shared/calling-core.ts";
 import {
   canonicalFunctionUrl,
   formDataToParams,
@@ -61,6 +66,8 @@ Deno.serve(async (req) => {
           accountSid: (call as any).accountSid,
           parentCallSid: (call as any).parentCallSid,
           status: (call as any).status,
+          to: (call as any).to,
+          from: (call as any).from,
         };
       },
     };
@@ -86,7 +93,9 @@ Deno.serve(async (req) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[call-status] Failed:", message);
     // Retryable problems must NOT be acknowledged as processed.
-    if (error instanceof RetryableCallError) return json({ error: "retryable", retry: true }, 503);
+    if (error instanceof RetryableCallError || error instanceof MissingDependencyError) {
+      return json({ error: "retryable", retry: true }, 503);
+    }
     return json({ error: "processing_failed" }, 500);
   }
 });
