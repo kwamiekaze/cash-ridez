@@ -55,7 +55,10 @@ const CreateRideRequest = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [canCreateTrip, setCanCreateTrip] = useState(false);
+  const [profileError, setProfileError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const membership = useSubscription();
+  const gate = evaluateTripCreationGate(membership);
 
   const handleSaveContact = () => {
     const vCard = `BEGIN:VCARD
@@ -77,47 +80,62 @@ END:VCARD`;
   };
 
   useEffect(() => {
+    let cancelled = false;
     const checkVerification = async () => {
       if (!user) return;
-      
-      const { data: profileData } = await supabase
+
+      const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
-      
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      // An errored or missing profile must never be read as "everything is fine".
+      if (error || !profileData) {
+        console.error("Failed to load profile for trip creation", error);
+        setProfile(null);
+        setProfileError(true);
+        setLoading(false);
+        return;
+      }
+
+      setProfileError(false);
       setProfile(profileData);
-      
+
       // Check if user is set as driver - redirect them
-      if (profileData?.active_role === 'driver') {
+      if (profileData.active_role === 'driver') {
         toast.error("You're currently set as a driver. Access this feature from your profile settings.");
         navigate("/trips");
         return;
       }
-      
-      if (!profileData?.is_verified && profileData?.verification_status !== 'approved') {
+
+      if (!profileData.is_verified && profileData.verification_status !== 'approved') {
         toast.error("You must be verified to post trip requests");
         navigate("/dashboard");
         return;
       }
 
-      // Check subscription and trip limit
-      const subscriptionActive = profileData?.subscription_active || false;
-      const connectedTrips = profileData?.connected_trips_count || 0;
-      const canCreate = subscriptionActive || connectedTrips < 3;
-      setCanCreateTrip(canCreate);
-
-      if (!canCreate) {
-        toast.error("You've reached your free connected trip limit. Please subscribe to continue.");
-        navigate("/subscription");
-        return;
-      }
-      
       setLoading(false);
     };
-    
+
     checkVerification();
-  }, [user, navigate]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, navigate, reloadKey]);
+
+  // Free connection limit is enforced from the canonical membership state only,
+  // and only once that state is CONFIRMED for this account.
+  useEffect(() => {
+    if (loading || profileError) return;
+    if (gate.status === 'limit_reached') {
+      toast.error("You've reached your free connected trip limit. Please subscribe to continue.");
+      navigate("/subscription");
+    }
+  }, [gate.status, loading, profileError, navigate]);
+
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [formData, setFormData] = useState({
     pickupAddress: "",
