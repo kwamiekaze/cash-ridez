@@ -16,6 +16,7 @@ import { FREE_CONNECTIONS } from '@/lib/subscriptionState';
 export interface MembershipView {
   loading: boolean;
   unknown: boolean;
+  stale: boolean;
   confirmed: boolean;
   isPremium: boolean;
   connected_trips: number | null;
@@ -29,7 +30,7 @@ export type TripCreationGate =
 
 export const evaluateTripCreationGate = (m: MembershipView): TripCreationGate => {
   if (m.confirmed && m.isPremium) return { status: 'allowed' };
-  if (m.loading || m.unknown || !m.confirmed || !m.connected_trips_known) {
+  if (m.loading || m.unknown || m.stale || !m.confirmed || !m.connected_trips_known) {
     return { status: 'checking' };
   }
   if (m.connected_trips === null) return { status: 'checking' };
