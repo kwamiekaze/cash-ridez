@@ -180,18 +180,26 @@ export function isCancelScheduled(subscription: UnknownRecord | null | undefined
  * Entitlement fields to persist after an AUTHORITATIVE read of Stripe state.
  * Never call this for transport/parse errors — see `shouldRevokeOnError`.
  */
-export function buildEntitlementUpdate(subscription: UnknownRecord): {
+export function buildEntitlementUpdate(
+  subscription: UnknownRecord,
+  membershipProductId?: string | null,
+): {
   subscription_active: boolean;
   subscription_status: string;
   subscription_current_period_end: number | null;
   is_member: boolean;
   stripe_subscription_id: string | null;
 } {
-  const active = isActiveStatus(subscription?.status);
+  const status = subscription?.status;
+  if (typeof status !== "string" || status.trim() === "") {
+    // A successful but malformed response is an ERROR, never a revocation.
+    throw new Error("Malformed subscription payload: missing status");
+  }
+  const active = isActiveStatus(status);
   return {
     subscription_active: active,
-    subscription_status: String(subscription?.status ?? "unknown"),
-    subscription_current_period_end: getSubscriptionPeriodEnd(subscription),
+    subscription_status: status,
+    subscription_current_period_end: getSubscriptionPeriodEnd(subscription, membershipProductId ?? null),
     is_member: active,
     stripe_subscription_id: typeof subscription?.id === "string" ? subscription.id : null,
   };
