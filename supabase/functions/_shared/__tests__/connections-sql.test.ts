@@ -354,11 +354,38 @@ describe("connection quota", () => {
   });
 
   it("fails closed for a missing profile instead of reading zero", async () => {
-    await asOwner();
+    await asRole("service_role", null);
     await expect(
       sql(`SELECT public.connection_entitlement('99999999-9999-4999-8999-999999999999')`),
     ).rejects.toThrow(/not found/);
+    await asOwner();
   });
+
+  it("only lets a caller read their own entitlement", async () => {
+    await asRole("anon", null);
+    await expect(sql(`SELECT public.connection_entitlement($1)`, [RIDER])).rejects.toThrow(
+      /not authorized/,
+    );
+
+    await asRole("authenticated", OTHER);
+    await expect(sql(`SELECT public.connection_entitlement($1)`, [RIDER])).rejects.toThrow(
+      /not authorized/,
+    );
+
+    await asRole("authenticated", RIDER);
+    expect((await sql(`SELECT public.connection_entitlement($1) AS out`, [RIDER])).rows[0].out)
+      .toBeTruthy();
+
+    await asRole("authenticated", ADMIN);
+    expect((await sql(`SELECT public.connection_entitlement($1) AS out`, [RIDER])).rows[0].out)
+      .toBeTruthy();
+
+    await asRole("service_role", null);
+    expect((await sql(`SELECT public.connection_entitlement($1) AS out`, [RIDER])).rows[0].out)
+      .toBeTruthy();
+    await asOwner();
+  });
+
 
   it("exempts admins", async () => {
     await setCount(ADMIN, 50);
