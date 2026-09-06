@@ -27,12 +27,12 @@ const sql = (q: string, p: any[] = []) => db.query(q, p) as Promise<any>;
 const asRole = async (role: "anon" | "authenticated" | "service_role", uid: string | null) => {
   await sql(`RESET ROLE`);
   await sql(`SELECT set_config('request.jwt.sub', $1, false)`, [uid ?? ""]);
-  await sql(`SELECT set_config('request.jwt.role', $1, false)`, [role]);
+  await sql(`SELECT set_config('request.jwt.claim.role', $1, false)`, [role]);
   await sql(`SET ROLE ${role}`);
 };
 const asOwner = async () => {
   await sql(`RESET ROLE`);
-  await sql(`SELECT set_config('request.jwt.role', 'service_role', false)`);
+  await sql(`SELECT set_config('request.jwt.claim.role', '', false)`);
 };
 
 const accept = async (rideId: string, driverId: string, offerId: string | null = null, skipActive = true) => {
@@ -74,7 +74,7 @@ beforeAll(async () => {
       LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.sub', true), '')::uuid $$;
     CREATE OR REPLACE FUNCTION auth.role() RETURNS text
       LANGUAGE sql STABLE AS $$
-        SELECT coalesce(nullif(current_setting('request.jwt.role', true), ''), current_user::text)
+        SELECT coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), 'service_role')
       $$;
 
     CREATE TYPE public.app_role AS ENUM ('admin','driver','rider');
@@ -119,6 +119,9 @@ beforeAll(async () => {
       blocked_until timestamptz,
       paused boolean DEFAULT false,
       admin_locked_fields text[],
+      is_member boolean DEFAULT false,
+      billing_sync_generation bigint DEFAULT 0,
+      billing_sync_applied boolean DEFAULT false,
       active_assigned_ride_id uuid
     );
 
@@ -497,5 +500,61 @@ describe("direct writes", () => {
     await asRole("authenticated", DRIVER);
     await accept(ride, DRIVER);
     expect(await counted(DRIVER)).toBe(1);
+  });
+
+  it("honours a trusted admin grant past the free limit", async () => {
+    await setCount(RIDER, 5);
+    await setCount(DRIVER, 5);
+    await asOwner();
+    await sql(
+      `UPDATE public.profiles SET subscription_active=true, subscription_status='premium',
+         stripe_subscription_id=NULL WHERE id IN ($1,$2)`,
+      [RIDER, DRIVER],
+    );
+    const ride = "cccccccc-0000-4000-8000-00000000000a";
+    await newRide(ride);
+    await asRole("authenticated", DRIVER);
+    expect((await accept(ride, DRIVER)).success).toBe(true);
+  });
+
+  it("does not treat a Stripe-linked premium row as an admin grant", async () => {
+    await setCount(RIDER, 5);
+    await asOwner();
+    await sql(
+      `UPDATE public.profiles SET subscription_active=true, subscription_status='premium',
+         stripe_subscription_id='sub_123' WHERE id=$1`,
+      [RIDER],
+    );
+    const ride = "cccccccc-0000-4000-8000-00000000000b";
+    await newRide(ride);
+    await asRole("authenticated", DRIVER);
+    const out = await accept(ride, DRIVER);
+    expect(out.success).toBe(false);
+    expect(out.code).toBe("rider_limit_reached");
+  });
+
+  it("keeps the private entitlement helper unreachable from clients", async () => {
+    await asOwner();
+    const r = await sql(
+      `SELECT has_function_privilege('anon','public._connection_entitlement_unchecked(uuid)','EXECUTE') a,
+              has_function_privilege('authenticated','public._connection_entitlement_unchecked(uuid)','EXECUTE') b,
+              has_function_privilege('service_role','public._connection_entitlement_unchecked(uuid)','EXECUTE') c,
+              has_function_privilege('anon','public.can_use_trip_features(uuid)','EXECUTE') d,
+              has_function_privilege('anon','public.free_connection_limit()','EXECUTE') e,
+              has_function_privilege('authenticated','public.can_use_trip_features(uuid)','EXECUTE') f`,
+    );
+    expect(r.rows[0]).toMatchObject({ a: false, b: false, c: true, d: false, e: false, f: true });
+  });
+
+  it("blocks self-service edits of membership and billing sync fields", async () => {
+    await asRole("authenticated", RIDER);
+    await expect(sql(`UPDATE public.profiles SET is_member=true WHERE id=$1`, [RIDER])).rejects.toThrow();
+    await expect(
+      sql(`UPDATE public.profiles SET billing_sync_generation=99 WHERE id=$1`, [RIDER]),
+    ).rejects.toThrow();
+    await expect(
+      sql(`UPDATE public.profiles SET billing_sync_applied=true WHERE id=$1`, [RIDER]),
+    ).rejects.toThrow();
+    await asOwner();
   });
 });
