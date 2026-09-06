@@ -70,6 +70,10 @@ beforeAll(async () => {
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid
       LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.sub', true), '')::uuid $$;
+    CREATE OR REPLACE FUNCTION auth.role() RETURNS text
+      LANGUAGE sql STABLE AS $$
+        SELECT coalesce(nullif(current_setting('request.jwt.role', true), ''), current_user::text)
+      $$;
 
     CREATE TYPE public.app_role AS ENUM ('admin','driver','rider');
     CREATE TYPE public.ride_status AS ENUM ('open','assigned','completed','cancelled');
