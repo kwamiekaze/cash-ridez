@@ -342,6 +342,11 @@ describe("acceptance race guard", () => {
   it("refuses a stale open trip that the scheduler has not expired yet", async () => {
     const ride = "bbbbbbbb-0000-4000-8000-00000000000b";
     await makeRide(ride, "open", 49);
+    const offer = await sql(
+      `INSERT INTO public.counter_offers (ride_request_id, by_user_id, amount, role)
+       VALUES ($1,$2,40,'driver') RETURNING id`,
+      [ride, DRIVER],
+    );
     await asRole("authenticated", DRIVER);
     const r = await sql(`SELECT public.accept_ride_atomic($1,$2,0,true,NULL) AS out`, [ride, DRIVER]);
     const out = r.rows[0].out;
@@ -355,6 +360,9 @@ describe("acceptance race guard", () => {
     expect(await counted(DRIVER)).toBe(0);
     const led = await sql(`SELECT count(*)::int n FROM public.trip_connections WHERE ride_request_id=$1`, [ride]);
     expect(led.rows[0].n).toBe(0);
+
+    const off = await sql(`SELECT status FROM public.counter_offers WHERE id=$1`, [offer.rows[0].id]);
+    expect(off.rows[0].status).toBe("rejected");
   });
 
   it("still accepts a trip inside the window", async () => {
