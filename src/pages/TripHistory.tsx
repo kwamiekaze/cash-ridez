@@ -17,6 +17,10 @@ import { AddressLink } from "@/components/AddressLink";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
 
+// 'expired' exists in the database enum; the generated types are regenerated
+// only after the pending expiration migration is applied, hence the cast below.
+const HISTORY_STATUSES = ["completed", "cancelled", "expired"] as const;
+
 export default function TripHistory() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -41,7 +45,7 @@ export default function TripHistory() {
         .from('ride_requests')
         .select('*')
         .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
-        .in('status', ['completed', 'cancelled'])
+        .in('status', HISTORY_STATUSES as unknown as "completed"[])
         .order('created_at', { ascending: false });
 
       if (rideError) throw rideError;

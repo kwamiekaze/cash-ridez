@@ -21,6 +21,11 @@
 -- Existing counters are left exactly as they are.
 -- ===========================================================================
 
+-- accept_ride_atomic persists the 48-hour expiry transition, so the enum label
+-- must exist before this file's function body can run. Adding an enum value has
+-- to happen outside a transaction block; expiration.sql repeats it idempotently.
+ALTER TYPE public.ride_status ADD VALUE IF NOT EXISTS 'expired';
+
 BEGIN;
 
 -- ---------------------------------------------------------------------------
@@ -392,13 +397,26 @@ BEGIN
 
   -- 48-hour expiry, evaluated while the row is locked. The scheduler may not
   -- have flipped the status yet; a stale trip must never be accepted, and must
-  -- never write a connection ledger row or bump a counter.
+  -- never write a connection ledger row or bump a counter. Persist the
+  -- transition here so the trip cannot be retried, and close its pending offers.
   IF v_pickup_time IS NOT NULL AND v_pickup_time < now() - interval '48 hours' THEN
+    UPDATE public.ride_requests
+    SET status = 'expired'::ride_status,
+        updated_at = now()
+    WHERE id = p_ride_id
+      AND status IN ('open', 'assigned');
+
+    UPDATE public.counter_offers
+    SET status = 'rejected'
+    WHERE ride_request_id = p_ride_id
+      AND status = 'pending';
+
     RETURN jsonb_build_object(
       'success', false,
       'code', 'ride_expired',
       'message', 'This trip has expired and is no longer available');
   END IF;
+
 
 
 
