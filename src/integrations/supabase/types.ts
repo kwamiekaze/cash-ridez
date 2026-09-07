@@ -3229,7 +3229,7 @@ export type Database = {
         | "weather"
         | "system_timeout"
         | "other"
-      ride_status: "open" | "assigned" | "completed" | "cancelled" | "expired"
+      ride_status: "open" | "assigned" | "completed" | "cancelled"
       verification_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -3371,7 +3371,7 @@ export const Constants = {
         "system_timeout",
         "other",
       ],
-      ride_status: ["open", "assigned", "completed", "cancelled", "expired"],
+      ride_status: ["open", "assigned", "completed", "cancelled"],
       verification_status: ["pending", "approved", "rejected"],
     },
   },
