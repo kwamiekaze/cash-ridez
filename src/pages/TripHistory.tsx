@@ -41,7 +41,7 @@ export default function TripHistory() {
         .from('ride_requests')
         .select('*')
         .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
-        .in('status', ['completed', 'cancelled', 'expired'])
+        .in('status', HISTORY_STATUSES as unknown as Database['public']['Enums']['ride_status'][])
         .order('created_at', { ascending: false });
 
       if (rideError) throw rideError;
