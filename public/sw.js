@@ -1,12 +1,14 @@
 // Service Worker for CashRidez PWA
-const CACHE_NAME = 'cashridez-v3';
+const CACHE_NAME = 'cashridez-v4';
+const OFFLINE_SHELL_URL = '/index.html';
+// NOTE: never precache '/' or '/index.html' — the app shell must always be
+// fetched fresh so new bundle hashes are picked up immediately.
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/icon.png',
   '/sounds/notification.mp3'
 ];
+
 
 // Install event - cache static assets including notification sound
 self.addEventListener('install', (event) => {
