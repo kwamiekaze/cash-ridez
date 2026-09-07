@@ -453,13 +453,15 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.reserve_call_slot(uuid, uuid, integer) FROM public;
-REVOKE ALL ON FUNCTION public.release_call_slot(uuid) FROM public;
-REVOKE ALL ON FUNCTION public.confirm_call_attempt(uuid) FROM public;
-REVOKE ALL ON FUNCTION public.bind_call_leg_sid(uuid, text, text, text, text, uuid, uuid) FROM public;
-REVOKE ALL ON FUNCTION public.apply_call_leg_status(uuid, text, text, text, text, text, integer) FROM public;
-REVOKE ALL ON FUNCTION public.fail_call(uuid, uuid, text) FROM public;
+REVOKE ALL ON FUNCTION public.assert_service_role() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.reserve_call_slot(uuid, uuid, integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.release_call_slot(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.confirm_call_attempt(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.bind_call_leg_sid(uuid, text, text, text, text, uuid, uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.apply_call_leg_status(uuid, text, text, text, text, text, integer) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fail_call(uuid, uuid, text) FROM PUBLIC, anon, authenticated;
 
+GRANT EXECUTE ON FUNCTION public.assert_service_role() TO service_role;
 GRANT EXECUTE ON FUNCTION public.reserve_call_slot(uuid, uuid, integer) TO service_role;
 GRANT EXECUTE ON FUNCTION public.release_call_slot(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.confirm_call_attempt(uuid) TO service_role;
