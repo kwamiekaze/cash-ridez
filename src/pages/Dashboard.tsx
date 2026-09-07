@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { tripExpiryCutoffISO } from "@/lib/tripExpiration";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -56,6 +57,7 @@ const Dashboard = () => {
           .select("*")
           .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
           .in("status", ["open", "assigned"])
+          .gte("pickup_time", tripExpiryCutoffISO())
           .limit(1);
         
         if (activeTrips && activeTrips.length > 0) {

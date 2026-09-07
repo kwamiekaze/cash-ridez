@@ -130,6 +130,7 @@ beforeAll(async () => {
       rider_id uuid NOT NULL REFERENCES public.profiles(id),
       assigned_driver_id uuid REFERENCES public.profiles(id),
       status public.ride_status NOT NULL DEFAULT 'open',
+      pickup_time timestamptz,
       eta_minutes integer,
       driver_completed boolean NOT NULL DEFAULT false,
       updated_at timestamptz NOT NULL DEFAULT now()

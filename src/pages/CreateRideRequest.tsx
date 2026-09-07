@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { tripExpiryCutoffISO } from "@/lib/tripExpiration";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -224,12 +225,14 @@ END:VCARD`;
         .from("ride_requests")
         .select("id", { count: "exact", head: true })
         .eq("rider_id", userId)
-        .eq("status", "open");
+        .eq("status", "open")
+        .gte("pickup_time", tripExpiryCutoffISO());
       const assignedPromise = supabase
         .from("ride_requests")
         .select("id", { count: "exact", head: true })
         .or(`rider_id.eq.${userId},assigned_driver_id.eq.${userId}`)
-        .eq("status", "assigned");
+        .eq("status", "assigned")
+        .gte("pickup_time", tripExpiryCutoffISO());
 
       const [openRes, assignedRes] = await Promise.all([openPromise, assignedPromise]);
       if (openRes.error) throw openRes.error;
