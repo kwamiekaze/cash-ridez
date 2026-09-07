@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { Shield, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Shield, Clock, CheckCircle, XCircle, TimerOff } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: "pending" | "approved" | "rejected" | "open" | "assigned" | "completed" | "cancelled";
+  status: "pending" | "approved" | "rejected" | "open" | "assigned" | "completed" | "cancelled" | "expired";
   className?: string;
 }
 
@@ -15,6 +15,7 @@ const StatusBadge = ({ status, className }: StatusBadgeProps) => {
     assigned: { variant: "default" as const, icon: Clock, label: "Assigned", color: "bg-warning" },
     completed: { variant: "default" as const, icon: CheckCircle, label: "Completed", color: "bg-verified" },
     cancelled: { variant: "destructive" as const, icon: XCircle, label: "Cancelled", color: "bg-destructive" },
+    expired: { variant: "secondary" as const, icon: TimerOff, label: "Expired", color: "bg-muted" },
   };
 
   const config = variants[status];

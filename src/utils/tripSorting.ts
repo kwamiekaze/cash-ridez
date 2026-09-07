@@ -4,7 +4,8 @@ export const STATUS_PRIORITY: Record<string, number> = {
   assigned: 0,
   open: 1,
   completed: 2,
-  cancelled: 3
+  expired: 3,
+  cancelled: 4
 };
 
 export const sortTripsByPriority = (trips: any[]) => {
