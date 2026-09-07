@@ -1,12 +1,14 @@
 // Service Worker for CashRidez PWA
-const CACHE_NAME = 'cashridez-v3';
+const CACHE_NAME = 'cashridez-v4';
+const OFFLINE_SHELL_URL = '/index.html';
+// NOTE: never precache '/' or '/index.html' — the app shell must always be
+// fetched fresh so new bundle hashes are picked up immediately.
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/icon.png',
   '/sounds/notification.mp3'
 ];
+
 
 // Install event - cache static assets including notification sound
 self.addEventListener('install', (event) => {
@@ -47,6 +49,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Same-origin navigations (the app shell) are ALWAYS network-first with
+  // no-store so obsolete HTML/bundles are never served from cache.
+  const isNavigation =
+    request.mode === 'navigate' ||
+    (request.method === 'GET' && (request.headers && request.headers.get
+      ? (request.headers.get('accept') || '').includes('text/html')
+      : false));
+
+  if (isNavigation && url.origin === self.location.origin) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then((response) => {
+          if (response && response.status === 200 && response.type !== 'error') {
+            const shellCopy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(OFFLINE_SHELL_URL, shellCopy);
+            });
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(OFFLINE_SHELL_URL).then(
+            (cached) => cached || Response.error()
+          )
+        )
+    );
+    return;
+  }
+
   // Don't cache Supabase, Stripe, or Twilio requests
   if (
     url.hostname.includes('supabase.co') ||
@@ -55,6 +86,8 @@ self.addEventListener('fetch', (event) => {
   ) {
     return;
   }
+
+
 
   // Cache-first strategy for static assets
   if (request.method === 'GET') {
