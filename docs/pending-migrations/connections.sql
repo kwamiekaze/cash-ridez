@@ -21,6 +21,11 @@
 -- Existing counters are left exactly as they are.
 -- ===========================================================================
 
+-- accept_ride_atomic persists the 48-hour expiry transition, so the enum label
+-- must exist before this file's function body can run. Adding an enum value has
+-- to happen outside a transaction block; expiration.sql repeats it idempotently.
+ALTER TYPE public.ride_status ADD VALUE IF NOT EXISTS 'expired';
+
 BEGIN;
 
 -- ---------------------------------------------------------------------------
