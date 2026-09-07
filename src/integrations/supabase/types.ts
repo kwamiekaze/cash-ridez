@@ -1308,14 +1308,104 @@ export type Database = {
         }
         Relationships: []
       }
+      call_legs: {
+        Row: {
+          account_sid: string
+          call_id: string
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          leg: string
+          parent_sid: string | null
+          sid: string
+          started_at: string | null
+          status: string | null
+          status_source: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_sid: string
+          call_id: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          leg: string
+          parent_sid?: string | null
+          sid: string
+          started_at?: string | null
+          status?: string | null
+          status_source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_sid?: string
+          call_id?: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          leg?: string
+          parent_sid?: string | null
+          sid?: string
+          started_at?: string | null
+          status?: string | null
+          status_source?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_legs_call_id_fkey"
+            columns: ["call_id"]
+            isOneToOne: false
+            referencedRelation: "calls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      call_reservations: {
+        Row: {
+          actor_id: string
+          confirmed_at: string | null
+          created_at: string
+          expires_at: string
+          released_at: string | null
+          token: string
+          trip_id: string
+        }
+        Insert: {
+          actor_id: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at: string
+          released_at?: string | null
+          token?: string
+          trip_id: string
+        }
+        Update: {
+          actor_id?: string
+          confirmed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          released_at?: string | null
+          token?: string
+          trip_id?: string
+        }
+        Relationships: []
+      }
       calls: {
         Row: {
+          bridged: boolean
+          child_status: string | null
           created_at: string
           driver_id: string
           duration_seconds: number | null
           ended_at: string | null
           id: string
           initiated_by_user_id: string
+          parent_status: string | null
+          reservation_token: string | null
           rider_id: string
           started_at: string | null
           status: string
@@ -1325,12 +1415,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bridged?: boolean
+          child_status?: string | null
           created_at?: string
           driver_id: string
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
           initiated_by_user_id: string
+          parent_status?: string | null
+          reservation_token?: string | null
           rider_id: string
           started_at?: string | null
           status?: string
@@ -1340,12 +1434,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bridged?: boolean
+          child_status?: string | null
           created_at?: string
           driver_id?: string
           duration_seconds?: number | null
           ended_at?: string | null
           id?: string
           initiated_by_user_id?: string
+          parent_status?: string | null
+          reservation_token?: string | null
           rider_id?: string
           started_at?: string | null
           status?: string
@@ -2896,6 +2994,37 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_call_leg_status: {
+        Args: {
+          p_account_sid: string
+          p_call_id: string
+          p_duration?: number
+          p_leg: string
+          p_sid: string
+          p_source: string
+          p_status: string
+        }
+        Returns: {
+          aggregate_status: string
+          bridged: boolean
+          child_status: string
+          parent_status: string
+          result: string
+        }[]
+      }
+      assert_service_role: { Args: never; Returns: undefined }
+      bind_call_leg_sid: {
+        Args: {
+          p_account_sid: string
+          p_call_id: string
+          p_leg: string
+          p_parent_sid: string
+          p_sid: string
+          p_token: string
+          p_trip_id: string
+        }
+        Returns: string
+      }
       calculate_cancel_weight: {
         Args: {
           p_cancelled_at: string
@@ -2904,6 +3033,7 @@ export type Database = {
         }
         Returns: number
       }
+      call_status_rank: { Args: { p_status: string }; Returns: number }
       can_use_trip_features: { Args: { p_user_id: string }; Returns: boolean }
       can_view_contact_info: {
         Args: { _profile_id: string; _viewer_id: string }
@@ -2979,6 +3109,7 @@ export type Database = {
         }
       }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }
+      confirm_call_attempt: { Args: { p_token: string }; Returns: undefined }
       create_notification: {
         Args: {
           p_link?: string
@@ -2989,6 +3120,14 @@ export type Database = {
           p_type: string
           p_user_id: string
         }
+        Returns: string
+      }
+      derive_call_status: {
+        Args: { p_bridged: boolean; p_child: string; p_parent: string }
+        Returns: string
+      }
+      fail_call: {
+        Args: { p_call_id: string; p_reason?: string; p_token: string }
         Returns: string
       }
       generate_unique_referral_code: { Args: never; Returns: string }
@@ -3037,11 +3176,23 @@ export type Database = {
         Returns: Json
       }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
+      release_call_slot: { Args: { p_token: string }; Returns: boolean }
       release_stale_sms_locks: {
         Args: { p_stale_threshold?: string }
         Returns: number
       }
       repair_user_trip_counts: { Args: never; Returns: undefined }
+      reserve_call_slot: {
+        Args: {
+          p_actor_id: string
+          p_lease_seconds?: number
+          p_trip_id: string
+        }
+        Returns: {
+          outcome: string
+          token: string
+        }[]
+      }
       search_sms_conversations: {
         Args: { search_term: string }
         Returns: {
