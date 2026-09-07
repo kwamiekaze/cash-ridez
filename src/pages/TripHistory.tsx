@@ -1,8 +1,4 @@
 import { useEffect, useState } from "react";
-
-// 'expired' exists in the database enum; the generated types are regenerated
-// only after the pending expiration migration is applied, hence the cast below.
-const HISTORY_STATUSES = ["completed", "cancelled", "expired"] as const;
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +16,10 @@ import { format } from "date-fns";
 import { AddressLink } from "@/components/AddressLink";
 import AppHeader from "@/components/AppHeader";
 import { MapBackground } from "@/components/MapBackground";
+
+// 'expired' exists in the database enum; the generated types are regenerated
+// only after the pending expiration migration is applied, hence the cast below.
+const HISTORY_STATUSES = ["completed", "cancelled", "expired"] as const;
 
 export default function TripHistory() {
   const navigate = useNavigate();
