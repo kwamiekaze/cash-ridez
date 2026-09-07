@@ -329,7 +329,8 @@ describe("expire_stale_rides", () => {
     );
     expect(r.rows[0].a).toBe(false);
     expect(r.rows[0].b).toBe(false);
-    expect(r.rows[0].c).toBe(false);
+    // Operational service RPC: the scheduler / service role must keep EXECUTE.
+    expect(r.rows[0].c).toBe(true);
 
     await asRole("authenticated", DRIVER);
     await expect(sql(`SELECT public.expire_stale_rides()`)).rejects.toThrow();
@@ -348,7 +349,8 @@ describe("acceptance race guard", () => {
     expect(out.code).toBe("ride_expired");
 
     await asOwner();
-    expect(await rideStatus(ride)).toBe("open");
+    // The stale trip is persisted as expired so it cannot be retried.
+    expect(await rideStatus(ride)).toBe("expired");
     expect(await counted(RIDER)).toBe(0);
     expect(await counted(DRIVER)).toBe(0);
     const led = await sql(`SELECT count(*)::int n FROM public.trip_connections WHERE ride_request_id=$1`, [ride]);
