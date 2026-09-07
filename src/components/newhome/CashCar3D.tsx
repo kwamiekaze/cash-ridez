@@ -350,7 +350,6 @@ function CarScene({
           color="black"
         />
       </Suspense>
-      
       <OrbitControls
         ref={controlsRef}
         target={fit.target}
