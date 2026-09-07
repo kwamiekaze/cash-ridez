@@ -93,6 +93,8 @@ ALTER TABLE public.billing_logs_duplicate_archive
 
 REVOKE ALL ON public.billing_logs_duplicate_archive FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.billing_logs_duplicate_archive TO service_role;
+-- RLS restricts this to admins; the grant only makes the admin policy usable.
+GRANT SELECT ON public.billing_logs_duplicate_archive TO authenticated;
 
 ALTER TABLE public.billing_logs_duplicate_archive ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admins can view archived billing logs"
