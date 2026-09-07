@@ -38,9 +38,12 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.trip_expiry_interval()
 RETURNS interval LANGUAGE sql IMMUTABLE AS $$ SELECT interval '48 hours' $$;
 
+-- Operational helper: service_role only. Supabase's default function grants can
+-- leave anon/authenticated EXECUTE behind, so revoke each role explicitly.
 REVOKE ALL ON FUNCTION public.trip_expiry_interval() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.trip_expiry_interval() FROM anon;
-GRANT EXECUTE ON FUNCTION public.trip_expiry_interval() TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.trip_expiry_interval() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.trip_expiry_interval() TO service_role;
 
 CREATE INDEX IF NOT EXISTS ride_requests_unfinished_pickup_time_idx
   ON public.ride_requests (pickup_time)
@@ -158,16 +161,24 @@ BEGIN
 END;
 $$;
 
--- Clients can never run this.
+-- Clients can never run this; it is an operational service RPC.
 REVOKE ALL ON FUNCTION public.expire_stale_rides() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.expire_stale_rides() FROM anon;
 REVOKE ALL ON FUNCTION public.expire_stale_rides() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.expire_stale_rides() TO service_role;
 
 COMMIT;
 
 -- ---------------------------------------------------------------------------
--- 3. Schedule (idempotent) + initial backfill through the same function
+-- 3. Backfill + schedule (one transaction, idempotent)
 -- ---------------------------------------------------------------------------
+-- The backfill runs BEFORE the (re)schedule and both live in the same
+-- transaction: if either fails, no broken job is left scheduled.
+BEGIN;
+
+-- Backfill everything already past the threshold, using the same code path.
+SELECT public.expire_stale_rides();
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name = 'pg_cron') THEN
@@ -185,5 +196,4 @@ BEGIN
 END;
 $$;
 
--- Backfill everything already past the threshold, using the same code path.
-SELECT public.expire_stale_rides();
+COMMIT;
