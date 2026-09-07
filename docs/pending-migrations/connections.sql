@@ -353,6 +353,8 @@ DECLARE
   v_is_admin           boolean := false;
   v_rider_id           uuid;
   v_ride_status        ride_status;
+  v_pickup_time        timestamptz;
+
   v_offer              record;
   v_driver             record;
   v_first              uuid;
