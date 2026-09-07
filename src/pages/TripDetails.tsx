@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isExpiredTrip } from '@/lib/tripExpiration';
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -120,7 +121,14 @@ export default function TripDetails() {
         .single();
 
       if (tripError) throw tripError;
-      setRequest(tripData);
+      // The expiry scheduler can lag the 48-hour threshold by up to a minute;
+      // render (and gate actions on) the effective status so a stale trip is
+      // never treated as open/assigned here.
+      setRequest(
+        isExpiredTrip(tripData)
+          ? { ...tripData, status: 'expired' as const }
+          : tripData
+      );
 
       const { data: { user } } = await supabase.auth.getUser();
       setIsRider(tripData.rider_id === user?.id);
