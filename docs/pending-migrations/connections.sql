@@ -377,7 +377,7 @@ BEGIN
   END IF;
 
   -- Lock the trip first.
-  SELECT rider_id, status INTO v_rider_id, v_ride_status
+  SELECT rider_id, status, pickup_time INTO v_rider_id, v_ride_status, v_pickup_time
   FROM public.ride_requests
   WHERE id = p_ride_id
   FOR UPDATE;
@@ -389,6 +389,18 @@ BEGIN
   IF v_ride_status <> 'open' THEN
     RETURN jsonb_build_object('success', false, 'message', 'Ride is no longer available');
   END IF;
+
+  -- 48-hour expiry, evaluated while the row is locked. The scheduler may not
+  -- have flipped the status yet; a stale trip must never be accepted, and must
+  -- never write a connection ledger row or bump a counter.
+  IF v_pickup_time IS NOT NULL AND v_pickup_time < now() - interval '48 hours' THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'code', 'ride_expired',
+      'message', 'This trip has expired and is no longer available');
+  END IF;
+
+
 
   IF v_rider_id = p_driver_id THEN
     RETURN jsonb_build_object('success', false, 'message', 'You cannot accept your own trip');
