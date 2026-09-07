@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+
+// 'expired' exists in the database enum; the generated types are regenerated
+// only after the pending expiration migration is applied, hence the cast below.
+const HISTORY_STATUSES = ["completed", "cancelled", "expired"] as const;
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,7 +45,7 @@ export default function TripHistory() {
         .from('ride_requests')
         .select('*')
         .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
-        .in('status', HISTORY_STATUSES as unknown as Database['public']['Enums']['ride_status'][])
+        .in('status', HISTORY_STATUSES as unknown as "completed"[])
         .order('created_at', { ascending: false });
 
       if (rideError) throw rideError;
