@@ -140,11 +140,24 @@ describe("reservations", () => {
   });
 
   it("denies non-service callers", async () => {
-    await expect(asAuthenticated(`SELECT * FROM public.reserve_call_slot($1, $2, 90)`, [RIDER, TRIP])).rejects.toThrow(/service-role only/);
-    await expect(asAuthenticated(`SELECT public.release_call_slot(gen_random_uuid())`)).rejects.toThrow(/service-role only/);
+    const denied = /service-role only|permission denied/i;
+    await expect(asAuthenticated(`SELECT * FROM public.reserve_call_slot($1, $2, 90)`, [RIDER, TRIP])).rejects.toThrow(denied);
+    await expect(asAuthenticated(`SELECT public.release_call_slot(gen_random_uuid())`)).rejects.toThrow(denied);
     await expect(
       asAuthenticated(`SELECT public.bind_call_leg_sid(gen_random_uuid(), 'parent', $1, $2, NULL, NULL, NULL)`, [PARENT_SID, ACCOUNT]),
-    ).rejects.toThrow(/service-role only/);
+    ).rejects.toThrow(denied);
+  });
+
+  it("grants EXECUTE on reserve_call_slot to service_role only", async () => {
+    const r: any = await asService(
+      `SELECT
+         has_function_privilege('anon', 'public.reserve_call_slot(uuid, uuid, integer)', 'EXECUTE') AS anon_exec,
+         has_function_privilege('authenticated', 'public.reserve_call_slot(uuid, uuid, integer)', 'EXECUTE') AS auth_exec,
+         has_function_privilege('service_role', 'public.reserve_call_slot(uuid, uuid, integer)', 'EXECUTE') AS service_exec`,
+    );
+    expect(r.rows[0].anon_exec).toBe(false);
+    expect(r.rows[0].auth_exec).toBe(false);
+    expect(r.rows[0].service_exec).toBe(true);
   });
 });
 
