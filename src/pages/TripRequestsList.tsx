@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { isExpiredTrip } from '@/lib/tripExpiration';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -291,9 +292,9 @@ export default function TripRequestsList() {
 
     // Filter by tab
     if (activeTab === "open") {
-      filtered = filtered.filter(r => r.status === "open");
+      filtered = filtered.filter(r => r.status === "open" && !isExpiredTrip(r));
     } else if (activeTab === "assigned") {
-      filtered = filtered.filter(r => r.status === "assigned" && r.assigned_driver_id === user?.id);
+      filtered = filtered.filter(r => r.status === "assigned" && r.assigned_driver_id === user?.id && !isExpiredTrip(r));
     } else if (activeTab === "completed") {
       filtered = filtered.filter(r => r.status === "completed" && r.assigned_driver_id === user?.id);
     }

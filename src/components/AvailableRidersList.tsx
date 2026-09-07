@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { tripExpiryCutoffISO } from '@/lib/tripExpiration';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,6 +108,7 @@ export const AvailableRidersList = () => {
         .from('ride_requests')
         .select('id, rider_id, pickup_address, dropoff_address, pickup_zip, pickup_time, price_offer, created_at')
         .eq('status', 'open')
+        .gte('pickup_time', tripExpiryCutoffISO())
         .order('created_at', { ascending: false })
         .limit(pageSize);
 
@@ -197,6 +199,7 @@ export const AvailableRidersList = () => {
         .from('ride_requests')
         .select('id, rider_id, pickup_address, dropoff_address, pickup_zip, pickup_time, price_offer, created_at')
         .eq('status', 'open')
+        .gte('pickup_time', tripExpiryCutoffISO())
         .order('created_at', { ascending: false })
         .lt('created_at', oldestCreatedAt)
         .limit(pageSize);

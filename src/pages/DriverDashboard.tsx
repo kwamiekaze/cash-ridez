@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { tripExpiryCutoffISO } from "@/lib/tripExpiration";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,6 +105,7 @@ const DriverDashboard = () => {
         .from("ride_requests")
         .select("*")
         .eq("status", "open")
+        .gte("pickup_time", tripExpiryCutoffISO())
         .order("created_at", { ascending: false })
         .limit(100);
 
