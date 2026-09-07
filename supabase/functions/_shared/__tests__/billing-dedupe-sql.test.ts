@@ -163,14 +163,30 @@ describe("billing_logs duplicate archive + dedupe", () => {
     expect(arch.rows[0].c).toBe(3);
   });
 
-  it("keeps the archive away from anon and authenticated", async () => {
-    for (const role of ["anon", "authenticated"]) {
-      await sql(`RESET ROLE`);
-      await sql(`SET ROLE ${role}`);
-      await expect(
-        sql(`SELECT count(*) FROM public.billing_logs_duplicate_archive`),
-      ).rejects.toThrow();
-    }
+  it("keeps the archive away from anon and non-admin authenticated users", async () => {
+    await sql(`RESET ROLE`);
+    await sql(`SET ROLE anon`);
+    await expect(
+      sql(`SELECT count(*) FROM public.billing_logs_duplicate_archive`),
+    ).rejects.toThrow();
+    await sql(`RESET ROLE`);
+
+    // authenticated holds the table grant so the admin RLS policy is usable,
+    // but a non-admin sees no rows.
+    const acl = await sql(
+      `SELECT has_table_privilege('authenticated', 'public.billing_logs_duplicate_archive', 'SELECT') AS authed,
+              has_table_privilege('service_role', 'public.billing_logs_duplicate_archive', 'SELECT') AS svc,
+              has_table_privilege('anon', 'public.billing_logs_duplicate_archive', 'SELECT') AS anon`,
+    );
+    expect(acl.rows[0].authed).toBe(true);
+    expect(acl.rows[0].svc).toBe(true);
+    expect(acl.rows[0].anon).toBe(false);
+
+    await sql(`SET ROLE authenticated`);
+    const rows = await sql(
+      `SELECT count(*)::int c FROM public.billing_logs_duplicate_archive`,
+    );
+    expect(rows.rows[0].c).toBe(0);
     await sql(`RESET ROLE`);
   });
 });
