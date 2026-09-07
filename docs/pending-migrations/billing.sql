@@ -75,6 +75,56 @@ CREATE INDEX IF NOT EXISTS billing_events_status_idx
 -- infer THIS index; without the predicate the inference fails at runtime with
 -- "there is no unique or exclusion constraint matching the ON CONFLICT
 -- specification".
+--
+-- Historical data contains duplicate (stripe_event_id, event_type) groups, so
+-- the index cannot be created until they are deduplicated. Every extra row is
+-- preserved in a locked-down archive table first. Archive + dedupe + index all
+-- run inside this migration's single transaction: any failure rolls back the
+-- archive and the deletes together.
+
+CREATE TABLE IF NOT EXISTS public.billing_logs_duplicate_archive (
+  LIKE public.billing_logs INCLUDING DEFAULTS
+);
+-- No uniqueness is copied on purpose: the archive must accept the duplicates.
+ALTER TABLE public.billing_logs_duplicate_archive
+  ADD COLUMN IF NOT EXISTS archived_at timestamptz NOT NULL DEFAULT now();
+ALTER TABLE public.billing_logs_duplicate_archive
+  ADD COLUMN IF NOT EXISTS archive_reason text NOT NULL DEFAULT 'unspecified';
+
+REVOKE ALL ON public.billing_logs_duplicate_archive FROM PUBLIC, anon, authenticated;
+GRANT ALL ON public.billing_logs_duplicate_archive TO service_role;
+
+ALTER TABLE public.billing_logs_duplicate_archive ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can view archived billing logs"
+  ON public.billing_logs_duplicate_archive;
+CREATE POLICY "Admins can view archived billing logs"
+  ON public.billing_logs_duplicate_archive FOR SELECT TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
+
+-- Idempotent: after the first run there are no rn > 1 rows left to move.
+WITH ranked AS (
+  SELECT id,
+         row_number() OVER (
+           PARTITION BY stripe_event_id, event_type
+           ORDER BY created_at ASC, id ASC
+         ) AS rn
+  FROM public.billing_logs
+  WHERE stripe_event_id IS NOT NULL
+),
+dupes AS (
+  SELECT id FROM ranked WHERE rn > 1
+),
+archived AS (
+  INSERT INTO public.billing_logs_duplicate_archive
+  SELECT bl.*, now(), 'billing_logs_event_type_unique backfill'
+  FROM public.billing_logs bl
+  JOIN dupes d ON d.id = bl.id
+  RETURNING id
+)
+DELETE FROM public.billing_logs bl
+USING dupes d
+WHERE bl.id = d.id;
+
 CREATE UNIQUE INDEX IF NOT EXISTS billing_logs_event_type_unique
   ON public.billing_logs (stripe_event_id, event_type)
   WHERE stripe_event_id IS NOT NULL;
