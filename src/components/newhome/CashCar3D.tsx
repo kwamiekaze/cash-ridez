@@ -31,7 +31,6 @@ import {
   CAR_MODEL_URL_MOBILE,
   PARTICLE_COLOR_GOLD,
   PARTICLE_COLOR_GREEN,
-  PARTICLE_COUNT,
 } from "@/lib/newHomeConfig";
 
 function isMobileDevice() {
@@ -239,59 +238,6 @@ function CarModel({
 }
 
 
-function Particles({ animate }: { animate: boolean }) {
-  const pointsRef = useRef<THREE.Points>(null);
-  const { positions, colors } = useMemo(() => {
-    const positionValues = new Float32Array(PARTICLE_COUNT * 3);
-    const colorValues = new Float32Array(PARTICLE_COUNT * 3);
-    const green = new THREE.Color(PARTICLE_COLOR_GREEN);
-    const gold = new THREE.Color(PARTICLE_COLOR_GOLD);
-
-    for (let index = 0; index < PARTICLE_COUNT; index += 1) {
-      positionValues[index * 3] = (Math.random() - 0.5) * 7;
-      positionValues[index * 3 + 1] = Math.random() * 3.2 - 0.6;
-      positionValues[index * 3 + 2] = (Math.random() - 0.5) * 7;
-      const color = index % 2 === 0 ? green : gold;
-      colorValues[index * 3] = color.r;
-      colorValues[index * 3 + 1] = color.g;
-      colorValues[index * 3 + 2] = color.b;
-    }
-
-    return { positions: positionValues, colors: colorValues };
-  }, []);
-
-  useFrame((state, rawDelta) => {
-    if (!animate || !pointsRef.current) return;
-    const delta = Math.min(rawDelta, 0.05);
-    const attribute = pointsRef.current.geometry.getAttribute("position") as THREE.BufferAttribute;
-    const values = attribute.array as Float32Array;
-    for (let index = 0; index < PARTICLE_COUNT; index += 1) {
-      values[index * 3 + 1] += delta * 0.12;
-      if (values[index * 3 + 1] > 2.8) values[index * 3 + 1] = -0.6;
-    }
-    attribute.needsUpdate = true;
-    pointsRef.current.rotation.y = state.clock.elapsedTime * 0.02;
-  });
-
-  return (
-    <points ref={pointsRef}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-        <bufferAttribute attach="attributes-color" args={[colors, 3]} />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.045}
-        vertexColors
-        transparent
-        opacity={0.7}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        sizeAttenuation
-      />
-    </points>
-  );
-}
-
 function CarScene({
   modelUrl,
   frameloop,
@@ -404,7 +350,6 @@ function CarScene({
           color="black"
         />
       </Suspense>
-      <Particles animate={!reducedMotion} />
       <OrbitControls
         ref={controlsRef}
         target={fit.target}
