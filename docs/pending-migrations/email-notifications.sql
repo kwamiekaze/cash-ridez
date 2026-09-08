@@ -134,6 +134,24 @@ $$;
 -- ---------------------------------------------------------------------------
 
 -- (1) ID submitted / resubmitted for verification.
+-- Onboarding writes BOTH the profile (id_image_url / verification_submitted_at)
+-- and a kyc_submissions row for the same upload. Both triggers therefore build
+-- the SAME stable key from the user's profile verification_submitted_at, so one
+-- upload queues exactly one event.
+CREATE OR REPLACE FUNCTION public.email_id_submission_key(p_user_id uuid, p_fallback timestamptz)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 'idv_profile:' || p_user_id::text || ':' || coalesce(
+    (SELECT p.verification_submitted_at FROM public.profiles p WHERE p.id = p_user_id),
+    p_fallback,
+    now()
+  )::text;
+$$;
+
 CREATE OR REPLACE FUNCTION public.tg_email_event_kyc_submitted()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -147,7 +165,7 @@ BEGIN
 
   PERFORM public.queue_email_event(
     'id_verification_submitted',
-    'idv:' || NEW.id::text || ':' || coalesce(NEW.submitted_at, now())::text,
+    public.email_id_submission_key(NEW.user_id, NEW.submitted_at),
     jsonb_build_object('submission_id', NEW.id, 'user_id', NEW.user_id)
   );
   RETURN NEW;
