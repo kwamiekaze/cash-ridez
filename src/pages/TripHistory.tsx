@@ -41,7 +41,9 @@ export default function TripHistory() {
         .from('ride_requests')
         .select('*')
         .or(`rider_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
-        .in('status', ['completed', 'cancelled', 'expired'])
+        // 'expired' exists in the database enum once the expiration migration is
+        // applied; the generated types lag until then, so cast at the boundary.
+        .in('status', ['completed', 'cancelled', 'expired'] as unknown as ("completed" | "cancelled")[])
         .order('created_at', { ascending: false });
 
       if (rideError) throw rideError;
