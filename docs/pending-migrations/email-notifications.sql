@@ -149,6 +149,40 @@ CREATE TRIGGER email_event_kyc_submitted
   AFTER INSERT OR UPDATE ON public.kyc_submissions
   FOR EACH ROW EXECUTE FUNCTION public.tg_email_event_kyc_submitted();
 
+-- (1b) ID submitted / resubmitted directly on the profile (id_image_url set or
+--      replaced, or verification re-submitted). The image URL itself is NEVER
+--      put in the payload — only the user id.
+CREATE OR REPLACE FUNCTION public.tg_email_event_profile_id_submitted()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_stamp timestamptz;
+BEGIN
+  IF NEW.id_image_url IS NULL OR btrim(NEW.id_image_url) = '' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE'
+     AND OLD.id_image_url IS NOT DISTINCT FROM NEW.id_image_url
+     AND OLD.verification_submitted_at IS NOT DISTINCT FROM NEW.verification_submitted_at THEN
+    RETURN NEW;
+  END IF;
+
+  v_stamp := coalesce(NEW.verification_submitted_at, now());
+
+  PERFORM public.queue_email_event(
+    'id_verification_submitted',
+    'idv_profile:' || NEW.id::text || ':' || v_stamp::text,
+    jsonb_build_object('user_id', NEW.id)
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS email_event_profile_id_submitted ON public.profiles;
+CREATE TRIGGER email_event_profile_id_submitted
+  AFTER INSERT OR UPDATE OF id_image_url, verification_submitted_at ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.tg_email_event_profile_id_submitted();
+
 -- (2) Trip posted, and (3) trip open -> assigned.
 CREATE OR REPLACE FUNCTION public.tg_email_event_ride_request()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
