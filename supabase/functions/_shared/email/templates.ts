@@ -327,3 +327,50 @@ export function syntheticTemplateData(name: AdminTemplateName): Record<string, u
   };
   return { template: name, ...base };
 }
+
+/* --------------------------------------------------- operational [TEST] */
+
+/**
+ * The five operational test event types. They exist so each admin template can
+ * be exercised end to end without creating a fake user, trip, subscription or
+ * support record.
+ */
+export type TestEventType =
+  | "id_uploaded"
+  | "trip_posted"
+  | "trip_accepted"
+  | "new_subscription"
+  | "support_message";
+
+export const TEST_EVENT_TYPES: readonly TestEventType[] = Object.freeze([
+  "id_uploaded",
+  "trip_posted",
+  "trip_accepted",
+  "new_subscription",
+  "support_message",
+]);
+
+const TEST_TYPE_TO_TEMPLATE: Record<TestEventType, AdminTemplateName> = {
+  id_uploaded: "id_verification_submitted",
+  trip_posted: "trip_posted",
+  trip_accepted: "trip_assigned",
+  new_subscription: "subscription_activated",
+  support_message: "support_message",
+};
+
+export function isTestEventType(value: unknown): value is TestEventType {
+  return typeof value === "string" && (TEST_EVENT_TYPES as readonly string[]).includes(value);
+}
+
+export function testTemplateFor(type: TestEventType): AdminTemplateName {
+  return TEST_TYPE_TO_TEMPLATE[type];
+}
+
+/** Render a synthetic [TEST] alert. Subjects are always prefixed with [TEST]. */
+export function renderTestTemplate(type: TestEventType, appBaseUrl: string): RenderedEmail {
+  const template = testTemplateFor(type);
+  return renderAdminTemplate(template, syntheticTemplateData(template), {
+    appBaseUrl,
+    test: true,
+  });
+}

@@ -24,15 +24,15 @@ import {
   evaluateNewTripEligibility,
   type RecipientProfileLike,
 } from "../_shared/email/eligibility.ts";
+import { PREFERRED_SENDER } from "../_shared/email/sender.ts";
 import {
-  ADMIN_TEMPLATE_NAMES,
-  type AdminTemplateName,
+  isTestEventType,
   renderAdminTemplate,
+  renderTestTemplate,
   renderMembershipConfirmationEmail,
   renderNewTripEmail,
   renderTripAssignedEmail,
   renderTripMessageEmail,
-  syntheticTemplateData,
   type RenderedEmail,
   type TemplateContext,
 } from "../_shared/email/templates.ts";
@@ -43,6 +43,11 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 10;
+/** The only addresses a synthetic [TEST] alert may be delivered to. */
+const TEST_RECIPIENTS: readonly string[] = Object.freeze([
+  "kwamiekaze@gmail.com",
+  "connect@cashridez.com",
+]);
 const PROFILE_COLUMNS =
   "id, email, full_name, is_verified, is_driver, is_rider, profile_zip, subscription_active, subscription_status, stripe_subscription_id, notification_preferences";
 
@@ -101,30 +106,51 @@ async function buildTargets(event: any): Promise<Target[]> {
 
   switch (event.event_type) {
     case "test_alert": {
-      const template = String(payload.template ?? "");
-      if (!ADMIN_TEMPLATE_NAMES.includes(template as AdminTemplateName)) {
-        throw new Error(`unknown test template: ${escapeLog(template)}`);
+      const testType = payload.test_type;
+      if (!isTestEventType(testType)) {
+        throw new Error(`unknown test type: ${escapeLog(testType)}`);
       }
-      const name = template as AdminTemplateName;
-      return adminTargets(renderAdminTemplate(name, syntheticTemplateData(name), ctx(true)));
+      // The recipient is re-checked here: it must be on the fixed admin
+      // allowlist AND one of the two operational test addresses.
+      const requested = restrictToAdminRecipients([payload.recipient]).filter((email) =>
+        TEST_RECIPIENTS.includes(email)
+      );
+      if (requested.length === 0) return [];
+      const rendered = renderTestTemplate(testType, appBaseUrl);
+      return requested.map((email) => ({ email, kind: "admin" as const, rendered }));
     }
 
     case "id_verification_submitted": {
-      const { data, error } = await supabase
-        .from("kyc_submissions")
-        .select("id, user_id, role, status, submitted_at")
-        .eq("id", String(payload.submission_id ?? ""))
-        .maybeSingle();
-      if (error) throw new RetryableError(`kyc lookup failed: ${error.message}`);
-      if (!data) return [];
-      const profile = await fetchProfile(data.user_id);
-      // Deep link only — the ID image itself is never attached or linked.
-      const reviewUrl = `${appBaseUrl}/admin?review=${encodeURIComponent(String(data.id))}`;
+      let userId: unknown = payload.user_id;
+      let role: unknown = null;
+      let submittedAt: unknown = null;
+      let reviewKey = typeof payload.user_id === "string" ? payload.user_id : "";
+
+      const submissionId = typeof payload.submission_id === "string" ? payload.submission_id : "";
+      if (submissionId) {
+        const { data, error } = await supabase
+          .from("kyc_submissions")
+          .select("id, user_id, role, status, submitted_at")
+          .eq("id", submissionId)
+          .maybeSingle();
+        if (error) throw new RetryableError(`kyc lookup failed: ${error.message}`);
+        if (!data) return [];
+        userId = data.user_id;
+        role = data.role;
+        submittedAt = data.submitted_at;
+        reviewKey = String(data.id);
+      }
+
+      const profile = await fetchProfile(userId);
+      if (!profile && !submissionId) return [];
+      // Deep link only — the ID image itself is never attached or linked, and
+      // the link is never written to the logs.
+      const reviewUrl = `${appBaseUrl}/admin?review=${encodeURIComponent(reviewKey)}`;
       return adminTargets(renderAdminTemplate("id_verification_submitted", {
         userName: profile?.full_name,
         userEmail: profile?.email,
-        role: data.role,
-        submittedAt: data.submitted_at,
+        role,
+        submittedAt,
         reviewUrl,
       }, ctx()));
     }
@@ -317,6 +343,7 @@ async function processEvent(event: any): Promise<{ sent: number; failed: number 
       to: [target.email],
       subject: target.rendered.subject,
       html: target.rendered.html,
+      from: PREFERRED_SENDER,
     });
 
     if (result.success) {
@@ -352,7 +379,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (error) throw new Error(error.message);
     claimed = Array.isArray(data) ? data : [];
   } catch (err) {
-    console.error("[EMAIL-WORKER] claim failed:", escapeLog((err as Error)?.message));
+    console.error("[PROCESS-EMAIL-NOTIFICATIONS] claim failed:", escapeLog((err as Error)?.message));
     return new Response(JSON.stringify({ error: "claim_failed" }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -368,11 +395,11 @@ const handler = async (req: Request): Promise<Response> => {
       totalSent += sent;
       processed += 1;
       const { error } = await supabase.rpc("complete_email_event", { p_event_id: event.id });
-      if (error) console.error("[EMAIL-WORKER] complete failed:", escapeLog(error.message));
+      if (error) console.error("[PROCESS-EMAIL-NOTIFICATIONS] complete failed:", escapeLog(error.message));
     } catch (err) {
       const retryable = err instanceof RetryableError;
       console.error(
-        `[EMAIL-WORKER] event ${escapeLog(event.event_type)} failed (retryable=${retryable}):`,
+        `[PROCESS-EMAIL-NOTIFICATIONS] event ${escapeLog(event.event_type)} failed (retryable=${retryable}):`,
         escapeLog((err as Error)?.message),
       );
       await supabase.rpc("fail_email_event", {
@@ -384,7 +411,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   console.log(
-    `[EMAIL-WORKER] claimed=${claimed.length} processed=${processed} sent=${totalSent} app=${redactUrl(appBaseUrl)}`,
+    `[PROCESS-EMAIL-NOTIFICATIONS] claimed=${claimed.length} processed=${processed} sent=${totalSent} app=${redactUrl(appBaseUrl)}`,
   );
 
   return new Response(JSON.stringify({ claimed: claimed.length, processed, sent: totalSent }), {

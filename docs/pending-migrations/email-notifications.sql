@@ -149,6 +149,40 @@ CREATE TRIGGER email_event_kyc_submitted
   AFTER INSERT OR UPDATE ON public.kyc_submissions
   FOR EACH ROW EXECUTE FUNCTION public.tg_email_event_kyc_submitted();
 
+-- (1b) ID submitted / resubmitted directly on the profile (id_image_url set or
+--      replaced, or verification re-submitted). The image URL itself is NEVER
+--      put in the payload — only the user id.
+CREATE OR REPLACE FUNCTION public.tg_email_event_profile_id_submitted()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_stamp timestamptz;
+BEGIN
+  IF NEW.id_image_url IS NULL OR btrim(NEW.id_image_url) = '' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE'
+     AND OLD.id_image_url IS NOT DISTINCT FROM NEW.id_image_url
+     AND OLD.verification_submitted_at IS NOT DISTINCT FROM NEW.verification_submitted_at THEN
+    RETURN NEW;
+  END IF;
+
+  v_stamp := coalesce(NEW.verification_submitted_at, now());
+
+  PERFORM public.queue_email_event(
+    'id_verification_submitted',
+    'idv_profile:' || NEW.id::text || ':' || v_stamp::text,
+    jsonb_build_object('user_id', NEW.id)
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS email_event_profile_id_submitted ON public.profiles;
+CREATE TRIGGER email_event_profile_id_submitted
+  AFTER INSERT OR UPDATE OF id_image_url, verification_submitted_at ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.tg_email_event_profile_id_submitted();
+
 -- (2) Trip posted, and (3) trip open -> assigned.
 CREATE OR REPLACE FUNCTION public.tg_email_event_ride_request()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -423,16 +457,21 @@ $$;
 -- 5. Operational synthetic test event
 -- ---------------------------------------------------------------------------
 -- Queues a clearly synthetic [TEST] admin alert. It creates NO user, trip,
--- subscription or support record, and the worker restricts its recipients to
--- the fixed three-address admin allowlist.
-CREATE OR REPLACE FUNCTION public.queue_test_email_event(p_template text)
+-- subscription or support record. The five allowed test types map onto the five
+-- admin templates, and the recipient may only be one of the two operational
+-- test addresses (the worker re-checks this against the admin allowlist).
+CREATE OR REPLACE FUNCTION public.queue_test_email_event(
+  p_test_type text,
+  p_recipient text DEFAULT 'connect@cashridez.com'
+)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_is_admin boolean := false;
+  v_is_admin  boolean := false;
+  v_recipient text := lower(btrim(coalesce(p_recipient, '')));
 BEGIN
   IF coalesce(auth.role(), '') <> 'service_role' THEN
     BEGIN
@@ -445,17 +484,20 @@ BEGIN
     END IF;
   END IF;
 
-  IF p_template NOT IN (
-    'id_verification_submitted', 'trip_posted', 'trip_assigned',
-    'subscription_activated', 'support_message'
+  IF p_test_type NOT IN (
+    'id_uploaded', 'trip_posted', 'trip_accepted', 'new_subscription', 'support_message'
   ) THEN
-    RAISE EXCEPTION 'unknown test template: %', coalesce(p_template, '<null>');
+    RAISE EXCEPTION 'unknown test type: %', coalesce(p_test_type, '<null>');
+  END IF;
+
+  IF v_recipient NOT IN ('kwamiekaze@gmail.com', 'connect@cashridez.com') THEN
+    RAISE EXCEPTION 'test emails may only be sent to the two operational test addresses';
   END IF;
 
   RETURN public.queue_email_event(
     'test_alert',
-    'test:' || p_template || ':' || clock_timestamp()::text,
-    jsonb_build_object('template', p_template)
+    'test:' || p_test_type || ':' || v_recipient || ':' || clock_timestamp()::text,
+    jsonb_build_object('test_type', p_test_type, 'recipient', v_recipient, 'synthetic', true)
   );
 END;
 $$;
@@ -475,7 +517,7 @@ BEGIN
     'public.email_delivery_already_sent(uuid, text)',
     'public.complete_email_event(uuid)',
     'public.fail_email_event(uuid, text, boolean)',
-    'public.queue_test_email_event(text)'
+    'public.queue_test_email_event(text, text)'
   ]
   LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', fn);
@@ -491,32 +533,32 @@ COMMIT;
 -- ---------------------------------------------------------------------------
 -- 7. Schedule the worker (pg_cron + pg_net), idempotently
 -- ---------------------------------------------------------------------------
--- Run ONCE with the project's function URL and service key, e.g.
---   SELECT public.schedule_email_worker(
---     'https://<project>.supabase.co/functions/v1/email-notification-worker',
---     '<service-role-key>');
--- The job runs every minute so a queued event is delivered within ~1 minute.
--- A minute-level job keeps the database awake and therefore costs more than an
--- hourly job; it is the cadence the "does not depend on a browser" requirement
--- needs for timely operational alerts.
-CREATE OR REPLACE FUNCTION public.schedule_email_worker(
-  p_function_url text,
-  p_service_key  text
-)
+-- The worker URL is fixed. The job runs every minute so a queued event is
+-- delivered within ~1 minute without any browser being open. The worker ignores
+-- the request body entirely, so the posted '{}' carries no authority.
+CREATE OR REPLACE FUNCTION public.schedule_email_worker(p_service_key text)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_url text := 'https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/process-email-notifications';
 BEGIN
   PERFORM public.assert_email_service_role();
 
+  IF to_regclass('cron.job') IS NULL THEN
+    RAISE NOTICE 'pg_cron is not installed; skipping schedule';
+    RETURN;
+  END IF;
+
+  -- Idempotent: drop any previous incarnation of the job first.
   PERFORM cron.unschedule(jobid)
   FROM cron.job
-  WHERE jobname = 'email-notification-worker';
+  WHERE jobname IN ('email-notification-worker', 'process-email-notifications');
 
   PERFORM cron.schedule(
-    'email-notification-worker',
+    'process-email-notifications',
     '* * * * *',
     format(
       $job$SELECT net.http_post(
@@ -527,14 +569,15 @@ BEGIN
         ),
         body := '{}'::jsonb
       )$job$,
-      p_function_url,
+      v_url,
       'Bearer ' || p_service_key
     )
   );
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text, text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text, text) FROM anon;
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text, text) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.schedule_email_worker(text, text) TO service_role;
+REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM anon;
+REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.schedule_email_worker(text) TO service_role;
+DROP FUNCTION IF EXISTS public.schedule_email_worker(text, text);
