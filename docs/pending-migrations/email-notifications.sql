@@ -584,6 +584,8 @@ BEGIN
     'public.queue_email_event(text, text, jsonb)',
     'public.assert_email_service_role()',
     'public.claim_email_events(integer)',
+    'public.claim_email_delivery(uuid, text, text, uuid)',
+    'public.email_id_submission_key(uuid, timestamptz)',
     'public.record_email_delivery(uuid, text, text, text, uuid, text, text)',
     'public.email_delivery_already_sent(uuid, text)',
     'public.complete_email_event(uuid)',
