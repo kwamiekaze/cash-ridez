@@ -2715,6 +2715,27 @@ export type Database = {
           },
         ]
       }
+      ride_assignment_grants: {
+        Row: {
+          driver_id: string | null
+          granted_at: string
+          ride_request_id: string
+          xid: number
+        }
+        Insert: {
+          driver_id?: string | null
+          granted_at?: string
+          ride_request_id: string
+          xid: number
+        }
+        Update: {
+          driver_id?: string | null
+          granted_at?: string
+          ride_request_id?: string
+          xid?: number
+        }
+        Relationships: []
+      }
       ride_locations: {
         Row: {
           id: string
@@ -2980,6 +3001,49 @@ export type Database = {
         }
         Relationships: []
       }
+      trip_connections: {
+        Row: {
+          connected_at: string
+          ride_request_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          ride_request_id: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          ride_request_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_connections_ride_request_id_fkey"
+            columns: ["ride_request_id"]
+            isOneToOne: false
+            referencedRelation: "ride_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trip_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_map_presence"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       user_message_flags: {
         Row: {
           content_id: string
@@ -3138,6 +3202,14 @@ export type Database = {
           p_generation: number
           p_user_id: string
         }
+        Returns: Json
+      }
+      _assert_entitlement_readable: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
+      _connection_entitlement_unchecked: {
+        Args: { p_user_id: string }
         Returns: Json
       }
       accept_ride_atomic: {
@@ -3319,6 +3391,7 @@ export type Database = {
         Returns: Json
       }
       confirm_call_attempt: { Args: { p_token: string }; Returns: undefined }
+      connection_entitlement: { Args: { p_user_id: string }; Returns: Json }
       create_notification: {
         Args: {
           p_link?: string
@@ -3335,10 +3408,12 @@ export type Database = {
         Args: { p_bridged: boolean; p_child: string; p_parent: string }
         Returns: string
       }
+      expire_stale_rides: { Args: never; Returns: Json }
       fail_call: {
         Args: { p_call_id: string; p_reason?: string; p_token: string }
         Returns: string
       }
+      free_connection_limit: { Args: never; Returns: number }
       generate_unique_referral_code: { Args: never; Returns: string }
       get_or_create_direct_chat: {
         Args: { _participant_1_id: string; _participant_2_id: string }
@@ -3353,6 +3428,10 @@ export type Database = {
           rider_rating_avg: number
           rider_rating_count: number
         }[]
+      }
+      has_ride_assignment_grant: {
+        Args: { p_driver_id: string; p_ride_id: string }
+        Returns: boolean
       }
       has_role: {
         Args: {
@@ -3444,6 +3523,7 @@ export type Database = {
         Args: { p_new_code: string; p_user_id: string }
         Returns: Json
       }
+      trip_expiry_interval: { Args: never; Returns: string }
       update_cancellation_stats: {
         Args: { p_role: string; p_user_id: string }
         Returns: undefined
@@ -3462,7 +3542,7 @@ export type Database = {
         | "weather"
         | "system_timeout"
         | "other"
-      ride_status: "open" | "assigned" | "completed" | "cancelled"
+      ride_status: "open" | "assigned" | "completed" | "cancelled" | "expired"
       verification_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -3604,7 +3684,7 @@ export const Constants = {
         "system_timeout",
         "other",
       ],
-      ride_status: ["open", "assigned", "completed", "cancelled"],
+      ride_status: ["open", "assigned", "completed", "cancelled", "expired"],
       verification_status: ["pending", "approved", "rejected"],
     },
   },
