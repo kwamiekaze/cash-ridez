@@ -1,9 +1,10 @@
+// Email delivery for ID submissions is owned by the database outbox
+// (profiles / kyc_submissions triggers -> process-email-notifications).
+// This function keeps ONLY the in-app admin notification, built from
+// authoritative server-side state. It never sends email and never creates a
+// signed ID URL. Caller-supplied names, emails and file paths are ignored.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
-import { sendEmail } from "../_shared/email-sender.ts";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,14 +12,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface VerificationRequest {
-  userId: string;
-  userEmail: string;
-  displayName: string;
-  isRider: boolean;
-  isDriver: boolean;
-  filePath?: string; // storage path of the uploaded ID image
-}
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -26,126 +24,73 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { userId, userEmail, displayName, isRider, isDriver, filePath }: VerificationRequest = await req.json();
+    const service = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Authenticate the caller. The body is never trusted.
+    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    if (!jwt) return json({ error: "Unauthorized" }, 401);
+    const { data: authData, error: authError } = await service.auth.getUser(jwt);
+    if (authError || !authData?.user) return json({ error: "Unauthorized" }, 401);
+    const userId = authData.user.id;
 
-    // Get all admin users
-    const { data: adminUsers, error: adminError } = await supabase
+    // Authoritative current state for this caller only.
+    const { data: profile } = await service
+      .from("profiles")
+      .select("id, display_name, full_name, email, id_image_url, verification_status")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (!profile) return json({ error: "Profile not found" }, 404);
+
+    const hasPendingProfileId =
+      !!profile.id_image_url && profile.verification_status !== "verified";
+
+    const { data: kycRows } = await service
+      .from("kyc_submissions")
+      .select("role, status")
+      .eq("user_id", userId)
+      .eq("status", "pending");
+
+    const pendingRoles = new Set<string>((kycRows ?? []).map((r: { role: string }) => r.role));
+    if (!hasPendingProfileId && pendingRoles.size === 0) {
+      // Nothing pending server-side: nothing to announce.
+      return json({ status: "accepted", queued: false });
+    }
+
+    const roles: string[] = [];
+    if (pendingRoles.has("rider")) roles.push("Rider");
+    if (pendingRoles.has("driver")) roles.push("Driver");
+    const rolesText = roles.length ? roles.join(" & ") : "Verification";
+
+    const displayName = profile.full_name || profile.display_name || "A user";
+    const contact = profile.email || "no email on file";
+
+    const { data: adminUsers, error: adminError } = await service
       .from("user_roles")
       .select("user_id")
       .eq("role", "admin");
 
-    if (adminError) {
-      console.error("Error fetching admins:", adminError);
-      throw adminError;
-    }
+    if (adminError) throw adminError;
 
-    // Get admin emails
-    const adminEmails: string[] = [];
-    if (adminUsers && adminUsers.length > 0) {
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .in("id", adminUsers.map(u => u.user_id));
-
-      if (profileError) {
-        console.error("Error fetching admin profiles:", profileError);
-      } else if (profiles) {
-        adminEmails.push(...profiles.map(p => p.email).filter(Boolean));
-      }
-    }
-
-    const roles = [];
-    if (isRider) roles.push("Rider");
-    if (isDriver) roles.push("Driver");
-    const rolesText = roles.join(" & ");
-
-    // Create notifications for all admins
-    for (const admin of adminUsers) {
-      await supabase.from('notifications').insert({
+    for (const admin of adminUsers ?? []) {
+      await service.from("notifications").insert({
         user_id: admin.user_id,
-        type: 'verification_submitted',
-        title: 'New ID Verification Submitted',
-        message: `${displayName} (${userEmail}) has submitted their ID for verification as ${rolesText}`,
-        link: '/admin',
-        related_user_id: userId
+        type: "verification_submitted",
+        title: "New ID Verification Submitted",
+        message: `${displayName} (${contact}) has submitted their ID for verification as ${rolesText}`,
+        link: "/admin",
+        related_user_id: userId,
       });
     }
 
-    // Generate a signed URL for the ID image if provided
-    let idSignedUrl: string | null = null;
-    if (filePath) {
-      const { data: signed, error: signErr } = await supabase
-        .storage
-        .from("id-verifications")
-        .createSignedUrl(filePath, 60 * 60 * 24); // 24 hours
-      if (signErr) {
-        console.error("Failed creating signed URL for admin email:", signErr);
-      } else {
-        idSignedUrl = signed?.signedUrl ?? null;
-      }
-    }
-
-    const emailHtml = `
-      <h1>New ID Verification Submitted</h1>
-      <p>A user has submitted their ID for verification.</p>
-      <h2>User Details:</h2>
-      <ul>
-        <li><strong>Name:</strong> ${displayName}</li>
-        <li><strong>Email:</strong> ${userEmail}</li>
-        <li><strong>Roles:</strong> ${rolesText}</li>
-        <li><strong>User ID:</strong> ${userId}</li>
-      </ul>
-      ${idSignedUrl ? `<p><a href="${idSignedUrl}" target="_blank">View submitted ID image</a> (link expires in 24 hours)</p>` : ''}
-      <p>Please review this verification request in the admin dashboard.</p>
-      <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from CashRidez.</p>
-    `;
-
-    // Send emails to all admins using shared utility
-    const results = await Promise.all(
-      adminEmails.map(email =>
-        sendEmail(resend, {
-          to: [email],
-          subject: "New ID Verification Submitted - CashRidez",
-          html: emailHtml,
-        })
-      )
-    );
-    
-    const successCount = results.filter(r => r.success).length;
-    const failedCount = results.filter(r => !r.success).length;
-    const fallbackActive = results.some(r => r.fallbackActive);
-
-    console.log(`Sent ${successCount} emails successfully, ${failedCount} failed, fallback: ${fallbackActive}`);
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        emailsSent: successCount,
-        emailsFailed: failedCount,
-        fallbackActive
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
-  } catch (error: any) {
-    console.error("Error in send-verification-notification function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    // Email is queued by the database outbox, not here.
+    return json({ status: "accepted", queued: true });
+  } catch (error) {
+    console.error("send-verification-notification error:", error);
+    return json({ error: "Failed to record verification notification" }, 500);
   }
 };
 

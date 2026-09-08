@@ -28,38 +28,11 @@ serve((req) =>
       return await userClient(jwt).rpc("accept_ride_atomic", args);
     },
 
-    async notify({ rideId, driverId, etaMinutes }) {
-      const { data: rideData } = await service
-        .from("ride_requests")
-        .select(
-          "*, rider:profiles!ride_requests_rider_id_fkey(display_name, full_name, email, phone_number)",
-        )
-        .eq("id", rideId)
-        .single();
-
-      const { data: driverData } = await service
-        .from("profiles")
-        .select("display_name, full_name, email, phone_number")
-        .eq("id", driverId)
-        .single();
-
-      if (!rideData?.rider || !driverData) return;
-
-      await service.functions.invoke("send-ride-accepted-notification", {
-        body: {
-          riderEmail: rideData.rider.email,
-          riderName: rideData.rider.full_name || rideData.rider.display_name || "Rider",
-          riderPhone: rideData.rider.phone_number || "",
-          driverEmail: driverData.email,
-          driverName: driverData.full_name || driverData.display_name || "Driver",
-          driverPhone: driverData.phone_number || "",
-          pickupAddress: rideData.pickup_address,
-          dropoffAddress: rideData.dropoff_address,
-          pickupTime: rideData.pickup_time,
-          etaMinutes,
-          rideId,
-        },
-      });
+    // No-op: the ride_requests open -> assigned database trigger owns the
+    // participant and admin emails through the outbox worker. Sending here too
+    // would duplicate mail (and would trust caller-shaped content).
+    async notify() {
+      return;
     },
   }).catch((e) => {
     console.error("accept-ride fatal", e);
