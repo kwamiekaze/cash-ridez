@@ -2096,6 +2096,104 @@ export type Database = {
         }
         Relationships: []
       }
+      email_deliveries: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          last_error: string | null
+          provider_message_id: string | null
+          recipient_email: string
+          recipient_kind: string
+          recipient_user_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          last_error?: string | null
+          provider_message_id?: string | null
+          recipient_email: string
+          recipient_kind: string
+          recipient_user_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          last_error?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string
+          recipient_kind?: string
+          recipient_user_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_deliveries_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "email_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_events: {
+        Row: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          event_key: string
+          event_type: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          event_key: string
+          event_type: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claimed_at?: string | null
+          created_at?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_logs: {
         Row: {
           admin_user_id: string | null
@@ -3263,6 +3361,7 @@ export type Database = {
           result: string
         }[]
       }
+      assert_email_service_role: { Args: never; Returns: undefined }
       assert_service_role: { Args: never; Returns: undefined }
       begin_checkout_attempt: {
         Args: { p_price_id: string; p_user_id: string }
@@ -3314,6 +3413,37 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      claim_email_delivery: {
+        Args: {
+          p_event_id: string
+          p_kind: string
+          p_recipient: string
+          p_user_id?: string
+        }
+        Returns: boolean
+      }
+      claim_email_events: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          claimed_at: string | null
+          created_at: string
+          event_key: string
+          event_type: string
+          id: string
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "email_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       claim_email_recipient: {
         Args: {
@@ -3390,6 +3520,7 @@ export type Database = {
         }
         Returns: Json
       }
+      complete_email_event: { Args: { p_event_id: string }; Returns: undefined }
       confirm_call_attempt: { Args: { p_token: string }; Returns: undefined }
       connection_entitlement: { Args: { p_user_id: string }; Returns: Json }
       create_notification: {
@@ -3408,9 +3539,21 @@ export type Database = {
         Args: { p_bridged: boolean; p_child: string; p_parent: string }
         Returns: string
       }
+      email_delivery_already_sent: {
+        Args: { p_event_id: string; p_recipient: string }
+        Returns: boolean
+      }
+      email_id_submission_key: {
+        Args: { p_fallback: string; p_user_id: string }
+        Returns: string
+      }
       expire_stale_rides: { Args: never; Returns: Json }
       fail_call: {
         Args: { p_call_id: string; p_reason?: string; p_token: string }
+        Returns: string
+      }
+      fail_email_event: {
+        Args: { p_error: string; p_event_id: string; p_retryable?: boolean }
         Returns: string
       }
       free_connection_limit: { Args: never; Returns: number }
@@ -3463,9 +3606,29 @@ export type Database = {
         Args: { p_new_user_id: string; p_referral_code: string }
         Returns: Json
       }
+      queue_email_event: {
+        Args: { p_event_key: string; p_event_type: string; p_payload?: Json }
+        Returns: string
+      }
+      queue_test_email_event: {
+        Args: { p_recipient?: string; p_test_type: string }
+        Returns: string
+      }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
       record_checkout_attempt: {
         Args: { p_key: string; p_session_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      record_email_delivery: {
+        Args: {
+          p_error?: string
+          p_event_id: string
+          p_kind: string
+          p_provider_id?: string
+          p_recipient: string
+          p_status: string
+          p_user_id?: string
+        }
         Returns: boolean
       }
       release_billing_event: {
