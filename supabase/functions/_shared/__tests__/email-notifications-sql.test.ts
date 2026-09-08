@@ -276,6 +276,42 @@ describe("idempotence", () => {
     const sent = await sql(`SELECT public.email_delivery_already_sent($1,'a@b.com') AS s`, [id]);
     expect(sent.rows[0].s).toBe(true);
   });
+
+  it("reserves a recipient once, skips concurrent runs, and reclaims stale claims", async () => {
+    await asOwner();
+    const e = await sql(`SELECT public.queue_email_event('trip_posted','k3','{}'::jsonb) AS id`);
+    const id = e.rows[0].id;
+    await asRole("service_role", null);
+
+    const claim = async () => {
+      const r = await sql(`SELECT public.claim_email_delivery($1,'A@B.com ','admin',NULL) AS ok`, [id]);
+      return r.rows[0].ok;
+    };
+
+    expect(await claim()).toBe(true);
+    // Another concurrent run must not send the same recipient.
+    expect(await claim()).toBe(false);
+
+    // A crashed run's reservation is reclaimed after 10 minutes.
+    await asOwner();
+    await sql(
+      `UPDATE public.email_deliveries
+         SET claimed_at = now() - interval '11 minutes', updated_at = now() - interval '11 minutes'
+       WHERE event_id=$1`,
+      [id],
+    );
+    await asRole("service_role", null);
+    expect(await claim()).toBe(true);
+
+    // Once sent, it is never claimable again.
+    await sql(`SELECT public.record_email_delivery($1,'a@b.com','admin','sent')`, [id]);
+    expect(await claim()).toBe(false);
+
+    await asOwner();
+    const rows = await sql(`SELECT status FROM public.email_deliveries WHERE event_id=$1`, [id]);
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].status).toBe("sent");
+  });
 });
 
 describe("claim / complete / retry", () => {
