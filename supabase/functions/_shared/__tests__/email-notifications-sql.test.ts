@@ -311,6 +311,22 @@ describe("claim / complete / retry", () => {
     }
   });
 
+  it("reclaims events left processing for more than 10 minutes", async () => {
+    const id = await queue("c6");
+    await asRole("service_role", null);
+    expect((await sql(`SELECT * FROM public.claim_email_events(10)`)).rows).toHaveLength(1);
+    expect((await sql(`SELECT * FROM public.claim_email_events(10)`)).rows).toHaveLength(0);
+    await asOwner();
+    await sql(
+      `UPDATE public.email_events
+         SET claimed_at = now() - interval '11 minutes', updated_at = now() - interval '11 minutes'
+       WHERE id=$1`,
+      [id],
+    );
+    await asRole("service_role", null);
+    expect((await sql(`SELECT * FROM public.claim_email_events(10)`)).rows).toHaveLength(1);
+  });
+
   it("marks an event done", async () => {
     const id = await queue("c5");
     await asRole("service_role", null);
