@@ -101,11 +101,12 @@ describe("entitlement and preferences", () => {
   it("accepts paying and trusted-grant members only", () => {
     expect(hasTrustedEntitlement(paying)).toBe(true);
     expect(hasTrustedEntitlement({ subscription_active: true, subscription_status: "premium" })).toBe(true);
+    // Stripe-linked "premium" is not the trusted admin grant.
     expect(hasTrustedEntitlement({
       subscription_active: true,
       subscription_status: "premium",
       stripe_subscription_id: "sub_x",
-    })).toBe(true);
+    })).toBe(false);
     expect(hasTrustedEntitlement({ subscription_active: false, subscription_status: "active" })).toBe(false);
     expect(hasTrustedEntitlement(null)).toBe(false);
   });
