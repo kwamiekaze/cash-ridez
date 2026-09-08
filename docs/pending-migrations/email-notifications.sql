@@ -363,6 +363,48 @@ BEGIN
 END;
 $$;
 
+-- Atomically reserve one (event, recipient) pair BEFORE the provider call.
+-- Returns true only when this run owns the send. Already-sent pairs and pairs
+-- another run claimed less than 10 minutes ago return false; reservations older
+-- than 10 minutes are treated as crashed and reclaimed.
+CREATE OR REPLACE FUNCTION public.claim_email_delivery(
+  p_event_id  uuid,
+  p_recipient text,
+  p_kind      text,
+  p_user_id   uuid DEFAULT NULL
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email   text := lower(btrim(coalesce(p_recipient, '')));
+  v_claimed uuid;
+BEGIN
+  PERFORM public.assert_email_service_role();
+  IF v_email = '' THEN
+    RAISE EXCEPTION 'recipient is required';
+  END IF;
+
+  INSERT INTO public.email_deliveries AS d
+    (event_id, recipient_email, recipient_kind, recipient_user_id, status, claimed_at)
+  VALUES
+    (p_event_id, v_email, p_kind, p_user_id, 'processing', now())
+  ON CONFLICT (event_id, recipient_email) DO UPDATE
+    SET status = 'processing',
+        claimed_at = now(),
+        recipient_user_id = coalesce(d.recipient_user_id, excluded.recipient_user_id),
+        updated_at = now()
+    WHERE d.status NOT IN ('sent', 'skipped')
+      AND (d.status <> 'processing'
+           OR coalesce(d.claimed_at, d.updated_at) < now() - interval '10 minutes')
+  RETURNING d.id INTO v_claimed;
+
+  RETURN v_claimed IS NOT NULL;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.record_email_delivery(
   p_event_id    uuid,
   p_recipient   text,
