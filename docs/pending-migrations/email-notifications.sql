@@ -195,11 +195,11 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  v_stamp := coalesce(NEW.verification_submitted_at, now());
+  v_stamp := NEW.verification_submitted_at;
 
   PERFORM public.queue_email_event(
     'id_verification_submitted',
-    'idv_profile:' || NEW.id::text || ':' || v_stamp::text,
+    public.email_id_submission_key(NEW.id, v_stamp),
     jsonb_build_object('user_id', NEW.id)
   );
   RETURN NEW;
