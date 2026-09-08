@@ -25,6 +25,7 @@ import {
   type RecipientProfileLike,
 } from "../_shared/email/eligibility.ts";
 import { PREFERRED_SENDER } from "../_shared/email/sender.ts";
+import { isNearbyZip } from "../_shared/geo.ts";
 import {
   isTestEventType,
   renderAdminTemplate,
@@ -169,18 +170,34 @@ async function buildTargets(event: any): Promise<Target[]> {
       };
       targets.push(...adminTargets(renderAdminTemplate("trip_posted", tripData, ctx())));
 
-      // Verified, entitled, opted-in drivers in the pickup ZIP area.
+      // Exactly the same targeting as send-new-trip-notification: AVAILABLE
+      // drivers with a current ZIP, near the pickup ZIP. We never scan or mail
+      // every subscribed driver.
+      const { data: statuses, error: statusError } = await supabase
+        .from("driver_status")
+        .select("user_id, current_zip, state")
+        .eq("state", "available")
+        .not("current_zip", "is", null);
+      if (statusError) throw new RetryableError(`driver status lookup failed: ${statusError.message}`);
+
+      const nearbyIds: string[] = [];
+      for (const row of (statuses ?? []) as Array<{ user_id?: unknown; current_zip?: unknown }>) {
+        const id = typeof row.user_id === "string" ? row.user_id : null;
+        if (!id || id === ride.rider_id) continue;
+        if (!isNearbyZip(row.current_zip, ride.pickup_zip)) continue;
+        if (!nearbyIds.includes(id)) nearbyIds.push(id);
+      }
+      if (nearbyIds.length === 0) return targets;
+
       const { data: drivers, error } = await supabase
         .from("profiles")
         .select(PROFILE_COLUMNS)
-        .eq("is_driver", true)
-        .eq("is_verified", true)
-        .eq("subscription_active", true)
-        .limit(500);
+        .in("id", nearbyIds.slice(0, 500));
       if (error) throw new RetryableError(`driver lookup failed: ${error.message}`);
 
       const driverEmail = renderNewTripEmail(tripData, ctx());
       for (const driver of (drivers ?? []) as RecipientProfileLike[]) {
+        // Verified driver + trusted entitlement + all_notifications/new_trips/new_offers.
         const verdict = evaluateNewTripEligibility(driver, { riderId: ride.rider_id });
         if (!verdict.eligible) continue;
         const email = safeEmailAddress(driver.email);
@@ -303,12 +320,20 @@ async function buildTargets(event: any): Promise<Target[]> {
   }
 }
 
-async function alreadySent(eventId: string, email: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("email_delivery_already_sent", {
+/**
+ * Atomically reserve (event, recipient) BEFORE calling Resend.
+ * Returns false when the pair was already sent or is actively being processed
+ * by another run, so a crash between "sent" and "recorded" can never produce a
+ * duplicate email. Stale reservations are reclaimed by the RPC itself.
+ */
+async function reserveDelivery(eventId: string, target: Target): Promise<boolean> {
+  const { data, error } = await supabase.rpc("reserve_email_delivery", {
     p_event_id: eventId,
-    p_recipient: email,
+    p_recipient: target.email,
+    p_kind: target.kind,
+    p_user_id: target.userId ?? null,
   });
-  if (error) throw new RetryableError(`delivery check failed: ${error.message}`);
+  if (error) throw new RetryableError(`delivery reservation failed: ${error.message}`);
   return data === true;
 }
 
@@ -337,7 +362,7 @@ async function processEvent(event: any): Promise<{ sent: number; failed: number 
   let failed = 0;
 
   for (const target of targets) {
-    if (await alreadySent(event.id, target.email)) continue;
+    if (!(await reserveDelivery(event.id, target))) continue;
 
     const result = await sendEmail(resend, {
       to: [target.email],

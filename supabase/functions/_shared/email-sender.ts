@@ -5,7 +5,7 @@
 import { Resend } from "https://esm.sh/resend@4.0.0";
 
 // Email sender addresses in priority order
-const VERIFIED_SENDER = "CashRidez <support@cashridez.com>";
+const VERIFIED_SENDER = "CashRidez <connect@cashridez.com>";
 // updates.cashridez.com is verified in Resend - use this as fallback
 const FALLBACK_SENDER_1 = "CashRidez <noreply@updates.cashridez.com>";
 const FALLBACK_SENDER_2 = "CashRidez <support@updates.cashridez.com>";
