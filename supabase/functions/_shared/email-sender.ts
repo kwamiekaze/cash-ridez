@@ -28,6 +28,11 @@ export interface EmailOptions {
   subject: string;
   html: string;
   replyTo?: string;
+  /**
+   * Optional preferred sender, tried first when the root domain is verified.
+   * The verified updates.cashridez.com fallbacks are always kept behind it.
+   */
+  from?: string;
 }
 
 /**
@@ -116,7 +121,7 @@ export async function sendEmail(
   options: EmailOptions,
   forceFallback: boolean = false
 ): Promise<EmailSendResult> {
-  const { to, subject, html, replyTo } = options;
+  const { to, subject, html, replyTo, from } = options;
   
   // Build the list of senders to try in order
   const sendersToTry: string[] = [];
@@ -130,6 +135,8 @@ export async function sendEmail(
     
     if (isVerified) {
       // Try primary first, then fallbacks if it fails
+      // A caller-preferred root-domain sender is only safe once verified.
+      if (from) sendersToTry.push(from);
       sendersToTry.push(VERIFIED_SENDER, FALLBACK_SENDER_1, FALLBACK_SENDER_2);
     } else {
       // Domain not verified, skip primary entirely
