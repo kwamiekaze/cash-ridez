@@ -2,7 +2,8 @@
 // BULK SMS RUNNER FOR CASHRIDEZ
 // ============================================================================
 // Triggers the bulk SMS worker. Called by cron every minute or manually by admin.
-// Logs every cron invocation to admin_sms_worker_runs for observability.
+// Idle cron checks (no running campaigns, no campaign_id) do not write rows to
+// admin_sms_worker_runs — only real/manual campaign processing is logged.
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
@@ -17,7 +18,6 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const startTime = Date.now();
   console.log('[bulk-sms-runner] Function invoked');
 
   try {
@@ -92,19 +92,8 @@ Deno.serve(async (req) => {
 
     if ((runningCount === 0 || runningCount === null) && !campaignId) {
       console.log('[bulk-sms-runner] No running campaigns to process');
-      
-      // Still log this cron invocation
-      const elapsed = Date.now() - startTime;
-      await supabaseAdmin
-        .from('admin_sms_worker_runs')
-        .insert({
-          source,
-          processed_campaign_ids: [],
-          processed_recipients_count: 0,
-          duration_ms: elapsed,
-          errors: null
-        });
-      
+
+      // Idle cron check: do not write a row to admin_sms_worker_runs.
       return new Response(
         JSON.stringify({ ok: true, message: 'No running campaigns', worker_invoked: false }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
