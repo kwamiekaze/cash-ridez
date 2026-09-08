@@ -207,7 +207,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.reserve_billing_sync_generation(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reserve_billing_sync_generation(uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_billing_sync_generation(uuid) TO service_role;
 
 -- ---------------------------------------------------------------------------
@@ -268,7 +268,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.claim_billing_event(text, text, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_billing_event(text, text, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_billing_event(text, text, integer) TO service_role;
 
 -- ---------------------------------------------------------------------------
@@ -300,7 +300,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.release_billing_event(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.release_billing_event(text, text, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.release_billing_event(text, text, text) TO service_role;
 
 -- ---------------------------------------------------------------------------
@@ -346,7 +346,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.complete_billing_event(text, text, text, uuid, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_billing_event(text, text, text, uuid, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.complete_billing_event(text, text, text, uuid, jsonb) TO service_role;
 
 -- ---------------------------------------------------------------------------
@@ -424,7 +424,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public._apply_entitlement_locked(uuid, jsonb, bigint, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._apply_entitlement_locked(uuid, jsonb, bigint, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public._apply_entitlement_locked(uuid, jsonb, bigint, text) TO service_role;
 
 -- 7a. Status-endpoint writer (no event receipt involved).
@@ -443,7 +443,7 @@ AS $$
   );
 $$;
 
-REVOKE ALL ON FUNCTION public.apply_billing_sync(uuid, bigint, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.apply_billing_sync(uuid, bigint, jsonb, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.apply_billing_sync(uuid, bigint, jsonb, text) TO service_role;
 
 -- 7b. Webhook writer: entitlement + notification + log + receipt, one txn.
@@ -517,7 +517,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.apply_billing_entitlement(text, text, text, uuid, jsonb, bigint, text, jsonb, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.apply_billing_entitlement(text, text, text, uuid, jsonb, bigint, text, jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.apply_billing_entitlement(text, text, text, uuid, jsonb, bigint, text, jsonb, jsonb) TO service_role;
 
 -- Drop the old signatures so no caller can reach a version without fencing.
@@ -553,7 +553,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.claim_checkout_slot(uuid, text, integer) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.claim_checkout_slot(uuid, text, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_checkout_slot(uuid, text, integer) TO service_role;
 
 -- Token-specific release: an expired holder cannot clear a NEWER lock.
@@ -577,7 +577,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.release_checkout_slot(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.release_checkout_slot(uuid, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.release_checkout_slot(uuid, text) TO service_role;
 
 -- ---------------------------------------------------------------------------
@@ -614,7 +614,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.begin_checkout_attempt(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.begin_checkout_attempt(uuid, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.begin_checkout_attempt(uuid, text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.record_checkout_attempt(
@@ -641,7 +641,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.record_checkout_attempt(uuid, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.record_checkout_attempt(uuid, text, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.record_checkout_attempt(uuid, text, text) TO service_role;
 
 -- Only a DEFINITIVELY expired or completed attempt may be retired, which is
@@ -671,7 +671,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.retire_checkout_attempt(uuid, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.retire_checkout_attempt(uuid, text, text) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.retire_checkout_attempt(uuid, text, text) TO service_role;
 
 COMMIT;
