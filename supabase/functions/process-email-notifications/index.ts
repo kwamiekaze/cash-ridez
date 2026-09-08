@@ -24,15 +24,15 @@ import {
   evaluateNewTripEligibility,
   type RecipientProfileLike,
 } from "../_shared/email/eligibility.ts";
+import { PREFERRED_SENDER } from "../_shared/email/sender.ts";
 import {
-  ADMIN_TEMPLATE_NAMES,
-  type AdminTemplateName,
+  isTestEventType,
   renderAdminTemplate,
+  renderTestTemplate,
   renderMembershipConfirmationEmail,
   renderNewTripEmail,
   renderTripAssignedEmail,
   renderTripMessageEmail,
-  syntheticTemplateData,
   type RenderedEmail,
   type TemplateContext,
 } from "../_shared/email/templates.ts";
@@ -43,6 +43,11 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 10;
+/** The only addresses a synthetic [TEST] alert may be delivered to. */
+const TEST_RECIPIENTS: readonly string[] = Object.freeze([
+  "kwamiekaze@gmail.com",
+  "connect@cashridez.com",
+]);
 const PROFILE_COLUMNS =
   "id, email, full_name, is_verified, is_driver, is_rider, profile_zip, subscription_active, subscription_status, stripe_subscription_id, notification_preferences";
 
@@ -338,6 +343,7 @@ async function processEvent(event: any): Promise<{ sent: number; failed: number 
       to: [target.email],
       subject: target.rendered.subject,
       html: target.rendered.html,
+      from: PREFERRED_SENDER,
     });
 
     if (result.success) {
@@ -373,7 +379,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (error) throw new Error(error.message);
     claimed = Array.isArray(data) ? data : [];
   } catch (err) {
-    console.error("[EMAIL-WORKER] claim failed:", escapeLog((err as Error)?.message));
+    console.error("[PROCESS-EMAIL-NOTIFICATIONS] claim failed:", escapeLog((err as Error)?.message));
     return new Response(JSON.stringify({ error: "claim_failed" }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -389,11 +395,11 @@ const handler = async (req: Request): Promise<Response> => {
       totalSent += sent;
       processed += 1;
       const { error } = await supabase.rpc("complete_email_event", { p_event_id: event.id });
-      if (error) console.error("[EMAIL-WORKER] complete failed:", escapeLog(error.message));
+      if (error) console.error("[PROCESS-EMAIL-NOTIFICATIONS] complete failed:", escapeLog(error.message));
     } catch (err) {
       const retryable = err instanceof RetryableError;
       console.error(
-        `[EMAIL-WORKER] event ${escapeLog(event.event_type)} failed (retryable=${retryable}):`,
+        `[PROCESS-EMAIL-NOTIFICATIONS] event ${escapeLog(event.event_type)} failed (retryable=${retryable}):`,
         escapeLog((err as Error)?.message),
       );
       await supabase.rpc("fail_email_event", {
@@ -405,7 +411,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   console.log(
-    `[EMAIL-WORKER] claimed=${claimed.length} processed=${processed} sent=${totalSent} app=${redactUrl(appBaseUrl)}`,
+    `[PROCESS-EMAIL-NOTIFICATIONS] claimed=${claimed.length} processed=${processed} sent=${totalSent} app=${redactUrl(appBaseUrl)}`,
   );
 
   return new Response(JSON.stringify({ claimed: claimed.length, processed, sent: totalSent }), {
