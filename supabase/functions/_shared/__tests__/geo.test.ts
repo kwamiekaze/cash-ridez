@@ -12,7 +12,7 @@ describe('geo helpers', () => {
   it('normalizes ZIP inputs', () => {
     expect(normalizeZip('30303')).toBe('30303');
     expect(normalizeZip(' 30303-1234 ')).toBe('30303');
-    expect(normalizeZip(30303)).toBe('30303');
+    expect(normalizeZip(30303)).toBeNull();
     expect(normalizeZip('abc')).toBeNull();
     expect(normalizeZip(null)).toBeNull();
     expect(normalizeZip(undefined)).toBeNull();
