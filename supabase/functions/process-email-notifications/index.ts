@@ -101,30 +101,51 @@ async function buildTargets(event: any): Promise<Target[]> {
 
   switch (event.event_type) {
     case "test_alert": {
-      const template = String(payload.template ?? "");
-      if (!ADMIN_TEMPLATE_NAMES.includes(template as AdminTemplateName)) {
-        throw new Error(`unknown test template: ${escapeLog(template)}`);
+      const testType = payload.test_type;
+      if (!isTestEventType(testType)) {
+        throw new Error(`unknown test type: ${escapeLog(testType)}`);
       }
-      const name = template as AdminTemplateName;
-      return adminTargets(renderAdminTemplate(name, syntheticTemplateData(name), ctx(true)));
+      // The recipient is re-checked here: it must be on the fixed admin
+      // allowlist AND one of the two operational test addresses.
+      const requested = restrictToAdminRecipients([payload.recipient]).filter((email) =>
+        TEST_RECIPIENTS.includes(email)
+      );
+      if (requested.length === 0) return [];
+      const rendered = renderTestTemplate(testType, appBaseUrl);
+      return requested.map((email) => ({ email, kind: "admin" as const, rendered }));
     }
 
     case "id_verification_submitted": {
-      const { data, error } = await supabase
-        .from("kyc_submissions")
-        .select("id, user_id, role, status, submitted_at")
-        .eq("id", String(payload.submission_id ?? ""))
-        .maybeSingle();
-      if (error) throw new RetryableError(`kyc lookup failed: ${error.message}`);
-      if (!data) return [];
-      const profile = await fetchProfile(data.user_id);
-      // Deep link only — the ID image itself is never attached or linked.
-      const reviewUrl = `${appBaseUrl}/admin?review=${encodeURIComponent(String(data.id))}`;
+      let userId: unknown = payload.user_id;
+      let role: unknown = null;
+      let submittedAt: unknown = null;
+      let reviewKey = typeof payload.user_id === "string" ? payload.user_id : "";
+
+      const submissionId = typeof payload.submission_id === "string" ? payload.submission_id : "";
+      if (submissionId) {
+        const { data, error } = await supabase
+          .from("kyc_submissions")
+          .select("id, user_id, role, status, submitted_at")
+          .eq("id", submissionId)
+          .maybeSingle();
+        if (error) throw new RetryableError(`kyc lookup failed: ${error.message}`);
+        if (!data) return [];
+        userId = data.user_id;
+        role = data.role;
+        submittedAt = data.submitted_at;
+        reviewKey = String(data.id);
+      }
+
+      const profile = await fetchProfile(userId);
+      if (!profile && !submissionId) return [];
+      // Deep link only — the ID image itself is never attached or linked, and
+      // the link is never written to the logs.
+      const reviewUrl = `${appBaseUrl}/admin?review=${encodeURIComponent(reviewKey)}`;
       return adminTargets(renderAdminTemplate("id_verification_submitted", {
         userName: profile?.full_name,
         userEmail: profile?.email,
-        role: data.role,
-        submittedAt: data.submitted_at,
+        role,
+        submittedAt,
         reviewUrl,
       }, ctx()));
     }
