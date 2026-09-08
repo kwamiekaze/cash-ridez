@@ -259,3 +259,27 @@ describe("public access", () => {
     await asOwner();
   });
 });
+
+describe("service-only function ACLs", () => {
+  const SIGNATURES = [
+    "public.claim_billing_event(text, text, integer)",
+    "public.release_billing_event(text, text, text)",
+    "public.complete_billing_event(text, text, text, uuid, jsonb)",
+    "public.apply_billing_entitlement(text, text, text, uuid, jsonb, bigint, text, jsonb, jsonb)",
+    "public.claim_checkout_slot(uuid, text, integer)",
+    "public.release_checkout_slot(uuid, text)",
+    "public.begin_checkout_attempt(uuid, text)",
+    "public.record_checkout_attempt(uuid, text, text)",
+    "public.retire_checkout_attempt(uuid, text, text)",
+  ];
+
+  it.each(SIGNATURES)("keeps %s service_role-only", async (sig) => {
+    const r = await sql(
+      `SELECT has_function_privilege('anon', $1, 'EXECUTE') AS anon,
+              has_function_privilege('authenticated', $1, 'EXECUTE') AS authed,
+              has_function_privilege('service_role', $1, 'EXECUTE') AS svc`,
+      [sig],
+    );
+    expect(r.rows[0]).toEqual({ anon: false, authed: false, svc: true });
+  });
+});
