@@ -171,6 +171,18 @@ describe("triggers", () => {
     expect(await events("id_verification_submitted")).toHaveLength(2);
   });
 
+  it("queues exactly one event when onboarding writes the profile and a kyc row", async () => {
+    await asOwner();
+    await sql(
+      `UPDATE public.profiles
+         SET id_image_url='https://x/id.jpg', verification_submitted_at = now()
+       WHERE id=$1`,
+      [RIDER],
+    );
+    await sql(`INSERT INTO public.kyc_submissions (user_id, role) VALUES ($1,'driver')`, [RIDER]);
+    expect(await events("id_verification_submitted")).toHaveLength(1);
+  });
+
   it("queues when a profile ID image is uploaded and replaced, and never stores the URL", async () => {
     await asOwner();
     await sql(`UPDATE public.profiles SET id_image_url='https://x/id1.jpg?token=s' WHERE id=$1`, [RIDER]);
@@ -276,6 +288,42 @@ describe("idempotence", () => {
     const sent = await sql(`SELECT public.email_delivery_already_sent($1,'a@b.com') AS s`, [id]);
     expect(sent.rows[0].s).toBe(true);
   });
+
+  it("reserves a recipient once, skips concurrent runs, and reclaims stale claims", async () => {
+    await asOwner();
+    const e = await sql(`SELECT public.queue_email_event('trip_posted','k3','{}'::jsonb) AS id`);
+    const id = e.rows[0].id;
+    await asRole("service_role", null);
+
+    const claim = async () => {
+      const r = await sql(`SELECT public.claim_email_delivery($1,'A@B.com ','admin',NULL) AS ok`, [id]);
+      return r.rows[0].ok;
+    };
+
+    expect(await claim()).toBe(true);
+    // Another concurrent run must not send the same recipient.
+    expect(await claim()).toBe(false);
+
+    // A crashed run's reservation is reclaimed after 10 minutes.
+    await asOwner();
+    await sql(
+      `UPDATE public.email_deliveries
+         SET claimed_at = now() - interval '11 minutes', updated_at = now() - interval '11 minutes'
+       WHERE event_id=$1`,
+      [id],
+    );
+    await asRole("service_role", null);
+    expect(await claim()).toBe(true);
+
+    // Once sent, it is never claimable again.
+    await sql(`SELECT public.record_email_delivery($1,'a@b.com','admin','sent')`, [id]);
+    expect(await claim()).toBe(false);
+
+    await asOwner();
+    const rows = await sql(`SELECT status FROM public.email_deliveries WHERE event_id=$1`, [id]);
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0].status).toBe("sent");
+  });
 });
 
 describe("claim / complete / retry", () => {
@@ -309,6 +357,22 @@ describe("claim / complete / retry", () => {
       await sql(`UPDATE public.email_events SET next_attempt_at = now() WHERE id=$1`, [id]);
       await asRole("service_role", null);
     }
+  });
+
+  it("reclaims events left processing for more than 10 minutes", async () => {
+    const id = await queue("c6");
+    await asRole("service_role", null);
+    expect((await sql(`SELECT * FROM public.claim_email_events(10)`)).rows).toHaveLength(1);
+    expect((await sql(`SELECT * FROM public.claim_email_events(10)`)).rows).toHaveLength(0);
+    await asOwner();
+    await sql(
+      `UPDATE public.email_events
+         SET claimed_at = now() - interval '11 minutes', updated_at = now() - interval '11 minutes'
+       WHERE id=$1`,
+      [id],
+    );
+    await asRole("service_role", null);
+    expect((await sql(`SELECT * FROM public.claim_email_events(10)`)).rows).toHaveLength(1);
   });
 
   it("marks an event done", async () => {
@@ -364,8 +428,17 @@ describe("ACLs — no client injection", () => {
     ["public.fail_email_event(uuid, text, boolean)", "fail_email_event"],
     ["public.queue_email_event(text, text, jsonb)", "queue_email_event"],
     ["public.queue_test_email_event(text, text)", "queue_test_email_event"],
-    ["public.schedule_email_worker(text)", "schedule_email_worker"],
+    ["public.claim_email_delivery(uuid, text, text, uuid)", "claim_email_delivery"],
   ] as const;
+
+  it("no longer exposes a secret-bearing scheduler", async () => {
+    await asOwner();
+    const r = await sql(
+      `SELECT count(*) c FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname='public' AND p.proname='schedule_email_worker'`,
+    );
+    expect(Number(r.rows[0].c)).toBe(0);
+  });
 
   it("grants EXECUTE to service_role only", async () => {
     await asOwner();

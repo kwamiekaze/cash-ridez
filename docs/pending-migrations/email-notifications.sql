@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS public.email_deliveries (
   recipient_kind      text NOT NULL CHECK (recipient_kind IN ('admin', 'rider', 'driver', 'subscriber')),
   recipient_user_id   uuid,
   status              text NOT NULL DEFAULT 'pending'
-                        CHECK (status IN ('pending', 'sent', 'skipped', 'failed')),
+                        CHECK (status IN ('pending', 'processing', 'sent', 'skipped', 'failed')),
+  claimed_at          timestamptz,
   attempts            integer NOT NULL DEFAULT 0,
   last_error          text,
   provider_message_id text,
@@ -73,6 +74,15 @@ CREATE TABLE IF NOT EXISTS public.email_deliveries (
   updated_at          timestamptz NOT NULL DEFAULT now(),
   UNIQUE (event_id, recipient_email)
 );
+
+-- Upgrade path for an outbox created before delivery reservation existed.
+ALTER TABLE public.email_deliveries
+  ADD COLUMN IF NOT EXISTS claimed_at timestamptz;
+ALTER TABLE public.email_deliveries
+  DROP CONSTRAINT IF EXISTS email_deliveries_status_check;
+ALTER TABLE public.email_deliveries
+  ADD CONSTRAINT email_deliveries_status_check
+  CHECK (status IN ('pending', 'processing', 'sent', 'skipped', 'failed'));
 
 -- Locked down: no client role may read or write the outbox at all.
 ALTER TABLE public.email_events     ENABLE ROW LEVEL SECURITY;
@@ -124,6 +134,24 @@ $$;
 -- ---------------------------------------------------------------------------
 
 -- (1) ID submitted / resubmitted for verification.
+-- Onboarding writes BOTH the profile (id_image_url / verification_submitted_at)
+-- and a kyc_submissions row for the same upload. Both triggers therefore build
+-- the SAME stable key from the user's profile verification_submitted_at, so one
+-- upload queues exactly one event.
+CREATE OR REPLACE FUNCTION public.email_id_submission_key(p_user_id uuid, p_fallback timestamptz)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT 'idv_profile:' || p_user_id::text || ':' || coalesce(
+    (SELECT p.verification_submitted_at FROM public.profiles p WHERE p.id = p_user_id),
+    p_fallback,
+    now()
+  )::text;
+$$;
+
 CREATE OR REPLACE FUNCTION public.tg_email_event_kyc_submitted()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
@@ -137,7 +165,7 @@ BEGIN
 
   PERFORM public.queue_email_event(
     'id_verification_submitted',
-    'idv:' || NEW.id::text || ':' || coalesce(NEW.submitted_at, now())::text,
+    public.email_id_submission_key(NEW.user_id, NEW.submitted_at),
     jsonb_build_object('submission_id', NEW.id, 'user_id', NEW.user_id)
   );
   RETURN NEW;
@@ -167,11 +195,11 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  v_stamp := coalesce(NEW.verification_submitted_at, now());
+  v_stamp := NEW.verification_submitted_at;
 
   PERFORM public.queue_email_event(
     'id_verification_submitted',
-    'idv_profile:' || NEW.id::text || ':' || v_stamp::text,
+    public.email_id_submission_key(NEW.id, v_stamp),
     jsonb_build_object('user_id', NEW.id)
   );
   RETURN NEW;
@@ -317,8 +345,9 @@ BEGIN
   WITH ready AS (
     SELECT id
     FROM public.email_events
-    WHERE status = 'pending'
-      AND next_attempt_at <= now()
+    WHERE (status = 'pending' AND next_attempt_at <= now())
+       -- Reclaim events whose worker crashed mid-run.
+       OR (status = 'processing' AND coalesce(claimed_at, updated_at) < now() - interval '10 minutes')
     ORDER BY created_at
     FOR UPDATE SKIP LOCKED
     LIMIT greatest(1, least(coalesce(p_limit, 10), 50))
@@ -331,6 +360,48 @@ BEGIN
   FROM ready
   WHERE e.id = ready.id
   RETURNING e.*;
+END;
+$$;
+
+-- Atomically reserve one (event, recipient) pair BEFORE the provider call.
+-- Returns true only when this run owns the send. Already-sent pairs and pairs
+-- another run claimed less than 10 minutes ago return false; reservations older
+-- than 10 minutes are treated as crashed and reclaimed.
+CREATE OR REPLACE FUNCTION public.claim_email_delivery(
+  p_event_id  uuid,
+  p_recipient text,
+  p_kind      text,
+  p_user_id   uuid DEFAULT NULL
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email   text := lower(btrim(coalesce(p_recipient, '')));
+  v_claimed uuid;
+BEGIN
+  PERFORM public.assert_email_service_role();
+  IF v_email = '' THEN
+    RAISE EXCEPTION 'recipient is required';
+  END IF;
+
+  INSERT INTO public.email_deliveries AS d
+    (event_id, recipient_email, recipient_kind, recipient_user_id, status, claimed_at)
+  VALUES
+    (p_event_id, v_email, p_kind, p_user_id, 'processing', now())
+  ON CONFLICT (event_id, recipient_email) DO UPDATE
+    SET status = 'processing',
+        claimed_at = now(),
+        recipient_user_id = coalesce(d.recipient_user_id, excluded.recipient_user_id),
+        updated_at = now()
+    WHERE d.status NOT IN ('sent', 'skipped')
+      AND (d.status <> 'processing'
+           OR coalesce(d.claimed_at, d.updated_at) < now() - interval '10 minutes')
+  RETURNING d.id INTO v_claimed;
+
+  RETURN v_claimed IS NOT NULL;
 END;
 $$;
 
@@ -513,6 +584,8 @@ BEGIN
     'public.queue_email_event(text, text, jsonb)',
     'public.assert_email_service_role()',
     'public.claim_email_events(integer)',
+    'public.claim_email_delivery(uuid, text, text, uuid)',
+    'public.email_id_submission_key(uuid, timestamptz)',
     'public.record_email_delivery(uuid, text, text, text, uuid, text, text)',
     'public.email_delivery_already_sent(uuid, text)',
     'public.complete_email_event(uuid)',
@@ -531,24 +604,40 @@ $$;
 COMMIT;
 
 -- ---------------------------------------------------------------------------
--- 7. Schedule the worker (pg_cron + pg_net), idempotently
+-- 7. Schedule the worker (pg_cron + pg_net), automatically and idempotently
 -- ---------------------------------------------------------------------------
--- The worker URL is fixed. The job runs every minute so a queued event is
--- delivered within ~1 minute without any browser being open. The worker ignores
--- the request body entirely, so the posted '{}' carries no authority.
-CREATE OR REPLACE FUNCTION public.schedule_email_worker(p_service_key text)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+-- The worker URL is fixed and the function is deployed with verify_jwt = false,
+-- so NO Authorization header and NO service key are needed or passed here. The
+-- worker ignores the request body entirely, so the posted '{}' carries no
+-- authority — an invocation can only drain already-authorized outbox events.
+-- Runs every minute (1440 runs/day) so a queued alert leaves within ~1 minute.
+-- Create the scheduling extensions when the host provides them (Supabase does).
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_cron;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'pg_cron unavailable: %', SQLERRM;
+END;
+$$;
+
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_net;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'pg_net unavailable: %', SQLERRM;
+END;
+$$;
+
+-- The secret-bearing scheduler API is gone; scheduling happens here instead.
+DROP FUNCTION IF EXISTS public.schedule_email_worker(text);
+DROP FUNCTION IF EXISTS public.schedule_email_worker(text, text);
+
+DO $$
 DECLARE
   v_url text := 'https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/process-email-notifications';
 BEGIN
-  PERFORM public.assert_email_service_role();
-
   IF to_regclass('cron.job') IS NULL THEN
-    RAISE NOTICE 'pg_cron is not installed; skipping schedule';
+    RAISE NOTICE 'pg_cron is not installed; skipping email worker schedule';
     RETURN;
   END IF;
 
@@ -563,21 +652,11 @@ BEGIN
     format(
       $job$SELECT net.http_post(
         url := %L,
-        headers := jsonb_build_object(
-          'Content-Type', 'application/json',
-          'Authorization', %L
-        ),
+        headers := jsonb_build_object('Content-Type', 'application/json'),
         body := '{}'::jsonb
       )$job$,
-      v_url,
-      'Bearer ' || p_service_key
+      v_url
     )
   );
 END;
 $$;
-
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM anon;
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.schedule_email_worker(text) TO service_role;
-DROP FUNCTION IF EXISTS public.schedule_email_worker(text, text);

@@ -327,7 +327,7 @@ async function buildTargets(event: any): Promise<Target[]> {
  * duplicate email. Stale reservations are reclaimed by the RPC itself.
  */
 async function reserveDelivery(eventId: string, target: Target): Promise<boolean> {
-  const { data, error } = await supabase.rpc("reserve_email_delivery", {
+  const { data, error } = await supabase.rpc("claim_email_delivery", {
     p_event_id: eventId,
     p_recipient: target.email,
     p_kind: target.kind,
