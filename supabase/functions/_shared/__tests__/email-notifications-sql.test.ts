@@ -364,8 +364,17 @@ describe("ACLs — no client injection", () => {
     ["public.fail_email_event(uuid, text, boolean)", "fail_email_event"],
     ["public.queue_email_event(text, text, jsonb)", "queue_email_event"],
     ["public.queue_test_email_event(text, text)", "queue_test_email_event"],
-    ["public.schedule_email_worker(text)", "schedule_email_worker"],
+    ["public.claim_email_delivery(uuid, text, text, uuid)", "claim_email_delivery"],
   ] as const;
+
+  it("no longer exposes a secret-bearing scheduler", async () => {
+    await asOwner();
+    const r = await sql(
+      `SELECT count(*) c FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname='public' AND p.proname='schedule_email_worker'`,
+    );
+    expect(Number(r.rows[0].c)).toBe(0);
+  });
 
   it("grants EXECUTE to service_role only", async () => {
     await asOwner();
