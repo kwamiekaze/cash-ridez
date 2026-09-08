@@ -75,6 +75,15 @@ CREATE TABLE IF NOT EXISTS public.email_deliveries (
   UNIQUE (event_id, recipient_email)
 );
 
+-- Upgrade path for an outbox created before delivery reservation existed.
+ALTER TABLE public.email_deliveries
+  ADD COLUMN IF NOT EXISTS claimed_at timestamptz;
+ALTER TABLE public.email_deliveries
+  DROP CONSTRAINT IF EXISTS email_deliveries_status_check;
+ALTER TABLE public.email_deliveries
+  ADD CONSTRAINT email_deliveries_status_check
+  CHECK (status IN ('pending', 'processing', 'sent', 'skipped', 'failed'));
+
 -- Locked down: no client role may read or write the outbox at all.
 ALTER TABLE public.email_events     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.email_deliveries ENABLE ROW LEVEL SECURITY;
