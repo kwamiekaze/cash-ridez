@@ -171,6 +171,18 @@ describe("triggers", () => {
     expect(await events("id_verification_submitted")).toHaveLength(2);
   });
 
+  it("queues exactly one event when onboarding writes the profile and a kyc row", async () => {
+    await asOwner();
+    await sql(
+      `UPDATE public.profiles
+         SET id_image_url='https://x/id.jpg', verification_submitted_at = now()
+       WHERE id=$1`,
+      [RIDER],
+    );
+    await sql(`INSERT INTO public.kyc_submissions (user_id, role) VALUES ($1,'driver')`, [RIDER]);
+    expect(await events("id_verification_submitted")).toHaveLength(1);
+  });
+
   it("queues when a profile ID image is uploaded and replaced, and never stores the URL", async () => {
     await asOwner();
     await sql(`UPDATE public.profiles SET id_image_url='https://x/id1.jpg?token=s' WHERE id=$1`, [RIDER]);
