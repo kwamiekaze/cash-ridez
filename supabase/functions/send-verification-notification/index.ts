@@ -46,7 +46,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!profile) return json({ error: "Profile not found" }, 404);
 
     const hasPendingProfileId =
-      !!profile.id_image_url && profile.verification_status !== "verified";
+      !!profile.id_image_url && profile.verification_status === "pending";
 
     const { data: kycRows } = await service
       .from("kyc_submissions")
