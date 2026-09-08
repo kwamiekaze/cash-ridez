@@ -1,9 +1,9 @@
+// Support email delivery is owned by the database outbox (support_tickets
+// trigger -> process-email-notifications). This endpoint remains only so the
+// existing client call keeps succeeding. It authenticates the caller, ignores
+// the request body entirely, and sends no email.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
-import { sendEmail } from "../_shared/email-sender.ts";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,119 +11,32 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface SupportRequest {
-  fullName: string;
-  email: string;
-  message: string;
-  userId: string;
-}
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...corsHeaders },
+  });
 
-const handler = async (req: Request): Promise<Response> => {
+serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { fullName, email, message, userId }: SupportRequest = await req.json();
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get all admin users
-    const { data: adminUsers, error: adminError } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-
-    if (adminError) {
-      console.error("Error fetching admins:", adminError);
-      throw adminError;
-    }
-
-    // Get admin emails from profiles
-    const adminEmails: string[] = [];
-    if (adminUsers && adminUsers.length > 0) {
-      const { data: profiles, error: profileError } = await supabase
-        .from("profiles")
-        .select("email")
-        .in("id", adminUsers.map(u => u.user_id));
-
-      if (profileError) {
-        console.error("Error fetching admin profiles:", profileError);
-      } else if (profiles) {
-        adminEmails.push(...profiles.map(p => p.email).filter(Boolean));
-      }
-    }
-
-    // Always add these specific emails
-    const specificEmails = ["cashridezconnect@gmail.com", "kwamiekaze@gmail.com"];
-    const allRecipients = [...new Set([...adminEmails, ...specificEmails])];
-
-    console.log(`Sending support notification to ${allRecipients.length} recipients`);
-
-    const emailHtml = `
-      <h1>New Support Request</h1>
-      <p>A user has submitted a support request.</p>
-      <h2>Contact Details:</h2>
-      <ul>
-        <li><strong>Name:</strong> ${fullName}</li>
-        <li><strong>Email:</strong> ${email}</li>
-        <li><strong>User ID:</strong> ${userId}</li>
-      </ul>
-      <h2>Message:</h2>
-      <p style="padding: 15px; background-color: #f5f5f5; border-left: 4px solid #4CAF50; margin: 20px 0;">
-        ${message.replace(/\n/g, '<br>')}
-      </p>
-      <p>Please respond to the user at: <a href="mailto:${email}">${email}</a></p>
-      <p style="margin-top: 20px; color: #666; font-size: 12px;">This is an automated notification from Cash Ridez.</p>
-    `;
-
-    // Send emails to all recipients using shared utility
-    const results = await Promise.all(
-      allRecipients.map(recipientEmail =>
-        sendEmail(resend, {
-          to: [recipientEmail],
-          subject: `Support Request from ${fullName} - Cash Ridez`,
-          html: emailHtml,
-          replyTo: email,
-        })
-      )
+    const service = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    
-    const successCount = results.filter(r => r.success).length;
-    const failedCount = results.filter(r => !r.success).length;
-    const fallbackActive = results.some(r => r.fallbackActive);
 
-    console.log(`Sent ${successCount} emails successfully, ${failedCount} failed, fallback: ${fallbackActive}`);
+    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    if (!jwt) return json({ error: "Unauthorized" }, 401);
+    const { data, error } = await service.auth.getUser(jwt);
+    if (error || !data?.user) return json({ error: "Unauthorized" }, 401);
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        emailsSent: successCount,
-        emailsFailed: failedCount,
-        recipients: allRecipients.length,
-        fallbackActive
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
-  } catch (error: any) {
-    console.error("Error in send-support-notification function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    // Body intentionally ignored; the support_tickets trigger owns delivery.
+    return json({ status: "accepted", queued: true });
+  } catch (err) {
+    console.error("send-support-notification error:", err);
+    return json({ error: "Failed to accept support notification" }, 500);
   }
-};
-
-serve(handler);
+});
