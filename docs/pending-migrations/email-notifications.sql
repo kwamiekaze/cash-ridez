@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS public.email_deliveries (
   recipient_kind      text NOT NULL CHECK (recipient_kind IN ('admin', 'rider', 'driver', 'subscriber')),
   recipient_user_id   uuid,
   status              text NOT NULL DEFAULT 'pending'
-                        CHECK (status IN ('pending', 'sent', 'skipped', 'failed')),
+                        CHECK (status IN ('pending', 'processing', 'sent', 'skipped', 'failed')),
+  claimed_at          timestamptz,
   attempts            integer NOT NULL DEFAULT 0,
   last_error          text,
   provider_message_id text,
