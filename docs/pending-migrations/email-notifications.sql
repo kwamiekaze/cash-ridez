@@ -345,8 +345,9 @@ BEGIN
   WITH ready AS (
     SELECT id
     FROM public.email_events
-    WHERE status = 'pending'
-      AND next_attempt_at <= now()
+    WHERE (status = 'pending' AND next_attempt_at <= now())
+       -- Reclaim events whose worker crashed mid-run.
+       OR (status = 'processing' AND coalesce(claimed_at, updated_at) < now() - interval '10 minutes')
     ORDER BY created_at
     FOR UPDATE SKIP LOCKED
     LIMIT greatest(1, least(coalesce(p_limit, 10), 50))
