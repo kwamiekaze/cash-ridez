@@ -611,8 +611,22 @@ COMMIT;
 -- worker ignores the request body entirely, so the posted '{}' carries no
 -- authority — an invocation can only drain already-authorized outbox events.
 -- Runs every minute (1440 runs/day) so a queued alert leaves within ~1 minute.
-CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
-CREATE EXTENSION IF NOT EXISTS pg_net  WITH SCHEMA extensions;
+-- Create the scheduling extensions when the host provides them (Supabase does).
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_cron;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'pg_cron unavailable: %', SQLERRM;
+END;
+$$;
+
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_net;
+EXCEPTION WHEN others THEN
+  RAISE NOTICE 'pg_net unavailable: %', SQLERRM;
+END;
+$$;
 
 -- The secret-bearing scheduler API is gone; scheduling happens here instead.
 DROP FUNCTION IF EXISTS public.schedule_email_worker(text);
