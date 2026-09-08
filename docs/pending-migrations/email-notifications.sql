@@ -604,24 +604,26 @@ $$;
 COMMIT;
 
 -- ---------------------------------------------------------------------------
--- 7. Schedule the worker (pg_cron + pg_net), idempotently
+-- 7. Schedule the worker (pg_cron + pg_net), automatically and idempotently
 -- ---------------------------------------------------------------------------
--- The worker URL is fixed. The job runs every minute so a queued event is
--- delivered within ~1 minute without any browser being open. The worker ignores
--- the request body entirely, so the posted '{}' carries no authority.
-CREATE OR REPLACE FUNCTION public.schedule_email_worker(p_service_key text)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+-- The worker URL is fixed and the function is deployed with verify_jwt = false,
+-- so NO Authorization header and NO service key are needed or passed here. The
+-- worker ignores the request body entirely, so the posted '{}' carries no
+-- authority — an invocation can only drain already-authorized outbox events.
+-- Runs every minute (1440 runs/day) so a queued alert leaves within ~1 minute.
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pg_net  WITH SCHEMA extensions;
+
+-- The secret-bearing scheduler API is gone; scheduling happens here instead.
+DROP FUNCTION IF EXISTS public.schedule_email_worker(text);
+DROP FUNCTION IF EXISTS public.schedule_email_worker(text, text);
+
+DO $$
 DECLARE
   v_url text := 'https://wnajjqsqmrpwyffbpgsj.supabase.co/functions/v1/process-email-notifications';
 BEGIN
-  PERFORM public.assert_email_service_role();
-
   IF to_regclass('cron.job') IS NULL THEN
-    RAISE NOTICE 'pg_cron is not installed; skipping schedule';
+    RAISE NOTICE 'pg_cron is not installed; skipping email worker schedule';
     RETURN;
   END IF;
 
@@ -636,21 +638,11 @@ BEGIN
     format(
       $job$SELECT net.http_post(
         url := %L,
-        headers := jsonb_build_object(
-          'Content-Type', 'application/json',
-          'Authorization', %L
-        ),
+        headers := jsonb_build_object('Content-Type', 'application/json'),
         body := '{}'::jsonb
       )$job$,
-      v_url,
-      'Bearer ' || p_service_key
+      v_url
     )
   );
 END;
 $$;
-
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM anon;
-REVOKE ALL ON FUNCTION public.schedule_email_worker(text) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.schedule_email_worker(text) TO service_role;
-DROP FUNCTION IF EXISTS public.schedule_email_worker(text, text);
