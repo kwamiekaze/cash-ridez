@@ -153,3 +153,6 @@ verify_jwt = true
 [functions.admin-create-price]
 verify_jwt = false
 
+
+[functions.process-email-notifications]
+verify_jwt = false
