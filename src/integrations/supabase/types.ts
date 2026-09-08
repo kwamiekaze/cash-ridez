@@ -1146,6 +1146,48 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_events: {
+        Row: {
+          attempts: number
+          claim_token: string | null
+          claimed_at: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          event_type: string
+          lease_expires_at: string | null
+          status: string
+          stripe_event_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          claim_token?: string | null
+          claimed_at?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          lease_expires_at?: string | null
+          status?: string
+          stripe_event_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          claim_token?: string | null
+          claimed_at?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          lease_expires_at?: string | null
+          status?: string
+          stripe_event_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       billing_logs: {
         Row: {
           created_at: string | null
@@ -1196,6 +1238,48 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      billing_logs_duplicate_archive: {
+        Row: {
+          archive_reason: string
+          archived_at: string
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          request_body: Json | null
+          response_body: Json | null
+          stripe_event_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          archive_reason?: string
+          archived_at?: string
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          request_body?: Json | null
+          response_body?: Json | null
+          stripe_event_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          archive_reason?: string
+          archived_at?: string
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          request_body?: Json | null
+          response_body?: Json | null
+          stripe_event_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       call_center_messages: {
         Row: {
@@ -1777,6 +1861,63 @@ export type Database = {
         }
         Relationships: []
       }
+      checkout_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          price_id: string
+          retired_reason: string | null
+          session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          price_id: string
+          retired_reason?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          price_id?: string
+          retired_reason?: string | null
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      checkout_locks: {
+        Row: {
+          expires_at: string
+          locked_at: string
+          owner_token: string
+          user_id: string
+        }
+        Insert: {
+          expires_at: string
+          locked_at?: string
+          owner_token: string
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          locked_at?: string
+          owner_token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_messages: {
         Row: {
           created_at: string | null
@@ -2235,6 +2376,8 @@ export type Database = {
           active_assigned_ride_id: string | null
           active_role: string | null
           admin_locked_fields: string[] | null
+          billing_sync_applied: number
+          billing_sync_generation: number
           bio: string | null
           blocked: boolean | null
           blocked_at: string | null
@@ -2324,6 +2467,8 @@ export type Database = {
           active_assigned_ride_id?: string | null
           active_role?: string | null
           admin_locked_fields?: string[] | null
+          billing_sync_applied?: number
+          billing_sync_generation?: number
           bio?: string | null
           blocked?: boolean | null
           blocked_at?: string | null
@@ -2413,6 +2558,8 @@ export type Database = {
           active_assigned_ride_id?: string | null
           active_role?: string | null
           admin_locked_fields?: string[] | null
+          billing_sync_applied?: number
+          billing_sync_generation?: number
           bio?: string | null
           blocked?: boolean | null
           blocked_at?: string | null
@@ -2984,6 +3131,15 @@ export type Database = {
       }
     }
     Functions: {
+      _apply_entitlement_locked: {
+        Args: {
+          p_entitlement: Json
+          p_expected_customer_id: string
+          p_generation: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       accept_ride_atomic: {
         Args: {
           p_accepted_offer_id?: string
@@ -2991,6 +3147,29 @@ export type Database = {
           p_eta_minutes: number
           p_ride_id: string
           p_skip_active_check?: boolean
+        }
+        Returns: Json
+      }
+      apply_billing_entitlement: {
+        Args: {
+          p_claim_token: string
+          p_entitlement: Json
+          p_event_id: string
+          p_event_type: string
+          p_expected_customer_id?: string
+          p_generation: number
+          p_log?: Json
+          p_notification?: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      apply_billing_sync: {
+        Args: {
+          p_entitlement: Json
+          p_expected_customer_id?: string
+          p_generation: number
+          p_user_id: string
         }
         Returns: Json
       }
@@ -3013,6 +3192,10 @@ export type Database = {
         }[]
       }
       assert_service_role: { Args: never; Returns: undefined }
+      begin_checkout_attempt: {
+        Args: { p_price_id: string; p_user_id: string }
+        Returns: Json
+      }
       bind_call_leg_sid: {
         Args: {
           p_account_sid: string
@@ -3044,6 +3227,22 @@ export type Database = {
         Returns: boolean
       }
       check_active_ride: { Args: { _user_id: string }; Returns: boolean }
+      claim_billing_event: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_lease_seconds?: number
+        }
+        Returns: Json
+      }
+      claim_checkout_slot: {
+        Args: {
+          p_owner_token: string
+          p_ttl_seconds?: number
+          p_user_id: string
+        }
+        Returns: Json
+      }
       claim_email_recipient: {
         Args: {
           p_campaign_id: string
@@ -3109,6 +3308,16 @@ export type Database = {
         }
       }
       cleanup_old_typing_indicators: { Args: never; Returns: undefined }
+      complete_billing_event: {
+        Args: {
+          p_claim_token: string
+          p_event_id: string
+          p_event_type: string
+          p_log?: Json
+          p_user_id: string
+        }
+        Returns: Json
+      }
       confirm_call_attempt: { Args: { p_token: string }; Returns: undefined }
       create_notification: {
         Args: {
@@ -3176,12 +3385,32 @@ export type Database = {
         Returns: Json
       }
       recalculate_all_cancellation_stats: { Args: never; Returns: undefined }
+      record_checkout_attempt: {
+        Args: { p_key: string; p_session_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      release_billing_event: {
+        Args: {
+          p_claim_token: string
+          p_error_message: string
+          p_event_id: string
+        }
+        Returns: boolean
+      }
       release_call_slot: { Args: { p_token: string }; Returns: boolean }
+      release_checkout_slot: {
+        Args: { p_owner_token: string; p_user_id: string }
+        Returns: boolean
+      }
       release_stale_sms_locks: {
         Args: { p_stale_threshold?: string }
         Returns: number
       }
       repair_user_trip_counts: { Args: never; Returns: undefined }
+      reserve_billing_sync_generation: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       reserve_call_slot: {
         Args: {
           p_actor_id: string
@@ -3192,6 +3421,10 @@ export type Database = {
           outcome: string
           token: string
         }[]
+      }
+      retire_checkout_attempt: {
+        Args: { p_key: string; p_reason: string; p_user_id: string }
+        Returns: boolean
       }
       search_sms_conversations: {
         Args: { search_term: string }
