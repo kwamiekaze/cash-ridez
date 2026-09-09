@@ -1,14 +1,13 @@
 /**
  * Who may receive which email.
  *
- * Two independent gates, both required for OPTIONAL mail (trip / offer /
- * message / status):
- *   1. Trusted entitlement — a paying subscriber (active|trialing) or the
- *      existing trusted admin premium grant (subscription_active with status
- *      'premium' and NO stripe subscription id).
- *   2. The recipient's own notification preference for that category.
+ * OPTIONAL mail (trip / offer / message / status) is gated by ONE thing only:
+ * the recipient's own notification preference for that category. Subscription
+ * status is NOT considered — every user with an email address is eligible when
+ * the category is enabled in their notification_preferences.
  *
- * ESSENTIAL mail (verification decision, account safety) bypasses both gates.
+ * ESSENTIAL mail (verification decision, account safety, membership) bypasses
+ * the preference gate.
  */
 
 export type EmailCategory =
