@@ -1,6 +1,8 @@
-// Shared email sending utility with domain verification fallback
-// This module provides centralized email sending with automatic fallback to temporary senders
-// when the primary domain (cashridez.com) is not yet verified with Resend.
+// Shared email sending utility.
+// Delivery is attempted primary-identity-first: connect@cashridez.com (or a
+// caller-supplied sender) is always tried before the updates.cashridez.com
+// fallbacks. No domain-list preflight gates the send path.
+
 
 import { Resend } from "https://esm.sh/resend@4.0.0";
 
