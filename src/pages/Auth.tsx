@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapBackground } from "@/components/MapBackground";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 import { SplashScreen } from "@/components/SplashScreen";
+import { signInWithGoogle } from "@/integrations/lovable";
+
 
 // Inline password validation to avoid module bundling issues
 const PASSWORD_POLICY = { minLength: 8, maxLength: 128 };
@@ -43,6 +45,8 @@ const Auth = () => {
     signUp
   } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [referralCode, setReferralCode] = useState("");
 
