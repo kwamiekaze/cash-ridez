@@ -74,8 +74,8 @@ const CATEGORY_KEYS: Record<EmailCategory, string[]> = {
 /** Defaults used when a key has never been written by the preferences UI. */
 const DEFAULTS: Record<string, boolean> = {
   all_notifications: false,
-  new_trips: false,
-  new_offers: false,
+  new_trips: true,
+  new_offers: true,
   messages: true,
   ride_updates: true,
   read_receipts: true,
