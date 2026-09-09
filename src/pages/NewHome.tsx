@@ -107,14 +107,14 @@ export default function NewHome() {
               </motion.div>
 
               {/* Simple stacked composition: button / car stage / button */}
-              <div className="flex w-full flex-col items-center gap-3 md:gap-4">
+              <div data-testid="newhome-car-group" className="flex w-full flex-col items-center gap-3 md:gap-4">
                 <button onClick={() => navigate("/auth")} className="relative z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
                   <span className="text-xs md:text-base">📍</span>
                   Post a Trip
                 </button>
 
                 <div className="relative left-1/2 w-screen -translate-x-1/2 flex justify-center overflow-visible">
-                  <div className="relative overflow-visible" style={{
+                  <div data-testid="newhome-car-stage" className="relative overflow-visible" style={{
                     width: stage.width,
                     height: stage.height
                   }}>
