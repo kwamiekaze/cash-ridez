@@ -180,11 +180,12 @@ function CarModel({
     cam.aspect = aspect;
     const vFov = THREE.MathUtils.degToRad(cam.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-    const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
-
-    const vw = viewport.width;
-    const fill = vw >= 1024 ? 0.62 : vw >= 768 ? 0.70 : 0.75;
-    const dist = halfLen / fill / Math.tan(hFov / 2);
+    // Fit the complete rotated model. The modest framing boost accounts for
+    // the sedan occupying less than its conservative bounding sphere.
+    const radius = nativeSize.length() / 2;
+    const limitingHalfFov = Math.min(vFov, hFov) / 2;
+    const framingBoost = viewport.width >= 1024 ? 1.15 : 1.25;
+    const dist = radius / (Math.sin(limitingHalfFov) * framingBoost);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
@@ -216,16 +217,6 @@ function CarModel({
     const eased = 1 - Math.pow(1 - progress, 3);
     modelGroup.position.y = -0.35 * (1 - eased);
     modelGroup.rotation.y = (-25 * Math.PI) / 180 * (1 - eased);
-
-    modelGroup.traverse((object) => {
-      const mesh = object as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      materials.forEach((material) => {
-        material.transparent = progress < 1;
-        material.opacity = eased;
-      });
-    });
 
   });
 
