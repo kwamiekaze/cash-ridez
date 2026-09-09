@@ -180,11 +180,13 @@ function CarModel({
     cam.aspect = aspect;
     const vFov = THREE.MathUtils.degToRad(cam.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-    const halfLen = Math.max(nativeSize.x, nativeSize.z) / 2;
-
-    const vw = viewport.width;
-    const fill = vw >= 1024 ? 0.62 : vw >= 768 ? 0.70 : 0.75;
-    const dist = halfLen / fill / Math.tan(hFov / 2);
+    // Fit the complete rotated model, not just its longest horizontal axis.
+    // The stage is deliberately wide and shallow, so vertical FOV is the
+    // limiting dimension at broadside angles.
+    const radius = nativeSize.length() / 2;
+    const limitingHalfFov = Math.min(vFov, hFov) / 2;
+    const frameFill = viewport.width >= 1024 ? 0.82 : 0.78;
+    const dist = radius / (Math.sin(limitingHalfFov) * frameFill);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
     cam.position.copy(target).addScaledVector(dir, dist);

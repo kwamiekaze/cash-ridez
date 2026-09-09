@@ -113,7 +113,7 @@ export default function NewHome() {
                   Post a Trip
                 </button>
 
-                <div className="relative left-1/2 w-screen -translate-x-1/2 flex justify-center overflow-visible">
+                <div className="relative flex justify-center overflow-visible">
                   <div data-testid="newhome-car-stage" className="relative overflow-visible" style={{
                     width: stage.width,
                     height: stage.height
