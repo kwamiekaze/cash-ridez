@@ -1,8 +1,8 @@
 /**
- * NewHome — work-in-progress redesign of the live homepage (src/pages/LandingNew.tsx).
+ * NewHome — 3D redesign of the live homepage (src/pages/LandingNew.tsx).
  * All sections/content/destinations are cloned from LandingNew; only the hero
  * composition (3D car between the two primary CTAs) and the header logo differ.
- * `/` and LandingNew.tsx are untouched.
+ * LandingNew.tsx remains untouched as the reversible previous homepage.
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
@@ -82,8 +82,8 @@ export default function NewHome() {
           <section className="relative overflow-x-hidden">
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
-            {/* Viewport-height wheel region: brand block + square wheel */}
-            <div className="relative z-50 flex min-h-[100svh] flex-col items-center justify-center px-4 pt-24 pb-8 md:pt-28">
+            {/* Viewport-height hero group, balanced above and below on mobile. */}
+            <div className="relative z-50 flex min-h-[100svh] flex-col items-center justify-center px-4 pt-20 pb-4 md:pt-28 md:pb-8">
               {/* Brand block above the wheel */}
               <motion.div initial={{
                 opacity: 0,
@@ -107,7 +107,7 @@ export default function NewHome() {
               </motion.div>
 
               {/* Simple stacked composition: button / car stage / button */}
-              <div className="flex w-full flex-col items-center gap-6">
+              <div className="flex w-full flex-col items-center gap-3 md:gap-4">
                 <button onClick={() => navigate("/auth")} className="relative z-20 flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 px-4 py-2 text-[11px] font-bold text-black shadow-lg shadow-yellow-500/50 transition-all hover:scale-105 hover:from-yellow-600 hover:via-yellow-500 hover:to-yellow-600 hover:shadow-yellow-500/70 md:px-6 md:py-2.5 md:text-sm">
                   <span className="text-xs md:text-base">📍</span>
                   Post a Trip
@@ -119,9 +119,7 @@ export default function NewHome() {
                     height: stage.height
                   }}>
                     <Suspense fallback={null}>
-                      {/* Canvas bleeds vertically past the stage box so the car is
-                          never cropped by a frame edge. Buttons sit above it. */}
-                      <CashCar3D className="absolute left-0 w-full" style={{ top: -stage.height * 0.3, height: stage.height * 1.6 }} />
+                      <CashCar3D className="absolute inset-0" />
                     </Suspense>
                   </div>
                 </div>

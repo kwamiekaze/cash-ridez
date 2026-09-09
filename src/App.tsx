@@ -138,7 +138,8 @@ const App = () => {
           </DeferMount>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
-              <Route path="/" element={<LandingNew />} />
+              {/* LandingNew is the previous homepage, retained so this can be reverted by swapping this component reference back. */}
+              <Route path="/" element={<NewHome />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/blocked" element={<BlockedPage />} />

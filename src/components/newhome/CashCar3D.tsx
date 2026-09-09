@@ -217,16 +217,6 @@ function CarModel({
     modelGroup.position.y = -0.35 * (1 - eased);
     modelGroup.rotation.y = (-25 * Math.PI) / 180 * (1 - eased);
 
-    modelGroup.traverse((object) => {
-      const mesh = object as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      materials.forEach((material) => {
-        material.transparent = progress < 1;
-        material.opacity = eased;
-      });
-    });
-
   });
 
 
