@@ -183,8 +183,8 @@ function CarModel({
     // Fit the complete rotated model inside the canvas at every angle.
     const radius = nativeSize.length() / 2;
     const limitingHalfFov = Math.min(vFov, hFov) / 2;
-    const fill = viewport.width >= 1024 ? 0.72 : viewport.width >= 768 ? 0.80 : 0.86;
-    const dist = radius / (Math.sin(limitingHalfFov) * fill);
+    const framingBoost = viewport.width >= 1024 ? 1.32 : 1.42;
+    const dist = radius / (Math.sin(limitingHalfFov) * framingBoost);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
