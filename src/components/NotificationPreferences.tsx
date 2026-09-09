@@ -21,8 +21,8 @@ export function NotificationPreferences() {
   const { user } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPrefs>({
     all_notifications: false,
-    new_trips: false,
-    new_offers: false,
+    new_trips: true,
+    new_offers: true,
     messages: true,
     ride_updates: true,
     read_receipts: true,
@@ -51,8 +51,8 @@ export function NotificationPreferences() {
         const parsedPrefs = data.notification_preferences as Record<string, any>;
         setPrefs({
           all_notifications: parsedPrefs?.all_notifications ?? false,
-          new_trips: parsedPrefs?.new_trips ?? false,
-          new_offers: parsedPrefs?.new_offers ?? false,
+          new_trips: parsedPrefs?.new_trips ?? true,
+          new_offers: parsedPrefs?.new_offers ?? true,
           messages: parsedPrefs?.messages ?? true,
           ride_updates: parsedPrefs?.ride_updates ?? true,
           read_receipts: parsedPrefs?.read_receipts ?? true,
