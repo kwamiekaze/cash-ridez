@@ -107,22 +107,22 @@ const Auth = () => {
     }
     setIsLoading(false);
   };
-  // Google sign-in temporarily disabled
-  // const handleGoogleSignIn = async () => {
-  //   setIsLoading(true);
-  //   const {
-  //     error
-  //   } = await supabase.auth.signInWithOAuth({
-  //     provider: "google",
-  //     options: {
-  //       redirectTo: `${window.location.origin}/dashboard`
-  //     }
-  //   });
-  //   if (error) {
-  //     toast.error(error.message || "Failed to sign in with Google");
-  //     setIsLoading(false);
-  //   }
-  // };
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      if (referralCode?.trim()) {
+        localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
+      }
+      const result = await signInWithGoogle(window.location.origin);
+      if (result.redirected) return;
+      // Session is set; the global auth listener handles routing.
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to sign in with Google";
+      toast.error(message);
+      setIsGoogleLoading(false);
+    }
+  };
+
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} duration={2500} />;
   }
