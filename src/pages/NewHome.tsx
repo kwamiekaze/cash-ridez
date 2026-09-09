@@ -155,7 +155,7 @@ export default function NewHome() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Check className="h-5 w-5 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3] md:h-6 md:w-6" />
-                    <span className="font-medium text-amber-400">Community-Driven</span>
+                    <span className="font-medium text-amber-400">Community Driven</span>
                   </div>
                 </motion.div>
               </div>
@@ -176,7 +176,7 @@ export default function NewHome() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.5
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID-verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
+                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
               </div>
 
               {/* Slogan */}
