@@ -184,7 +184,7 @@ function CarModel({
     // the sedan occupying less than its conservative bounding sphere.
     const radius = nativeSize.length() / 2;
     const limitingHalfFov = Math.min(vFov, hFov) / 2;
-    const framingBoost = viewport.width >= 1024 ? 1.25 : 1.45;
+    const framingBoost = viewport.width >= 1024 ? 1.15 : 1.25;
     const dist = radius / (Math.sin(limitingHalfFov) * framingBoost);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
