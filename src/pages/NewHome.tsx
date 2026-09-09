@@ -82,13 +82,13 @@ export default function NewHome() {
           <section className="relative overflow-x-hidden">
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
-            {/* Viewport-height hero group, balanced above and below on mobile. */}
-            <div className="relative z-50 flex flex-col items-center px-4 pb-4 pt-[76px] md:pb-8 md:pt-[80px]">
+            {/* Hero group sized by its content (no forced viewport height). */}
+            <div className="relative z-50 flex min-h-0 flex-col items-center px-4 pb-0 pt-[76px] md:pb-0 md:pt-[80px]">
               <span data-testid="newhome-location-pill" className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-400 md:text-xs">
                 📍 Georgia
               </span>
 
-              <div className="flex w-full flex-1 flex-col items-center justify-center py-3 md:py-4">
+              <div className="flex w-full flex-col items-center justify-start pb-0 pt-3 md:pb-0 md:pt-4">
               {/* Brand block above the wheel */}
               <motion.div initial={{
                 opacity: 0,
@@ -164,7 +164,7 @@ export default function NewHome() {
 
             {/* Brand copy below the fold */}
             <div className="relative z-50 mx-auto max-w-7xl px-4 pb-16 text-center sm:px-6 lg:px-8">
-              <div className="space-y-4 pt-1 md:pt-0">
+              <div className="space-y-4 pt-8 md:pt-10">
 
 
                 <motion.p initial={{
