@@ -7,18 +7,16 @@ import { motion } from 'motion/react';
 import { Menu, X, User, CreditCard, HelpCircle, LogOut, Download, MapPin, History } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SportsCar } from '@/components/SportsCar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import SupportDialog from '@/components/SupportDialog';
-import { HEADER_LOGO_URL } from '@/lib/newHomeConfig';
+import { NewHomeAnimatedLogo } from '@/components/newhome/NewHomeAnimatedLogo';
 
 export function NewHomeNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
-  const [logoFailed, setLogoFailed] = useState(false);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const menuItems = [{
@@ -52,29 +50,10 @@ export function NewHomeNavigation() {
 
   return <>
       <motion.nav initial={{ y: -100 }} animate={{ y: 0 }} className="fixed top-0 left-0 right-0 z-[100] bg-black/80 dark:bg-black/80 backdrop-blur-2xl border-b border-yellow-500/25 shadow-[0_1px_0_0_rgba(250,204,21,0.12),0_12px_40px_-20px_rgba(0,0,0,0.9)]">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <motion.div className="flex items-center gap-3 cursor-pointer" whileHover={{ scale: 1.03 }} transition={{ type: 'spring', stiffness: 320, damping: 22 }} onClick={() => navigate('/')}>
-              {logoFailed ? (
-                <span
-                  className="font-bold bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 bg-clip-text text-transparent text-6xl animate-shimmer bg-[length:200%_auto]"
-                  style={{
-                    fontFamily: "'Playfair Display', serif",
-                    filter: 'drop-shadow(0 0 20px rgba(250,204,21,0.9)) drop-shadow(0 0 40px rgba(250,204,21,0.6)) drop-shadow(0 0 60px rgba(250,204,21,0.4))'
-                  }}
-                >
-                  cashridez
-                </span>
-              ) : (
-                <img
-                  src={HEADER_LOGO_URL}
-                  alt="CashRidez"
-                  onError={() => setLogoFailed(true)}
-                  className="h-9 md:h-10 w-auto transition-[filter] duration-300 drop-shadow-[0_0_10px_rgba(250,204,21,0.35)] hover:drop-shadow-[0_0_22px_rgba(250,204,21,0.75)]"
-                />
-              )}
-            </motion.div>
+            <NewHomeAnimatedLogo onClick={() => navigate('/')} />
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
@@ -179,12 +158,6 @@ export function NewHomeNavigation() {
         </div>
       </motion.nav>
 
-    {/* Animated Header Section - Sticky */}
-    <div className="fixed top-16 left-0 right-0 h-32 z-[60] pointer-events-none overflow-hidden">
-      <motion.div className="absolute top-8 z-[60]" animate={{ x: ['-15%', '115%'] }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }}>
-        <SportsCar width={100} height={50} />
-      </motion.div>
-    </div>
     <SupportDialog open={supportOpen} onOpenChange={setSupportOpen} />
     </>;
 }

@@ -83,7 +83,12 @@ export default function NewHome() {
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
             {/* Viewport-height hero group, balanced above and below on mobile. */}
-            <div className="relative z-50 flex min-h-[100svh] flex-col items-center justify-center px-4 pt-20 pb-4 md:pt-28 md:pb-8">
+            <div className="relative z-50 flex min-h-[100svh] flex-col items-center px-4 pb-4 pt-[76px] md:pb-8 md:pt-[80px]">
+              <span data-testid="newhome-location-pill" className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-400 md:text-xs">
+                📍 Georgia
+              </span>
+
+              <div className="flex w-full flex-1 flex-col items-center justify-center py-3 md:py-4">
               {/* Brand block above the wheel */}
               <motion.div initial={{
                 opacity: 0,
@@ -95,9 +100,6 @@ export default function NewHome() {
                 duration: 0.8,
                 delay: 0.15
               }} className="mb-4 flex flex-col items-center gap-2 text-center md:mb-6">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-400 md:text-xs">
-                  📍 Atlanta
-                </span>
                 <p className="text-xs font-medium text-emerald-400 md:text-sm">
                   Powered by People - Driven by Cash 💵
                 </p>
@@ -131,8 +133,33 @@ export default function NewHome() {
                   <CashCarIcon width={22} height={11} glowIntensity="low" />
                   Respond to Trips
                 </button>
-              </div>
 
+                {/* Trust Badges */}
+                <motion.div data-testid="newhome-trust-badges" initial={{
+                  opacity: 0,
+                  y: 10
+                }} animate={{
+                  opacity: 1,
+                  y: 0
+                }} transition={{
+                  duration: 0.8,
+                  delay: 0.65
+                }} className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs sm:text-sm md:mt-4 md:gap-6 md:text-base">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3] md:h-6 md:w-6" />
+                    <span className="font-medium text-neutral-50">ID Verified</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3] md:h-6 md:w-6" />
+                    <span className="font-medium text-green-700">Safe Connections</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3] md:h-6 md:w-6" />
+                    <span className="font-medium text-amber-400">Community-Driven</span>
+                  </div>
+                </motion.div>
+              </div>
+              </div>
             </div>
 
             {/* Brand copy below the fold */}
@@ -151,31 +178,6 @@ export default function NewHome() {
                   delay: 0.5
                 }} className="text-xl md:text-2xl max-w-3xl mx-auto pt-4 text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID-verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
               </div>
-
-              {/* Trust Badges */}
-              <motion.div initial={{
-                opacity: 0,
-                y: 10
-              }} animate={{
-                opacity: 1,
-                y: 0
-              }} transition={{
-                duration: 0.8,
-                delay: 0.65
-              }} className="flex flex-wrap justify-center gap-6 pt-10 text-sm sm:text-base">
-                <div className="flex items-center gap-2">
-                  <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
-                  <span className="font-medium text-neutral-50">ID Verified</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
-                  <span className="font-medium text-green-700">Safe Connections</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-6 h-6 text-blue-500 drop-shadow-[0_0_8px_rgba(59,130,246,0.6)] stroke-[3]" />
-                  <span className="font-medium text-amber-400">Community-Driven</span>
-                </div>
-              </motion.div>
 
               {/* Slogan */}
               <motion.p initial={{
