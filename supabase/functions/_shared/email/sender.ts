@@ -1,9 +1,13 @@
 /**
  * Sender identity for the email event system.
  *
- * Preferred: CashRidez <connect@cashridez.com>.
- * Until cashridez.com is verified in Resend, the already-verified
- * updates.cashridez.com senders remain the fallback chain.
+ * connect@cashridez.com is the configured sending identity and is always
+ * attempted first. The updates.cashridez.com addresses stay behind it purely
+ * as fallbacks in case a send with the primary identity fails.
+ *
+ * No domain-list preflight is performed: a preflight that returned false (or
+ * errored) used to skip the primary sender entirely, which caused every
+ * delivery to be attempted only from the unverified fallback domain.
  */
 
 export const PREFERRED_SENDER = "CashRidez <connect@cashridez.com>";
@@ -13,11 +17,14 @@ export const FALLBACK_SENDERS: readonly string[] = Object.freeze([
 ]);
 
 /**
- * The ordered list of senders to try. The preferred root-domain sender is only
- * attempted once the root domain is verified; otherwise Resend would reject it.
+ * The ordered, de-duplicated list of senders to try: an optional caller
+ * preference first, then the preferred identity, then the fallbacks.
  */
-export function senderChain(rootDomainVerified: boolean): string[] {
-  return rootDomainVerified
-    ? [PREFERRED_SENDER, ...FALLBACK_SENDERS]
-    : [...FALLBACK_SENDERS];
+export function senderChain(preferred?: string | null): string[] {
+  const chain: string[] = [];
+  for (const candidate of [preferred, PREFERRED_SENDER, ...FALLBACK_SENDERS]) {
+    const value = typeof candidate === "string" ? candidate.trim() : "";
+    if (value && !chain.includes(value)) chain.push(value);
+  }
+  return chain;
 }
