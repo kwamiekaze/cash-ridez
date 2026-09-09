@@ -118,10 +118,28 @@ describe("entitlement and preferences", () => {
     expect(preferenceAllows({ all_notifications: true }, "message")).toBe(true);
   });
 
-  it("blocks optional mail for unsubscribed users but allows essential mail", () => {
-    const free = { ...paying, subscription_active: false, subscription_status: null };
-    expect(evaluateEmailEligibility(free, "ride_update").eligible).toBe(false);
+  it("allows optional mail for unsubscribed users when the preference is on", () => {
+    const free = {
+      ...paying,
+      subscription_active: false,
+      subscription_status: null,
+      notification_preferences: { ride_updates: true },
+    };
+    expect(evaluateEmailEligibility(free, "ride_update").eligible).toBe(true);
     expect(evaluateEmailEligibility(free, "verification_decision").eligible).toBe(true);
+  });
+
+  it("excludes users who turned the category off", () => {
+    const free = {
+      ...paying,
+      subscription_active: false,
+      subscription_status: null,
+      notification_preferences: { all_notifications: false, ride_updates: false },
+    };
+    expect(evaluateEmailEligibility(free, "ride_update")).toEqual({
+      eligible: false,
+      reason: "preference_off",
+    });
   });
 
   it("requires a verified driver who is not the rider for new-trip mail", () => {
