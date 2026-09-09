@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapBackground } from "@/components/MapBackground";
 import { ForgotPasswordDialog } from "@/components/ForgotPasswordDialog";
 import { SplashScreen } from "@/components/SplashScreen";
-import { signInWithGoogle } from "@/integrations/lovable";
+import { lovable } from "@/integrations/lovable";
 
 
 // Inline password validation to avoid module bundling issues
