@@ -117,9 +117,13 @@ const Auth = () => {
       if (referralCode?.trim()) {
         localStorage.setItem("pending_referral_code", referralCode.trim().toUpperCase());
       }
-      const result = await signInWithGoogle(window.location.origin);
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) throw result.error;
       if (result.redirected) return;
       // Session is set; the global auth listener handles routing.
+
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to sign in with Google";
       toast.error(message);
