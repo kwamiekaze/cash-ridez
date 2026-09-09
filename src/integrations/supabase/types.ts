@@ -3558,6 +3558,13 @@ export type Database = {
       }
       free_connection_limit: { Args: never; Returns: number }
       generate_unique_referral_code: { Args: never; Returns: string }
+      get_last_visit_per_user: {
+        Args: never
+        Returns: {
+          last_visit: string
+          user_id: string
+        }[]
+      }
       get_or_create_direct_chat: {
         Args: { _participant_1_id: string; _participant_2_id: string }
         Returns: string

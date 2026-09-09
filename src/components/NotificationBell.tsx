@@ -176,7 +176,8 @@ export function NotificationBell() {
     const { error } = await supabase
       .from('notifications')
       .update({ read: true })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .or('read.is.null,read.eq.false');
 
 
     if (error) {
