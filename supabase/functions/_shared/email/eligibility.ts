@@ -126,7 +126,8 @@ export function evaluateEmailEligibility(
 
   if (isEssentialCategory(category)) return { eligible: true, reason: "essential" };
 
-  if (!hasTrustedEntitlement(profile)) return { eligible: false, reason: "not_entitled" };
+  // No subscription/entitlement requirement: optional mail is gated only by the
+  // recipient's own notification preferences.
   if (!preferenceAllows(profile.notification_preferences, category)) {
     return { eligible: false, reason: "preference_off" };
   }
