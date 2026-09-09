@@ -180,13 +180,12 @@ function CarModel({
     cam.aspect = aspect;
     const vFov = THREE.MathUtils.degToRad(cam.fov);
     const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-    // Fit the broadside footprint and roof height independently so rotation
-    // stays inside the shallow stage without making the car unnecessarily small.
-    const horizontalRadius = Math.hypot(nativeSize.x, nativeSize.z) / 2;
-    const horizontalFill = viewport.width >= 1024 ? 0.62 : 0.72;
-    const horizontalDist = horizontalRadius / horizontalFill / Math.tan(hFov / 2);
-    const verticalDist = (nativeSize.y / 2) / 0.68 / Math.tan(vFov / 2);
-    const dist = Math.max(horizontalDist, verticalDist);
+    // Fit the complete rotated model. The modest framing boost accounts for
+    // the sedan occupying less than its conservative bounding sphere.
+    const radius = nativeSize.length() / 2;
+    const limitingHalfFov = Math.min(vFov, hFov) / 2;
+    const framingBoost = viewport.width >= 1024 ? 1.25 : 1.45;
+    const dist = radius / (Math.sin(limitingHalfFov) * framingBoost);
     const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
     const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
