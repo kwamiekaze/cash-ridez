@@ -83,7 +83,7 @@ export default function NewHome() {
             <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
             {/* Viewport-height hero group, balanced above and below on mobile. */}
-            <div className="relative z-50 flex min-h-[100svh] flex-col items-center px-4 pb-4 pt-[76px] md:pb-8 md:pt-[80px]">
+            <div className="relative z-50 flex flex-col items-center px-4 pb-4 pt-[76px] md:pb-8 md:pt-[80px]">
               <span data-testid="newhome-location-pill" className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-400 md:text-xs">
                 📍 Georgia
               </span>
@@ -164,7 +164,7 @@ export default function NewHome() {
 
             {/* Brand copy below the fold */}
             <div className="relative z-50 mx-auto max-w-7xl px-4 pb-16 text-center sm:px-6 lg:px-8">
-              <div className="space-y-4 pt-12">
+              <div className="space-y-4 pt-1 md:pt-0">
 
 
                 <motion.p initial={{
@@ -176,7 +176,7 @@ export default function NewHome() {
                 }} transition={{
                   duration: 0.8,
                   delay: 0.5
-                }} className="text-xl md:text-2xl max-w-3xl mx-auto pt-4 text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID-verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
+                }} className="text-xl md:text-2xl max-w-3xl mx-auto text-stone-400">CashRidez connects riders and drivers directly for cash based rides with zero commissions. Join our ID-verified community powered transportation network. Maintain excellent ratings to qualify for weekly prizes and exclusive giveaways!</motion.p>
               </div>
 
               {/* Slogan */}
