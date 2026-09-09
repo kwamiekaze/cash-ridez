@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ALTER COLUMN notification_preferences SET DEFAULT '{"all_notifications": false, "new_trips": true, "new_offers": true, "messages": true, "ride_updates": true}'::jsonb;
