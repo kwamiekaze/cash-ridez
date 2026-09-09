@@ -67,17 +67,13 @@ export function UserManagementTable({ users, onUpdate, onViewUser, showFilters =
   useEffect(() => {
     const fetchActivityAndRoles = async () => {
       // Fetch latest page view per user
-      const { data: pageViews } = await supabase
-        .from("page_views")
-        .select("user_id, created_at")
-        .not("user_id", "is", null)
-        .order("created_at", { ascending: false });
+      const { data: pageViews } = await supabase.rpc("get_last_visit_per_user");
 
       if (pageViews) {
         const activityMap: Record<string, Date | null> = {};
         pageViews.forEach(pv => {
           if (pv.user_id && !activityMap[pv.user_id]) {
-            activityMap[pv.user_id] = new Date(pv.created_at);
+            activityMap[pv.user_id] = new Date(pv.last_visit);
           }
         });
         setUserActivity(activityMap);
