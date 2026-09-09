@@ -13,7 +13,7 @@ export function HeroSection() {
     label: 'Safe Connections'
   }, {
     icon: Users,
-    label: 'Community-Driven'
+    label: 'Community Driven'
   }];
   return <section className="relative min-h-screen pt-16 pb-20 overflow-hidden">
       {/* Animated Map Background */}
