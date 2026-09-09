@@ -1,6 +1,8 @@
-// Shared email sending utility with domain verification fallback
-// This module provides centralized email sending with automatic fallback to temporary senders
-// when the primary domain (cashridez.com) is not yet verified with Resend.
+// Shared email sending utility.
+// Delivery is attempted primary-identity-first: connect@cashridez.com (or a
+// caller-supplied sender) is always tried before the updates.cashridez.com
+// fallbacks. No domain-list preflight gates the send path.
+
 
 import { Resend } from "https://esm.sh/resend@4.0.0";
 
@@ -98,23 +100,30 @@ export async function isDomainVerified(resend: Resend): Promise<boolean> {
 }
 
 /**
- * Get the appropriate sender email based on domain verification status
+ * Get the sender email that will be attempted first.
+ * Informational only — the send path no longer depends on this check.
  */
 export async function getSenderEmail(resend: Resend): Promise<{ sender: string; fallbackActive: boolean }> {
   const isVerified = await isDomainVerified(resend);
-  
-  if (isVerified) {
-    return { sender: VERIFIED_SENDER, fallbackActive: false };
-  }
-  
-  // Domain not verified - use fallback
-  console.log("[EmailSender] Domain not verified, using fallback sender");
-  return { sender: FALLBACK_SENDER_1, fallbackActive: true };
+  return { sender: VERIFIED_SENDER, fallbackActive: !isVerified };
+}
+
+/** Keep error strings short so provider text can never flood the logs. */
+function boundedError(message: unknown): string {
+  const text = typeof message === "string" ? message : JSON.stringify(message ?? "");
+  return (text || "unknown error").slice(0, 300);
 }
 
 /**
- * Send an email with automatic fallback handling
- * ALWAYS tries fallback senders on failure to ensure delivery
+ * Send an email, primary identity first.
+ *
+ * There is NO domain-list preflight: the previous implementation skipped the
+ * primary sender whenever resend.domains.list() said "unverified" or errored,
+ * which meant every delivery was attempted only from the unverified
+ * updates.cashridez.com fallbacks and failed. Now the caller-provided sender
+ * (if any) is tried first, then connect@cashridez.com, then the two
+ * updates.cashridez.com fallbacks, de-duplicated; a failed sender simply moves
+ * on to the next one.
  */
 export async function sendEmail(
   resend: Resend,
@@ -122,38 +131,34 @@ export async function sendEmail(
   forceFallback: boolean = false
 ): Promise<EmailSendResult> {
   const { to, subject, html, replyTo, from } = options;
-  
-  // Build the list of senders to try in order
+
+  // Ordered, de-duplicated sender chain.
   const sendersToTry: string[] = [];
-  
+  const push = (value?: string | null) => {
+    const sender = typeof value === "string" ? value.trim() : "";
+    if (sender && !sendersToTry.includes(sender)) sendersToTry.push(sender);
+  };
+
   if (forceFallback) {
-    // Skip primary, go straight to fallbacks
-    sendersToTry.push(FALLBACK_SENDER_1, FALLBACK_SENDER_2);
+    // Explicit opt-out of the primary identity (diagnostics only).
+    push(FALLBACK_SENDER_1);
+    push(FALLBACK_SENDER_2);
   } else {
-    // Check domain verification status first
-    const isVerified = await isDomainVerified(resend);
-    
-    if (isVerified) {
-      // Try primary first, then fallbacks if it fails
-      // A caller-preferred root-domain sender is only safe once verified.
-      if (from) sendersToTry.push(from);
-      sendersToTry.push(VERIFIED_SENDER, FALLBACK_SENDER_1, FALLBACK_SENDER_2);
-    } else {
-      // Domain not verified, skip primary entirely
-      console.log("[EmailSender] Domain not verified, skipping primary sender");
-      sendersToTry.push(FALLBACK_SENDER_1, FALLBACK_SENDER_2);
-    }
+    push(from);
+    push(VERIFIED_SENDER);
+    push(FALLBACK_SENDER_1);
+    push(FALLBACK_SENDER_2);
   }
-  
+
   let lastError: string = "";
-  
+
   // Try each sender in order until one succeeds
   for (let i = 0; i < sendersToTry.length; i++) {
     const currentSender = sendersToTry[i];
     const isFallback = currentSender !== VERIFIED_SENDER;
-    
-    console.log(`[EmailSender] Attempt ${i + 1}/${sendersToTry.length}: Sending to ${to.join(", ")} using sender: ${currentSender}`);
-    
+
+    console.log(`[EmailSender] Attempt ${i + 1}/${sendersToTry.length}: Sending to ${to.length} recipient(s) using sender: ${currentSender}`);
+
     try {
       const emailPayload: any = {
         from: currentSender,
@@ -161,60 +166,40 @@ export async function sendEmail(
         subject,
         html,
       };
-      
+
       if (replyTo) {
         emailPayload.replyTo = replyTo;
       }
-      
+
       const response = await resend.emails.send(emailPayload);
-      
+
       if (response.error) {
-        const errorMsg = response.error.message || JSON.stringify(response.error);
-        console.error(`[EmailSender] Send failed with sender ${currentSender}:`, errorMsg);
+        const errorMsg = boundedError(response.error.message || JSON.stringify(response.error));
+        console.error(`[EmailSender] Send failed with sender ${currentSender}: ${errorMsg}`);
         lastError = errorMsg;
-        
-        // If this was the primary sender and it failed with domain error, invalidate cache
-        if (currentSender === VERIFIED_SENDER && 
-            (errorMsg.includes("not verified") || errorMsg.includes("domain"))) {
-          console.log("[EmailSender] Primary sender domain error, invalidating cache");
-          domainVerifiedCache = false;
-          domainCacheTime = Date.now();
-        }
-        
-        // Continue to next sender
         continue;
       }
-      
-      console.log(`[EmailSender] Email sent successfully with sender ${currentSender}:`, response);
-      
+
+      console.log(`[EmailSender] Email sent successfully with sender ${currentSender}`);
+
       return {
         success: true,
         data: response,
         senderUsed: currentSender,
         fallbackActive: isFallback,
       };
-      
+
     } catch (err: any) {
-      const errorMsg = err.message || String(err);
-      console.error(`[EmailSender] Exception with sender ${currentSender}:`, errorMsg);
+      const errorMsg = boundedError(err?.message ?? String(err));
+      console.error(`[EmailSender] Exception with sender ${currentSender}: ${errorMsg}`);
       lastError = errorMsg;
-      
-      // If domain-related error, invalidate cache
-      if (currentSender === VERIFIED_SENDER && 
-          (errorMsg.includes("not verified") || errorMsg.includes("domain"))) {
-        console.log("[EmailSender] Primary sender domain exception, invalidating cache");
-        domainVerifiedCache = false;
-        domainCacheTime = Date.now();
-      }
-      
-      // Continue to next sender
       continue;
     }
   }
-  
+
   // All senders failed
   console.error(`[EmailSender] All senders failed. Last error: ${lastError}`);
-  
+
   return {
     success: false,
     error: `All senders failed. Last error: ${lastError}`,
@@ -222,6 +207,7 @@ export async function sendEmail(
     fallbackActive: true,
   };
 }
+
 
 /**
  * Force refresh the domain verification cache

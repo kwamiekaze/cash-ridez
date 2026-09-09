@@ -165,10 +165,20 @@ describe("[TEST] templates", () => {
 });
 
 describe("sender", () => {
-  it("prefers connect@cashridez.com and keeps the verified fallbacks", () => {
+  it("always tries connect@cashridez.com first, then the fallbacks", () => {
     expect(PREFERRED_SENDER).toBe("CashRidez <connect@cashridez.com>");
-    expect(senderChain(true)[0]).toBe(PREFERRED_SENDER);
-    expect(senderChain(false)).toEqual([...FALLBACK_SENDERS]);
+    expect(senderChain()).toEqual([PREFERRED_SENDER, ...FALLBACK_SENDERS]);
     expect(FALLBACK_SENDERS.every((s) => s.includes("updates.cashridez.com"))).toBe(true);
   });
+
+  it("puts a caller-provided sender first and de-duplicates", () => {
+    expect(senderChain("CashRidez <alerts@cashridez.com>")).toEqual([
+      "CashRidez <alerts@cashridez.com>",
+      PREFERRED_SENDER,
+      ...FALLBACK_SENDERS,
+    ]);
+    expect(senderChain(PREFERRED_SENDER)).toEqual([PREFERRED_SENDER, ...FALLBACK_SENDERS]);
+    expect(senderChain("   ")).toEqual([PREFERRED_SENDER, ...FALLBACK_SENDERS]);
+  });
 });
+
