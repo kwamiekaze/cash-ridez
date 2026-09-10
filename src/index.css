@@ -193,6 +193,12 @@ All colors MUST be HSL.
   overflow: hidden;
 }
 
+/* Dark basemap look: filter ONLY the raster tile pane, never markers,
+   popups, controls, overlays or user photos. */
+.live-map-card .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.6);
+}
+
 /* Live Map Disclaimer Overlay */
 .cr-map-disclaimer {
   position: absolute;
