@@ -70,11 +70,12 @@ const handler = async (req: Request): Promise<Response> => {
       ? "✅ Your CashRidez Account Has Been Verified!" 
       : "⚠️ CashRidez Verification Update";
 
-    const adminInfo = adminDisplayName ? `<p style="margin: 8px 0 0 0; color: #374151;">Reviewed by: <strong>${adminDisplayName}</strong></p>` : "";
+    const safeName = escapeHtml(displayName);
+    const adminInfo = adminDisplayName ? `<p style="margin: 8px 0 0 0; color: #374151;">Reviewed by: <strong>${escapeHtml(adminDisplayName)}</strong></p>` : "";
     const reasonBlock = status === "rejected" && reason
       ? `<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0;">
            <h3 style="margin-top: 0; color: #991b1b;">Reason for Rejection</h3>
-           <p style="color: #991b1b; white-space: pre-wrap;">${reason}</p>
+           <p style="color: #991b1b; white-space: pre-wrap;">${escapeHtml(reason)}</p>
          </div>`
       : "";
 
