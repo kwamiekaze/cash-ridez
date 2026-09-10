@@ -277,8 +277,42 @@ async function processQueuedEmail(
 }
 
 /** Claim a bounded batch so overlapping cron runs cannot double-send. */
+/**
+ * Return rows abandoned mid-send (worker crash, failed status write) to
+ * pending so they are retried. Only 'sending' rows are touched — sent,
+ * failed and skipped_backlog rows are never revived.
+ */
+async function recoverStaleClaims(supabase: any): Promise<number> {
+  const cutoff = new Date(Date.now() - STALE_CLAIM_TIMEOUT_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("verification_email_queue")
+    .update({
+      status: "pending",
+      claimed_at: null,
+      next_attempt_at: new Date().toISOString(),
+      last_error: `Recovered stale claim: no result recorded within ${
+        Math.round(STALE_CLAIM_TIMEOUT_MS / 60000)
+      } minutes`,
+    })
+    .eq("status", "sending")
+    .lt("claimed_at", cutoff)
+    .lt("attempts", MAX_DECISION_ATTEMPTS)
+    .select("id");
+
+  if (error) {
+    console.error("Failed to recover stale claims:", error);
+    return 0;
+  }
+  const count = data?.length ?? 0;
+  if (count > 0) console.log(`Recovered ${count} stale 'sending' row(s)`);
+  return count;
+}
+
 async function claimBatch(supabase: any): Promise<DecisionQueueRow[]> {
+  await recoverStaleClaims(supabase);
   const nowIso = new Date().toISOString();
+
 
   const { data: candidates, error } = await supabase
     .from("verification_email_queue")
