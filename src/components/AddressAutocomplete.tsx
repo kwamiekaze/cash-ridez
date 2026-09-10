@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { MapPin, Loader2, Edit3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddressAutocompleteProps {
   value: string;
@@ -164,78 +165,53 @@ export function AddressAutocomplete({
 
     setCurrentQuery(query);
     setLoading(true);
-    
+
     // Determine if we should restrict to Georgia
     const restrictToGeorgia = !isNonGeorgiaQuery(query);
-    
+
+    const customOption: Suggestion = {
+      display_name: `Use "${query}" as entered`,
+      place_id: 'custom-address',
+      isCustomOption: true,
+    };
+
     try {
-      // Build the search query - add Georgia context for local searches
+      // Add Georgia context so the lookup stays inside the service area.
       let searchQuery = query;
-      let viewbox = '';
-      let bounded = '';
-      
-      if (restrictToGeorgia) {
-        // Add Georgia to query if not already present
-        if (!/georgia/i.test(query) && !/\bGA\b/.test(query)) {
-          searchQuery = `${query}, Georgia`;
-        }
-        // Georgia bounding box (approximate)
-        // SW corner: 30.35, -85.60 | NE corner: 35.00, -80.75
-        viewbox = '&viewbox=-85.60,30.35,-80.75,35.00';
-        bounded = '&bounded=1';
+      if (restrictToGeorgia && !/georgia/i.test(query) && !/\bGA\b/.test(query)) {
+        searchQuery = `${query}, Georgia`;
       }
-      
-      // Use Nominatim (OpenStreetMap) free geocoding API
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&q=${encodeURIComponent(searchQuery)}&limit=8&addressdetails=1${viewbox}${bounded}`,
-        {
-          headers: {
-            'User-Agent': 'CashRidez/1.0'
-          }
-        }
-      );
-      
-      if (response.ok) {
-        let data = await response.json();
-        
-        // Filter results to Georgia only if we're in restricted mode
-        if (restrictToGeorgia) {
-          data = data.filter((item: any) => {
-            const addr = item.address || {};
-            const state = addr.state || '';
-            return state.toLowerCase().includes('georgia') || 
-                   state.toUpperCase() === 'GA' ||
-                   /\bGeorgia\b/i.test(item.display_name);
+
+      // Address lookups always go through the authenticated server proxy,
+      // which owns the cache and the shared upstream rate limit. The browser
+      // never contacts the mapping service directly.
+      const { data, error } = await supabase.functions.invoke("geocode-address", {
+        body: { address: searchQuery },
+      });
+
+      const serverSuggestions: Suggestion[] = [];
+      if (!error && data) {
+        const displayName = typeof (data as any).displayName === "string" ? (data as any).displayName : "";
+        const zip = typeof (data as any).zip === "string" ? (data as any).zip : "";
+        if (displayName && isGeorgiaAddress({ display_name: displayName })) {
+          serverSuggestions.push({
+            display_name: formatCleanAddress(displayName),
+            place_id: `server-${zip || displayName}`,
           });
         }
-        
-        const formattedSuggestions: Suggestion[] = data
-          .slice(0, 5) // Limit to 5 results
-          .map((item: any) => ({
-            display_name: formatCleanAddress(item.display_name, item.address),
-            place_id: item.place_id?.toString() || item.osm_id?.toString(),
-          }));
-        
-        // Add "Address not shown" option at the end
-        const customOption: Suggestion = {
-          display_name: `Use "${query}" as entered`,
-          place_id: 'custom-address',
-          isCustomOption: true,
-        };
-        
-        setSuggestions([...formattedSuggestions, customOption]);
-        setIsOpen(true);
       }
+
+      // Local matches round out the list when the server returns one hit.
+      const local = getLocalSuggestions(query).filter(
+        (s) => !serverSuggestions.some((r) => r.display_name === s.display_name),
+      );
+
+      setSuggestions([...serverSuggestions, ...local, customOption]);
+      setIsOpen(true);
     } catch (error) {
       console.error("Address search error:", error);
-      // Fallback to local suggestions if API fails + custom option
-      const localSuggestions = getLocalSuggestions(query);
-      const customOption: Suggestion = {
-        display_name: `Use "${query}" as entered`,
-        place_id: 'custom-address',
-        isCustomOption: true,
-      };
-      setSuggestions([...localSuggestions, customOption]);
+      // Fallback to local suggestions if the lookup fails + custom option
+      setSuggestions([...getLocalSuggestions(query), customOption]);
       setIsOpen(true);
     } finally {
       setLoading(false);

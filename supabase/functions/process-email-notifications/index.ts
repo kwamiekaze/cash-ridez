@@ -146,11 +146,14 @@ async function notifyNearbyDriversInApp(ride: any, riderName: unknown): Promise<
 
   if (rows.length === 0) return 0;
 
-  const { error } = await supabase
-    .from("notifications")
-    .upsert(rows, { onConflict: "user_id,related_ride_id,type", ignoreDuplicates: true });
+  // The uniqueness rule is a PARTIAL index (type='new_trip' AND
+  // related_ride_id IS NOT NULL), which PostgREST's onConflict cannot infer.
+  // The RPC carries the matching predicate, so retries insert zero rows.
+  const { data, error } = await supabase.rpc("insert_new_trip_notifications", {
+    p_rows: rows,
+  });
   if (error) throw new RetryableError(`new_trip notification insert failed: ${error.message}`);
-  return rows.length;
+  return typeof data === "number" ? data : 0;
 }
 
 function adminTargets(rendered: RenderedEmail): Target[] {
@@ -408,7 +411,7 @@ async function processEvent(event: any): Promise<{ sent: number; failed: number 
     if (ride) {
       const rider = await fetchProfile(ride.rider_id);
       const count = await notifyNearbyDriversInApp(ride, rider?.full_name);
-      console.log(`[PROCESS-EMAIL-NOTIFICATIONS] in-app new_trip candidates: ${count}`);
+      console.log(`[PROCESS-EMAIL-NOTIFICATIONS] in-app new_trip inserted: ${count}`);
     }
   }
 
