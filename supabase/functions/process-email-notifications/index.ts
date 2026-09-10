@@ -22,6 +22,7 @@ import { escapeLog, redactUrl, safeEmailAddress } from "../_shared/email/escape.
 import {
   evaluateEmailEligibility,
   evaluateNewTripEligibility,
+  evaluateNewTripInAppEligibility,
   type RecipientProfileLike,
 } from "../_shared/email/eligibility.ts";
 import { PREFERRED_SENDER } from "../_shared/email/sender.ts";
@@ -90,6 +91,66 @@ async function fetchRide(id: unknown): Promise<any | null> {
     .maybeSingle();
   if (error) throw new RetryableError(`ride lookup failed: ${error.message}`);
   return data ?? null;
+}
+
+/** AVAILABLE drivers with a current ZIP near the ride's pickup ZIP. */
+async function nearbyAvailableDriverIds(ride: any): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("driver_status")
+    .select("user_id, current_zip, state")
+    .eq("state", "available")
+    .not("current_zip", "is", null);
+  if (error) throw new RetryableError(`driver status lookup failed: ${error.message}`);
+
+  const ids: string[] = [];
+  for (const row of (data ?? []) as Array<{ user_id?: unknown; current_zip?: unknown }>) {
+    const id = typeof row.user_id === "string" ? row.user_id : null;
+    if (!id || id === ride.rider_id) continue;
+    if (!isNearbyZip(row.current_zip, ride.pickup_zip)) continue;
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return ids;
+}
+
+async function fetchDriverProfiles(ids: string[]): Promise<RecipientProfileLike[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(PROFILE_COLUMNS)
+    .in("id", ids.slice(0, 500));
+  if (error) throw new RetryableError(`driver lookup failed: ${error.message}`);
+  return (data ?? []) as RecipientProfileLike[];
+}
+
+/**
+ * In-app "new trip near you" alerts.
+ *
+ * Independent of email: no mailbox and no subscription required. The unique
+ * index on (user_id, related_ride_id, type) makes a retry a no-op.
+ */
+async function notifyNearbyDriversInApp(ride: any, riderName: unknown): Promise<number> {
+  const ids = await nearbyAvailableDriverIds(ride);
+  const drivers = await fetchDriverProfiles(ids);
+
+  const rows = drivers
+    .filter((driver) => evaluateNewTripInAppEligibility(driver, { riderId: ride.rider_id }).eligible)
+    .map((driver) => ({
+      user_id: driver.id as string,
+      related_user_id: ride.rider_id,
+      related_ride_id: ride.id,
+      type: "new_trip",
+      title: "New Trip Request Near You",
+      message: `${typeof riderName === "string" && riderName ? riderName : "A rider"} posted a trip request near you.`,
+      link: `/trip/${ride.id}`,
+    }));
+
+  if (rows.length === 0) return 0;
+
+  const { error } = await supabase
+    .from("notifications")
+    .upsert(rows, { onConflict: "user_id,related_ride_id,type", ignoreDuplicates: true });
+  if (error) throw new RetryableError(`new_trip notification insert failed: ${error.message}`);
+  return rows.length;
 }
 
 function adminTargets(rendered: RenderedEmail): Target[] {
@@ -170,34 +231,17 @@ async function buildTargets(event: any): Promise<Target[]> {
       };
       targets.push(...adminTargets(renderAdminTemplate("trip_posted", tripData, ctx())));
 
-      // Exactly the same targeting as send-new-trip-notification: AVAILABLE
-      // drivers with a current ZIP, near the pickup ZIP. We never scan or mail
-      // every subscribed driver.
-      const { data: statuses, error: statusError } = await supabase
-        .from("driver_status")
-        .select("user_id, current_zip, state")
-        .eq("state", "available")
-        .not("current_zip", "is", null);
-      if (statusError) throw new RetryableError(`driver status lookup failed: ${statusError.message}`);
-
-      const nearbyIds: string[] = [];
-      for (const row of (statuses ?? []) as Array<{ user_id?: unknown; current_zip?: unknown }>) {
-        const id = typeof row.user_id === "string" ? row.user_id : null;
-        if (!id || id === ride.rider_id) continue;
-        if (!isNearbyZip(row.current_zip, ride.pickup_zip)) continue;
-        if (!nearbyIds.includes(id)) nearbyIds.push(id);
-      }
+      // Exactly the same targeting as the in-app alert: AVAILABLE drivers with
+      // a current ZIP, near the pickup ZIP. We never scan or mail every driver.
+      const nearbyIds = await nearbyAvailableDriverIds(ride);
       if (nearbyIds.length === 0) return targets;
 
-      const { data: drivers, error } = await supabase
-        .from("profiles")
-        .select(PROFILE_COLUMNS)
-        .in("id", nearbyIds.slice(0, 500));
-      if (error) throw new RetryableError(`driver lookup failed: ${error.message}`);
+      const drivers = await fetchDriverProfiles(nearbyIds);
 
       const driverEmail = renderNewTripEmail(tripData, ctx());
-      for (const driver of (drivers ?? []) as RecipientProfileLike[]) {
-        // Verified driver + trusted entitlement + all_notifications/new_trips/new_offers.
+      for (const driver of drivers) {
+        // Verified driver + a mailbox + all_notifications/new_trips/new_offers.
+        // No subscription requirement.
         const verdict = evaluateNewTripEligibility(driver, { riderId: ride.rider_id });
         if (!verdict.eligible) continue;
         const email = safeEmailAddress(driver.email);
@@ -357,6 +401,17 @@ async function record(
 }
 
 async function processEvent(event: any): Promise<{ sent: number; failed: number }> {
+  // In-app alerts first: they need neither a mailbox nor a subscription, and
+  // are idempotent, so an email failure/retry cannot duplicate or skip them.
+  if (event.event_type === "trip_posted") {
+    const ride = await fetchRide((event?.payload ?? {}).ride_id);
+    if (ride) {
+      const rider = await fetchProfile(ride.rider_id);
+      const count = await notifyNearbyDriversInApp(ride, rider?.full_name);
+      console.log(`[PROCESS-EMAIL-NOTIFICATIONS] in-app new_trip candidates: ${count}`);
+    }
+  }
+
   const targets = await buildTargets(event);
   let sent = 0;
   let failed = 0;
