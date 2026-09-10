@@ -195,7 +195,9 @@ describe("stale claim recovery", () => {
     expect(worker).toContain('.eq("status", "sending")');
     expect(worker).toContain('.lt("attempts", MAX_DECISION_ATTEMPTS)');
     expect(worker).toContain("recoverStaleClaims(supabase)");
-    expect(worker).not.toContain("skipped_backlog");
+    // No status other than 'sending' is ever written back to pending.
+    expect(worker).not.toContain('.eq("status", "skipped_backlog")');
+    expect(worker).not.toContain('.in("status", ["sending", "skipped_backlog"]');
   });
 });
 
