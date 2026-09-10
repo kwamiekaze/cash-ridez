@@ -11,7 +11,8 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const frontendFiles = walk('src');
+// Shipped browser code only: the assertions themselves name the forbidden host.
+const frontendFiles = walk('src').filter((f) => !f.includes('__tests__'));
 
 describe('browser code never contacts the mapping service directly', () => {
   it('has no reference to nominatim.openstreetmap.org anywhere under src/', () => {
