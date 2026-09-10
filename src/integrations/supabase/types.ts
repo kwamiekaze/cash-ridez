@@ -3243,34 +3243,52 @@ export type Database = {
       }
       verification_email_queue: {
         Row: {
+          attempts: number
+          claimed_at: string | null
           created_at: string
+          decision: string
           first_name: string | null
           id: string
           is_driver: boolean | null
           is_rider: boolean | null
+          last_error: string | null
+          next_attempt_at: string
           processed_at: string | null
+          rejection_reason: string | null
           status: string
           user_email: string
           user_id: string
         }
         Insert: {
+          attempts?: number
+          claimed_at?: string | null
           created_at?: string
+          decision?: string
           first_name?: string | null
           id?: string
           is_driver?: boolean | null
           is_rider?: boolean | null
+          last_error?: string | null
+          next_attempt_at?: string
           processed_at?: string | null
+          rejection_reason?: string | null
           status?: string
           user_email: string
           user_id: string
         }
         Update: {
+          attempts?: number
+          claimed_at?: string | null
           created_at?: string
+          decision?: string
           first_name?: string | null
           id?: string
           is_driver?: boolean | null
           is_rider?: boolean | null
+          last_error?: string | null
+          next_attempt_at?: string
           processed_at?: string | null
+          rejection_reason?: string | null
           status?: string
           user_email?: string
           user_id?: string

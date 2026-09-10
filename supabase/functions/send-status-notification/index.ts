@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import { sendEmail } from "../_shared/email-sender.ts";
+import { escapeHtml } from "../_shared/verification-decision-core.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -23,26 +25,64 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Admin-only: a normal user must never be able to trigger delivery to an
+    // arbitrary recipient with arbitrary text.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", ""),
+    );
+    if (userError || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const { data: isAdmin } = await supabase.rpc("has_role", {
+      _user_id: userData.user.id,
+      _role: "admin",
+    });
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     const { userEmail, displayName, status, adminDisplayName, reason }: StatusNotificationRequest = await req.json();
 
     console.log("Sending status notification to:", userEmail, "Status:", status);
+
 
     const subject = status === "approved" 
       ? "✅ Your CashRidez Account Has Been Verified!" 
       : "⚠️ CashRidez Verification Update";
 
-    const adminInfo = adminDisplayName ? `<p style="margin: 8px 0 0 0; color: #374151;">Reviewed by: <strong>${adminDisplayName}</strong></p>` : "";
+    const safeName = escapeHtml(displayName);
+    const adminInfo = adminDisplayName ? `<p style="margin: 8px 0 0 0; color: #374151;">Reviewed by: <strong>${escapeHtml(adminDisplayName)}</strong></p>` : "";
     const reasonBlock = status === "rejected" && reason
       ? `<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0;">
            <h3 style="margin-top: 0; color: #991b1b;">Reason for Rejection</h3>
-           <p style="color: #991b1b; white-space: pre-wrap;">${reason}</p>
+           <p style="color: #991b1b; white-space: pre-wrap;">${escapeHtml(reason)}</p>
          </div>`
       : "";
 
     const html = status === "approved"
       ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #10b981;">Welcome to CashRidez, ${displayName}!</h1>
+          <h1 style="color: #10b981;">Welcome to CashRidez, ${safeName}!</h1>
           <p>Great news! Your account has been verified and you now have full access to all CashRidez features.</p>
           ${adminInfo}
           <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 24px 0;">
@@ -60,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
       : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #ef4444;">Verification Status Update</h1>
-          <p>Hello ${displayName},</p>
+          <p>Hello ${safeName},</p>
           <p>We've reviewed your verification submission, but unfortunately we were unable to verify your account at this time.</p>
           ${adminInfo}
           ${reasonBlock}
