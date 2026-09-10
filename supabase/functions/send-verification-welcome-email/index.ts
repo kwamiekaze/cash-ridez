@@ -9,12 +9,48 @@ import {
   DecisionQueueRow,
   getPrimaryRole,
   isSyntheticQueueId,
+  manualResendIdempotencyKey,
   MAX_DECISION_ATTEMPTS,
   normalizeDecision,
-  resolveRejectionReason,
+  STALE_CLAIM_TIMEOUT_MS,
   retryDelayMs,
   shouldRetry,
 } from "../_shared/verification-decision-core.ts";
+
+/**
+ * Only the unauthenticated empty-body cron run may skip this. Every direct
+ * send/test/status request must carry a valid Bearer user with the admin role.
+ */
+async function requireAdmin(req: Request, service: any): Promise<Response | null> {
+  const deny = (status: number, error: string) =>
+    new Response(JSON.stringify({ error }), {
+      status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return deny(401, "Unauthorized");
+
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) return deny(401, "Unauthorized");
+
+  const authClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+  );
+
+  const { data: userData, error: userError } = await authClient.auth.getUser(token);
+  const callerId = userData?.user?.id;
+  if (userError || !callerId) return deny(401, "Unauthorized");
+
+  const { data: isAdmin, error: roleError } = await service.rpc("has_role", {
+    _user_id: callerId,
+    _role: "admin",
+  });
+  if (roleError || isAdmin !== true) return deny(403, "Admin role required");
+
+  return null;
+}
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -87,6 +123,7 @@ async function processQueuedEmail(
   queueItem: DecisionQueueRow,
   isTest = false,
   forceResend = false,
+  overrideIdempotencyKey?: string,
 ): Promise<ProcessResult> {
   const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
   const decision = normalizeDecision(queueItem.decision);
@@ -99,7 +136,9 @@ async function processQueuedEmail(
   const systemStatus = await getEmailSystemStatus(resend);
   const primaryRole = getPrimaryRole(is_driver, is_rider);
   const emailType = isTest ? "email_test" : decisionEmailType(decision, primaryRole);
-  const idempotencyKey = decisionIdempotencyKey(id);
+  // Queue decisions are deterministic by queue UUID; an explicit admin resend
+  // supplies a per-request key so repeat resends are intentionally allowed.
+  const idempotencyKey = overrideIdempotencyKey ?? decisionIdempotencyKey(id);
 
   if (!isTest && !forceResend) {
     if (!synthetic) {
@@ -195,7 +234,12 @@ async function processQueuedEmail(
   let result = { success: false, error: "", senderUsed: "", fallbackActive: false };
 
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const sendResult = await sendEmail(resend, { to: [user_email], subject, html });
+    const sendResult = await sendEmail(resend, {
+      to: [user_email],
+      subject,
+      html,
+      idempotencyKey,
+    });
 
     if (sendResult.success) {
       result = {
@@ -269,8 +313,42 @@ async function processQueuedEmail(
 }
 
 /** Claim a bounded batch so overlapping cron runs cannot double-send. */
+/**
+ * Return rows abandoned mid-send (worker crash, failed status write) to
+ * pending so they are retried. Only 'sending' rows are touched — sent,
+ * failed and skipped_backlog rows are never revived.
+ */
+async function recoverStaleClaims(supabase: any): Promise<number> {
+  const cutoff = new Date(Date.now() - STALE_CLAIM_TIMEOUT_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("verification_email_queue")
+    .update({
+      status: "pending",
+      claimed_at: null,
+      next_attempt_at: new Date().toISOString(),
+      last_error: `Recovered stale claim: no result recorded within ${
+        Math.round(STALE_CLAIM_TIMEOUT_MS / 60000)
+      } minutes`,
+    })
+    .eq("status", "sending")
+    .lt("claimed_at", cutoff)
+    .lt("attempts", MAX_DECISION_ATTEMPTS)
+    .select("id");
+
+  if (error) {
+    console.error("Failed to recover stale claims:", error);
+    return 0;
+  }
+  const count = data?.length ?? 0;
+  if (count > 0) console.log(`Recovered ${count} stale 'sending' row(s)`);
+  return count;
+}
+
 async function claimBatch(supabase: any): Promise<DecisionQueueRow[]> {
+  await recoverStaleClaims(supabase);
   const nowIso = new Date().toISOString();
+
 
   const { data: candidates, error } = await supabase
     .from("verification_email_queue")
@@ -312,6 +390,13 @@ const handler = async (req: Request): Promise<Response> => {
       // Empty body = process queue (cron)
     }
 
+    // Anything other than the unauthenticated cron queue run is admin-only.
+    const needsAdmin = body.action === "status" || Boolean(body.userId);
+    if (needsAdmin) {
+      const denial = await requireAdmin(req, supabase);
+      if (denial) return denial;
+    }
+
     if (body.action === "status") {
       const status = await getEmailSystemStatus(resend);
       return new Response(JSON.stringify(status), {
@@ -320,24 +405,54 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Direct single-user invocation (admin "Resend Welcome Email", etc.)
+    // Direct single-user invocation (admin "Resend Welcome Email", test email).
     if (body.userId) {
-      const { userId, userEmail, firstName, isDriver, isRider, isTest, forceResend, decision, rejectionReason } = body;
+      const { userId, isTest, forceResend } = body;
+
+      if (typeof userId !== "string" || userId.trim() === "") {
+        return new Response(JSON.stringify({ error: "Invalid userId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Recipient, name, roles and reason come from the authoritative profile
+      // row only — caller-supplied values are ignored entirely.
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, display_name, is_driver, is_rider, verification_status, verification_notes")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile?.email) {
+        return new Response(
+          JSON.stringify({ error: "No profile or email address for that user" }),
+          { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+
+      const firstName = (profile.full_name || profile.display_name || "")
+        .toString()
+        .trim()
+        .split(" ")[0] || null;
 
       const result = await processQueuedEmail(
         supabase,
         {
           id: (isTest ? "test-" : "direct-") + userId,
           user_id: userId,
-          user_email: userEmail,
+          user_email: profile.email,
           first_name: firstName,
-          is_driver: isDriver ?? false,
-          is_rider: isRider ?? false,
-          decision: normalizeDecision(decision),
-          rejection_reason: rejectionReason ?? null,
+          is_driver: profile.is_driver ?? false,
+          is_rider: profile.is_rider ?? false,
+          decision: normalizeDecision(profile.verification_status),
+          rejection_reason: profile.verification_notes ?? null,
         },
-        isTest,
+        Boolean(isTest),
         forceResend ?? false,
+        // Explicit admin resends must be repeatable.
+        manualResendIdempotencyKey(userId),
       );
 
       if (result.skipped) {

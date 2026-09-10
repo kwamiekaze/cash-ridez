@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.idx_verification_email_queue_pending;

@@ -91,9 +91,48 @@ export function decisionIdempotencyKey(queueId: string): string {
   return `verification-decision-${queueId}`;
 }
 
+/**
+ * An explicit admin resend must be allowed to repeat, so its provider key is
+ * unique per request rather than derived from the deterministic synthetic id.
+ */
+export function manualResendIdempotencyKey(
+  userId: string,
+  nonce: string = crypto.randomUUID(),
+): string {
+  return `verification-manual-${userId}-${nonce}`;
+}
+
+/**
+ * The helper walks a chain of sender identities, so each attempt must carry
+ * its own key: reusing one key with a different `from` would either be
+ * rejected or silently collapse into the earlier failed payload.
+ */
+export function senderScopedIdempotencyKey(
+  baseKey: string,
+  senderIndex: number,
+): string {
+  return `${baseKey}-s${senderIndex}`;
+}
+
 /** Direct (non-queue) invocations use synthetic ids we must not persist against. */
 export function isSyntheticQueueId(id: string): boolean {
   return id.startsWith("direct-") || id.startsWith("test-");
+}
+
+/** A 'sending' row older than this is treated as an abandoned claim. */
+export const STALE_CLAIM_TIMEOUT_MS = 15 * 60_000;
+
+/** Whether a claimed row should be released back to pending for a retry. */
+export function isStaleClaim(
+  claimedAt: string | null | undefined,
+  attempts: number | null | undefined,
+  now: number = Date.now(),
+): boolean {
+  if (!claimedAt) return false;
+  const claimedMs = Date.parse(claimedAt);
+  if (Number.isNaN(claimedMs)) return false;
+  if ((attempts ?? 0) >= MAX_DECISION_ATTEMPTS) return false;
+  return now - claimedMs >= STALE_CLAIM_TIMEOUT_MS;
 }
 
 export const MAX_DECISION_ATTEMPTS = 3;

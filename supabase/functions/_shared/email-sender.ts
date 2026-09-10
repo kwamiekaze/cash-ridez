@@ -5,6 +5,7 @@
 
 
 import { Resend } from "https://esm.sh/resend@4.0.0";
+import { senderScopedIdempotencyKey } from "./verification-decision-core.ts";
 
 // Email sender addresses in priority order
 const VERIFIED_SENDER = "CashRidez <connect@cashridez.com>";
@@ -35,6 +36,12 @@ export interface EmailOptions {
    * The verified updates.cashridez.com fallbacks are always kept behind it.
    */
   from?: string;
+  /**
+   * Stable provider-side idempotency key. Each sender attempt derives its own
+   * scoped key (see senderScopedIdempotencyKey) because the payload's `from`
+   * differs per attempt.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -130,7 +137,7 @@ export async function sendEmail(
   options: EmailOptions,
   forceFallback: boolean = false
 ): Promise<EmailSendResult> {
-  const { to, subject, html, replyTo, from } = options;
+  const { to, subject, html, replyTo, from, idempotencyKey } = options;
 
   // Ordered, de-duplicated sender chain.
   const sendersToTry: string[] = [];
@@ -171,7 +178,15 @@ export async function sendEmail(
         emailPayload.replyTo = replyTo;
       }
 
-      const response = await resend.emails.send(emailPayload);
+      // Per-attempt key: the payload's `from` changes down the sender chain,
+      // so one shared key would collide with a different payload.
+      const sendOptions = idempotencyKey
+        ? { idempotencyKey: senderScopedIdempotencyKey(idempotencyKey, i) }
+        : undefined;
+
+      const response = sendOptions
+        ? await resend.emails.send(emailPayload, sendOptions)
+        : await resend.emails.send(emailPayload);
 
       if (response.error) {
         const errorMsg = boundedError(response.error.message || JSON.stringify(response.error));
