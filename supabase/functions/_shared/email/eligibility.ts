@@ -133,6 +133,29 @@ export function evaluateEmailEligibility(
   return { eligible: true, reason: "ok" };
 }
 
+/**
+ * In-app "new trip near you" alerts.
+ *
+ * Same audience rule as the email, minus the email address requirement: an
+ * in-app notification needs no mailbox and no subscription. Only the verified
+ * driver check, self-exclusion, and the recipient's own preferences apply.
+ */
+export function evaluateNewTripInAppEligibility(
+  profile: RecipientProfileLike | null | undefined,
+  options: { riderId?: string | null } = {},
+): EligibilityResult {
+  if (!profile) return { eligible: false, reason: "no_profile" };
+  if (options.riderId && profile.id && profile.id === options.riderId) {
+    return { eligible: false, reason: "is_rider" };
+  }
+  if (profile.is_driver !== true) return { eligible: false, reason: "not_driver" };
+  if (profile.is_verified !== true) return { eligible: false, reason: "not_verified" };
+  if (!preferenceAllows(profile.notification_preferences, "new_trip")) {
+    return { eligible: false, reason: "preference_off" };
+  }
+  return { eligible: true, reason: "ok" };
+}
+
 /** New-trip email additionally requires a verified driver. */
 export function evaluateNewTripEligibility(
   profile: RecipientProfileLike | null | undefined,

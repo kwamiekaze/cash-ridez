@@ -2269,6 +2269,54 @@ export type Database = {
           },
         ]
       }
+      geocode_cache: {
+        Row: {
+          address_key: string
+          created_at: string
+          display_name: string | null
+          id: string
+          lat: number
+          lng: number
+          updated_at: string
+          zip: string
+        }
+        Insert: {
+          address_key: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          lat: number
+          lng: number
+          updated_at?: string
+          zip: string
+        }
+        Update: {
+          address_key?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          updated_at?: string
+          zip?: string
+        }
+        Relationships: []
+      }
+      geocode_rate_limit: {
+        Row: {
+          last_request_at: string
+          slot: string
+        }
+        Insert: {
+          last_request_at?: string
+          slot: string
+        }
+        Update: {
+          last_request_at?: string
+          slot?: string
+        }
+        Relationships: []
+      }
       kyc_submissions: {
         Row: {
           back_image_url: string | null
@@ -3696,6 +3744,10 @@ export type Database = {
           outcome: string
           token: string
         }[]
+      }
+      reserve_geocode_slot: {
+        Args: { p_min_interval_ms?: number }
+        Returns: boolean
       }
       retire_checkout_attempt: {
         Args: { p_key: string; p_reason: string; p_user_id: string }

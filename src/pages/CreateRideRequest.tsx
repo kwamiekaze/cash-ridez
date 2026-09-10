@@ -179,13 +179,42 @@ END:VCARD`;
     };
   }, [estimatedDistance, formData.priceOffer]);
 
-  const geocodeAddress = async (address: string) => {
-    // Mock geocoding - in production, use Google Maps or Mapbox API
-    return {
-      lat: 40.7128,
-      lng: -74.006,
-      zip: "10001",
-    };
+  /**
+   * Authoritative address lookup. Runs server-side so the trip can never be
+   * saved with placeholder coordinates. Throws with a user-facing message
+   * when the address cannot be resolved.
+   */
+  const geocodeAddress = async (
+    address: string,
+    label: "Pickup" | "Dropoff",
+  ): Promise<{ lat: number; lng: number; zip: string }> => {
+    const { data, error } = await supabase.functions.invoke("geocode-address", {
+      body: { address },
+    });
+
+    if (error) {
+      let message = "";
+      try {
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.text === "function") {
+          const parsed = JSON.parse(await ctx.text());
+          if (typeof parsed?.message === "string") message = parsed.message;
+        }
+      } catch {
+        // fall through to the generic message
+      }
+      throw new Error(`${label} address: ${message || "we couldn't look up that address. Please try again."}`);
+    }
+
+    const lat = Number((data as any)?.lat);
+    const lng = Number((data as any)?.lng);
+    const zip = typeof (data as any)?.zip === "string" ? (data as any).zip : "";
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || !/^\d{5}$/.test(zip)) {
+      throw new Error(`${label} address: we couldn't confirm that location. Please check it and try again.`);
+    }
+
+    return { lat, lng, zip };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -282,9 +311,10 @@ END:VCARD`;
       }
 
 
-      // 5) Geocode addresses (stubbed) and build keywords
-      const pickupGeo = await geocodeAddress(formData.pickupAddress.trim());
-      const dropoffGeo = await geocodeAddress(formData.dropoffAddress.trim());
+      // 5) Resolve both addresses server-side. Sequential on purpose: the
+      // upstream lookup allows one request per second globally.
+      const pickupGeo = await geocodeAddress(formData.pickupAddress.trim(), "Pickup");
+      const dropoffGeo = await geocodeAddress(formData.dropoffAddress.trim(), "Dropoff");
 
       const sanitizeForKeywords = (text: string) =>
         text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((k) => k.length > 2);
@@ -352,19 +382,9 @@ END:VCARD`;
         .single();
       if (error) throw error;
 
-      // 7) Fire-and-forget notifications (non-blocking)
-      if (newTrip) {
-        supabase.functions
-          .invoke('send-new-trip-notification', {
-            body: { ride_request_id: newTrip.id, rider_id: userId, pickup_zip: pickupGeo.zip },
-          })
-          .then((result) => {
-            console.log('✅ New trip notification response:', result);
-          })
-          .catch((err) => {
-            console.error('❌ Error sending new trip notifications:', err);
-          });
-      }
+      // 7) Nearby-driver alerts are fanned out server-side from the
+      // authoritative trip_posted outbox event. The browser sends nothing.
+
 
       toast.success("Trip request created!");
       // Navigate immediately for snappier UX; the Rider page can refresh on mount

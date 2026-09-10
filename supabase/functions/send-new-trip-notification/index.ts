@@ -25,16 +25,68 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { ride_request_id, rider_id, pickup_zip } = await req.json();
+    // Caller must be signed in AND be the rider on the ride they name.
+    const authHeader = req.headers.get('Authorization') ?? '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const token = authHeader.replace('Bearer ', '').trim();
+    const authClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+    const { data: claims, error: authError } = await authClient.auth.getClaims(token);
+    const callerId = claims?.claims?.sub;
+    if (authError || !callerId) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    console.log(`🚕 Processing new trip notification: ride_request_id=${ride_request_id}, rider_id=${rider_id}, pickup_zip=${pickup_zip}`);
-
-    if (!ride_request_id || !rider_id || !pickup_zip) {
+    const body = await req.json().catch(() => ({}));
+    const ride_request_id = typeof body?.ride_request_id === 'string' ? body.ride_request_id : '';
+    if (!ride_request_id) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Client-supplied rider id / ZIP are ignored: the ride row is authoritative.
+    const { data: ride, error: rideError } = await supabaseClient
+      .from('ride_requests')
+      .select('id, rider_id, pickup_zip')
+      .eq('id', ride_request_id)
+      .maybeSingle();
+
+    if (rideError || !ride) {
+      return new Response(
+        JSON.stringify({ error: 'Ride not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (ride.rider_id !== callerId) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const rider_id = ride.rider_id;
+    const pickup_zip = ride.pickup_zip;
+    if (!pickup_zip) {
+      return new Response(
+        JSON.stringify({ error: 'Ride has no pickup ZIP' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`🚕 Processing new trip notification: ride_request_id=${ride_request_id}`);
+
 
     // Get rider profile
     const { data: riderProfile, error: riderError } = await supabaseClient

@@ -160,3 +160,6 @@ verify_jwt = false
 
 [functions.process-email-notifications]
 verify_jwt = false
+
+[functions.geocode-address]
+verify_jwt = true
