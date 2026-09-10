@@ -760,11 +760,12 @@ export function LiveMapView({ className }: LiveMapViewProps) {
           scrollWheelZoom: true,
         });
 
-        // Configurable tile URL with fallback to dark CARTO tiles
-        const tileUrl = import.meta.env.VITE_MAP_TILE_URL || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-        
+        // Configurable tile URL with keyless OpenStreetMap fallback.
+        // Dark appearance comes from a CSS filter on the tile pane (see index.css).
+        const tileUrl = import.meta.env.VITE_MAP_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
         L.tileLayer(tileUrl, {
-          attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">© OSM</a> · <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
+          attribution: '<a href="https://www.openstreetmap.org/copyright" target="_blank">© OpenStreetMap contributors</a>',
           maxZoom: 19,
         }).addTo(map);
 
