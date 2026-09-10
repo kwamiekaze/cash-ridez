@@ -121,6 +121,16 @@ const AdminEmailCenter = () => {
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [runningWorker, setRunningWorker] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  // Lightweight 1s clock so "next send" counts down live while a campaign runs.
+  const hasRunningCampaign = campaigns.some((c) => c.status === 'running');
+  useEffect(() => {
+    if (!hasRunningCampaign) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasRunningCampaign]);
+
 
   // Load users with emails
   useEffect(() => {
@@ -823,14 +833,18 @@ const AdminEmailCenter = () => {
                                     <span>
                                       {(c.sent_count || 0)}/{c.total_recipients} sent
                                     </span>
-                                    <span>• 1 every {c.throttle_seconds || 2}s</span>
-                                    {c.next_send_at && (
-                                      <span>
-                                        • next send {new Date(c.next_send_at).getTime() <= Date.now()
-                                          ? 'now'
-                                          : formatDistanceToNow(new Date(c.next_send_at), { addSuffix: true })}
-                                      </span>
-                                    )}
+                                    <span>• 1 email every {c.throttle_seconds ?? 2}s</span>
+                                    {c.next_send_at && (() => {
+                                      const secondsLeft = Math.max(
+                                        0,
+                                        Math.ceil((new Date(c.next_send_at).getTime() - nowTick) / 1000)
+                                      );
+                                      return (
+                                        <span>
+                                          • next send {secondsLeft === 0 ? 'now' : `in ${secondsLeft}s`}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 </>
                               )}

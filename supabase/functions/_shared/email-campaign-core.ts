@@ -57,7 +57,7 @@ export function validateTemplates(subject: unknown, body: unknown): TemplateVali
 
 /** Footer appended to the built-in presets. No deliverability promises. */
 export const PRESET_FOOTER =
-  "If you no longer want these updates, you can change your notification preferences anytime at https://cashridez.com.";
+  "If you no longer want these updates, you can change your email notification preferences anytime at https://cashridez.com/profile.";
 
 export interface EmailPreset {
   id: string;

@@ -183,11 +183,22 @@ Deno.serve(async (req) => {
     }
 
     // Immediate first runner trigger (cron keeps later batches going).
-    fetch(`${supabaseUrl}/functions/v1/admin-bulk-email-runner`, {
+    // Kept off the response path: waitUntil lets the batch run after we reply.
+    const triggerRunner = fetch(`${supabaseUrl}/functions/v1/admin-bulk-email-runner`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseServiceKey}` },
       body: JSON.stringify({ campaign_id: campaign.id }),
-    }).catch((err) => console.error('[admin-create-driver-email-campaign] runner trigger failed:', err));
+    })
+      .then(() => console.log('[admin-create-driver-email-campaign] runner triggered for', campaign.id))
+      .catch((err) => console.error('[admin-create-driver-email-campaign] runner trigger failed:', err));
+
+    const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (typeof runtime?.waitUntil === 'function') {
+      runtime.waitUntil(triggerRunner);
+    } else {
+      // Fallback: await the dispatch so the request is at least sent before we return.
+      await triggerRunner;
+    }
 
     return new Response(
       JSON.stringify({
