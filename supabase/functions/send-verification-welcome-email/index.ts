@@ -87,6 +87,7 @@ async function processQueuedEmail(
   queueItem: DecisionQueueRow,
   isTest = false,
   forceResend = false,
+  overrideIdempotencyKey?: string,
 ): Promise<ProcessResult> {
   const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
   const decision = normalizeDecision(queueItem.decision);
@@ -99,7 +100,9 @@ async function processQueuedEmail(
   const systemStatus = await getEmailSystemStatus(resend);
   const primaryRole = getPrimaryRole(is_driver, is_rider);
   const emailType = isTest ? "email_test" : decisionEmailType(decision, primaryRole);
-  const idempotencyKey = decisionIdempotencyKey(id);
+  // Queue decisions are deterministic by queue UUID; an explicit admin resend
+  // supplies a per-request key so repeat resends are intentionally allowed.
+  const idempotencyKey = overrideIdempotencyKey ?? decisionIdempotencyKey(id);
 
   if (!isTest && !forceResend) {
     if (!synthetic) {
