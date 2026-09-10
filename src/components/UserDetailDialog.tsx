@@ -263,19 +263,9 @@ export function UserDetailDialog({ userId, open, onOpenChange, onUpdate }: UserD
 
       if (error) throw error;
 
-      // Send rejection notification email with reason
-      try {
-        await supabase.functions.invoke("send-status-notification", {
-          body: {
-            userEmail: user.email,
-            displayName: user.display_name || user.email,
-            status: "rejected",
-            reason: reason,
-          },
-        });
-      } catch (emailError) {
-        console.error("Error sending notification email:", emailError);
-      }
+      // The rejection email (with this exact saved reason) is queued
+      // server-side by the profiles trigger and sent by the worker.
+
 
       toast.success("Verification rejected - user notified to resubmit");
       onUpdate();
