@@ -198,7 +198,12 @@ async function processQueuedEmail(
   let result = { success: false, error: "", senderUsed: "", fallbackActive: false };
 
   for (let attempt = 1; attempt <= 3; attempt++) {
-    const sendResult = await sendEmail(resend, { to: [user_email], subject, html });
+    const sendResult = await sendEmail(resend, {
+      to: [user_email],
+      subject,
+      html,
+      idempotencyKey,
+    });
 
     if (sendResult.success) {
       result = {
