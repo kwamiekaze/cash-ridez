@@ -354,6 +354,13 @@ const handler = async (req: Request): Promise<Response> => {
       // Empty body = process queue (cron)
     }
 
+    // Anything other than the unauthenticated cron queue run is admin-only.
+    const needsAdmin = body.action === "status" || Boolean(body.userId);
+    if (needsAdmin) {
+      const denial = await requireAdmin(req, supabase);
+      if (denial) return denial;
+    }
+
     if (body.action === "status") {
       const status = await getEmailSystemStatus(resend);
       return new Response(JSON.stringify(status), {
@@ -362,24 +369,54 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Direct single-user invocation (admin "Resend Welcome Email", etc.)
+    // Direct single-user invocation (admin "Resend Welcome Email", test email).
     if (body.userId) {
-      const { userId, userEmail, firstName, isDriver, isRider, isTest, forceResend, decision, rejectionReason } = body;
+      const { userId, isTest, forceResend } = body;
+
+      if (typeof userId !== "string" || userId.trim() === "") {
+        return new Response(JSON.stringify({ error: "Invalid userId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+
+      // Recipient, name, roles and reason come from the authoritative profile
+      // row only — caller-supplied values are ignored entirely.
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, display_name, is_driver, is_rider, verification_status, verification_notes")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+      if (!profile?.email) {
+        return new Response(
+          JSON.stringify({ error: "No profile or email address for that user" }),
+          { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } },
+        );
+      }
+
+      const firstName = (profile.full_name || profile.display_name || "")
+        .toString()
+        .trim()
+        .split(" ")[0] || null;
 
       const result = await processQueuedEmail(
         supabase,
         {
           id: (isTest ? "test-" : "direct-") + userId,
           user_id: userId,
-          user_email: userEmail,
+          user_email: profile.email,
           first_name: firstName,
-          is_driver: isDriver ?? false,
-          is_rider: isRider ?? false,
-          decision: normalizeDecision(decision),
-          rejection_reason: rejectionReason ?? null,
+          is_driver: profile.is_driver ?? false,
+          is_rider: profile.is_rider ?? false,
+          decision: normalizeDecision(profile.verification_status),
+          rejection_reason: profile.verification_notes ?? null,
         },
-        isTest,
+        Boolean(isTest),
         forceResend ?? false,
+        // Explicit admin resends must be repeatable.
+        manualResendIdempotencyKey(userId),
       );
 
       if (result.skipped) {
