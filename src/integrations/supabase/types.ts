@@ -3664,6 +3664,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_new_trip_notifications: { Args: { p_rows: Json }; Returns: number }
       is_cancel_chargeable: {
         Args: {
           p_accepted_at: string
