@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   buildApprovalEmail,
   buildDecisionEmail,
@@ -7,14 +8,18 @@ import {
   decisionEmailType,
   decisionIdempotencyKey,
   escapeHtml,
+  isStaleClaim,
   isSyntheticQueueId,
+  manualResendIdempotencyKey,
   MAX_DECISION_ATTEMPTS,
   normalizeDecision,
   PROFILE_URL,
   resolveRejectionReason,
   REVERIFY_URL,
+  senderScopedIdempotencyKey,
   shouldEnqueueDecision,
   shouldRetry,
+  STALE_CLAIM_TIMEOUT_MS,
 } from "../verification-decision-core.ts";
 
 describe("approval email", () => {
