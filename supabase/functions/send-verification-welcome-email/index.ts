@@ -2,6 +2,19 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 import { sendEmail, getEmailSystemStatus } from "../_shared/email-sender.ts";
+import {
+  buildDecisionEmail,
+  decisionEmailType,
+  decisionIdempotencyKey,
+  DecisionQueueRow,
+  getPrimaryRole,
+  isSyntheticQueueId,
+  MAX_DECISION_ATTEMPTS,
+  normalizeDecision,
+  resolveRejectionReason,
+  retryDelayMs,
+  shouldRetry,
+} from "../_shared/verification-decision-core.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -11,138 +24,14 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-interface QueuedEmail {
-  id: string;
-  user_id: string;
-  user_email: string;
-  first_name: string | null;
-  is_driver: boolean;
-  is_rider: boolean;
-}
-
-// Determine primary role: Driver takes priority, fallback to Rider
-function getPrimaryRole(isDriver: boolean, isRider: boolean): "driver" | "rider" {
-  if (isDriver) return "driver";
-  return "rider"; // Fallback to rider if neither or only rider
-}
-
-function getDriverEmailHtml(firstName: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #000 0%, #1a1a1a 100%); padding: 30px; border-radius: 12px; margin-bottom: 20px;">
-    <h1 style="color: #facc15; margin: 0; font-size: 24px;">🚗 You're Verified!</h1>
-    <p style="color: #fff; margin: 10px 0 0 0; font-size: 16px;">Your Driver Profile Is Now Active on CashRidez</p>
-  </div>
-
-  <p style="font-size: 16px;">Hi ${firstName},</p>
-
-  <p style="font-size: 16px;">Congratulations — your CashRidez driver account has been officially verified!</p>
-
-  <p style="font-size: 16px;">You're now ready to connect with riders nearby and start earning real cash immediately.</p>
-
-  <hr style="border: none; border-top: 2px solid #facc15; margin: 30px 0;">
-
-  <h2 style="color: #000; font-size: 18px;">🚀 Step 1 — Update Your Approximate Location</h2>
-  <p style="font-size: 16px;">Your driver pin helps riders close to you discover you quickly.</p>
-  <p style="font-size: 16px; background: #f5f5f5; padding: 12px; border-radius: 8px; border-left: 4px solid #facc15;">
-    Go to: <strong>Map → Update My Pin</strong>
-  </p>
-  <p style="font-size: 16px;">This takes only a moment and instantly increases your chances of receiving trip requests.</p>
-
-  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-  <h2 style="color: #000; font-size: 18px;">🧩 Step 2 — Complete Your Driver Profile</h2>
-  <p style="font-size: 16px;">A strong driver profile builds trust and helps riders choose you.</p>
-  <p style="font-size: 16px;">Please make sure you've added:</p>
-  <ul style="font-size: 16px;">
-    <li>Profile photo</li>
-    <li>Vehicle details</li>
-    <li>Any optional info you'd like to showcase</li>
-  </ul>
-
-  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-  <h2 style="color: #000; font-size: 18px;">💰 Why This Matters</h2>
-  <p style="font-size: 16px;">CashRidez is built on real people, real visibility, and real cash. Drivers who update their location and complete their profiles get significantly more rider connections.</p>
-
-  <p style="font-size: 16px;">Welcome to the community — excited to see you on the road.</p>
-
-  <div style="background: #000; color: #facc15; padding: 20px; border-radius: 8px; margin-top: 30px; text-align: center;">
-    <p style="margin: 0; font-size: 18px; font-weight: bold;">Let's earn. 🚗💵</p>
-    <p style="margin: 10px 0 0 0; color: #fff; font-size: 14px;">— CashRidez Team<br>CashRidez Connect LLC</p>
-  </div>
-</body>
-</html>
-  `;
-}
-
-function getRiderEmailHtml(firstName: string): string {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #000 0%, #1a1a1a 100%); padding: 30px; border-radius: 12px; margin-bottom: 20px;">
-    <h1 style="color: #facc15; margin: 0; font-size: 24px;">🎉 You're Verified!</h1>
-    <p style="color: #fff; margin: 10px 0 0 0; font-size: 16px;">Welcome to CashRidez!</p>
-  </div>
-
-  <p style="font-size: 16px;">Hi ${firstName},</p>
-
-  <p style="font-size: 16px;">Great news — your CashRidez rider profile is now verified!</p>
-
-  <p style="font-size: 16px;">You can now connect with drivers in your area and start saving money on every trip.</p>
-
-  <hr style="border: none; border-top: 2px solid #facc15; margin: 30px 0;">
-
-  <h2 style="color: #000; font-size: 18px;">📍 Step 1 — Update Your Approximate Location</h2>
-  <p style="font-size: 16px;">This helps nearby drivers see you're in the community and ready for trip requests.</p>
-  <p style="font-size: 16px; background: #f5f5f5; padding: 12px; border-radius: 8px; border-left: 4px solid #facc15;">
-    Open: <strong>Map → Update My Pin</strong>
-  </p>
-  <p style="font-size: 16px;">Your pin is approximate only, never precise.</p>
-
-  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-  <h2 style="color: #000; font-size: 18px;">🧩 Step 2 — Complete Your Rider Profile</h2>
-  <p style="font-size: 16px;">This helps drivers quickly recognize and trust your account.</p>
-  <p style="font-size: 16px;">Add your:</p>
-  <ul style="font-size: 16px;">
-    <li>Profile photo</li>
-    <li>Any optional information you'd like drivers to see</li>
-  </ul>
-
-  <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-
-  <h2 style="color: #000; font-size: 18px;">💛 Why This Matters</h2>
-  <p style="font-size: 16px;">The CashRidez map works best when everyone is visible and recently active. By updating your location, you help grow a strong Georgia community where everyone earns and saves more.</p>
-
-  <p style="font-size: 16px;">Welcome aboard — let's ride!</p>
-
-  <div style="background: #000; color: #facc15; padding: 20px; border-radius: 8px; margin-top: 30px; text-align: center;">
-    <p style="margin: 0; font-size: 18px; font-weight: bold;">💛🚗💰</p>
-    <p style="margin: 10px 0 0 0; color: #fff; font-size: 14px;">— CashRidez Team<br>CashRidez Connect LLC</p>
-  </div>
-</body>
-</html>
-  `;
-}
+const BATCH_SIZE = 10;
 
 function getTestEmailHtml(systemStatus: any): string {
   const statusColor = systemStatus.fallbackActive ? "#f59e0b" : "#10b981";
-  const statusText = systemStatus.fallbackActive 
+  const statusText = systemStatus.fallbackActive
     ? "⚠️ Temporary sender fallback active. Domain verification still pending."
     : "✅ Primary domain verified and active.";
-    
+
   return `
 <!DOCTYPE html>
 <html>
@@ -157,19 +46,14 @@ function getTestEmailHtml(systemStatus: any): string {
   </div>
 
   <p style="font-size: 16px;">This is a test email from the CashRidez admin panel.</p>
-  
-  <p style="font-size: 16px;">If you received this email, the email delivery system is working correctly.</p>
 
   <div style="background: ${systemStatus.fallbackActive ? '#fef3c7' : '#f0fdf4'}; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColor};">
-    <p style="margin: 0; font-size: 14px; color: ${statusColor};">
-      ${statusText}
-    </p>
+    <p style="margin: 0; font-size: 14px; color: ${statusColor};">${statusText}</p>
   </div>
 
   <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 20px 0;">
     <p style="margin: 0; font-size: 14px; color: #666;">
       <strong>Timestamp:</strong> ${new Date().toISOString()}<br>
-      <strong>Environment:</strong> Production<br>
       <strong>Current Sender:</strong> ${systemStatus.currentSender}<br>
       <strong>Domain Verified:</strong> ${systemStatus.domainVerified ? 'Yes' : 'No'}<br>
       <strong>Fallback Active:</strong> ${systemStatus.fallbackActive ? 'Yes' : 'No'}
@@ -184,53 +68,94 @@ function getTestEmailHtml(systemStatus: any): string {
   `;
 }
 
+interface ProcessResult {
+  success: boolean;
+  error?: string;
+  fallbackActive?: boolean;
+  skipped?: boolean;
+}
+
+/**
+ * Send one verification decision email.
+ *
+ * Idempotency is per queue decision event (queue id) so a later rejection or
+ * re-approval after a fresh review is still delivered. Direct/test calls use
+ * synthetic ids and fall back to the historical per-user check.
+ */
 async function processQueuedEmail(
   supabase: any,
-  queueItem: QueuedEmail,
-  isTest: boolean = false,
-  forceResend: boolean = false
-): Promise<{ success: boolean; error?: string; fallbackActive?: boolean; skipped?: boolean }> {
+  queueItem: DecisionQueueRow,
+  isTest = false,
+  forceResend = false,
+): Promise<ProcessResult> {
   const { id, user_id, user_email, first_name, is_driver, is_rider } = queueItem;
-  
-  console.log(`Processing email for user ${user_id}, email: ${user_email}, isTest: ${isTest}, forceResend: ${forceResend}`);
+  const decision = normalizeDecision(queueItem.decision);
+  const synthetic = isSyntheticQueueId(id);
 
-  // Get system status for test emails
+  console.log(
+    `Processing ${decision} email for user ${user_id} (queue ${id}), isTest: ${isTest}, forceResend: ${forceResend}`,
+  );
+
   const systemStatus = await getEmailSystemStatus(resend);
-
-  // Determine primary role
   const primaryRole = getPrimaryRole(is_driver, is_rider);
-  const emailType = isTest 
-    ? "email_test" 
-    : (primaryRole === "driver" ? "verification_welcome_driver" : "verification_welcome_rider");
+  const emailType = isTest ? "email_test" : decisionEmailType(decision, primaryRole);
+  const idempotencyKey = decisionIdempotencyKey(id);
 
-  // Skip duplicate check for test emails AND force resend
   if (!isTest && !forceResend) {
-    // Check for existing successful email in email_logs (prevent duplicates)
-    const { data: existingLog } = await supabase
-      .from("email_logs")
-      .select("id")
-      .eq("user_id", user_id)
-      .eq("email_type", emailType)
-      .eq("status", "success")
-      .maybeSingle();
+    if (!synthetic) {
+      // Per-event dedupe: has this exact queue row already been delivered?
+      const { data: existing } = await supabase
+        .from("email_logs")
+        .select("id")
+        .eq("status", "success")
+        .contains("metadata", { queue_id: id })
+        .maybeSingle();
 
-    if (existingLog) {
-      console.log(`Email already sent to user ${user_id} for type ${emailType}, marking as processed`);
-      
-      // Mark queue item as processed (already sent) - only for non-direct calls
-      if (!id.startsWith('direct-')) {
+      if (existing) {
+        console.log(`Queue row ${id} already delivered, marking as already_sent`);
         await supabase
           .from("verification_email_queue")
           .update({ status: "already_sent", processed_at: new Date().toISOString() })
           .eq("id", id);
+        return {
+          success: false,
+          skipped: true,
+          error: "Email already sent for this decision",
+          fallbackActive: systemStatus.fallbackActive,
+        };
       }
-      
-      // Return skipped: true so caller knows email wasn't actually sent
-      return { success: false, skipped: true, error: "Email already sent to this user", fallbackActive: systemStatus.fallbackActive };
+    } else {
+      // Direct call (no queue row): keep the legacy per-user guard.
+      const { data: existingLog } = await supabase
+        .from("email_logs")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("email_type", emailType)
+        .eq("status", "success")
+        .maybeSingle();
+
+      if (existingLog) {
+        return {
+          success: false,
+          skipped: true,
+          error: "Email already sent to this user",
+          fallbackActive: systemStatus.fallbackActive,
+        };
+      }
     }
   }
 
-  // Create pending log entry
+  const baseMetadata = {
+    first_name,
+    is_driver,
+    is_rider,
+    primaryRole,
+    isTest,
+    decision,
+    queue_id: synthetic ? null : id,
+    idempotency_key: idempotencyKey,
+  };
+
   const { data: logEntry, error: logError } = await supabase
     .from("email_logs")
     .insert({
@@ -238,77 +163,60 @@ async function processQueuedEmail(
       email_type: emailType,
       recipient_email: user_email,
       status: "pending",
-      metadata: { 
-        first_name, 
-        is_driver, 
-        is_rider, 
-        primaryRole, 
-        isTest,
+      metadata: {
+        ...baseMetadata,
         fallbackActive: systemStatus.fallbackActive,
-        senderUsed: systemStatus.currentSender
-      }
+        senderUsed: systemStatus.currentSender,
+      },
     })
     .select("id")
     .single();
 
-  if (logError) {
-    console.error("Failed to create log entry:", logError);
-  }
-
+  if (logError) console.error("Failed to create log entry:", logError);
   const logId = logEntry?.id;
-  const displayName = first_name || "there";
 
-  // Prepare email content
   let subject: string;
   let html: string;
-  
+
   if (isTest) {
     subject = "[CashRidez] Email Test – Production";
     html = getTestEmailHtml(systemStatus);
   } else {
-    subject = primaryRole === "driver"
-      ? "🚗 You're Verified! Your Driver Profile Is Now Active on CashRidez"
-      : "🎉 You're Verified — Welcome to CashRidez!";
-    html = primaryRole === "driver"
-      ? getDriverEmailHtml(displayName)
-      : getRiderEmailHtml(displayName);
+    const built = buildDecisionEmail(decision, {
+      firstName: first_name,
+      isDriver: is_driver,
+      isRider: is_rider,
+      rejectionReason: queueItem.rejection_reason,
+    });
+    subject = built.subject;
+    html = built.html;
   }
 
-  // Send email using shared utility with retry
   let result = { success: false, error: "", senderUsed: "", fallbackActive: false };
-  
+
   for (let attempt = 1; attempt <= 3; attempt++) {
-    console.log(`Sending email attempt ${attempt} to ${user_email}`);
-    
-    const sendResult = await sendEmail(resend, {
-      to: [user_email],
-      subject,
-      html,
-    });
-    
+    const sendResult = await sendEmail(resend, { to: [user_email], subject, html });
+
     if (sendResult.success) {
-      result = { 
-        success: true, 
-        error: "", 
+      result = {
+        success: true,
+        error: "",
         senderUsed: sendResult.senderUsed,
-        fallbackActive: sendResult.fallbackActive 
+        fallbackActive: sendResult.fallbackActive,
       };
       break;
     }
-    
+
     result = {
       success: false,
       error: sendResult.error || "Unknown error",
       senderUsed: sendResult.senderUsed,
-      fallbackActive: sendResult.fallbackActive
+      fallbackActive: sendResult.fallbackActive,
     };
-    
-    if (attempt < 3) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-    }
+
+    if (attempt < 3) await new Promise((r) => setTimeout(r, 1000 * attempt));
   }
 
-  // Update log entry with result
   if (logId) {
     await supabase
       .from("email_logs")
@@ -317,171 +225,174 @@ async function processQueuedEmail(
         error_message: result.success ? null : result.error,
         timestamp_sent: new Date().toISOString(),
         metadata: {
-          first_name,
-          is_driver,
-          is_rider,
-          primaryRole,
-          isTest,
+          ...baseMetadata,
           fallbackActive: result.fallbackActive,
-          senderUsed: result.senderUsed
-        }
+          senderUsed: result.senderUsed,
+        },
       })
       .eq("id", logId);
   }
 
-  // Update queue item - only for non-direct calls
-  if (!id.startsWith('direct-') && !id.startsWith('test-')) {
-    await supabase
-      .from("verification_email_queue")
-      .update({ 
-        status: result.success ? "sent" : "failed", 
-        processed_at: new Date().toISOString() 
-      })
-      .eq("id", id);
+  if (!synthetic) {
+    if (result.success) {
+      await supabase
+        .from("verification_email_queue")
+        .update({
+          status: "sent",
+          processed_at: new Date().toISOString(),
+          last_error: null,
+        })
+        .eq("id", id);
+    } else {
+      const attempts = (queueItem.attempts ?? 0) + 1;
+      const retry = shouldRetry(queueItem.attempts ?? 0);
+      await supabase
+        .from("verification_email_queue")
+        .update({
+          status: retry ? "pending" : "failed",
+          attempts,
+          last_error: String(result.error).slice(0, 500),
+          next_attempt_at: new Date(Date.now() + retryDelayMs(attempts)).toISOString(),
+          claimed_at: null,
+          processed_at: retry ? null : new Date().toISOString(),
+        })
+        .eq("id", id);
+      console.error(
+        `Queue row ${id} failed (attempt ${attempts}/${MAX_DECISION_ATTEMPTS}): ${result.error}`,
+      );
+    }
   }
 
-  return result.success 
-    ? { success: true, fallbackActive: result.fallbackActive } 
+  return result.success
+    ? { success: true, fallbackActive: result.fallbackActive }
     : { success: false, error: result.error, fallbackActive: result.fallbackActive };
 }
 
+/** Claim a bounded batch so overlapping cron runs cannot double-send. */
+async function claimBatch(supabase: any): Promise<DecisionQueueRow[]> {
+  const nowIso = new Date().toISOString();
+
+  const { data: candidates, error } = await supabase
+    .from("verification_email_queue")
+    .select("id")
+    .eq("status", "pending")
+    .lte("next_attempt_at", nowIso)
+    .order("created_at", { ascending: true })
+    .limit(BATCH_SIZE);
+
+  if (error) throw error;
+  if (!candidates || candidates.length === 0) return [];
+
+  const { data: claimed, error: claimError } = await supabase
+    .from("verification_email_queue")
+    .update({ status: "sending", claimed_at: nowIso })
+    .in("id", candidates.map((c: { id: string }) => c.id))
+    .eq("status", "pending")
+    .select("*");
+
+  if (claimError) throw claimError;
+  return (claimed || []) as DecisionQueueRow[];
+}
+
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client with service role
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
 
-    // Check if this is a direct call with user data or a queue processing call
     let body: any = {};
     try {
       body = await req.json();
     } catch {
-      // Empty body = process queue
+      // Empty body = process queue (cron)
     }
 
-    // Handle status check request
     if (body.action === "status") {
       const status = await getEmailSystemStatus(resend);
-      return new Response(
-        JSON.stringify(status),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
+      return new Response(JSON.stringify(status), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
-    // If userId is provided, process single user directly
+    // Direct single-user invocation (admin "Resend Welcome Email", etc.)
     if (body.userId) {
-      const { userId, userEmail, firstName, isDriver, isRider, isTest, forceResend } = body;
-      
-      console.log(`Direct call for user ${userId}, isTest: ${isTest}, forceResend: ${forceResend}`);
-      
-      const result = await processQueuedEmail(supabase, {
-        id: isTest ? 'test-' + userId : 'direct-' + userId,
-        user_id: userId,
-        user_email: userEmail,
-        first_name: firstName,
-        is_driver: isDriver ?? false,
-        is_rider: isRider ?? false
-      }, isTest, forceResend ?? false);
+      const { userId, userEmail, firstName, isDriver, isRider, isTest, forceResend, decision, rejectionReason } = body;
 
-      // If skipped due to duplicate, return 200 but with clear message
-      if (result.skipped) {
-        return new Response(
-          JSON.stringify({ success: false, error: result.error, skipped: true, fallbackActive: result.fallbackActive }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json", ...corsHeaders },
-          }
-        );
-      }
-
-      return new Response(
-        JSON.stringify(result),
+      const result = await processQueuedEmail(
+        supabase,
         {
-          status: result.success ? 200 : 500,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
+          id: (isTest ? "test-" : "direct-") + userId,
+          user_id: userId,
+          user_email: userEmail,
+          first_name: firstName,
+          is_driver: isDriver ?? false,
+          is_rider: isRider ?? false,
+          decision: normalizeDecision(decision),
+          rejection_reason: rejectionReason ?? null,
+        },
+        isTest,
+        forceResend ?? false,
       );
-    }
 
-    // Otherwise, process the queue
-    console.log("Processing verification email queue...");
-
-    // Fetch pending queue items
-    const { data: queueItems, error: fetchError } = await supabase
-      .from("verification_email_queue")
-      .select("*")
-      .eq("status", "pending")
-      .order("created_at", { ascending: true })
-      .limit(10);
-
-    if (fetchError) {
-      console.error("Error fetching queue:", fetchError);
-      throw fetchError;
-    }
-
-    if (!queueItems || queueItems.length === 0) {
-      console.log("No pending emails in queue");
-      const status = await getEmailSystemStatus(resend);
-      return new Response(
-        JSON.stringify({ success: true, processed: 0, ...status }),
-        {
+      if (result.skipped) {
+        return new Response(JSON.stringify({ ...result, skipped: true }), {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
+        });
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
-    console.log(`Found ${queueItems.length} pending emails to process`);
+    console.log("Processing verification decision email queue...");
+    const queueItems = await claimBatch(supabase);
 
-    // Process each queued email sequentially to avoid rate limits
-    const results = [];
-    for (const item of queueItems) {
-      const result = await processQueuedEmail(supabase, item);
-      results.push(result);
-      // Small delay between emails to avoid rate limiting
-      if (queueItems.indexOf(item) < queueItems.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+    if (queueItems.length === 0) {
+      const status = await getEmailSystemStatus(resend);
+      return new Response(JSON.stringify({ success: true, processed: 0, ...status }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const results: ProcessResult[] = [];
+    for (let i = 0; i < queueItems.length; i++) {
+      results.push(await processQueuedEmail(supabase, queueItems[i]));
+      if (i < queueItems.length - 1) {
+        await new Promise((r) => setTimeout(r, 500));
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
-    const failedCount = results.filter(r => !r.success).length;
-    const fallbackActive = results.some(r => r.fallbackActive);
+    const successCount = results.filter((r) => r.success).length;
+    const failedCount = results.length - successCount;
 
     console.log(`Processed ${successCount} emails successfully, ${failedCount} failed`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         processed: queueItems.length,
         successful: successCount,
         failed: failedCount,
-        fallbackActive
+        fallbackActive: results.some((r) => r.fallbackActive),
       }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
-
   } catch (error: any) {
     console.error("Error in send-verification-welcome-email function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 
