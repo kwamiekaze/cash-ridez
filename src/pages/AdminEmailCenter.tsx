@@ -121,6 +121,16 @@ const AdminEmailCenter = () => {
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [runningWorker, setRunningWorker] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  // Lightweight 1s clock so "next send" counts down live while a campaign runs.
+  const hasRunningCampaign = campaigns.some((c) => c.status === 'running');
+  useEffect(() => {
+    if (!hasRunningCampaign) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasRunningCampaign]);
+
 
   // Load users with emails
   useEffect(() => {
