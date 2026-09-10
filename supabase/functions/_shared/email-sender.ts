@@ -35,6 +35,12 @@ export interface EmailOptions {
    * The verified updates.cashridez.com fallbacks are always kept behind it.
    */
   from?: string;
+  /**
+   * Stable provider-side idempotency key. Each sender attempt derives its own
+   * scoped key (see senderScopedIdempotencyKey) because the payload's `from`
+   * differs per attempt.
+   */
+  idempotencyKey?: string;
 }
 
 /**
