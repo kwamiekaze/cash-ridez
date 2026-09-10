@@ -411,7 +411,7 @@ async function processEvent(event: any): Promise<{ sent: number; failed: number 
     if (ride) {
       const rider = await fetchProfile(ride.rider_id);
       const count = await notifyNearbyDriversInApp(ride, rider?.full_name);
-      console.log(`[PROCESS-EMAIL-NOTIFICATIONS] in-app new_trip candidates: ${count}`);
+      console.log(`[PROCESS-EMAIL-NOTIFICATIONS] in-app new_trip inserted: ${count}`);
     }
   }
 
