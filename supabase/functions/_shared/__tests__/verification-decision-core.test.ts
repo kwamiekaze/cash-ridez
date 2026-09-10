@@ -125,3 +125,114 @@ describe("transition enqueueing", () => {
     expect(shouldEnqueueDecision("pending", "pending")).toBe(false);
   });
 });
+
+describe("provider idempotency wiring", () => {
+  it("gives every sender attempt its own scoped key", () => {
+    const base = decisionIdempotencyKey("queue-1");
+    const keys = [0, 1, 2].map((i) => senderScopedIdempotencyKey(base, i));
+    expect(new Set(keys).size).toBe(3);
+    keys.forEach((k) => expect(k.startsWith(base)).toBe(true));
+  });
+
+  it("passes a scoped key to the Resend SDK options argument", async () => {
+    const source = readFileSync(
+      new URL("../email-sender.ts", import.meta.url),
+      "utf8",
+    );
+    expect(source).toContain("idempotencyKey?: string");
+    expect(source).toContain("senderScopedIdempotencyKey(idempotencyKey, i)");
+    expect(source).toContain("resend.emails.send(emailPayload, sendOptions)");
+
+    const worker = readFileSync(
+      new URL("../../send-verification-welcome-email/index.ts", import.meta.url),
+      "utf8",
+    );
+    // The queue decision key reaches the sender.
+    expect(worker).toMatch(/sendEmail\(resend, \{[\s\S]*idempotencyKey,[\s\S]*\}\)/);
+  });
+
+  it("makes each explicit admin resend unique but queue decisions stable", () => {
+    expect(decisionIdempotencyKey("q1")).toBe(decisionIdempotencyKey("q1"));
+    expect(manualResendIdempotencyKey("u1", "n1")).not.toBe(
+      manualResendIdempotencyKey("u1", "n2"),
+    );
+    expect(manualResendIdempotencyKey("u1")).not.toBe(
+      manualResendIdempotencyKey("u1"),
+    );
+  });
+});
+
+describe("stale claim recovery", () => {
+  const now = Date.parse("2026-09-10T12:00:00Z");
+  const iso = (msAgo: number) => new Date(now - msAgo).toISOString();
+
+  it("recovers a claim older than the timeout", () => {
+    expect(isStaleClaim(iso(STALE_CLAIM_TIMEOUT_MS + 1000), 0, now)).toBe(true);
+  });
+
+  it("leaves fresh claims alone", () => {
+    expect(isStaleClaim(iso(60_000), 0, now)).toBe(false);
+    expect(isStaleClaim(null, 0, now)).toBe(false);
+    expect(isStaleClaim("not-a-date", 0, now)).toBe(false);
+  });
+
+  it("does not revive a row that already exhausted its attempts", () => {
+    expect(
+      isStaleClaim(iso(STALE_CLAIM_TIMEOUT_MS * 4), MAX_DECISION_ATTEMPTS, now),
+    ).toBe(false);
+  });
+
+  it("only touches 'sending' rows and respects the attempt bound in SQL", () => {
+    const worker = readFileSync(
+      new URL("../../send-verification-welcome-email/index.ts", import.meta.url),
+      "utf8",
+    );
+    expect(worker).toContain('.eq("status", "sending")');
+    expect(worker).toContain('.lt("attempts", MAX_DECISION_ATTEMPTS)');
+    expect(worker).toContain("recoverStaleClaims(supabase)");
+    expect(worker).not.toContain("skipped_backlog");
+  });
+});
+
+describe("direct request authorization", () => {
+  const worker = readFileSync(
+    new URL("../../send-verification-welcome-email/index.ts", import.meta.url),
+    "utf8",
+  );
+
+  it("rejects unauthenticated direct/status requests", () => {
+    expect(worker).toContain("const needsAdmin = body.action === \"status\" || Boolean(body.userId)");
+    expect(worker).toContain("requireAdmin(req, supabase)");
+    expect(worker).toContain('deny(401, "Unauthorized")');
+    expect(worker).toContain('deny(403, "Admin role required")');
+    expect(worker).toContain('service.rpc("has_role"');
+  });
+
+  it("keeps the unauthenticated cron queue processor", () => {
+    expect(worker).toContain("claimBatch(supabase)");
+    // needsAdmin is false for an empty body, so the queue path stays open.
+    expect(worker).not.toContain("requireAdmin(req, supabase);\n    const queueItems");
+  });
+
+  it("ignores caller-supplied recipient/name/role/decision/reason", () => {
+    expect(worker).toContain('user_email: profile.email');
+    expect(worker).toContain('decision: normalizeDecision(profile.verification_status)');
+    expect(worker).toContain('rejection_reason: profile.verification_notes ?? null');
+    expect(worker).not.toContain("user_email: userEmail");
+    expect(worker).not.toContain("first_name: firstName,\n          is_driver: isDriver");
+  });
+});
+
+describe("rapid repeated decisions", () => {
+  it("enqueues each distinct transition in a rejected -> approved -> rejected burst", () => {
+    const burst: Array<[string, string]> = [
+      ["pending", "rejected"],
+      ["rejected", "approved"],
+      ["approved", "rejected"],
+    ];
+    expect(burst.every(([a, b]) => shouldEnqueueDecision(a, b))).toBe(true);
+    // Each event gets its own queue UUID, so keys never collide.
+    const keys = ["q1", "q2", "q3"].map(decisionIdempotencyKey);
+    expect(new Set(keys).size).toBe(3);
+  });
+});
