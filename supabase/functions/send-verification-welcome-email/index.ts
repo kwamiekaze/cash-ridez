@@ -9,12 +9,48 @@ import {
   DecisionQueueRow,
   getPrimaryRole,
   isSyntheticQueueId,
+  manualResendIdempotencyKey,
   MAX_DECISION_ATTEMPTS,
   normalizeDecision,
-  resolveRejectionReason,
+  STALE_CLAIM_TIMEOUT_MS,
   retryDelayMs,
   shouldRetry,
 } from "../_shared/verification-decision-core.ts";
+
+/**
+ * Only the unauthenticated empty-body cron run may skip this. Every direct
+ * send/test/status request must carry a valid Bearer user with the admin role.
+ */
+async function requireAdmin(req: Request, service: any): Promise<Response | null> {
+  const deny = (status: number, error: string) =>
+    new Response(JSON.stringify({ error }), {
+      status,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
+
+  const authHeader = req.headers.get("Authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return deny(401, "Unauthorized");
+
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token) return deny(401, "Unauthorized");
+
+  const authClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+  );
+
+  const { data: userData, error: userError } = await authClient.auth.getUser(token);
+  const callerId = userData?.user?.id;
+  if (userError || !callerId) return deny(401, "Unauthorized");
+
+  const { data: isAdmin, error: roleError } = await service.rpc("has_role", {
+    _user_id: callerId,
+    _role: "admin",
+  });
+  if (roleError || isAdmin !== true) return deny(403, "Admin role required");
+
+  return null;
+}
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
