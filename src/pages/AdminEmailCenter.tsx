@@ -833,14 +833,18 @@ const AdminEmailCenter = () => {
                                     <span>
                                       {(c.sent_count || 0)}/{c.total_recipients} sent
                                     </span>
-                                    <span>• 1 every {c.throttle_seconds || 2}s</span>
-                                    {c.next_send_at && (
-                                      <span>
-                                        • next send {new Date(c.next_send_at).getTime() <= Date.now()
-                                          ? 'now'
-                                          : formatDistanceToNow(new Date(c.next_send_at), { addSuffix: true })}
-                                      </span>
-                                    )}
+                                    <span>• 1 email every {c.throttle_seconds ?? 2}s</span>
+                                    {c.next_send_at && (() => {
+                                      const secondsLeft = Math.max(
+                                        0,
+                                        Math.ceil((new Date(c.next_send_at).getTime() - nowTick) / 1000)
+                                      );
+                                      return (
+                                        <span>
+                                          • next send {secondsLeft === 0 ? 'now' : `in ${secondsLeft}s`}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 </>
                               )}
