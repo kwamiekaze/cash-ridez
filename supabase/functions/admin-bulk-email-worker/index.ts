@@ -2,32 +2,86 @@
 // ADMIN BULK EMAIL WORKER FOR CASHRIDEZ
 // ============================================================================
 //
-// Processes queued email campaign recipients, similar to SMS worker.
-// Called by the runner function or scheduler.
+// Processes queued email campaign recipients.
+//  - at most MAX_RECIPIENTS_PER_RUN recipients per run
+//  - one at a time, >= throttle_seconds between Resend requests
+//  - respects campaign.next_send_at
+//  - deterministic Idempotency-Key per recipient (retries cannot duplicate)
+//  - 429 / 5xx put the recipient back in the queue and honour Retry-After
+//  - campaign counters are recalculated from recipient rows
+//  - a campaign completes only when no queued/sending recipients remain
 //
-// ENDPOINT:
-//   POST /functions/v1/admin-bulk-email-worker
-//
-// REQUEST BODY:
-//   { campaign_id?: string }
-//
+// ENDPOINT: POST /functions/v1/admin-bulk-email-worker
+// BODY:     { campaign_id?: string }
 // ============================================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
-import { Resend } from "https://esm.sh/resend@4.0.0";
+import {
+  DEFAULT_THROTTLE_SECONDS,
+  MAX_RECIPIENTS_PER_RUN,
+  computeCampaignCounts,
+  computeIdempotencyKey,
+  isRateLimited,
+  parseRetryAfterMs,
+} from "../_shared/email-campaign-core.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Email senders
 const PRIMARY_SENDER = "CashRidez <connect@cashridez.com>";
 const FALLBACK_SENDER = "CashRidez <noreply@updates.cashridez.com>";
+const STALE_SENDING_MINUTES = 5;
 
-// Processing limits
-const MAX_RECIPIENTS_PER_RUN = 50;
-const DEFAULT_THROTTLE_MS = 2000;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+interface SendOutcome {
+  ok: boolean;
+  messageId: string | null;
+  senderUsed: string;
+  error: string | null;
+  rateLimited: boolean;
+  retryAfterMs: number;
+}
+
+async function sendViaResend(
+  apiKey: string,
+  from: string,
+  to: string,
+  subject: string,
+  html: string,
+  idempotencyKey: string,
+): Promise<{ status: number; id: string | null; error: string | null; retryAfter: string | null }> {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey,
+    },
+    body: JSON.stringify({ from, to: [to], subject, html, reply_to: 'connect@cashridez.com' }),
+  });
+
+  const retryAfter = response.headers.get('retry-after');
+  let json: any = null;
+  try {
+    json = await response.json();
+  } catch {
+    json = null;
+  }
+
+  if (!response.ok) {
+    return {
+      status: response.status,
+      id: null,
+      error: json?.message || json?.error?.message || `Resend returned ${response.status}`,
+      retryAfter,
+    };
+  }
+
+  return { status: response.status, id: json?.id ?? null, error: null, retryAfter };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -43,48 +97,39 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
     if (!resendApiKey) {
-      console.error('[admin-bulk-email-worker] RESEND_API_KEY not configured');
       return new Response(
         JSON.stringify({ ok: false, error: 'Email service not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const resend = new Resend(resendApiKey);
 
-    // Parse request
     let targetCampaignId: string | null = null;
     try {
       const body = await req.json();
-      targetCampaignId = body.campaign_id || null;
+      targetCampaignId = body?.campaign_id || null;
     } catch {
-      // No body or invalid JSON is fine
+      // no body is fine
     }
 
-    // Find running campaigns
+    const nowIso = new Date().toISOString();
     let campaignsQuery = supabase
       .from('admin_email_campaigns')
       .select('*')
       .eq('status', 'running')
+      .or(`next_send_at.is.null,next_send_at.lte.${nowIso}`)
       .order('created_at', { ascending: true });
 
-    if (targetCampaignId) {
-      campaignsQuery = campaignsQuery.eq('id', targetCampaignId);
-    }
+    if (targetCampaignId) campaignsQuery = campaignsQuery.eq('id', targetCampaignId);
 
     const { data: campaigns, error: campaignsError } = await campaignsQuery;
-
-    if (campaignsError) {
-      console.error('[admin-bulk-email-worker] Failed to fetch campaigns:', campaignsError);
-      throw campaignsError;
-    }
+    if (campaignsError) throw campaignsError;
 
     if (!campaigns || campaigns.length === 0) {
-      console.log('[admin-bulk-email-worker] No running campaigns found');
       return new Response(
-        JSON.stringify({ ok: true, processed: 0, message: 'No running campaigns' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ ok: true, processed: 0, message: 'No campaigns due' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
@@ -93,191 +138,200 @@ Deno.serve(async (req) => {
     const processedCampaignIds: string[] = [];
     const errors: any[] = [];
 
-    // Process each campaign
     for (const campaign of campaigns) {
-      console.log(`[admin-bulk-email-worker] Processing campaign ${campaign.id}: ${campaign.name || 'Unnamed'}`);
+      if (totalProcessed >= MAX_RECIPIENTS_PER_RUN) break;
+
       processedCampaignIds.push(campaign.id);
+      const throttleSeconds = Math.max(1, campaign.throttle_seconds || DEFAULT_THROTTLE_SECONDS);
+      const throttleMs = throttleSeconds * 1000;
 
-      const throttleMs = (campaign.throttle_seconds || 2) * 1000;
+      // Recover rows stuck in "sending" from a crashed run.
+      const staleCutoff = new Date(Date.now() - STALE_SENDING_MINUTES * 60_000).toISOString();
+      await supabase
+        .from('admin_email_campaign_recipients')
+        .update({ status: 'queued', locked_at: null, lock_id: null })
+        .eq('campaign_id', campaign.id)
+        .eq('status', 'sending')
+        .lt('last_attempt_at', staleCutoff);
+
       let campaignProcessed = 0;
+      let backoffMs = 0;
 
-      // Process recipients up to limit
-      while (campaignProcessed < MAX_RECIPIENTS_PER_RUN) {
-        // Claim a recipient using atomic locking
-        const { data: recipients, error: claimError } = await supabase
-          .rpc('claim_email_recipient', {
-            p_campaign_id: campaign.id,
-            p_lock_id: lockId
-          });
+      while (totalProcessed < MAX_RECIPIENTS_PER_RUN) {
+        const { data: claimed, error: claimError } = await supabase
+          .rpc('claim_email_recipient', { p_campaign_id: campaign.id, p_lock_id: lockId });
 
         if (claimError) {
-          console.error('[admin-bulk-email-worker] Failed to claim recipient:', claimError);
           errors.push({ campaign_id: campaign.id, error: claimError.message });
           break;
         }
+        if (!claimed || claimed.length === 0) break;
 
-        if (!recipients || recipients.length === 0) {
-          console.log(`[admin-bulk-email-worker] No more queued recipients for campaign ${campaign.id}`);
+        const recipient = claimed[0];
+
+        // Honour a per-recipient backoff set by an earlier rate-limited attempt.
+        if (recipient.retry_after && new Date(recipient.retry_after).getTime() > Date.now()) {
+          await supabase
+            .from('admin_email_campaign_recipients')
+            .update({ status: 'queued', locked_at: null, lock_id: null })
+            .eq('id', recipient.id);
+          backoffMs = Math.max(backoffMs, new Date(recipient.retry_after).getTime() - Date.now());
           break;
         }
 
-        const recipient = recipients[0];
-        console.log(`[admin-bulk-email-worker] Processing recipient ${recipient.id}: ${recipient.email}`);
+        const idempotencyKey = recipient.idempotency_key
+          || computeIdempotencyKey(campaign.id, recipient.id);
 
-        // Send the email
-        let sendResult: any = null;
-        let sendError: string | null = null;
-        let senderUsed = PRIMARY_SENDER;
+        await supabase
+          .from('admin_email_campaign_recipients')
+          .update({
+            status: 'sending',
+            idempotency_key: idempotencyKey,
+            last_attempt_at: new Date().toISOString(),
+          })
+          .eq('id', recipient.id);
 
-        try {
-          // Convert body to HTML if needed
-          const htmlBody = recipient.body_rendered.includes('<') 
-            ? recipient.body_rendered 
-            : `<pre style="font-family: sans-serif; white-space: pre-wrap;">${recipient.body_rendered}</pre>`;
+        // Throttle: at least throttleSeconds between two Resend requests.
+        if (campaignProcessed > 0 || totalProcessed > 0) {
+          await sleep(throttleMs);
+        }
 
-          // Try primary sender
-          const response = await resend.emails.send({
-            from: PRIMARY_SENDER,
-            to: [recipient.email],
-            subject: recipient.subject_rendered,
-            html: htmlBody,
-            replyTo: 'connect@cashridez.com'
-          });
+        const htmlBody = recipient.body_rendered.includes('<')
+          ? recipient.body_rendered
+          : `<pre style="font-family: sans-serif; white-space: pre-wrap;">${recipient.body_rendered}</pre>`;
 
-          if (response.error) {
-            throw new Error(response.error.message || 'Primary sender failed');
-          }
+        const outcome: SendOutcome = {
+          ok: false, messageId: null, senderUsed: PRIMARY_SENDER,
+          error: null, rateLimited: false, retryAfterMs: 0,
+        };
 
-          sendResult = response;
-        } catch (primaryErr: any) {
-          console.log('[admin-bulk-email-worker] Primary sender failed, trying fallback');
-          senderUsed = FALLBACK_SENDER;
+        const primary = await sendViaResend(
+          resendApiKey, PRIMARY_SENDER, recipient.email,
+          recipient.subject_rendered, htmlBody, idempotencyKey,
+        );
 
-          try {
-            const htmlBody = recipient.body_rendered.includes('<') 
-              ? recipient.body_rendered 
-              : `<pre style="font-family: sans-serif; white-space: pre-wrap;">${recipient.body_rendered}</pre>`;
-
-            const fallbackResponse = await resend.emails.send({
-              from: FALLBACK_SENDER,
-              to: [recipient.email],
-              subject: recipient.subject_rendered,
-              html: htmlBody,
-              replyTo: 'connect@cashridez.com'
-            });
-
-            if (fallbackResponse.error) {
-              throw new Error(fallbackResponse.error.message || 'Fallback sender failed');
-            }
-
-            sendResult = fallbackResponse;
-          } catch (fallbackErr: any) {
-            sendError = fallbackErr.message || 'All senders failed';
+        if (!primary.error) {
+          outcome.ok = true;
+          outcome.messageId = primary.id;
+        } else if (isRateLimited(primary.status, primary.error)) {
+          outcome.rateLimited = true;
+          outcome.error = primary.error;
+          outcome.retryAfterMs = parseRetryAfterMs(primary.retryAfter, (recipient.attempt_count ?? 0) + 1);
+        } else {
+          // Hard failure on the primary identity: try the fallback domain once.
+          const fallback = await sendViaResend(
+            resendApiKey, FALLBACK_SENDER, recipient.email,
+            recipient.subject_rendered, htmlBody,
+            computeIdempotencyKey(campaign.id, recipient.id, 'fallback'),
+          );
+          outcome.senderUsed = FALLBACK_SENDER;
+          if (!fallback.error) {
+            outcome.ok = true;
+            outcome.messageId = fallback.id;
+          } else if (isRateLimited(fallback.status, fallback.error)) {
+            outcome.rateLimited = true;
+            outcome.error = fallback.error;
+            outcome.retryAfterMs = parseRetryAfterMs(fallback.retryAfter, (recipient.attempt_count ?? 0) + 1);
+          } else {
+            outcome.error = fallback.error;
           }
         }
 
-        // Update recipient status
-        const updateData: any = {
-          attempt_count: recipient.attempt_count + 1,
-          last_attempt_at: new Date().toISOString(),
-          locked_at: null,
-          lock_id: null
-        };
+        const attemptCount = (recipient.attempt_count ?? 0) + 1;
 
-        if (sendError) {
-          updateData.status = 'failed';
-          updateData.error = sendError;
-          updateData.last_error = sendError;
-        } else {
-          updateData.status = 'sent';
-          updateData.sent_at = new Date().toISOString();
-          updateData.resend_message_id = sendResult?.data?.id || null;
+        if (outcome.rateLimited) {
+          // Return the recipient to the queue; do NOT mark it failed.
+          const retryAt = new Date(Date.now() + outcome.retryAfterMs).toISOString();
+          await supabase
+            .from('admin_email_campaign_recipients')
+            .update({
+              status: 'queued',
+              locked_at: null,
+              lock_id: null,
+              attempt_count: attemptCount,
+              last_attempt_at: new Date().toISOString(),
+              last_error: outcome.error,
+              retry_after: retryAt,
+            })
+            .eq('id', recipient.id);
+
+          backoffMs = Math.max(backoffMs, outcome.retryAfterMs);
+          console.warn(`[admin-bulk-email-worker] Rate limited; requeued recipient ${recipient.id}`);
+          break;
         }
 
         await supabase
           .from('admin_email_campaign_recipients')
-          .update(updateData)
+          .update({
+            status: outcome.ok ? 'sent' : 'failed',
+            sent_at: outcome.ok ? new Date().toISOString() : null,
+            resend_message_id: outcome.messageId,
+            error: outcome.ok ? null : outcome.error,
+            last_error: outcome.ok ? null : outcome.error,
+            attempt_count: attemptCount,
+            last_attempt_at: new Date().toISOString(),
+            locked_at: null,
+            lock_id: null,
+            retry_after: null,
+          })
           .eq('id', recipient.id);
 
-        // Update campaign counters
-        if (sendError) {
-          await supabase
-            .from('admin_email_campaigns')
-            .update({ 
-              failed_count: (campaign.failed_count || 0) + 1,
-              queued_count: Math.max(0, (campaign.queued_count || 0) - 1)
-            })
-            .eq('id', campaign.id);
-        } else {
-          await supabase
-            .from('admin_email_campaigns')
-            .update({ 
-              sent_count: (campaign.sent_count || 0) + 1,
-              queued_count: Math.max(0, (campaign.queued_count || 0) - 1),
-              last_run_at: new Date().toISOString()
-            })
-            .eq('id', campaign.id);
-        }
-
-        // Log to email_logs table
-        await supabase
-          .from('email_logs')
-          .insert({
-            user_id: campaign.created_by,
-            admin_user_id: campaign.created_by,
-            email_type: 'campaign',
-            recipient_email: recipient.email,
-            subject: recipient.subject_rendered,
-            body_preview: recipient.body_rendered.slice(0, 200),
-            status: sendError ? 'failed' : 'sent',
-            error_message: sendError,
-            campaign_id: campaign.id,
-            campaign_recipient_id: recipient.id,
-            resend_message_id: sendResult?.data?.id || null,
-            metadata: { sender_used: senderUsed, first_name: recipient.first_name }
-          });
+        await supabase.from('email_logs').insert({
+          user_id: campaign.created_by,
+          admin_user_id: campaign.created_by,
+          email_type: 'campaign',
+          recipient_email: recipient.email,
+          subject: recipient.subject_rendered,
+          body_preview: recipient.body_rendered.slice(0, 200),
+          status: outcome.ok ? 'sent' : 'failed',
+          error_message: outcome.error,
+          campaign_id: campaign.id,
+          campaign_recipient_id: recipient.id,
+          resend_message_id: outcome.messageId,
+          metadata: { sender_used: outcome.senderUsed, first_name: recipient.first_name },
+        });
 
         totalProcessed++;
         campaignProcessed++;
-
-        // Throttle between sends
-        if (campaignProcessed < MAX_RECIPIENTS_PER_RUN) {
-          await new Promise(resolve => setTimeout(resolve, throttleMs));
-        }
       }
 
-      // Check if campaign is complete
-      const { count: remainingCount } = await supabase
+      // Recalculate counters from the recipient rows (never increment).
+      const { data: statusRows } = await supabase
         .from('admin_email_campaign_recipients')
-        .select('id', { count: 'exact', head: true })
-        .eq('campaign_id', campaign.id)
-        .eq('status', 'queued');
+        .select('status')
+        .eq('campaign_id', campaign.id);
 
-      if (remainingCount === 0 || remainingCount === null) {
-        console.log(`[admin-bulk-email-worker] Campaign ${campaign.id} completed`);
-        await supabase
-          .from('admin_email_campaigns')
-          .update({ 
-            status: 'completed',
-            finished_at: new Date().toISOString()
-          })
-          .eq('id', campaign.id);
+      const counts = computeCampaignCounts((statusRows ?? []) as { status: string }[]);
+      const update: Record<string, unknown> = {
+        total_recipients: counts.total,
+        queued_count: counts.queued,
+        sent_count: counts.sent,
+        failed_count: counts.failed,
+        skipped_count: counts.skipped,
+        last_run_at: new Date().toISOString(),
+      };
+
+      if (counts.isComplete) {
+        update.status = 'completed';
+        update.finished_at = new Date().toISOString();
+        update.next_send_at = null;
+      } else {
+        update.next_send_at = new Date(Date.now() + Math.max(backoffMs, throttleMs)).toISOString();
       }
+
+      await supabase.from('admin_email_campaigns').update(update).eq('id', campaign.id);
     }
 
-    // Log worker run
     const durationMs = Date.now() - startTime;
-    await supabase
-      .from('admin_email_worker_runs')
-      .insert({
-        source: 'worker',
-        processed_campaign_ids: processedCampaignIds,
-        processed_recipients_count: totalProcessed,
-        errors: errors.length > 0 ? errors : null,
-        duration_ms: durationMs
-      });
+    await supabase.from('admin_email_worker_runs').insert({
+      source: 'worker',
+      processed_campaign_ids: processedCampaignIds,
+      processed_recipients_count: totalProcessed,
+      errors: errors.length > 0 ? errors : null,
+      duration_ms: durationMs,
+    });
 
-    console.log(`[admin-bulk-email-worker] Completed. Processed ${totalProcessed} recipients in ${durationMs}ms`);
+    console.log(`[admin-bulk-email-worker] Processed ${totalProcessed} in ${durationMs}ms`);
 
     return new Response(
       JSON.stringify({
@@ -285,16 +339,15 @@ Deno.serve(async (req) => {
         processed: totalProcessed,
         campaigns: processedCampaignIds,
         duration_ms: durationMs,
-        errors: errors.length > 0 ? errors : undefined
+        errors: errors.length > 0 ? errors : undefined,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
-
   } catch (error: any) {
     console.error('[admin-bulk-email-worker] Unexpected error:', error);
     return new Response(
       JSON.stringify({ ok: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });

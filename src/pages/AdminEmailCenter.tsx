@@ -21,6 +21,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import RecentDriversEmailTool from "@/components/admin/RecentDriversEmailTool";
 
 interface UserWithEmail {
   id: string;
@@ -56,6 +57,8 @@ interface Campaign {
   started_at: string | null;
   finished_at: string | null;
   last_error: string | null;
+  next_send_at?: string | null;
+  throttle_seconds?: number | null;
 }
 
 interface CampaignRecipient {
@@ -647,6 +650,8 @@ const AdminEmailCenter = () => {
 
             {/* AutoEmail Tab */}
             <TabsContent value="autoemail" className="space-y-4">
+              <RecentDriversEmailTool onCampaignCreated={fetchCampaigns} />
+
               <div className="grid lg:grid-cols-2 gap-4">
                 {/* Create Campaign */}
                 <Card className="bg-card/80 backdrop-blur-sm border-border/50">
@@ -809,10 +814,25 @@ const AdminEmailCenter = () => {
                                 )}
                               </div>
                               {c.status === 'running' && c.total_recipients > 0 && (
-                                <Progress 
-                                  value={((c.sent_count || 0) / c.total_recipients) * 100} 
-                                  className="h-1 mt-2"
-                                />
+                                <>
+                                  <Progress 
+                                    value={((c.sent_count || 0) / c.total_recipients) * 100} 
+                                    className="h-1 mt-2"
+                                  />
+                                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-muted-foreground">
+                                    <span>
+                                      {(c.sent_count || 0)}/{c.total_recipients} sent
+                                    </span>
+                                    <span>• 1 every {c.throttle_seconds || 2}s</span>
+                                    {c.next_send_at && (
+                                      <span>
+                                        • next send {new Date(c.next_send_at).getTime() <= Date.now()
+                                          ? 'now'
+                                          : formatDistanceToNow(new Date(c.next_send_at), { addSuffix: true })}
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
                               )}
                             </button>
                           ))}

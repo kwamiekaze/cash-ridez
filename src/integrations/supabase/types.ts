@@ -281,12 +281,14 @@ export type Database = {
           error: string | null
           first_name: string | null
           id: string
+          idempotency_key: string | null
           last_attempt_at: string | null
           last_error: string | null
           lock_id: string | null
           locked_at: string | null
           raw_line: string | null
           resend_message_id: string | null
+          retry_after: string | null
           sent_at: string | null
           status: string
           subject_rendered: string
@@ -300,12 +302,14 @@ export type Database = {
           error?: string | null
           first_name?: string | null
           id?: string
+          idempotency_key?: string | null
           last_attempt_at?: string | null
           last_error?: string | null
           lock_id?: string | null
           locked_at?: string | null
           raw_line?: string | null
           resend_message_id?: string | null
+          retry_after?: string | null
           sent_at?: string | null
           status?: string
           subject_rendered: string
@@ -319,12 +323,14 @@ export type Database = {
           error?: string | null
           first_name?: string | null
           id?: string
+          idempotency_key?: string | null
           last_attempt_at?: string | null
           last_error?: string | null
           lock_id?: string | null
           locked_at?: string | null
           raw_line?: string | null
           resend_message_id?: string | null
+          retry_after?: string | null
           sent_at?: string | null
           status?: string
           subject_rendered?: string
@@ -3460,12 +3466,14 @@ export type Database = {
           error: string | null
           first_name: string | null
           id: string
+          idempotency_key: string | null
           last_attempt_at: string | null
           last_error: string | null
           lock_id: string | null
           locked_at: string | null
           raw_line: string | null
           resend_message_id: string | null
+          retry_after: string | null
           sent_at: string | null
           status: string
           subject_rendered: string
@@ -3687,6 +3695,15 @@ export type Database = {
           twilio_number_e164: string
           unread_count: number
           updated_at: string
+        }[]
+      }
+      select_recent_active_drivers: {
+        Args: { p_limit: number }
+        Returns: {
+          email: string
+          first_name: string
+          last_active_at: string
+          user_id: string
         }[]
       }
       set_referral_code: {
