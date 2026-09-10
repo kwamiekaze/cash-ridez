@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
     const html = status === "approved"
       ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #10b981;">Welcome to CashRidez, ${displayName}!</h1>
+          <h1 style="color: #10b981;">Welcome to CashRidez, ${safeName}!</h1>
           <p>Great news! Your account has been verified and you now have full access to all CashRidez features.</p>
           ${adminInfo}
           <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 16px; margin: 24px 0;">
@@ -100,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
       : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #ef4444;">Verification Status Update</h1>
-          <p>Hello ${displayName},</p>
+          <p>Hello ${safeName},</p>
           <p>We've reviewed your verification submission, but unfortunately we were unable to verify your account at this time.</p>
           ${adminInfo}
           ${reasonBlock}
