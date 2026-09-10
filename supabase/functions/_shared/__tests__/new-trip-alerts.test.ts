@@ -63,11 +63,12 @@ describe('email new-trip eligibility still needs a mailbox, not a subscription',
 describe('worker fan-out wiring', () => {
   const worker = readFileSync('supabase/functions/process-email-notifications/index.ts', 'utf8');
 
-  it('inserts in-app alerts idempotently for trip_posted', () => {
+  it('inserts in-app alerts through the idempotent database routine', () => {
     expect(worker).toContain('notifyNearbyDriversInApp');
-    expect(worker).toContain('ignoreDuplicates: true');
-    expect(worker).toContain('onConflict: "user_id,related_ride_id,type"');
+    expect(worker).toContain('rpc("insert_new_trip_notifications"');
     expect(worker).toContain('type: "new_trip"');
+    // The partial index cannot be inferred by PostgREST's onConflict.
+    expect(worker).not.toContain('ignoreDuplicates');
   });
 
   it('uses the shared nearby ZIP rule for both channels', () => {
