@@ -177,6 +177,11 @@ function CarModel({
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
     if (!viewport.width || !viewport.height) return;
+    // Fit once per (model, viewport size). Re-running would snap the camera
+    // back to its start position and cancel out auto-rotation.
+    const key = `${url}|${Math.round(viewport.width)}x${Math.round(viewport.height)}`;
+    if (fitKey.current === key) return;
+    fitKey.current = key;
     const aspect = viewport.width / viewport.height;
     cam.aspect = aspect;
     const vFov = THREE.MathUtils.degToRad(cam.fov);
