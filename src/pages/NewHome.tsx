@@ -14,6 +14,7 @@ import { HeroSection } from '@/components/HeroSection';
 import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
 import { NewHomeNavigation } from '@/components/newhome/NewHomeNavigation';
+import moneyBackground from '@/assets/cashridez-money-background.png.asset.json';
 
 const CashCar3D = lazy(() => import('@/components/newhome/CashCar3D'));
 
@@ -71,7 +72,10 @@ export default function NewHome() {
   return <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
 
-      <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
+      <div
+        className="min-h-screen relative overflow-hidden bg-background bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: `url(${moneyBackground.url})` }}
+      >
         {/* Global Map Background */}
         <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
 

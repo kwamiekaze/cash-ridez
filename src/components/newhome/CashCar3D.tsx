@@ -185,8 +185,9 @@ function CarModel({
     const limitingHalfFov = Math.min(vFov, hFov) / 2;
     const framingBoost = viewport.width >= 1024 ? 1.32 : 1.42;
     const dist = radius / (Math.sin(limitingHalfFov) * framingBoost);
-    const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
-    const target = new THREE.Vector3(0, nativeSize.y / 2, 0);
+    const dir = new THREE.Vector3(3.2, 0.85, 3.2).normalize();
+    const frameHeight = nativeSize.y;
+    const target = new THREE.Vector3(0, nativeSize.y / 2 - frameHeight * 0.08, 0);
     cam.position.copy(target).addScaledVector(dir, dist);
     cam.lookAt(target);
 
@@ -255,7 +256,7 @@ function CarScene({
     const apply = () => {
       const controls = controlsRef.current;
       if (!controls) return;
-      const dir = new THREE.Vector3(3.2, 1.6, 3.2).normalize();
+      const dir = new THREE.Vector3(3.2, 0.85, 3.2).normalize();
       controls.minDistance = 0.01;
       controls.maxDistance = 10000;
       controls.target.copy(target);
@@ -300,7 +301,7 @@ function CarScene({
       shadows
       frameloop={frameloop}
       gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
-      camera={{ fov: 34, position: [3.2, 1.6, 3.2] }}
+      camera={{ fov: 34, position: [3.2, 0.85, 3.2] }}
       onCreated={({ camera }) => camera.lookAt(0, 0.5, 0)}
     >
       {/* Five-light rig */}
