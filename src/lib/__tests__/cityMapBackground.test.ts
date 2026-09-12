@@ -26,7 +26,9 @@ describe('NewHome cinematic city map', () => {
   it('places riders from route length and includes timed pickup pauses', () => {
     expect(cityMap).toContain('getPointAtLength');
     expect(cityMap).toContain('data-route-fraction');
-    expect(cityMap).toContain('keyPoints="0;0.08;0.08;0.18;0.30;0.30;0.44;0.56;0.56;0.70;0.82;0.82;1"');
+    expect(cityMap).toContain("const DESKTOP_KEY_POINTS = '0;0.08;0.08;0.18;0.30;0.30;0.44;0.56;0.56;0.70;0.82;0.82;1'");
+    expect(cityMap).toContain("const MOBILE_KEY_POINTS = '0;0.18;0.30;0.30;0.48;0.70;0.70;0.84;1'");
+    expect(cityMap).toContain('keyPoints={isMobile ? MOBILE_KEY_POINTS : DESKTOP_KEY_POINTS}');
     expect(cityMap).toContain('calcMode="linear"');
   });
 

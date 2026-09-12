@@ -16,8 +16,13 @@ const VIEWBOX = '0 0 1200 800';
 const ROUTE_DURATION_SECONDS = 28;
 const ROUTE = 'M 84 178 C 176 92 282 110 356 188 C 446 284 426 566 574 654 C 712 736 778 438 888 362 C 1004 282 1132 398 1082 566 C 1038 714 846 718 730 624 C 606 522 520 406 382 448 C 244 490 178 668 82 586 C 10 524 26 286 84 178 Z';
 const RIDER_FRACTIONS_DESKTOP = [0.08, 0.3, 0.56, 0.82];
-const RIDER_FRACTIONS_MOBILE = [0.08, 0.56];
-const PICKUP_BEGINS = ['2.8s', '9.1s', '16.1s', '23.1s'];
+const RIDER_FRACTIONS_MOBILE = [0.3, 0.7];
+const PICKUP_BEGINS_DESKTOP = ['2.8s', '9.1s', '16.1s', '23.1s'];
+const PICKUP_BEGINS_MOBILE = ['7.8s', '18.2s'];
+const DESKTOP_KEY_POINTS = '0;0.08;0.08;0.18;0.30;0.30;0.44;0.56;0.56;0.70;0.82;0.82;1';
+const DESKTOP_KEY_TIMES = '0;0.09;0.13;0.22;0.31;0.36;0.47;0.55;0.60;0.72;0.80;0.85;1';
+const MOBILE_KEY_POINTS = '0;0.18;0.30;0.30;0.48;0.70;0.70;0.84;1';
+const MOBILE_KEY_TIMES = '0;0.18;0.28;0.34;0.48;0.65;0.72;0.85;1';
 
 const intensityOpacity = {
   subtle: 0.1,
@@ -59,6 +64,7 @@ export function CityMapBackground({
   const isMobile = useMediaQuery('(max-width: 767px), (pointer: coarse)');
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const riderFractions = isMobile ? RIDER_FRACTIONS_MOBILE : RIDER_FRACTIONS_DESKTOP;
+  const pickupBegins = isMobile ? PICKUP_BEGINS_MOBILE : PICKUP_BEGINS_DESKTOP;
 
   useEffect(() => {
     const path = routeRef.current;
@@ -204,15 +210,15 @@ export function CityMapBackground({
               transform={`translate(${point.x} ${point.y})`}
             >
               <circle className="city-map-rider-ring" r="25">
-                {motionEnabled && <animate attributeName="opacity" values="0.2;0.95;0.2" dur="2.5s" begin={PICKUP_BEGINS[index]} repeatCount="indefinite" />}
-                {motionEnabled && <animate attributeName="r" values="22;34;22" dur="2.5s" begin={PICKUP_BEGINS[index]} repeatCount="indefinite" />}
+                {motionEnabled && <animate attributeName="opacity" values="0.2;0.95;0.2" dur="2.5s" begin={pickupBegins[index]} repeatCount="indefinite" />}
+                {motionEnabled && <animate attributeName="r" values="22;34;22" dur="2.5s" begin={pickupBegins[index]} repeatCount="indefinite" />}
               </circle>
               <circle className="city-map-rider-body" cy="4" r="11" />
               <circle className="city-map-rider-head" cy="-12" r="7" />
               <g className="city-map-pickup-dollar">
                 <text x="0" y="-30" textAnchor="middle">$</text>
-                {motionEnabled && <animateTransform attributeName="transform" type="translate" values="0 5;0 -20;0 -28" dur="2.5s" begin={PICKUP_BEGINS[index]} repeatCount="indefinite" />}
-                {motionEnabled && <animate attributeName="opacity" values="0;1;0" dur="2.5s" begin={PICKUP_BEGINS[index]} repeatCount="indefinite" />}
+                {motionEnabled && <animateTransform attributeName="transform" type="translate" values="0 5;0 -20;0 -28" dur="2.5s" begin={pickupBegins[index]} repeatCount="indefinite" />}
+                {motionEnabled && <animate attributeName="opacity" values="0;1;0" dur="2.5s" begin={pickupBegins[index]} repeatCount="indefinite" />}
               </g>
             </g>
           ))}
@@ -231,8 +237,8 @@ export function CityMapBackground({
                 repeatCount="indefinite"
                 rotate="auto"
                 calcMode="linear"
-                keyPoints="0;0.08;0.08;0.18;0.30;0.30;0.44;0.56;0.56;0.70;0.82;0.82;1"
-                keyTimes="0;0.09;0.13;0.22;0.31;0.36;0.47;0.55;0.60;0.72;0.80;0.85;1"
+                keyPoints={isMobile ? MOBILE_KEY_POINTS : DESKTOP_KEY_POINTS}
+                keyTimes={isMobile ? MOBILE_KEY_TIMES : DESKTOP_KEY_TIMES}
               >
                 <mpath href={`#${routeId}`} />
               </animateMotion>
