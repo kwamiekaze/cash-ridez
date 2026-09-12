@@ -229,3 +229,219 @@ All colors MUST be HSL.
 .leaflet-container {
   overflow: hidden;
 }
+
+/* NewHome-only cinematic city map. */
+.city-map-base {
+  background: linear-gradient(180deg, hsl(var(--deep-black)) 0%, hsl(165 48% 4%) 48%, hsl(191 44% 5%) 100%);
+}
+
+.city-map-road-layer,
+.city-map-foreground-layer {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.city-map-landmarks rect {
+  fill: hsl(var(--emerald) / 0.16);
+  stroke: hsl(var(--emerald-light) / 0.24);
+  stroke-width: 2;
+}
+
+.city-map-landmarks path {
+  fill: none;
+  stroke: hsl(188 82% 44% / 0.18);
+  stroke-width: 48;
+}
+
+.city-map-secondary-roads path {
+  fill: none;
+  stroke: hsl(var(--emerald) / 0.46);
+  stroke-linecap: round;
+  stroke-width: 4;
+}
+
+.city-map-blocks rect {
+  fill: hsl(var(--emerald-dark) / 0.12);
+  stroke: hsl(var(--emerald) / 0.22);
+  stroke-width: 2;
+}
+
+.city-map-arterial-glow,
+.city-map-arterial,
+.city-map-centre-line,
+.city-map-route-trail {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.city-map-arterial-glow {
+  stroke: hsl(var(--emerald-light) / 0.52);
+  stroke-width: 28;
+}
+
+.city-map-arterial {
+  stroke: hsl(var(--emerald-light) / 0.88);
+  stroke-width: 11;
+}
+
+.city-map-centre-line {
+  stroke: hsl(var(--gold-light) / 0.7);
+  stroke-dasharray: 4 15;
+  stroke-width: 2;
+}
+
+.city-map-route-trail {
+  stroke: hsl(var(--gold-light));
+  stroke-dasharray: 85 915;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 8px hsl(var(--gold) / 0.85));
+}
+
+.city-map-traffic circle {
+  fill: hsl(var(--gold-light) / 0.58);
+  filter: drop-shadow(0 0 5px hsl(var(--gold) / 0.45));
+}
+
+.city-map-rider-ring {
+  fill: hsl(var(--gold) / 0.05);
+  stroke: hsl(var(--gold-light) / 0.64);
+  stroke-width: 3;
+}
+
+.city-map-rider-body,
+.city-map-rider-head {
+  fill: hsl(var(--gold-light));
+  filter: drop-shadow(0 0 7px hsl(var(--gold) / 0.62));
+}
+
+.city-map-pickup-dollar {
+  opacity: 0;
+}
+
+.city-map-pickup-dollar text,
+.city-map-car-dollar {
+  fill: hsl(var(--deep-black));
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.city-map-car-shadow {
+  fill: hsl(var(--deep-black) / 0.48);
+  filter: blur(4px);
+}
+
+.city-map-car-body {
+  fill: hsl(var(--gold));
+  stroke: hsl(var(--gold-light));
+  stroke-width: 2;
+  filter: drop-shadow(0 0 9px hsl(var(--gold) / 0.76));
+}
+
+.city-map-car-cabin {
+  fill: hsl(var(--deep-black) / 0.82);
+  stroke: hsl(var(--gold-light) / 0.75);
+  stroke-width: 2;
+}
+
+.city-map-car-light {
+  fill: none;
+  stroke: hsl(var(--gold-light));
+  stroke-linecap: round;
+  stroke-width: 4;
+}
+
+.city-map-car-wheel {
+  fill: hsl(var(--deep-black));
+  stroke: hsl(var(--gold-dark));
+  stroke-width: 2;
+}
+
+.city-map-haze {
+  filter: blur(38px);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: city-map-haze-drift 16s ease-in-out infinite alternate;
+}
+
+.city-map-haze-b { animation-delay: -6s; }
+.city-map-haze-c { animation-delay: -11s; }
+
+.city-map-grain {
+  opacity: 0.025;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.city-map-centre-scrim {
+  background: radial-gradient(ellipse 42% 78% at 50% 48%, hsl(var(--deep-black) / 0.9) 0%, hsl(var(--deep-black) / 0.74) 38%, transparent 76%);
+  pointer-events: none;
+}
+
+.city-map-vignette {
+  background: radial-gradient(ellipse at center, transparent 42%, hsl(var(--deep-black) / 0.52) 100%);
+  pointer-events: none;
+}
+
+.city-map-background[data-active="false"] .city-map-haze {
+  animation-play-state: paused;
+}
+
+@keyframes city-map-haze-drift {
+  from { transform: translate3d(-7px, 4px, 0) scale(0.98); opacity: 0.62; }
+  to { transform: translate3d(9px, -6px, 0) scale(1.04); opacity: 0.9; }
+}
+
+@keyframes city-map-road-parallax {
+  from { transform: translate3d(0, -6px, 0); }
+  to { transform: translate3d(0, 6px, 0); }
+}
+
+@keyframes city-map-foreground-parallax {
+  from { transform: translate3d(0, -10px, 0); }
+  to { transform: translate3d(0, 10px, 0); }
+}
+
+@supports (animation-timeline: scroll()) {
+  .city-map-road-layer {
+    animation: city-map-road-parallax linear both;
+    animation-timeline: scroll(root block);
+  }
+
+  .city-map-foreground-layer {
+    animation: city-map-foreground-parallax linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  .city-map-road-layer,
+  .city-map-foreground-layer {
+    animation: none;
+    transform: none;
+  }
+
+  .city-map-secondary-roads path {
+    stroke-width: 5;
+  }
+
+  .city-map-grain,
+  .city-map-traffic {
+    display: none;
+  }
+
+  .city-map-centre-scrim {
+    background: radial-gradient(ellipse 54% 82% at 50% 48%, hsl(var(--deep-black) / 0.94) 0%, hsl(var(--deep-black) / 0.8) 42%, transparent 82%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city-map-background *,
+  .city-map-road-layer,
+  .city-map-foreground-layer {
+    animation: none !important;
+    transform: none;
+  }
+}
