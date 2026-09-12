@@ -14,7 +14,6 @@ import { HeroSection } from '@/components/HeroSection';
 import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
 import { NewHomeNavigation } from '@/components/newhome/NewHomeNavigation';
-import moneyBackground from '@/assets/cashridez-money-background.png.asset.json';
 
 const CashCar3D = lazy(() => import('@/components/newhome/CashCar3D'));
 
@@ -72,20 +71,17 @@ export default function NewHome() {
   return <>
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} duration={3000} />}
 
-      <div className="min-h-screen relative overflow-hidden bg-background">
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
         {/* Global Map Background */}
-        <img
-          src={moneyBackground.url}
-          alt=""
-          aria-hidden="true"
-          className="fixed inset-0 z-0 h-full w-full object-cover"
-        />
+        <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
 
         <div className="relative z-10">
           <NewHomeNavigation />
 
           {/* Hero Section — 3D car centerpiece */}
           <section className="relative overflow-x-hidden">
+            <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
+
             {/* Hero group sized by its content (no forced viewport height). */}
             <div className="relative z-50 flex min-h-0 flex-col items-center px-4 pb-0 pt-[76px] md:pb-0 md:pt-[80px]">
               <span data-testid="newhome-location-pill" className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-yellow-400 md:text-xs">
