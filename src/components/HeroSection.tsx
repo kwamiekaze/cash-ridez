@@ -15,7 +15,7 @@ export function HeroSection() {
     icon: Users,
     label: 'Community Driven'
   }];
-  return <section className="relative min-h-screen pt-16 pb-20 overflow-hidden">
+  return <section className="relative pb-20 overflow-hidden">
       {/* Animated Map Background */}
       <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
 
