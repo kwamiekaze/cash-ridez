@@ -140,6 +140,7 @@ function CarModel({
   const { scene } = useGLTF(url, true);
   const modelRef = useRef<THREE.Group>(null);
   const entrance = useRef(0);
+  const fitKey = useRef<string | null>(null);
   const { camera, size: viewport } = useThree();
 
   const { model, nativeSize } = useMemo(() => {
@@ -176,6 +177,11 @@ function CarModel({
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
     if (!viewport.width || !viewport.height) return;
+    // Fit once per (model, viewport size). Re-running would snap the camera
+    // back to its start position and cancel out auto-rotation.
+    const key = `${url}|${Math.round(viewport.width)}x${Math.round(viewport.height)}`;
+    if (fitKey.current === key) return;
+    fitKey.current = key;
     const aspect = viewport.width / viewport.height;
     cam.aspect = aspect;
     const vFov = THREE.MathUtils.degToRad(cam.fov);
@@ -195,7 +201,7 @@ function CarModel({
     cam.updateProjectionMatrix();
     onCameraFit?.(target, dist);
 
-  }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
+  }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit, url]);
 
   useEffect(() => {
     onReady();
@@ -243,6 +249,7 @@ function CarScene({
 }) {
   const controlsRef = useRef<any>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rotating, setRotating] = useState(true);
   const [fit, setFit] = useState<{ target: [number, number, number]; dist: number | null }>({
     target: [0, 0.5, 0],
     dist: null,
@@ -280,18 +287,41 @@ function CarScene({
     };
   }, [modelUrl]);
 
-  const pauseRotation = () => {
+  // Auto-rotation is driven by React state so a re-render can never leave a
+  // stale imperative `autoRotate = false` latched on the controls.
+  const scheduleResume = useCallback(() => {
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    if (controlsRef.current) controlsRef.current.autoRotate = false;
-  };
+    resumeTimer.current = setTimeout(() => setRotating(true), AUTOROTATE_RESUME_MS);
+  }, []);
 
-  const resumeRotation = () => {
-    if (reducedMotion) return;
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => {
-      if (controlsRef.current) controlsRef.current.autoRotate = true;
-    }, AUTOROTATE_RESUME_MS);
-  };
+  const pauseRotation = useCallback(() => {
+    setRotating(false);
+    // Safety net: even if no matching end event ever arrives (touch scroll
+    // starting over the canvas), rotation comes back after the resume delay.
+    scheduleResume();
+  }, [scheduleResume]);
+
+  const resumeRotation = useCallback(() => {
+    scheduleResume();
+  }, [scheduleResume]);
+
+  // Global end-of-interaction signals, since OrbitControls' `onEnd` can be
+  // skipped entirely on touch devices.
+  useEffect(() => {
+    const onEndEvent = () => scheduleResume();
+    window.addEventListener("pointerup", onEndEvent);
+    window.addEventListener("pointercancel", onEndEvent);
+    window.addEventListener("touchend", onEndEvent);
+    window.addEventListener("touchcancel", onEndEvent);
+    window.addEventListener("blur", onEndEvent);
+    return () => {
+      window.removeEventListener("pointerup", onEndEvent);
+      window.removeEventListener("pointercancel", onEndEvent);
+      window.removeEventListener("touchend", onEndEvent);
+      window.removeEventListener("touchcancel", onEndEvent);
+      window.removeEventListener("blur", onEndEvent);
+    };
+  }, [scheduleResume]);
 
   return (
     <Canvas
@@ -343,7 +373,7 @@ function CarScene({
       <OrbitControls
         ref={controlsRef}
         target={fit.target}
-        autoRotate={!reducedMotion}
+        autoRotate={!reducedMotion && rotating}
         autoRotateSpeed={-2.778}
         enablePan={false}
         enableZoom={allowZoom}
