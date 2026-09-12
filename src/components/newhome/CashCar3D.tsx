@@ -201,7 +201,7 @@ function CarModel({
     cam.updateProjectionMatrix();
     onCameraFit?.(target, dist);
 
-  }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit]);
+  }, [camera, viewport.width, viewport.height, nativeSize, onCameraFit, url]);
 
   useEffect(() => {
     onReady();
