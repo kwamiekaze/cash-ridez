@@ -442,6 +442,10 @@ All colors MUST be HSL.
   .city-map-road-layer,
   .city-map-foreground-layer {
     animation: none !important;
+  }
+
+  .city-map-road-layer,
+  .city-map-foreground-layer {
     transform: none;
   }
 }
