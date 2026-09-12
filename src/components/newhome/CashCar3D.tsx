@@ -373,7 +373,7 @@ function CarScene({
       <OrbitControls
         ref={controlsRef}
         target={fit.target}
-        autoRotate={!reducedMotion}
+        autoRotate={!reducedMotion && rotating}
         autoRotateSpeed={-2.778}
         enablePan={false}
         enableZoom={allowZoom}
