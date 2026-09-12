@@ -249,6 +249,7 @@ function CarScene({
 }) {
   const controlsRef = useRef<any>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [rotating, setRotating] = useState(true);
   const [fit, setFit] = useState<{ target: [number, number, number]; dist: number | null }>({
     target: [0, 0.5, 0],
     dist: null,
