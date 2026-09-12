@@ -287,18 +287,41 @@ function CarScene({
     };
   }, [modelUrl]);
 
-  const pauseRotation = () => {
+  // Auto-rotation is driven by React state so a re-render can never leave a
+  // stale imperative `autoRotate = false` latched on the controls.
+  const scheduleResume = useCallback(() => {
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    if (controlsRef.current) controlsRef.current.autoRotate = false;
-  };
+    resumeTimer.current = setTimeout(() => setRotating(true), AUTOROTATE_RESUME_MS);
+  }, []);
 
-  const resumeRotation = () => {
-    if (reducedMotion) return;
-    if (resumeTimer.current) clearTimeout(resumeTimer.current);
-    resumeTimer.current = setTimeout(() => {
-      if (controlsRef.current) controlsRef.current.autoRotate = true;
-    }, AUTOROTATE_RESUME_MS);
-  };
+  const pauseRotation = useCallback(() => {
+    setRotating(false);
+    // Safety net: even if no matching end event ever arrives (touch scroll
+    // starting over the canvas), rotation comes back after the resume delay.
+    scheduleResume();
+  }, [scheduleResume]);
+
+  const resumeRotation = useCallback(() => {
+    scheduleResume();
+  }, [scheduleResume]);
+
+  // Global end-of-interaction signals, since OrbitControls' `onEnd` can be
+  // skipped entirely on touch devices.
+  useEffect(() => {
+    const onEndEvent = () => scheduleResume();
+    window.addEventListener("pointerup", onEndEvent);
+    window.addEventListener("pointercancel", onEndEvent);
+    window.addEventListener("touchend", onEndEvent);
+    window.addEventListener("touchcancel", onEndEvent);
+    window.addEventListener("blur", onEndEvent);
+    return () => {
+      window.removeEventListener("pointerup", onEndEvent);
+      window.removeEventListener("pointercancel", onEndEvent);
+      window.removeEventListener("touchend", onEndEvent);
+      window.removeEventListener("touchcancel", onEndEvent);
+      window.removeEventListener("blur", onEndEvent);
+    };
+  }, [scheduleResume]);
 
   return (
     <Canvas
