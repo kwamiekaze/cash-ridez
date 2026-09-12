@@ -140,6 +140,7 @@ function CarModel({
   const { scene } = useGLTF(url, true);
   const modelRef = useRef<THREE.Group>(null);
   const entrance = useRef(0);
+  const fitKey = useRef<string | null>(null);
   const { camera, size: viewport } = useThree();
 
   const { model, nativeSize } = useMemo(() => {
