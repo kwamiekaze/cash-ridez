@@ -9,7 +9,7 @@ import { motion } from 'motion/react';
 import { CheckCircle2, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SplashScreen } from '@/components/SplashScreen';
-import { MapBackground } from '@/components/MapBackground';
+import { CityMapBackground } from '@/components/newhome/CityMapBackground';
 import { HeroSection } from '@/components/HeroSection';
 import { CashCarIcon } from '@/components/CashCarIcon';
 import SupportDialog from '@/components/SupportDialog';
@@ -73,14 +73,14 @@ export default function NewHome() {
 
       <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-950 dark:to-black">
         {/* Global Map Background */}
-        <MapBackground intensity="subtle" className="fixed inset-0 z-0" />
+        <CityMapBackground intensity="subtle" className="fixed inset-0 z-0" />
 
         <div className="relative z-10">
           <NewHomeNavigation />
 
           {/* Hero Section — 3D car centerpiece */}
           <section className="relative overflow-x-hidden">
-            <MapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
+            <CityMapBackground showAnimatedCar showRiders intensity="prominent" className="absolute inset-0 z-0 pointer-events-none" />
 
             {/* Hero group sized by its content (no forced viewport height). */}
             <div className="relative z-50 flex min-h-0 flex-col items-center px-4 pb-0 pt-[76px] md:pb-0 md:pt-[80px]">
@@ -199,7 +199,7 @@ export default function NewHome() {
 
           {/* How It Works */}
           <section id="how-it-works" className="relative py-24 bg-gradient-to-b from-gray-50 via-white to-gray-50 dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
-            <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
+            <CityMapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
             <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{
               opacity: 0,
@@ -245,7 +245,7 @@ export default function NewHome() {
 
       {/* Why Join CashRidez */}
       <section id="community" className="relative py-24 overflow-hidden">
-        <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
+        <CityMapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
         <div className="container mx-auto px-4 relative z-10">
           <motion.div initial={{
               opacity: 0,
@@ -296,7 +296,7 @@ export default function NewHome() {
 
         {/* Support Section */}
         <section id="support" className="relative py-24 bg-gradient-to-b from-white via-gray-50 to-white dark:from-black dark:via-gray-900 dark:to-black overflow-hidden">
-          <MapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
+          <CityMapBackground showAnimatedCar showRiders intensity="subtle" className="absolute inset-0 z-0 pointer-events-none" />
           <div className="container mx-auto px-4 text-center relative z-10">
           <motion.div initial={{
               opacity: 0,
