@@ -19,8 +19,8 @@ interface NavigationConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   locationType: "Pickup" | "Dropoff";
   address: string;
-  lat?: number;
-  lng?: number;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export function NavigationConfirmDialog({

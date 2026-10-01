@@ -11,6 +11,7 @@ import {
   normalizeAddressKey,
   normalizeZip5,
   parseNominatimResult,
+  parseNominatimResults,
   validateAddressInput,
 } from '../geocode-core.ts';
 
@@ -96,6 +97,15 @@ describe('Nominatim result parsing', () => {
     const parsed = parseNominatimResult({});
     expect(parsed.ok).toBe(false);
   });
+
+  it('uses a valid Georgia candidate even when it is not ranked first', () => {
+    const parsed = parseNominatimResults([
+      { ...georgiaHit, address: { state: 'New York', postcode: '10001' } },
+      georgiaHit,
+    ]);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.result.zip).toBe('30303');
+  });
 });
 
 describe('upstream request shape and policy', () => {
@@ -103,7 +113,7 @@ describe('upstream request shape and policy', () => {
     const url = new URL(buildNominatimUrl('123 Peachtree St'));
     expect(url.searchParams.get('format')).toBe('jsonv2');
     expect(url.searchParams.get('addressdetails')).toBe('1');
-    expect(url.searchParams.get('limit')).toBe('1');
+    expect(url.searchParams.get('limit')).toBe('8');
     expect(url.searchParams.get('countrycodes')).toBe('us');
     expect(url.searchParams.get('q')).toBe('123 Peachtree St');
   });
@@ -140,7 +150,7 @@ describe('trip creation no longer fakes a location', () => {
   });
 });
 
-describe('the geocoding function fails closed', () => {
+describe('the geocoding function never invents coordinates', () => {
   const fn = readFileSync('supabase/functions/geocode-address/index.ts', 'utf8');
 
   it('requires a user JWT and reserves the global rate-limit slot', () => {

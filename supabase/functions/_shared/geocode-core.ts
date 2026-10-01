@@ -94,13 +94,34 @@ export function parseNominatimResult(
   return { ok: true, result: { lat, lng, zip, displayName } };
 }
 
+/**
+ * Nominatim may rank an out-of-area or ZIP-less result ahead of the correct
+ * Georgia address. Inspect every returned candidate instead of rejecting the
+ * whole lookup based only on result #1.
+ */
+export function parseNominatimResults(
+  raw: unknown,
+): { ok: true; result: GeocodeResult } | { ok: false; reason: GeocodeFailure } {
+  if (!Array.isArray(raw) || raw.length === 0) return { ok: false, reason: "not_found" };
+
+  let bestFailure: GeocodeFailure = "not_found";
+  for (const candidate of raw) {
+    const parsed = parseNominatimResult(candidate);
+    if (parsed.ok) return parsed;
+    if (parsed.reason === "no_zip") bestFailure = "no_zip";
+    else if (parsed.reason === "out_of_area" && bestFailure === "not_found") bestFailure = "out_of_area";
+  }
+
+  return { ok: false, reason: bestFailure };
+}
+
 /** Query string for the Nominatim search endpoint, per its usage policy. */
 export function buildNominatimUrl(address: string): string {
   const params = new URLSearchParams({
     q: address,
     format: "jsonv2",
     addressdetails: "1",
-    limit: "1",
+    limit: "8",
     countrycodes: "us",
   });
   return `https://nominatim.openstreetmap.org/search?${params.toString()}`;

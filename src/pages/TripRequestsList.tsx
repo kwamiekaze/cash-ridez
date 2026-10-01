@@ -332,15 +332,21 @@ export default function TripRequestsList() {
     // Calculate distances only for visible trips (performance optimization)
     if (userProfile?.current_lat && userProfile?.current_lng) {
       const visibleCount = Math.min(filtered.length, 50); // Only calc first 50
-      filtered = filtered.map((req, idx) => ({
-        ...req,
-        distance: idx < visibleCount ? calculateDistance(
-          userProfile.current_lat,
-          userProfile.current_lng,
-          parseFloat(req.pickup_lat),
-          parseFloat(req.pickup_lng)
-        ) : null
-      }));
+      filtered = filtered.map((req, idx) => {
+        const pickupLat = Number(req.pickup_lat);
+        const pickupLng = Number(req.pickup_lng);
+        const hasPickupCoordinates =
+          req.pickup_lat !== null && req.pickup_lat !== undefined &&
+          req.pickup_lng !== null && req.pickup_lng !== undefined &&
+          Number.isFinite(pickupLat) && Number.isFinite(pickupLng);
+
+        return {
+          ...req,
+          distance: idx < visibleCount && hasPickupCoordinates
+            ? calculateDistance(userProfile.current_lat, userProfile.current_lng, pickupLat, pickupLng)
+            : null,
+        };
+      });
     }
 
     // Apply sorting

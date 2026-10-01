@@ -2974,8 +2974,8 @@ export type Database = {
           driver_extra_vs_competitor: number | null
           driver_rating: number | null
           dropoff_address: string
-          dropoff_lat: number
-          dropoff_lng: number
+          dropoff_lat: number | null
+          dropoff_lng: number | null
           dropoff_zip: string
           estimated_competitor_driver_earnings: number | null
           estimated_competitor_fare_max: number | null
@@ -2985,8 +2985,8 @@ export type Database = {
           id: string
           passenger_count: number | null
           pickup_address: string
-          pickup_lat: number
-          pickup_lng: number
+          pickup_lat: number | null
+          pickup_lng: number | null
           pickup_time: string
           pickup_zip: string
           price_offer: number | null
@@ -3015,8 +3015,8 @@ export type Database = {
           driver_extra_vs_competitor?: number | null
           driver_rating?: number | null
           dropoff_address: string
-          dropoff_lat: number
-          dropoff_lng: number
+          dropoff_lat?: number | null
+          dropoff_lng?: number | null
           dropoff_zip: string
           estimated_competitor_driver_earnings?: number | null
           estimated_competitor_fare_max?: number | null
@@ -3026,8 +3026,8 @@ export type Database = {
           id?: string
           passenger_count?: number | null
           pickup_address: string
-          pickup_lat: number
-          pickup_lng: number
+          pickup_lat?: number | null
+          pickup_lng?: number | null
           pickup_time: string
           pickup_zip: string
           price_offer?: number | null
@@ -3056,8 +3056,8 @@ export type Database = {
           driver_extra_vs_competitor?: number | null
           driver_rating?: number | null
           dropoff_address?: string
-          dropoff_lat?: number
-          dropoff_lng?: number
+          dropoff_lat?: number | null
+          dropoff_lng?: number | null
           dropoff_zip?: string
           estimated_competitor_driver_earnings?: number | null
           estimated_competitor_fare_max?: number | null
@@ -3067,8 +3067,8 @@ export type Database = {
           id?: string
           passenger_count?: number | null
           pickup_address?: string
-          pickup_lat?: number
-          pickup_lng?: number
+          pickup_lat?: number | null
+          pickup_lng?: number | null
           pickup_time?: string
           pickup_zip?: string
           price_offer?: number | null

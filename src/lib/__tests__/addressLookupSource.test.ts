@@ -42,5 +42,6 @@ describe('address autocomplete uses the authenticated server proxy', () => {
     expect(source).toContain('isGeorgiaAddress');
     expect(source).toContain('getLocalSuggestions(query)');
     expect(source).toContain("place_id: 'custom-address'");
+    expect(source).toContain('Use this address exactly as typed');
   });
 });

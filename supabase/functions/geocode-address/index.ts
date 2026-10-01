@@ -21,7 +21,7 @@ import {
   NOMINATIM_REFERER,
   NOMINATIM_USER_AGENT,
   normalizeAddressKey,
-  parseNominatimResult,
+  parseNominatimResults,
   validateAddressInput,
 } from "../_shared/geocode-core.ts";
 
@@ -151,10 +151,7 @@ Deno.serve(async (req) => {
     return fail("upstream_error", 502);
   }
 
-  const first = Array.isArray(payload) ? payload[0] : null;
-  if (!first) return fail("not_found");
-
-  const parsed = parseNominatimResult(first);
+  const parsed = parseNominatimResults(payload);
   if (!parsed.ok) return fail(parsed.reason);
 
   await writeCache(key, parsed.result);

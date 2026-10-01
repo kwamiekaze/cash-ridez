@@ -22,6 +22,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { estimateFromMilesOnly, estimateCompetitorDriverEarnings } from "@/utils/fareEstimator";
 import { useSubscription } from "@/hooks/useSubscription";
 import { evaluateTripCreationGate } from "@/lib/tripCreationGate";
+import { manualAddressFallback, type ResolvedAddress } from "@/lib/addressResolution";
 
 // Sanitize HTML and dangerous characters to prevent XSS
 const sanitizeHtml = (str: string) => 
@@ -180,14 +181,15 @@ END:VCARD`;
   }, [estimatedDistance, formData.priceOffer]);
 
   /**
-   * Authoritative address lookup. Runs server-side so the trip can never be
-   * saved with placeholder coordinates. Throws with a user-facing message
-   * when the address cannot be resolved.
+   * Prefer an authoritative server-side lookup. If the mapping provider does
+   * not list a complete Georgia address, preserve exactly what the rider typed
+   * and leave its coordinates null instead of blocking the trip or inventing
+   * a map pin.
    */
   const geocodeAddress = async (
     address: string,
     label: "Pickup" | "Dropoff",
-  ): Promise<{ lat: number; lng: number; zip: string }> => {
+  ): Promise<ResolvedAddress> => {
     const { data, error } = await supabase.functions.invoke("geocode-address", {
       body: { address },
     });
@@ -203,7 +205,13 @@ END:VCARD`;
       } catch {
         // fall through to the generic message
       }
-      throw new Error(`${label} address: ${message || "we couldn't look up that address. Please try again."}`);
+      const fallback = manualAddressFallback(address);
+      if (fallback) return fallback;
+
+      throw new Error(
+        `${label} address: ${message || "we couldn't confirm that location."} ` +
+        "Enter the full address with a 5-digit Georgia ZIP, then choose “Use this address exactly as typed.”",
+      );
     }
 
     const lat = Number((data as any)?.lat);
@@ -211,10 +219,15 @@ END:VCARD`;
     const zip = typeof (data as any)?.zip === "string" ? (data as any).zip : "";
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || !/^\d{5}$/.test(zip)) {
-      throw new Error(`${label} address: we couldn't confirm that location. Please check it and try again.`);
+      const fallback = manualAddressFallback(address);
+      if (fallback) return fallback;
+      throw new Error(
+        `${label} address: we couldn't confirm that location. ` +
+        "Enter the full address with a 5-digit Georgia ZIP, then choose “Use this address exactly as typed.”",
+      );
     }
 
-    return { lat, lng, zip };
+    return { lat, lng, zip, verified: true };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -315,6 +328,7 @@ END:VCARD`;
       // upstream lookup allows one request per second globally.
       const pickupGeo = await geocodeAddress(formData.pickupAddress.trim(), "Pickup");
       const dropoffGeo = await geocodeAddress(formData.dropoffAddress.trim(), "Dropoff");
+      const hasUnverifiedAddress = !pickupGeo.verified || !dropoffGeo.verified;
 
       const sanitizeForKeywords = (text: string) =>
         text.trim().toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((k) => k.length > 2);
@@ -386,7 +400,11 @@ END:VCARD`;
       // authoritative trip_posted outbox event. The browser sends nothing.
 
 
-      toast.success("Trip request created!");
+      toast.success(
+        hasUnverifiedAddress
+          ? "Trip request created with your address exactly as typed."
+          : "Trip request created!",
+      );
       // Navigate immediately for snappier UX; the Rider page can refresh on mount
       navigate("/rider", { state: { refreshRequests: true, newRequestId: newTrip?.id, timestamp: Date.now() } });
     } catch (error: any) {
@@ -601,6 +619,9 @@ END:VCARD`;
                 onChange={(value) => setFormData({ ...formData, pickupAddress: value })}
                 icon="pickup"
               />
+              <p className="text-xs text-muted-foreground">
+                Not listed? Enter the full address with its Georgia ZIP and choose “Use this address exactly as typed.”
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -613,6 +634,9 @@ END:VCARD`;
                 onChange={(value) => setFormData({ ...formData, dropoffAddress: value })}
                 icon="dropoff"
               />
+              <p className="text-xs text-muted-foreground">
+                Not listed? Enter the full address with its Georgia ZIP and choose “Use this address exactly as typed.”
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

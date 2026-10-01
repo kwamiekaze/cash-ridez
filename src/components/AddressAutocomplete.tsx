@@ -355,7 +355,7 @@ export function AddressAutocomplete({
                   "line-clamp-2",
                   suggestion.isCustomOption && "text-warning font-medium"
                 )}>
-                  {suggestion.isCustomOption ? "Address not shown – use what I typed" : suggestion.display_name}
+                  {suggestion.isCustomOption ? "Use this address exactly as typed" : suggestion.display_name}
                 </span>
               </div>
             </button>

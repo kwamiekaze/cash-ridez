@@ -5,8 +5,8 @@ import { NavigationConfirmDialog } from "@/components/NavigationConfirmDialog";
 
 interface AddressLinkProps {
   address: string;
-  lat?: number;
-  lng?: number;
+  lat?: number | null;
+  lng?: number | null;
   isDestination?: boolean;
   className?: string;
   showIcon?: boolean;

@@ -215,8 +215,8 @@ function isAndroid(): boolean {
 }
 
 export interface NavigationLinkOptions {
-  lat?: number;
-  lng?: number;
+  lat?: number | null;
+  lng?: number | null;
   address: string;
   isDestination?: boolean; // If true, will use navigation/directions mode
 }
