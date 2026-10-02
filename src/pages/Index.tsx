@@ -314,7 +314,7 @@ const Index = () => {
               </a>
             </div>
             <p className="text-center text-sm text-foreground/60 font-medium">
-              © 2025 CashRidez. All rights reserved.
+              © 2026 CashRidez. All rights reserved.
             </p>
           </div>
         </div>

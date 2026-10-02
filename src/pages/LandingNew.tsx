@@ -320,7 +320,7 @@ export default function LandingNew() {
               CashRidez is a communication and networking platform designed to connect individuals for travel coordination. CashRidez does not arrange, control, or provide transportation services and is not responsible for user transactions or travel outcomes.
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-500">
-              © 2025 CashRidez. All rights reserved.
+              © 2026 CashRidez. All rights reserved.
             </p>
           </div>
         </div>
